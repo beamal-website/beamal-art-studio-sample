@@ -1,0 +1,8 @@
+node_modules
+.git
+ASSETS.md
+README.md
+QA.md
+tests
+preview-home.png
+email-draft.md

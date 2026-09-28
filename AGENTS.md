@@ -6,4 +6,5 @@
 - 保留中英文切換與手機版。不要自行生成或替換 Beamal 圖片。
 - Class code 必須不分大小寫保持唯一；weekday 支援多選。
 - 功能修改執行 npm test --prefix sample 及 npm run build --prefix sample。
-- 合作時在 codex/ 開頭的獨立分支修改，保留其他人的工作，透過 Pull Request 合併。
+- 依使用者要求，直接在 main 修改、Commit 及推送；不要自行開另一條分支。推送前先核對遠端更新，保留其他人的工作。
+- 每次 Commit 清楚寫明改了什麼，並記錄相關測試結果。

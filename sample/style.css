@@ -42,6 +42,7 @@
 .class-card .class-title-button{padding:0;border:0;border-radius:0;background:transparent;color:inherit;font:inherit;text-align:left}.class-card .class-title-button:hover{text-decoration:underline;text-underline-offset:4px;filter:none}.class-card .class-title-button:focus-visible{outline:2px solid var(--teal);outline-offset:3px}.class-roster-table{min-width:600px}
 
 .list-back{margin-bottom:22px}
+.course{display:flex;flex-direction:column}.course .body{display:flex;flex:1;flex-direction:column}.course .body>.button{margin-top:auto;align-self:flex-start}
 
 .site-header .banner{position:relative;padding-right:100px;padding-left:100px}.banner .banner-reset{position:absolute;right:18px;top:50%;transform:translateY(-50%);background:transparent;color:#000;border:1.5px solid #000;border-radius:6px;font-size:12px;font-weight:800;padding:7px 12px;line-height:1.2;text-transform:none;letter-spacing:0}@media(max-width:780px){.site-header .banner{padding-left:12px;padding-right:80px}.banner .banner-reset{right:10px;padding:6px 9px}}
 

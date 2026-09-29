@@ -45,7 +45,7 @@
 .class-settings-heading{margin-bottom:22px;gap:16px}.class-settings-heading .title{margin:0}.class-settings-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}.class-card{margin:0}.class-card h2{margin:0}.class-pencil{padding:9px;display:flex;align-items:center;justify-content:center}.class-details{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:24px 0}.class-details dt{color:#6b7774;font-size:14px;margin-bottom:7px}.class-details dd{margin:0;font-weight:600}.class-card p{margin-bottom:0;color:#6b7774}@media(max-width:650px){.class-settings-grid{grid-template-columns:1fr}.class-settings-heading{align-items:center}.class-settings-heading .title{font-size:25px}.class-settings-heading button{white-space:nowrap}.class-details{gap:8px}}
 
 .class-card .class-number{margin:7px 0 0;font-size:14px;letter-spacing:.04em;color:#647571}
-.class-card .class-title-button{padding:0;border:0;border-radius:0;background:transparent;color:inherit;font:inherit;text-align:left}.class-card .class-title-button:hover{text-decoration:underline;text-underline-offset:4px;filter:none}.class-card .class-title-button:focus-visible{outline:2px solid var(--teal);outline-offset:3px}.class-roster-table{min-width:600px}
+.class-students-button{margin-top:12px}.class-roster-table{min-width:600px}
 
 .list-back{margin-bottom:22px}
 .course{display:flex;flex-direction:column}.course .body{display:flex;flex:1;flex-direction:column}.course .body>.button{margin-top:auto;align-self:flex-start}

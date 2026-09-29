@@ -21,9 +21,10 @@ Logo: beamal-logo.jpg from the profile image at https://www.instagram.com/beamal
 - beamal-guidedog.jpg: https://www.instagram.com/beamal_artstudio/p/Da0EtRsk0Jt/ — guide-dog theme artwork.
 Saved from browser-observed images on Beamal’s own posts. Attribution records remain here; no captions underneath website photos.
 
-## Distinct page image allocation — 28 September 2026
+## Distinct page image allocation — 29 September 2026
+- Home uses beamal-elephants.jpg as its featured photograph and beamal-idioms.jpg, beamal-sketch.jpg, and beamal-canvas.jpg for past events.
 - Classes uses beamal-art.jpg, beamal-storybook.jpg, beamal-sewing.jpg. Course details retain the corresponding course image.
-- About uses beamal-elephants.jpg, beamal-idioms.jpg, beamal-canvas.jpg, beamal-sketch.jpg, beamal-colourpencil.jpg, beamal-guidedog.jpg once each.
+- About uses beamal-colourpencil.jpg and beamal-guidedog.jpg for additional studio photos.
 - Portfolio uses only artwork photographs, with no people in frame:
   - portfolio-elephants.jpg: https://www.instagram.com/beamal_artstudio/p/DarmFD8EfTz/ — carousel fourth image, paintings on the table.
   - portfolio-sketch.jpg: https://www.instagram.com/beamal_artstudio/p/DZMR98TE_z8/ — first image, pencil sketch collection.

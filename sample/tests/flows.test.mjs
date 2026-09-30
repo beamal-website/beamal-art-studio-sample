@@ -74,8 +74,9 @@ test('teacher course boards group slots, sort by course code, and show default a
  assert.equal((html.match(/data-edit-course=/g)||[]).length,3);
  assert.doesNotMatch(html,/data-edit-class=/);
  assert.ok(html.indexOf('CO-001')<html.indexOf('CO-002')&&html.indexOf('CO-002')<html.indexOf('CO-003'));
- assert.match(html,/Time slot 1 · CL-001/);
- assert.match(html,/Time slot 2 · CL-002/);
+ assert.match(html,/<strong>Every Monday<\/strong><p>10:00<\/p><p>Class number: CL-001<\/p><p>Capacity: 8<\/p><p>Occupied: 4<\/p>/);
+ assert.match(html,/<strong>Every Tuesday<\/strong><p>14:00<\/p><p>Class number: CL-002<\/p><p>Capacity: 8<\/p><p>Occupied: 8<\/p>/);
+ assert.doesNotMatch(html,/Time slot [12] ·/);
  a.click({editCourse:'art'});
  let editor=a.nodes['#modal-root'].innerHTML;
  assert.match(editor,/id="course-editor"/);

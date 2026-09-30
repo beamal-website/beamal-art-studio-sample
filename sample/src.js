@@ -64,7 +64,17 @@ const photos=[
 {file:'beamal-guidedog.jpg',z:'學生展示導盲犬主題畫作',e:'Student displaying guide-dog-themed artwork'},
 {file:'portfolio-elephants.jpg',z:'大象主題繪畫作品合集',e:'Elephant-themed painting collection'},
 {file:'portfolio-sketch.jpg',z:'靜物素描作品合集',e:'Still-life pencil sketch collection'},
-{file:'portfolio-fathers-day.jpg',z:'父親節水墨畫作品合集',e:'Father’s Day ink painting collection'}];
+{file:'portfolio-fathers-day.jpg',z:'父親節水墨畫作品合集',e:'Father’s Day ink painting collection'},
+{file:'portfolio-competition-art.jpg',z:'學生比賽繪畫作品合集',e:'Student competition artwork collection'},
+{file:'portfolio-earth-art.jpg',z:'地球與動物主題繪畫作品',e:'Earth and animal themed paintings'},
+{file:'portfolio-fables-art.jpg',z:'寓言故事學生畫作',e:'Student fable illustrations'},
+{file:'portfolio-shiba-art.jpg',z:'柴犬與富士山畫作',e:'Shiba Inu and Mount Fuji paintings'},
+{file:'portfolio-cats-art.jpg',z:'萬聖節貓咪繪畫作品',e:'Halloween cat paintings'},
+{file:'portfolio-still-life-art.jpg',z:'彩色鉛筆靜物作品',e:'Colour-pencil still-life artwork'},
+{file:'portfolio-bird-sketch.jpg',z:'鳥類素描作品',e:'Bird pencil sketches'},
+{file:'portfolio-storybook-art.jpg',z:'學生繪本封面作品',e:'Student storybook cover artwork'},
+{file:'portfolio-space-art.jpg',z:'太空主題學生畫作',e:'Space-themed student painting'},
+{file:'portfolio-sewing-charms.jpg',z:'縫紉御守作品',e:'Hand-sewn charm artwork'}];
 function photoContent(i){let p=photos[i];let img=`<img src="/assets/${p.file}" alt="${t(p.z,p.e)}" loading="${i===6?'eager':'lazy'}">`;return i<3?`<span class="course-art-crop" style="--crop-row:${i}">${img}</span>`:img}
 function art(i=0){return `<button class="art" data-art="${i}" aria-label="${t('放大照片','Enlarge photo')}">${photoContent(i)}</button>`}
 
@@ -90,7 +100,7 @@ function home(){return `<section class="home-hero"><div class="home-copy"><h1>${
 
 function about(){return `<h1 class="title">${t('關於我們','About Us')}</h1><div class="about-copy-grid"><section><h2>Mission &amp; Vision</h2><p>sample</p></section><section><h2>Our Story</h2><p>sample</p></section></div><section class="section"><h2>${t('更多活動照片','More Studio Photos')}</h2><div class="event-grid">${[8,9].map(i=>`<div class="event-card">${art(i)}</div>`).join('')}</div></section>`}
 
-function portfolio(){return `<h1 class="title">${t('作品集','Portfolio')}</h1><div class="portfolio-gallery">${[10,11,12].map(art).join('')}</div>`}
+function portfolio(){return `<h1 class="title">${t('作品集','Portfolio')}</h1><div class="portfolio-gallery">${photos.slice(10).map((_,i)=>art(i+10)).join('')}</div>`}
 function courseSchedule(courseId){let classes=sortedClasses(db.classes.filter(item=>item.course===courseId));return classes.length?`<section class="course-schedule"><h2>${t('班別日期及時間','Class Dates and Times')}</h2><ul>${classes.map(item=>`<li><span>${t('上課日期','Class dates')}: ${datePeriod(item)}</span><strong>${slotText(item)}</strong><span>${t('每次報名包含 4 堂','4 lessons per enrolment')}</span></li>`).join('')}</ul></section>`:`<p class="empty">${t('暫無班別時間','No class times available.')}</p>`}
 function detail(id){let c=courses.find(c=>c.id===id);if(!c){let list=sortedClasses(db.classes.filter(item=>item.course===decodeURIComponent(id)));if(!list.length)return missing();let first=list[0];return `<div class="about"><div>${classArtwork(first.course,0,first)}</div><div><h1 class="title">${classTitle(first)}</h1><p class="sub">${t('課程班別','Course classes')}</p>${courseSchedule(first.course)}<button class="ghost" data-go="/classes">${t('返回課程','Back to courses')}</button></div></div>`}return `<div class="about"><div>${classArtwork(id,courses.indexOf(c))}</div><div><h1 class="title">${name(id)}</h1><p class="sub">Sample</p><p>${t('年齡','Age')}: Sample · ${money(c.price)}</p>${courseSchedule(id)}<button data-enrol="${id}">Join Class</button></div></div>`}
 function privacy(){return `<h1 class="title">${t('私隱政策','Privacy Policy')}</h1><div class="panel"><p>Sample</p></div>`}

@@ -150,7 +150,37 @@ test('student navigation keeps only personal classes, calendar and payment infor
  const before=a.read('db');for(const tab of ['products','sales','new-enrolments','students','student-list','management','settings','news','accounting','reports']){a.click({tab});assert.equal(a.read('tab'),'courses');assert.doesNotMatch(a.nodes['#app'].innerHTML,/data-edit-course|Teacher 1|David Leung/)}assert.deepEqual(a.read('db'),before);
  a.click({tab:'payments'});html=a.nodes['#app'].innerHTML;assert.match(html,/Profile/);assert.match(html,/alex@example.test/);assert.doesNotMatch(html,/david@example.test|ryan@example.test/);
  a.click({action:'language'});html=a.nodes['#app'].innerHTML;assert.match(html,/我的時間表|我的課程|付款及個人資料/);assert.doesNotMatch(html,/銷售|學生管理|會計|報告|員工|潛在客戶/);
- a.click({action:'portal-menu'});assert.equal(a.nodes['.portal-shell'].classList.contains('is-menu-open'),true);a.click({tab:'overview'});assert.equal(a.read('portalMenu'),false);assert.match(a.nodes['#app'].innerHTML,/My Calendar/);
+ a.click({action:'portal-menu'});assert.equal(a.nodes['.portal-shell'].classList.contains('is-menu-open'),true);a.click({tab:'overview'});assert.equal(a.read('portalMenu'),true);assert.match(a.nodes['#app'].innerHTML,/My Calendar/);
+});
+test('desktop sidebar stays collapsed through navigation until manually reopened',()=>{
+ for(const role of ['teacher','student']){
+  const a=app();a.set(`role='${role}';location.pathname='/account';render()`);
+  a.click({action:'portal-menu'});
+  for(const tab of a.read('portalItems().map(([id])=>id)')){
+   a.click({tab});
+   assert.equal(a.read('tab'),tab);
+   assert.equal(a.read('portalMenu'),true);
+   assert.equal(a.nodes['.portal-shell'].classList.contains('is-menu-open'),true);
+   assert.equal(a.nodes['[data-action="portal-menu"]'].getAttribute('aria-expanded'),'false');
+  }
+  a.click({action:'portal-menu'});a.click({tab:'overview'});
+  assert.equal(a.read('portalMenu'),false);
+  assert.equal(a.nodes['[data-action="portal-menu"]'].getAttribute('aria-expanded'),'true');
+ }
+});
+test('mobile sidebar closes after selecting a page so it does not cover the content',()=>{
+ for(const role of ['teacher','student']){
+  const a=app({},undefined,true);a.set(`role='${role}';location.pathname='/account';render()`);
+  for(const tab of a.read('portalItems().map(([id])=>id)')){
+   a.click({action:'portal-menu'});assert.equal(a.nodes['#portal-sidebar'].inert,false);
+   a.click({tab});
+   assert.equal(a.read('tab'),tab);
+   assert.equal(a.read('portalMenu'),false);
+   assert.equal(a.nodes['.portal-shell'].classList.contains('is-menu-open'),false);
+   assert.equal(a.nodes['[data-action="portal-menu"]'].getAttribute('aria-expanded'),'false');
+   assert.equal(a.nodes['#portal-sidebar'].inert,true);
+  }
+ }
 });
 test('sidebar toggles preserve the page, unfinished input, and focus without rerendering',()=>{
  for(const role of ['teacher','student'])for(const mobile of [false,true]){

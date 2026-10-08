@@ -313,3 +313,36 @@ test('short adjacent slot summaries use separate lanes without changing actual d
  const layout=a.read("timetableDayLayout(timetableDateObject('2026-10-08'))"),first=layout.find(c=>c.id==='SHORT1'),second=layout.find(c=>c.id==='SHORT2');assert.notEqual(first.lane,second.lane);assert.equal(first.duration,15);assert.equal(second.time,'09:15');assert.equal(a.read("db.schedules[2].duration"),15);
  const html=a.nodes['#app'].innerHTML;assert.match(html,/09:00 – 09:15/);assert.match(html,/19:45 – 20:00/);assert.match(html,/>19:45<\/div>/);assert.doesNotMatch(html,/>20:00<\/div>|>20:15<\/div>/);
 });
+
+
+test('lesson menu opens reversibly and Escape dismisses it before closing details',()=>{
+ const a=lessonApp(),before=a.read('db');a.click({openLesson:'e',lessonKind:'class',lessonDate:'2026-10-08'});
+ for(const label of ['Duplicate lesson','Switch to List View','Open in Sales','Open in Courses'])assert.ok(a.nodes['#modal-root'].innerHTML.includes(label),label);
+ a.click({action:'lesson-more'});assert.equal(a.read('lessonMenuOpen'),true);assert.equal(a.nodes['#lesson-more-menu'].hidden,false);assert.equal(a.nodes['[data-action="lesson-more"]'].getAttribute('aria-expanded'),'true');
+ a.keydown('Escape');assert.equal(a.read('lessonMenuOpen'),false);assert.ok(a.read('selectedTimetableLesson'));assert.equal(a.nodes['#lesson-more-menu'].hidden,true);
+ a.click({action:'lesson-more'});a.click({lessonTab:'materials'});assert.equal(a.read('lessonMenuOpen'),false);assert.deepEqual(a.read('db'),before);
+ a.keydown('Escape');assert.equal(a.read('selectedTimetableLesson'),null);
+});
+test('lesson menu links reach Sales and the matching course while preserving collapsed navigation',()=>{
+ const a=lessonApp(),before=a.read('db');a.click({action:'portal-menu'});a.click({openLesson:'e',lessonKind:'class',lessonDate:'2026-10-08'});a.click({action:'lesson-sales'});
+ assert.equal(a.read('tab'),'new-enrolments');assert.equal(a.read('modal'),'');assert.equal(a.read('portalMenu'),true);assert.match(a.nodes['#app'].innerHTML,/New student enrolments/);
+ a.click({openLesson:'e',lessonKind:'class',lessonDate:'2026-11-05'});a.click({action:'lesson-course'});assert.equal(a.read('location.pathname'),'/account/courses/story');assert.equal(a.read('timetableDate'),'2026-11-05');assert.equal(a.read('courseDetailMonth.getMonth()'),10);assert.match(a.nodes['#app'].innerHTML,/course-detail-layout/);assert.equal(a.read('portalMenu'),true);assert.deepEqual(a.read('db'),before);
+ a.set("role='student'");for(const action of ['lesson-more','lesson-duplicate','lesson-list','lesson-sales','lesson-course'])a.click({action});assert.equal(a.read('modal'),'');assert.deepEqual(a.read('db'),before);
+});
+test('duplicating a lesson opens a single-occurrence draft and never copies enrolments or mutates the source',()=>{
+ const a=lessonApp();a.set("db.schedules.push({id:'S-DUP',course:'art',startDate:'2026-10-08',endMode:'forever',endDate:'',count:1,weekdays:[4],time:'10:00',duration:45,color:'#8fc34a',teacher:'Teacher 1',room:'Room A',capacity:8,session:2,remark:'Remark',detail:'Detail',moreInfo:'Student info'})");const before=a.read('db');
+ a.click({openLesson:'S-DUP',lessonKind:'schedule',lessonDate:'2026-10-15'});a.click({action:'lesson-duplicate'});const d=a.read('scheduleDraft');assert.equal(d.id,'');assert.equal(d.startDate,'2026-10-15');assert.equal(d.endMode,'count');assert.equal(d.count,1);assert.equal(d.time,'10:00');assert.equal(d.duration,45);assert.equal(d.color,'#8fc34a');assert.deepEqual(d.weekdays,[4]);assert.equal(d.teacher,'Teacher 1');assert.equal(d.room,'Room A');assert.equal(d.moreInfo,'Student info');assert.equal(a.read('selectedTimetableLesson'),null);assert.deepEqual(a.read('db'),before);
+ a.click({action:'close'});assert.deepEqual(a.read('db'),before);a.click({openLesson:'S-DUP',lessonKind:'schedule',lessonDate:'2026-10-15'});a.click({action:'lesson-duplicate'});
+ a.submit('schedule-editor',{...d,capacity:'8',duration:'45',count:'1',session:'1'},{dataset:{id:''}});assert.equal(a.read('db.schedules.length'),2);assert.deepEqual(a.read('db.schedules[0]'),before.schedules[0]);assert.deepEqual(a.read('db.bookings'),before.bookings);assert.equal(a.read("scheduleOccurs(db.schedules[1],'2026-10-15')"),true);assert.equal(a.read("scheduleOccurs(db.schedules[1],'2026-10-22')"),false);
+ a.click({openLesson:'a',lessonKind:'class',lessonDate:'2026-10-05'});a.click({action:'lesson-duplicate'});assert.equal(a.read('scheduleDraft.duration'),'');assert.equal(a.read('scheduleDraft.course'),'art');
+});
+test('Switch to List View groups the selected class monthly and keeps occurrence numbers and filters accurate',()=>{
+ const a=lessonApp(),before=a.read('db');a.click({openLesson:'e',lessonKind:'class',lessonDate:'2026-10-08'});a.click({action:'lesson-list'});assert.equal(a.read('modal'),'');assert.equal(a.read('timetableView'),'list');assert.deepEqual(a.read('timetableLessonFilter'),{id:'e',kind:'class'});let html=a.nodes['#app'].innerHTML;
+ assert.match(html,/tt-workspace filters-hidden/);assert.match(html,/Class ID: CL-005/);assert.match(html,/tt-list-date-group/);assert.match(html,/Day of week/);assert.match(html,/Number/);assert.match(html,/Capacity/);assert.match(html,/Created on/);assert.equal((html.match(/data-open-lesson="e"/g)||[]).length,4);assert.doesNotMatch(html,/data-open-lesson="a"|datetime="2026-10-01"/);
+ for(const date of ['2026-10-08','2026-10-15','2026-10-22','2026-10-29'])assert.ok(html.includes(`data-lesson-date="${date}"`));assert.match(html,/>4<\/td><td>0\/6</);
+ a.click({openLesson:'e',lessonKind:'class',lessonDate:'2026-10-22'});assert.match(a.nodes['#modal-root'].innerHTML,/#3 · Course 2/);a.click({action:'lesson-close'});
+ a.click({action:'tt-next'});assert.equal(a.read('timetableDate'),'2026-11-08');assert.match(a.nodes['#app'].innerHTML,/data-lesson-date="2026-11-05"/);a.click({action:'tt-prev'});assert.equal(a.read('timetableDate'),'2026-10-08');
+ a.click({action:'tt-clear-lesson'});assert.equal(a.read('timetableLessonFilter'),null);assert.match(a.nodes['#app'].innerHTML,/data-open-lesson="a"/);a.change('', 'week',{id:'tt-view'});assert.match(a.nodes['#app'].innerHTML,/class="tt-grid"/);assert.deepEqual(a.read('db'),before);
+ a.set("db.schedules.push({id:'S-LIST',course:'story',startDate:'2026-10-08',endMode:'count',count:4,weekdays:[4],time:'10:00',duration:45,color:'#8fc34a',session:1,capacity:null});timetableSearch=''");a.click({openLesson:'S-LIST',lessonKind:'schedule',lessonDate:'2026-10-08'});a.click({action:'lesson-list'});html=a.nodes['#app'].innerHTML;assert.equal((html.match(/data-open-lesson="S-LIST"/g)||[]).length,4);assert.doesNotMatch(html,/data-open-lesson="e"/);assert.match(html,/10:00 – 10:45/);assert.match(html,/>0\/-<\/td>/);
+ a.change('', 'list',{id:'tt-view'});a.set("timetableSearch='no-match';render()");assert.match(a.nodes['#app'].innerHTML,/No lessons match your search/);assert.doesNotMatch(a.nodes['#app'].innerHTML,/data-open-lesson=/);
+});

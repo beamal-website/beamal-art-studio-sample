@@ -150,6 +150,11 @@
 .tt-more>summary::-webkit-details-marker{display:none}
 .tt-more>div{position:absolute;right:0;top:50px;z-index:4;display:grid;width:170px;padding:6px;background:#fffdf8;border:1px solid #bdcbc1;box-shadow:0 6px 18px #253d3b1a}
 .portal-content .tt-more button{background:transparent;color:#253d3b;text-align:left;box-shadow:none;padding:12px}
+
+.tt-attendance>summary{user-select:none;position:relative;border-radius:50%;color:#526a60}.tt-attendance>summary:hover,.tt-attendance>summary:focus-visible{background:#dce6da}.tt-attendance-tooltip{position:absolute;right:-4px;top:calc(100% + 10px);padding:9px 13px;border-radius:5px;background:#253d3b;color:#fffdf8;font-size:15px;line-height:1.4;white-space:nowrap;box-shadow:0 4px 12px #253d3b33;pointer-events:none;visibility:hidden;opacity:0;z-index:8}.tt-attendance-tooltip::before{content:"";position:absolute;right:11px;top:-7px;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:7px solid #253d3b}.tt-attendance:not([open])>summary:focus-visible .tt-attendance-tooltip{visibility:visible;opacity:1}
+@media(hover:hover){.tt-attendance:not([open])>summary:hover .tt-attendance-tooltip{visibility:visible;opacity:1}}
+.tt-attendance>div{width:288px;max-width:calc(100vw - 32px);padding:8px 0;border-radius:3px;z-index:8}.tt-attendance-heading{margin:0;padding:12px 20px 8px;color:#7b887e;font-size:14px;font-weight:400}.portal-content .tt-attendance button{padding:12px 20px;font-size:16px;line-height:1.4;white-space:normal;opacity:1;cursor:not-allowed}.portal-content .tt-attendance button:disabled{color:#526a60}
+
 @container(max-width:850px){
  .tt-toolbar{display:grid;grid-template-columns:36px minmax(0,1fr) 36px 36px auto 28px;gap:8px;padding:12px}
  .tt-toolbar>.tt-icon-button:first-child{grid-column:1;grid-row:1}

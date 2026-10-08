@@ -323,6 +323,13 @@ test('activity info copy contains the selected lesson without changing schedules
  a.set("role='student'");let calls=0;a.ctx.navigator.clipboard={writeText:async()=>calls++};assert.equal(await a.ctx.copyLessonActivityInfo(),false);assert.equal(calls,0);
 });
 
+test('attendance menu is scoped to teacher timetable and Escape closes it without changing lessons',()=>{
+ const a=lessonApp(),before=a.read('db'),date=a.read('timetableDate');
+ for(const view of ['week','day','list']){a.set(`timetableView='${view}';render()`);let html=a.nodes['#app'].innerHTML;assert.match(html,/aria-label="Attendance" aria-describedby="tt-attendance-tooltip"/);assert.match(html,/id="tt-attendance-tooltip"[^>]*role="tooltip"/);for(const label of ['Check in by scan device','Check in by mobile camera','Check in logs'])assert.ok(html.includes(label));assert.equal((html.match(/type="button" disabled title="Currently unavailable"/g)||[]).length,3);assert.doesNotMatch(html,/More timetable options|data-action="tt-today"/)}
+ let focused=false;a.nodes['#tt-attendance']={open:true,querySelector:()=>({focus(){focused=true}})};a.keydown('Escape');assert.equal(a.nodes['#tt-attendance'].open,false);assert.equal(focused,true);assert.equal(a.read('timetableDate'),date);assert.deepEqual(a.read('db'),before);
+ a.set("lang='zh';render()");assert.match(a.nodes['#app'].innerHTML,/出席選項|透過掃描裝置簽到|透過手機鏡頭簽到|簽到紀錄/);a.set("role='student';render()");assert.doesNotMatch(a.nodes['#app'].innerHTML,/id="tt-attendance"/);assert.deepEqual(a.read('db'),before);
+});
+
 test('lesson menu opens reversibly and Escape dismisses it before closing details',()=>{
  const a=lessonApp(),before=a.read('db');a.click({openLesson:'e',lessonKind:'class',lessonDate:'2026-10-08'});
  for(const label of ['Duplicate lesson','Switch to List View','Open in Sales','Open in Courses'])assert.ok(a.nodes['#modal-root'].innerHTML.includes(label),label);

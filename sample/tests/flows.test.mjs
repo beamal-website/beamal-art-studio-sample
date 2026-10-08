@@ -346,3 +346,53 @@ test('Switch to List View groups the selected class monthly and keeps occurrence
  a.set("db.schedules.push({id:'S-LIST',course:'story',startDate:'2026-10-08',endMode:'count',count:4,weekdays:[4],time:'10:00',duration:45,color:'#8fc34a',session:1,capacity:null});timetableSearch=''");a.click({openLesson:'S-LIST',lessonKind:'schedule',lessonDate:'2026-10-08'});a.click({action:'lesson-list'});html=a.nodes['#app'].innerHTML;assert.equal((html.match(/data-open-lesson="S-LIST"/g)||[]).length,4);assert.doesNotMatch(html,/data-open-lesson="e"/);assert.match(html,/10:00 – 10:45/);assert.match(html,/>0\/-<\/td>/);
  a.change('', 'list',{id:'tt-view'});a.set("timetableSearch='no-match';render()");assert.match(a.nodes['#app'].innerHTML,/No lessons match your search/);assert.doesNotMatch(a.nodes['#app'].innerHTML,/data-open-lesson=/);
 });
+
+const courseInput=(extra={})=>({courseName:'Watercolour studio',feeName:'Standard fee',category:'Art',level:'Beginner',pricingModel:'monthly-lessons',lessonPrice:'300',duration:'60',lessonMonths:'1',...extra});
+function createCourseApp(){const a=app();a.set("role='teacher';lang='en';tab='catalog';location.pathname='/account';render()");return a}
+test('course Create opens the reference pricing form while class creation keeps its existing fields',()=>{
+ const a=createCourseApp(),before=a.read('db'),background=a.nodes['#app'].innerHTML;
+ assert.match(background,/data-action="new-course"/);a.click({action:'new-course'});let html=a.nodes['#modal-root'].innerHTML;
+ for(const text of ['Create course','Course overview','Pricing','Booking expiry (from invoice date)','Display in Online Store'])assert.ok(html.includes(text));
+ assert.equal((html.match(/type="radio" name="pricingModel"/g)||[]).length,3);assert.match(html,/data-pricing-fields="fixed-monthly" hidden disabled/);assert.match(html,/id="course-expiry-fields"[^>]*disabled/);assert.doesNotMatch(html,/name="classCode"|name="weekdays"|id="class-image"/);
+ a.click({action:'close'});assert.equal(a.nodes['#app'].innerHTML,background);assert.deepEqual(a.read('db'),before);
+ a.set("lang='zh'");a.click({action:'new-course'});html=a.nodes['#modal-root'].innerHTML;assert.match(html,/課程概覽|總分鐘數/);assert.match(html,/固定月費，不受當月堂數影響/);
+ a.click({action:'close'});a.click({action:'new-class'});assert.match(a.nodes['#modal-root'].innerHTML,/id="class-editor"/);assert.match(a.nodes['#modal-root'].innerHTML,/name="weekdays"/);
+});
+test('each pricing model persists only its own values, expiry and store visibility without making classes',()=>{
+ for(const [extra,expected] of [
+  [{expiryEnabled:'on',expiryValue:'3',expiryUnit:'months',onlineStore:'on'},{pricingModel:'monthly-lessons',price:300,duration:60,months:1,bookingExpiry:{value:3,unit:'months'},onlineStore:true}],
+  [{pricingModel:'fixed-monthly',monthlyPrice:'850',fixedMonths:'2',duration:'bad',packageTotal:'bad'},{pricingModel:'fixed-monthly',price:850,months:2,bookingExpiry:null,onlineStore:false}],
+  [{pricingModel:'package',packagePrice:'1200',packageType:'minutes',packageTotal:'240',lessonMonths:'bad'},{pricingModel:'package',price:1200,packageType:'minutes',packageTotal:240,bookingExpiry:null,onlineStore:false}],
+  [{pricingModel:'package',packagePrice:'1200',packageType:'lessons',packageTotal:'4'},{pricingModel:'package',price:1200,packageType:'lessons',packageTotal:4,bookingExpiry:null,onlineStore:false}]
+ ]){
+  const a=createCourseApp(),classes=a.read('db.classes'),bookings=a.read('db.bookings');a.click({action:'new-course'});a.submit('create-course-editor',courseInput(extra),{dataset:{id:''}});
+  const record=a.read('db.courseSettings[0]');for(const [key,value] of Object.entries(expected))assert.deepEqual(record[key],value,key);
+  assert.equal(record.courseName,'Watercolour studio');assert.equal(record.category,'Art');assert.equal(record.feeName,'Standard fee');assert.deepEqual(a.read('db.classes'),classes);assert.deepEqual(a.read('db.bookings'),bookings);assert.equal(a.read('modal'),'');assert.equal(a.read('db.courseCodes[db.courseSettings[0].id]'),'CO-004');
+  if(expected.pricingModel!=='monthly-lessons')assert.equal(record.duration,undefined);if(expected.pricingModel!=='package')assert.equal(record.packageType,undefined);
+  const reload=app({'beamal-demo-v1':JSON.stringify(a.read('db'))});assert.deepEqual(reload.read('db.courseSettings[0]'),record);
+ }
+});
+test('invalid prices, duplicate course names, totals and booking expiry never save partial records',()=>{
+ for(const extra of [{courseName:'course 1'},{feeName:' '},{lessonPrice:'0'},{lessonPrice:'NaN'},{duration:'1.5'},{lessonMonths:'13'},{pricingModel:'unknown'},{pricingModel:'fixed-monthly',monthlyPrice:'300',fixedMonths:'0'},{pricingModel:'package',packagePrice:'300',packageType:'hours',packageTotal:'4'},{pricingModel:'package',packagePrice:'300',packageType:'lessons',packageTotal:'-1'},{expiryEnabled:'on',expiryValue:'0',expiryUnit:'months'},{expiryEnabled:'on',expiryValue:'1',expiryUnit:'years'}]){
+  const a=createCourseApp(),before=a.read('db');a.click({action:'new-course'});a.submit('create-course-editor',courseInput(extra),{dataset:{id:''}});assert.deepEqual(a.read('db'),before);assert.ok(a.nodes['#create-course-error'].textContent,JSON.stringify(extra));assert.ok(a.read('modal'));
+ }
+ const a=createCourseApp();a.submit('create-course-editor',courseInput({expiryValue:'bad',expiryUnit:'bad'}),{dataset:{id:''}});assert.equal(a.read('db.courseSettings.length'),1);assert.equal(a.read('db.courseSettings[0].bookingExpiry'),null);
+ a.submit('create-course-editor',courseInput({courseName:'WATERCOLOUR STUDIO'}),{dataset:{id:''}});assert.equal(a.read('db.courseSettings.length'),1);
+});
+test('new courses appear in search, fee details and schedules before any lesson exists',()=>{
+ const a=createCourseApp();a.submit('create-course-editor',courseInput({onlineStore:'on'}),{dataset:{id:''}});const id=a.read('db.courseSettings[0].id');let html=a.nodes['#app'].innerHTML;
+ assert.match(html,/Watercolour studio/);assert.match(html,/Art<\/td><td>Beginner/);assert.match(html,/HK\$300/);assert.match(html,/per lesson · 60 min/);assert.match(html,/>Shown</);
+ a.submit('portal-course-search',{search:'watercolour'});assert.equal((a.nodes['#app'].innerHTML.match(/data-open-course=/g)||[]).length,1);a.click({openCourse:id});assert.equal(a.read('accountCourseId()'),id);assert.match(a.nodes['#app'].innerHTML,/No lessons this month/);assert.match(a.nodes['#app'].innerHTML,/Standard fee/);
+ a.click({action:'course-add-schedule'});assert.equal(a.read('scheduleDraft.course'),id);assert.match(a.nodes['#modal-root'].innerHTML,new RegExp(`value="${id}" selected`));a.submit('schedule-editor',{course:id,color:'#27777b',startDate:'2026-10-12',endMode:'count',count:'1',time:'10:00',duration:'60',capacity:'8',session:'1'},{dataset:{id:''}});assert.equal(a.read('db.schedules[0].course'),id);assert.equal(a.read('db.classes.length'),6);
+ a.click({editCourse:id});assert.match(a.nodes['#modal-root'].innerHTML,/Edit course/);assert.match(a.nodes['#modal-root'].innerHTML,/name="lessonPrice"[^>]*value="300"/);
+ a.submit('create-course-editor',courseInput({courseName:'Renamed studio',pricingModel:'fixed-monthly',monthlyPrice:'900',fixedMonths:'1'}),{dataset:{id}});assert.equal(a.read('db.courseSettings.length'),1);assert.equal(a.read('db.courseSettings[0].id'),id);assert.match(a.nodes['#app'].innerHTML,/Renamed studio/);assert.match(a.nodes['#app'].innerHTML,/HK\$900/);
+});
+test('pricing switches retain entered values, hide and disable inactive modes and relabel package totals',()=>{
+ const a=createCourseApp();a.set(`testFields=['monthly-lessons','fixed-monthly','package'].map(key=>({dataset:{pricingFields:key},hidden:false,disabled:false}));testControls={'[name=pricingModel]:checked':{value:'package'},'[name=expiryEnabled]':{checked:true},'#course-expiry-fields':{disabled:true},'[name=packageType]':{value:'lessons'},'#package-total-label':{textContent:''}};testForm={querySelector:key=>testControls[key],querySelectorAll:()=>testFields};syncCoursePricing(testForm)`);
+ assert.deepEqual(a.read('testFields.map(f=>[f.hidden,f.disabled])'),[[true,true],[true,true],[false,false]]);assert.equal(a.read("testControls['#course-expiry-fields'].disabled"),false);assert.equal(a.read("testControls['#package-total-label'].textContent"),'Lessons in total');
+ a.set("testControls['[name=pricingModel]:checked'].value='fixed-monthly';testControls['[name=expiryEnabled]'].checked=false;testControls['[name=packageType]'].value='minutes';syncCoursePricing(testForm)");assert.deepEqual(a.read('testFields.map(f=>[f.hidden,f.disabled])'),[[true,true],[false,false],[true,true]]);assert.equal(a.read("testControls['#course-expiry-fields'].disabled"),true);
+});
+test('student actions cannot create or edit internal courses and reset clears course settings',()=>{
+ const a=createCourseApp();a.submit('create-course-editor',courseInput(),{dataset:{id:''}});const before=a.read('db'),id=before.courseSettings[0].id;a.set("role='student'");a.click({action:'new-course'});a.click({editCourse:id});a.submit('create-course-editor',courseInput({courseName:'Unauthorised edit'}),{dataset:{id}});assert.equal(a.read('modal'),'');assert.deepEqual(a.read('db'),before);
+ a.click({action:'reset'});assert.deepEqual(a.read('db.courseSettings'),[]);a.submit('login',{username:'2',password:''});a.click({action:'new-course'});assert.match(a.nodes['#modal-root'].innerHTML,/Create course/);
+});

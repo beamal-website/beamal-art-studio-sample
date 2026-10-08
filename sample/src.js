@@ -428,8 +428,38 @@ document.addEventListener('change',e=>{
  let rows=filteredLeads(),all=document.querySelector('#lead-select-all');all.checked=!!rows.length&&rows.every(lead=>leadSelected.has(lead.id));all.indeterminate=rows.some(lead=>leadSelected.has(lead.id))&&!all.checked;document.querySelector('#lead-selection-actions').innerHTML=leadSelectionActions();
 });
 
+const reportGroups=[
+ {key:'sales',zh:'銷售',en:'Sales',items:[
+  ['付款摘要','Payment Summary','按付款方式分類，顯示客戶付款總額。以實際收款為計算基準。','A summary of total customer payments grouped by payment method, on a cash basis.'],
+  ['付款明細','Payment Detail','列出指定期間內的付款交易明細，以實際收款為計算基準。','Payment transaction details for a specified period, on a cash basis.'],
+  ['銷售摘要','Sales Summary','按課程及產品類別顯示收入，方便比較各類別的銷售表現。以實際收款為計算基準。','Revenue by course and product category, showing which categories generate the most revenue, on a cash basis.'],
+  ['銷售明細','Sales Detail','按收據列出課程及產品訂單，以實際收款為計算基準。','A list of course and product orders by receipt, on a cash basis.'],
+  ['已賺取收入摘要','Earned Revenue Summary','按指定期間已提供的課堂服務，計算學生訂單中已賺取的收入。','A summary of revenue earned from lessons provided within the selected service period, on an accrual basis.'],
+  ['已賺取收入明細','Earned Revenue Detail','列出指定期間內，學生訂單中每節課堂已賺取的收入。','Earned revenue for each lesson in a student’s order during the selected period, on an accrual basis.'],
+  ['折扣摘要','Discount Summary','顯示各項優惠的折扣總額，方便檢視每個推廣方案使用的預算。','Discount totals across all discount schemes, helping monitor the budget spent on each promotion.'],
+  ['折扣明細','Discount Detail','逐項列出交易的折扣，方便查看每次交易的收入和優惠金額。','Discounted transactions, with revenue and discount amounts for each transaction.'],
+  ['套票未賺取收入','Deferred Revenue By Package','顯示指定日期各預付套票尚未賺取的收入，包括套票總值、已用及剩餘額度、到期日和未使用金額。','Unearned revenue remaining in prepaid lesson packages as of a selected date, including total value, quota used, remaining quota, expiry date and unused amount.']
+ ]},
+ {key:'enrollment',zh:'報名',en:'Enrollment',items:[
+  ['首次報名','First Enrollment','列出指定期間首次報名、之前沒有付費上課的學生，方便跟進試堂和恆常課程報名。','Students who first enrolled in the selected period and had not paid for classes before, helping follow up on trials and regular-course enrollment.'],
+  ['最後報名','Last Enrollment','列出指定期間最後一次報名或離開、之後沒有再付費上課的學生，方便跟進離開原因。','Students whose last enrollment or departure falls within the selected period and who did not pay for further classes, helping follow up on why they left.'],
+  ['報名明細','Enrollment Detail','列出學生已上的課堂和出席記錄，可按出席狀態及老師搜尋。','Lessons and attendance records for all students, searchable by attendance status and teacher.'],
+  ['員工課堂明細','Lesson Detail By Staff','按員工列出課堂和出席記錄，並顯示學生總人數及課堂總時數。','Lessons and attendance by staff, with total student numbers and lesson duration for each staff member.'],
+  ['套票使用情況','Package Usage','顯示已購套票的使用次數或分鐘、剩餘額度，以及相關金額。','Purchased packages with visits or minutes used, remaining balances and their monetary values.'],
+  ['報名統計','Enrollment Metrics','按老師、班別或學生統計課堂數目、時數及出席情況，方便比較各班的表現。','Lesson counts and hours by teacher, class or student, with attendance summaries to help compare class performance.']
+ ]},
+ {key:'product',zh:'產品',en:'Product',items:[
+  ['產品摘要','Product Summary','顯示每項產品的銷售收入及數量，以實際收款為計算基準。','Revenue and quantity sold for each product, on a cash basis.'],
+  ['產品明細','Product Detail','列出產品的交易明細，以實際收款為計算基準。','Product transactions, on a cash basis.']
+ ]},
+ {key:'staff',zh:'員工',en:'Staff',items:[
+  ['薪酬摘要','Salary Summary','顯示所有員工的薪酬概覽。','An overview of salary for all staff.'],
+  ['打卡明細','Time Clock Detail','列出員工的上班及下班打卡時間。','Staff clock-in and clock-out times.']
+ ]}
+];
+function portalReports(){return `<section class="portal-reports" aria-label="${t('報告清單','Reports list')}"><div class="report-groups">${reportGroups.map(group=>`<section class="report-group" aria-labelledby="report-group-${group.key}"><h2 id="report-group-${group.key}">${t(group.zh,group.en)}</h2><div class="report-list">${group.items.map(([zh,en,descriptionZh,descriptionEn],i)=>`<article class="report-entry"><h3><button type="button" disabled aria-describedby="report-${group.key}-${i}-description" title="${t('暫未啟用','Currently unavailable')}">${t(zh,en)}</button></h3><p id="report-${group.key}-${i}-description">${t(descriptionZh,descriptionEn)}</p></article>`).join('')}</div></section>`).join('')}</div></section>`}
 
-function portalContent(){if(role==='teacher'&&path().startsWith('/account/courses/'))return portalCourseDetail(accountCourseId());if(role==='student')return `<div class="portal-content-padding">${student()}</div>`;if(tab==='overview'&&!path().startsWith('/account/classes/'))return teacherTimetable();if(tab==='catalog')return portalCourses();if(tab==='leads')return portalLeads();if(tab==='settings')return `<div class="portal-page-heading"><h1>${t('設定','Settings')}</h1></div>${role==='teacher'?`<div class="portal-content-padding"><button data-tab="news">${t('消息管理','News management')}</button></div>`:''}`;if(['products','messages','accounting','reports','channels','sales','student-placeholder','staff-placeholder'].includes(tab)){let item=portalItems().find(([id])=>id===tab);return `<section class="portal-blank-page"><div class="portal-page-heading"><h1>${item?t(item[2],item[3]):''}</h1></div></section>`}return `<div class="portal-content-padding">${role==='teacher'?teacher():student()}</div>`}
+function portalContent(){if(role==='teacher'&&path().startsWith('/account/courses/'))return portalCourseDetail(accountCourseId());if(role==='student')return `<div class="portal-content-padding">${student()}</div>`;if(tab==='overview'&&!path().startsWith('/account/classes/'))return teacherTimetable();if(tab==='catalog')return portalCourses();if(tab==='leads')return portalLeads();if(tab==='reports')return portalReports();if(tab==='settings')return `<div class="portal-page-heading"><h1>${t('設定','Settings')}</h1></div>${role==='teacher'?`<div class="portal-content-padding"><button data-tab="news">${t('消息管理','News management')}</button></div>`:''}`;if(['products','messages','accounting','channels','sales','student-placeholder','staff-placeholder'].includes(tab)){let item=portalItems().find(([id])=>id===tab);return `<section class="portal-blank-page"><div class="portal-page-heading"><h1>${item?t(item[2],item[3]):''}</h1></div></section>`}return `<div class="portal-content-padding">${role==='teacher'?teacher():student()}</div>`}
 function account(){return `<div class="portal-shell ${portalMenu?'is-menu-open':''}"><nav id="portal-sidebar" class="portal-sidebar" aria-label="${t('帳戶導覽','Account navigation')}">${portalItems().map(([id,icon,z,e])=>`<button data-tab="${id}" class="${portalActiveTab()===id?'active':''}" ${portalActiveTab()===id?'aria-current="page"':''} aria-label="${t(z,e)}">${portalIcon(icon)}<span>${t(z,e)}</span></button>`).join('')}</nav><div class="portal-content">${portalContent()}</div></div>`}
 function missing(){return `<h1>${t('找不到此頁','Page not found')}</h1><button data-go="/">${t('返回首頁','Back home')}</button>`}
 function schedule(){return `<h1 class="title">${t('課程時間表','Class Schedule')}</h1><div class="grid">${courses.map(course=>`<section class="panel"><h2>${name(course.id)}</h2>${sortedClasses(db.classes.filter(c=>c.course===course.id)).map(c=>`<p>${slotText(c)}</p>`).join('')}</section>`).join('')}</div>`}

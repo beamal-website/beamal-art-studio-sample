@@ -315,6 +315,14 @@ test('short adjacent slot summaries use separate lanes without changing actual d
 });
 
 
+test('activity info copy contains the selected lesson without changing schedules or copying students',async()=>{
+ const a=lessonApp();a.set("db.schedules.push({id:'S-COPY',course:'art',startDate:'2026-10-08',endMode:'forever',weekdays:[4],time:'10:00',duration:45,color:'#27777b',capacity:8,teacher:'Teacher 1',room:'Room A',session:1,remark:'Bring a brush',detail:'Painting',moreInfo:'Student info'});db.classes.find(c=>c.course==='art').courseName='A & B'");let copied='';a.ctx.navigator.clipboard={writeText:async text=>{copied=text}};const before=a.read('db');a.click({openLesson:'S-COPY',lessonKind:'schedule',lessonDate:'2026-10-15'});
+ const html=a.nodes['#modal-root'].innerHTML;for(const label of ['Lesson reminder settings','Copy activity info','More actions','Edit activity'])assert.ok(html.includes(label),label);assert.match(html,/data-action="lesson-copy"/);assert.equal(await a.ctx.copyLessonActivityInfo(),true);assert.match(copied,/#2 · A & B/);assert.match(copied,/2026-10-15 · 10:00 – 10:45/);assert.match(copied,/Teachers: Teacher 1/);assert.match(copied,/Room: Room A/);assert.match(copied,/Remark: Bring a brush/);assert.doesNotMatch(copied,/David Leung|Ryan Yu|&amp;/);assert.deepEqual(a.read('db'),before);assert.ok(a.read('selectedTimetableLesson'));assert.equal(a.read('scheduleDraft'),null);
+ a.set("lang='zh'");assert.equal(await a.ctx.copyLessonActivityInfo(),true);assert.match(copied,/老師: Teacher 1/);assert.match(copied,/備註: Bring a brush/);
+ a.ctx.navigator.clipboard={writeText:async()=>{throw new Error('Denied')}};assert.equal(await a.ctx.copyLessonActivityInfo(),false);delete a.ctx.navigator.clipboard;assert.equal(await a.ctx.copyLessonActivityInfo(),false);assert.deepEqual(a.read('db'),before);
+ a.set("role='student'");let calls=0;a.ctx.navigator.clipboard={writeText:async()=>calls++};assert.equal(await a.ctx.copyLessonActivityInfo(),false);assert.equal(calls,0);
+});
+
 test('lesson menu opens reversibly and Escape dismisses it before closing details',()=>{
  const a=lessonApp(),before=a.read('db');a.click({openLesson:'e',lessonKind:'class',lessonDate:'2026-10-08'});
  for(const label of ['Duplicate lesson','Switch to List View','Open in Sales','Open in Courses'])assert.ok(a.nodes['#modal-root'].innerHTML.includes(label),label);

@@ -335,7 +335,7 @@ test('lesson menu links reach Sales and the matching course while preserving col
  const a=lessonApp(),before=a.read('db');a.click({action:'portal-menu'});a.click({openLesson:'e',lessonKind:'class',lessonDate:'2026-10-08'});a.click({action:'lesson-sales'});
  assert.equal(a.read('tab'),'new-enrolments');assert.equal(a.read('modal'),'');assert.equal(a.read('portalMenu'),true);assert.match(a.nodes['#app'].innerHTML,/New student enrolments/);
  a.click({openLesson:'e',lessonKind:'class',lessonDate:'2026-11-05'});a.click({action:'lesson-course'});assert.equal(a.read('location.pathname'),'/account/courses/story');assert.equal(a.read('timetableDate'),'2026-11-05');assert.equal(a.read('courseDetailMonth.getMonth()'),10);assert.match(a.nodes['#app'].innerHTML,/course-detail-layout/);assert.equal(a.read('portalMenu'),true);assert.deepEqual(a.read('db'),before);
- a.set("role='student'");for(const action of ['lesson-more','lesson-duplicate','lesson-list','lesson-sales','lesson-course'])a.click({action});assert.equal(a.read('modal'),'');assert.deepEqual(a.read('db'),before);
+ a.set("role='student'");for(const action of ['lesson-more','lesson-duplicate','lesson-list','lesson-week','lesson-sales','lesson-course'])a.click({action});assert.equal(a.read('modal'),'');assert.deepEqual(a.read('db'),before);
 });
 test('duplicating a lesson opens a single-occurrence draft and never copies enrolments or mutates the source',()=>{
  const a=lessonApp();a.set("db.schedules.push({id:'S-DUP',course:'art',startDate:'2026-10-08',endMode:'forever',endDate:'',count:1,weekdays:[4],time:'10:00',duration:45,color:'#8fc34a',teacher:'Teacher 1',room:'Room A',capacity:8,session:2,remark:'Remark',detail:'Detail',moreInfo:'Student info'})");const before=a.read('db');
@@ -353,6 +353,18 @@ test('Switch to List View groups the selected class monthly and keeps occurrence
  a.click({action:'tt-clear-lesson'});assert.equal(a.read('timetableLessonFilter'),null);assert.match(a.nodes['#app'].innerHTML,/data-open-lesson="a"/);a.change('', 'week',{id:'tt-view'});assert.match(a.nodes['#app'].innerHTML,/class="tt-grid"/);assert.deepEqual(a.read('db'),before);
  a.set("db.schedules.push({id:'S-LIST',course:'story',startDate:'2026-10-08',endMode:'count',count:4,weekdays:[4],time:'10:00',duration:45,color:'#8fc34a',session:1,capacity:null});timetableSearch=''");a.click({openLesson:'S-LIST',lessonKind:'schedule',lessonDate:'2026-10-08'});a.click({action:'lesson-list'});html=a.nodes['#app'].innerHTML;assert.equal((html.match(/data-open-lesson="S-LIST"/g)||[]).length,4);assert.doesNotMatch(html,/data-open-lesson="e"/);assert.match(html,/10:00 – 10:45/);assert.match(html,/>0\/-<\/td>/);
  a.change('', 'list',{id:'tt-view'});a.set("timetableSearch='no-match';render()");assert.match(a.nodes['#app'].innerHTML,/No lessons match your search/);assert.doesNotMatch(a.nodes['#app'].innerHTML,/data-open-lesson=/);
+});
+
+
+test('lesson menu switches List back to Week at the selected occurrence and can return to List',()=>{
+ const a=lessonApp();a.set("db.schedules.push({id:'S-WEEK',course:'art',startDate:'2026-10-08',endMode:'count',count:4,weekdays:[4],time:'10:00',duration:45,color:'#8fc34a',session:1})");a.click({action:'portal-menu'});const before=a.read('db');
+ for(const [id,kind] of [['e','class'],['S-WEEK','schedule']]){
+  a.set("timetableView='week';timetableFiltersVisible=false;lang='en'");a.click({openLesson:id,lessonKind:kind,lessonDate:'2026-10-08'});assert.match(a.nodes['#modal-root'].innerHTML,/Switch to List View/);a.click({action:'lesson-list'});
+  a.click({openLesson:id,lessonKind:kind,lessonDate:'2026-10-22'});let html=a.nodes['#modal-root'].innerHTML;assert.match(html,/data-action="lesson-week"/);assert.match(html,/Switch to Week View/);assert.doesNotMatch(html,/Switch to List View/);a.click({action:'lesson-more'});a.click({action:'lesson-week'});
+  assert.equal(a.read('timetableView'),'week');assert.equal(a.read('timetableDate'),'2026-10-22');assert.deepEqual(a.read('timetableLessonFilter'),{id,kind});assert.equal(a.read('portalMenu'),true);assert.equal(a.read('timetableFiltersVisible'),false);assert.equal(a.read('selectedTimetableLesson'),null);assert.equal(a.read('lessonMenuOpen'),false);html=a.nodes['#app'].innerHTML;assert.match(html,/class="tt-grid"/);assert.ok(html.includes(`data-open-lesson="${id}"`));assert.ok(html.includes('data-lesson-date="2026-10-22"'));assert.doesNotMatch(html,/tt-lesson-list|data-open-lesson="a"/);
+  a.click({openLesson:id,lessonKind:kind,lessonDate:'2026-10-22'});assert.match(a.nodes['#modal-root'].innerHTML,/Switch to List View/);a.click({action:'lesson-list'});assert.equal(a.read('timetableView'),'list');assert.equal(a.read('timetableDate'),'2026-10-22');assert.equal((a.nodes['#app'].innerHTML.match(new RegExp(`data-open-lesson="${id}"`,'g'))||[]).length,4);
+  a.set("lang='zh'");a.click({openLesson:id,lessonKind:kind,lessonDate:'2026-10-22'});assert.match(a.nodes['#modal-root'].innerHTML,/切換至星期檢視/);a.click({action:'lesson-week'});assert.equal(a.read('timetableView'),'week');assert.deepEqual(a.read('db'),before);
+ }
 });
 
 const courseInput=(extra={})=>({courseName:'Watercolour studio',feeName:'Standard fee',category:'Art',level:'Beginner',pricingModel:'monthly-lessons',lessonPrice:'300',duration:'60',lessonMonths:'1',...extra});

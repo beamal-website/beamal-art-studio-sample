@@ -6,6 +6,7 @@ import { uploadMetadata } from './attachments.mjs';
 import { validateMaterial, requireMaterialVersion } from './materials.mjs';
 import { validateSchedule, requireScheduleVersion, requireOccurrenceRequest } from './schedules.mjs';
 import { validateSchedulingResource } from './scheduling-resources.mjs';
+import { validatePerson, validatePeopleQuery } from './people.mjs';
 import { ApplicationError, validateCourse, validateCourseMetadata, hasPricingFields, validateFee, requireVersion } from './validation.mjs';
 import { hashPassword, verifyPassword, normaliseEmail, randomToken, tokenHash, csrfForToken, matchesHash } from './security.mjs';
 
@@ -231,6 +232,24 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
       const decodeId = part => {
         try { return decodeURIComponent(part); } catch { throw new ApplicationError(400, 'INVALID_PATH', 'Invalid resource identifier.'); }
       };
+      const personMatch = /^\/api\/people\/([^/]+)$/.exec(pathname);
+      const personHistoryMatch = /^\/api\/people\/([^/]+)\/history$/.exec(pathname);
+      if ((pathname === '/api/people' && request.method === 'GET') || (personMatch && request.method === 'GET') || (personHistoryMatch && request.method === 'GET')) {
+        const session = requireSession(request);
+        if (session.user.role !== 'admin') throw new ApplicationError(403, 'ROLE_FORBIDDEN', 'Only an administrator can access profiles until explicit profile permissions are available.');
+        if (personHistoryMatch) json(response, 200, { history: store.people.history(decodeId(personHistoryMatch[1]), session.user.id) });
+        else if (personMatch) json(response, 200, { person: store.people.get(decodeId(personMatch[1]), session.user.id) });
+        else json(response, 200, store.people.list(validatePeopleQuery(Object.fromEntries(requestUrl.searchParams)), session.user.id));
+        return;
+      }
+      if ((pathname === '/api/people' && request.method === 'POST') || (personMatch && request.method === 'PATCH')) {
+        const session = requireMutation(request);
+        if (session.user.role !== 'admin') throw new ApplicationError(403, 'ROLE_FORBIDDEN', 'Only an administrator can change profiles.');
+        const update = request.method === 'PATCH', input = validatePerson(await body(request), { update }), key = idempotencyKey(request), id = update ? decodeId(personMatch[1]) : null;
+        const route = update ? `PATCH /api/people/${encodeURIComponent(id)}` : pathname;
+        const result = store.mutateOnce({ userId: session.user.id, route, key, payloadHash: payloadHash(input), status: update ? 200 : 201 }, () => ({ person: update ? store.people.update(id, input, session.user.id) : store.people.create(input, session.user.id) }));
+        json(response, result.status, result.body); return;
+      }
       if (pathname === '/api/access-control' && request.method === 'GET') {
         const session = requireSession(request);
         json(response, 200, store.accessControl.managementSnapshot(session.user.id)); return;
@@ -382,7 +401,7 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
         json(response, 200, store.updateFee(id, fee, version, session.user.id, true)); return;
       }
       if (pathname === '/api' || pathname.startsWith('/api/')) {
-        const known = match || feeMatch || courseMaterialMatch || materialMatch || uploadMatch || attachmentMatch || scheduleMatch || occurrenceMatch || courseLifecycleMatch || schedulingResourceMatch || teacherLinkMatch || accessGrantMatch || ['/api/access-control', '/api/access-control/grants', '/api/health', '/api/auth/session', '/api/auth/login', '/api/auth/logout', '/api/courses', '/api/fees', '/api/catalog', '/api/schedules', '/api/scheduling-resources'].includes(pathname);
+        const known = match || feeMatch || courseMaterialMatch || materialMatch || uploadMatch || attachmentMatch || scheduleMatch || occurrenceMatch || courseLifecycleMatch || schedulingResourceMatch || personMatch || personHistoryMatch || teacherLinkMatch || accessGrantMatch || ['/api/people', '/api/access-control', '/api/access-control/grants', '/api/health', '/api/auth/session', '/api/auth/login', '/api/auth/logout', '/api/courses', '/api/fees', '/api/catalog', '/api/schedules', '/api/scheduling-resources'].includes(pathname);
         throw new ApplicationError(known ? 405 : 404, known ? 'METHOD_NOT_ALLOWED' : 'NOT_FOUND', 'API route or method is not available.');
       }
       await serveStatic(request, response, pathname);

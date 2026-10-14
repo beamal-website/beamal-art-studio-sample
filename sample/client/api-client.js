@@ -76,6 +76,23 @@ export function createApiClient() {
     logout: () => mutateAuth(async epoch => { const result = await request('/auth/logout', { method: 'POST', authOperation: 'logout' }); if (epoch === authEpoch) csrfToken = ''; return result; }),
     courses: () => request('/courses'),
     fees: () => request('/fees'),
+    people: (query = {}, revision = '') => {
+      const parameters = new URLSearchParams();
+      for (const field of ['kind', 'q', 'page', 'pageSize', 'sort', 'direction']) {
+        if (query[field] !== undefined && query[field] !== '') parameters.set(field, String(query[field]));
+      }
+      if (revision) parameters.set('since', revision);
+      return request(`/people${parameters.size ? '?' + parameters.toString() : ''}`);
+    },
+    person: id => request(`/people/${encodeURIComponent(id)}`),
+    personHistory: id => request(`/people/${encodeURIComponent(id)}/history`),
+    savePerson(profile, current, operationKey) {
+      return request(current ? `/people/${encodeURIComponent(current.id)}` : '/people', {
+        method: current ? 'PATCH' : 'POST',
+        body: { ...profile, ...(current ? { version: current.version } : {}) },
+        idempotencyKey: operationKey,
+      });
+    },
     catalog: (revision = '') => request(`/catalog${revision ? `?since=${encodeURIComponent(revision)}` : ''}`),
     materials: courseId => request(`/courses/${encodeURIComponent(courseId)}/materials`),
     schedules: (revision = '', range = {}) => {const query=[...(revision?[['since',revision]]:[]),...(range.from?[['from',range.from]]:[]),...(range.to?[['to',range.to]]:[])].map(([key,value])=>`${key}=${encodeURIComponent(value)}`).join('&');return request(`/schedules${query?'?'+query:''}`)},

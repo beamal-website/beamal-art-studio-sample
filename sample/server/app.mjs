@@ -4,6 +4,7 @@ import { resolve, sep, extname } from 'node:path';
 import { createStore } from './store.mjs';
 import { uploadMetadata } from './attachments.mjs';
 import { validateMaterial, requireMaterialVersion } from './materials.mjs';
+import { validateSchedule, requireScheduleVersion } from './schedules.mjs';
 import { ApplicationError, validateCourse, validateCourseMetadata, hasPricingFields, validateFee, requireVersion } from './validation.mjs';
 import { hashPassword, verifyPassword, normaliseEmail, randomToken, tokenHash, csrfForToken, matchesHash } from './security.mjs';
 
@@ -197,6 +198,18 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
         const session = requireSession(request);
         json(response, 200, store.catalogSnapshot({ publicOnly: session.user.role === 'student', since: requestUrl.searchParams.get('since') || '' })); return;
       }
+      if (pathname === '/api/schedules' && request.method === 'GET') {
+        const session = requireSession(request);
+        if (!['admin', 'teacher'].includes(session.user.role)) throw new ApplicationError(403, 'ROLE_FORBIDDEN', 'School schedules are not available for this role.');
+        json(response, 200, store.schedules.list({ since: requestUrl.searchParams.get('since') || '' })); return;
+      }
+      if (pathname === '/api/schedules' && request.method === 'POST') {
+        const session = requireMutation(request);
+        if (session.user.role !== 'admin') throw new ApplicationError(403, 'ROLE_FORBIDDEN', 'Only an administrator can change schedules.');
+        const key = idempotencyKey(request), input = validateSchedule(await body(request));
+        const result = store.createOnce({ userId: session.user.id, route: pathname, key, payloadHash: payloadHash(input) }, () => ({ schedule: store.schedules.create(input, session.user.id) }));
+        json(response, result.status, result.body); return;
+      }
       const courseMaterialMatch = /^\/api\/courses\/([^/]+)\/materials$/.exec(pathname);
       const uploadMatch = /^\/api\/courses\/([^/]+)\/material-uploads$/.exec(pathname);
       const attachmentMatch = /^\/api\/materials\/([^/]+)\/attachments\/([^/]+)$/.exec(pathname);
@@ -204,6 +217,17 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
       const decodeId = part => {
         try { return decodeURIComponent(part); } catch { throw new ApplicationError(400, 'INVALID_PATH', 'Invalid resource identifier.'); }
       };
+      const scheduleMatch = /^\/api\/schedules\/([^/]+)(\/restore)?$/.exec(pathname);
+      if (scheduleMatch && ((!scheduleMatch[2] && ['PATCH', 'DELETE'].includes(request.method)) || (scheduleMatch[2] && request.method === 'POST'))) {
+        const session = requireMutation(request);
+        if (session.user.role !== 'admin') throw new ApplicationError(403, 'ROLE_FORBIDDEN', 'Only an administrator can change schedules.');
+        const input = await body(request), action = scheduleMatch[2] ? 'restore' : request.method === 'DELETE' ? 'delete' : 'update';
+        requireScheduleVersion(input, action !== 'update');
+        const id = decodeId(scheduleMatch[1]), key = idempotencyKey(request);
+        const route = `${request.method} /api/schedules/${encodeURIComponent(id)}${scheduleMatch[2] || ''}`;
+        const result = store.mutateOnce({ userId: session.user.id, route, key, payloadHash: payloadHash(input), status: 200 }, () => ({ schedule: store.schedules[action](id, input, session.user.id) }));
+        json(response, result.status, result.body); return;
+      }
       if (uploadMatch && request.method === 'POST') {
         const session = requireMutation(request);
         if (session.user.role !== 'admin') throw new ApplicationError(403, 'ROLE_FORBIDDEN', 'Only an administrator can upload materials.');
@@ -295,7 +319,7 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
         json(response, 200, store.updateFee(id, fee, version, session.user.id, true)); return;
       }
       if (pathname === '/api' || pathname.startsWith('/api/')) {
-        const known = match || feeMatch || courseMaterialMatch || materialMatch || uploadMatch || attachmentMatch || ['/api/health', '/api/auth/session', '/api/auth/login', '/api/auth/logout', '/api/courses', '/api/fees', '/api/catalog'].includes(pathname);
+        const known = match || feeMatch || courseMaterialMatch || materialMatch || uploadMatch || attachmentMatch || scheduleMatch || ['/api/health', '/api/auth/session', '/api/auth/login', '/api/auth/logout', '/api/courses', '/api/fees', '/api/catalog', '/api/schedules'].includes(pathname);
         throw new ApplicationError(known ? 405 : 404, known ? 'METHOD_NOT_ALLOWED' : 'NOT_FOUND', 'API route or method is not available.');
       }
       await serveStatic(request, response, pathname);

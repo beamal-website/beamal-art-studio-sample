@@ -12,10 +12,10 @@ export class ApiError extends Error {
 // Only explicit operations are sent to the service. The browser's legacy
 // state is never uploaded wholesale, so another user's work cannot be reset.
 export function createApiClient() {
-  let csrfToken = '', cookieCsrfToken = '';
+  let csrfToken = '', cookieCsrfToken = '', identityKey = '';
   let authEpoch = 0, authMutation = Promise.resolve();
   const superseded = () => new ApiError('The signed-in account changed.', 0, 'AUTH_SUPERSEDED');
-  function invalidateSession() { authEpoch++; csrfToken = ''; cookieCsrfToken = ''; }
+  function invalidateSession() { authEpoch++; csrfToken = ''; cookieCsrfToken = ''; identityKey = ''; }
   function mutateAuth(operation) {
     const epoch = ++authEpoch;
     // Cookie-changing replies must arrive in order. An older logout must not
@@ -28,7 +28,7 @@ export function createApiClient() {
     return pending;
   }
   async function request(path, { method = 'GET', body, idempotencyKey, authOperation } = {}) {
-    const epoch = authEpoch;
+    let epoch = authEpoch;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
     try {
@@ -54,6 +54,12 @@ export function createApiClient() {
       if (response.ok && authOperation === 'logout') cookieCsrfToken = '';
       if (epoch !== authEpoch) throw superseded();
       if (!response.ok) throw new ApiError(data.error?.message || 'Request failed.', response.status, data.error?.code);
+      if (path === '/auth/session' || authOperation) {
+        const nextIdentity = data.user ? `${data.user.id}:${data.user.role}` : '';
+        if (path === '/auth/session' && identityKey !== nextIdentity) epoch = ++authEpoch;
+        identityKey = nextIdentity;
+        if (!nextIdentity) csrfToken = cookieCsrfToken = '';
+      }
       if (typeof data.csrfToken === 'string') csrfToken = cookieCsrfToken = data.csrfToken;
       return data;
     } catch (error) {
@@ -72,6 +78,14 @@ export function createApiClient() {
     fees: () => request('/fees'),
     catalog: (revision = '') => request(`/catalog${revision ? `?since=${encodeURIComponent(revision)}` : ''}`),
     materials: courseId => request(`/courses/${encodeURIComponent(courseId)}/materials`),
+    schedules: (revision = '') => request(`/schedules${revision ? `?since=${encodeURIComponent(revision)}` : ''}`),
+    saveSchedule(schedule, current, operationKey) {
+      return request(current ? `/schedules/${encodeURIComponent(current.id)}` : '/schedules', {
+        method: current ? 'PATCH' : 'POST', body: { ...schedule, ...(current ? { version: current.version } : {}) }, idempotencyKey: operationKey,
+      });
+    },
+    deleteSchedule: (current, operationKey) => request(`/schedules/${encodeURIComponent(current.id)}`, { method: 'DELETE', body: { version: current.version }, idempotencyKey: operationKey }),
+    restoreSchedule: (current, operationKey) => request(`/schedules/${encodeURIComponent(current.id)}/restore`, { method: 'POST', body: { version: current.version }, idempotencyKey: operationKey }),
     uploadMaterialAttachment: (courseId, file, options) => uploadMaterialAttachment(courseId, file, { ...options, csrfToken }),
     saveMaterial(courseId, material, current, operationKey) {
       return request(current ? `/materials/${encodeURIComponent(current.id)}` : `/courses/${encodeURIComponent(courseId)}/materials`, {

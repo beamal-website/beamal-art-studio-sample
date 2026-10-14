@@ -195,3 +195,24 @@ test('logout queued after an already dispatched login uses the cookie-bound logi
   await login(client, wire, 'C');
   await save(client, wire, 'C');
 });
+
+test('a current B session discovered after another tab switches accounts supersedes old A replies and preserves B saves', async t => {
+  const wire = network(t), client = createApiClient(), applied = [];
+  await login(client, wire, 'A');
+  const oldWait = wire.pending('/api/auth/session');
+  const old = observe(client.session().then(data => { applied.push(data.user); return data; }));
+  // Another tab changed the shared cookie. This client discovers B through a
+  // later session read, without calling client.login() or invalidateSession().
+  wire.reply('/api/auth/session', session('B'));
+  assert.deepEqual((await client.session()).user, identity('B'));
+  const currentWait = wire.pending('/api/catalog'), current = observe(client.catalog());
+  wire.reply('/api/auth/session', session('B'));
+  assert.deepEqual((await client.session()).user, identity('B'));
+  currentWait.resolve(response({ revision: 'fictional-B', courses: [], fees: [] }));
+  assert.equal((await current).fulfilled, true, 'Confirming the same B identity must not supersede its current reads.');
+  oldWait.resolve(response(session('A')));
+  const outcome = await old;
+  await save(client, wire, 'B');
+  superseded(outcome);
+  assert.deepEqual(applied, []);
+});

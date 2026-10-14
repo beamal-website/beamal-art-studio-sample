@@ -796,11 +796,11 @@ test('a primary browser storage quota failure at startup does not stop shared he
 });
 
 test('a failed startup health check recovers on login and registers exactly one recurring refresh and focus handler',async()=>{
- let healthy=false,healthCalls=0,courseReads=0;
+ let healthy=false,healthCalls=0,courseReads=0,authenticatedUser=null;
  const intervals=[],events=[];
  const client={
   health:async()=>{healthCalls++;if(!healthy)throw serviceError(503,'service_unavailable');return {mode:'shared-test'}},
-  session:async()=>({user:null}),login:async()=>({user:copy(sharedTestUser)}),logout:async()=>({user:null}),
+  session:async()=>({user:copy(authenticatedUser)}),login:async()=>{authenticatedUser=copy(sharedTestUser);return {user:copy(authenticatedUser)}},logout:async()=>{authenticatedUser=null;return {user:null}},
   courses:async()=>{courseReads++;return {courses:[copy(sharedTestCourse)]}},fees:async()=>({fees:[copy(sharedTestFee)]}),
  };
  const a=app({},'2026-10-14T12:00:00',false,client,{pathname:'/login',onInterval:(handler,ms)=>{intervals.push({handler,ms});return intervals.length},onWindowEvent:(type,handler)=>events.push({type,handler})});
@@ -815,6 +815,7 @@ test('a failed startup health check recovers on login and registers exactly one 
  assert.equal(events.filter(event=>event.type==='focus').length,1);
  const before=courseReads;await intervals[0].handler();await events.find(event=>event.type==='focus').handler();
  assert.equal(courseReads,before+2,'Both registered callbacks must actually refresh shared data');
+ assert.equal(a.read('authUser.id'),sharedTestUser.id,'The fake service must keep the successful login session during both refreshes');
  // Re-establishing the session and logging in again must reuse the original registrations.
  await a.set('initialiseSharedService()');
  await a.submit('login',loginForm.values,loginForm);
@@ -1282,4 +1283,186 @@ test('a server-rejected file with a supported PNG name requires removal instead 
  assert.match(a.nodes['#material-attachment-drafts'].innerHTML,/Cannot upload; remove or replace/);assert.doesNotMatch(a.nodes['#material-attachment-drafts'].innerHTML,/save again to retry/);
  await a.submit(form.id,form.values,form);assert.equal(uploads.length,2,'Repeated Save must not retransmit a file the server already identified as invalid');
  assert.equal(a.read('materialAttachmentDraft[0].result.id'),'preserved-good-file');assert.equal(a.calls.filter(call=>call.operation==='material').length,0);
+});
+
+const sharedScheduleRecord=(overrides={})=>({id:'qa-schedule',course:'qa-course',color:'#27777b',startDate:'2026-10-08',endMode:'count',endDate:'',count:4,time:'10:00',duration:45,weekdays:[4],mustAttendAll:true,teacher:'',room:'',capacity:8,session:1,remark:'Private scheduling note',detail:'Internal preparation',moreInfo:'Bring an apron',version:1,createdAt:'2026-10-14T00:00:00Z',updatedAt:'2026-10-14T00:00:00Z',...overrides});
+function sharedScheduleForm({id='',version='',values={}}={}){
+ const form=sharedForm('schedule-editor',{recordId:id,version});form.dataset.operationKey='stable-schedule-'+(id||'new');form.isConnected=true;
+ form.values=scheduleValues({course:'qa-course',startDate:'2026-10-08',endMode:'count',count:'4',time:'10:00',duration:'45',capacity:'8',...values});return form;
+}
+async function sharedScheduleApp(remote={rows:[],revision:1},overrides={},options={}){
+ const scheduleCalls=[],polls=[],focus=[];
+ const client={
+  async schedules(since){scheduleCalls.push({operation:'read',since});const revision='schedule-'+remote.revision;return since===revision?{unchanged:true,revision}:{schedules:copy(remote.rows),revision}},
+  async saveSchedule(record,current,operationKey){
+   scheduleCalls.push({operation:'save',record:copy(record),current:current?copy(current):null,operationKey});
+   const previous=current&&remote.rows.find(row=>row.id===current.id);
+   if(current&&(!previous||previous.version!==current.version))throw serviceError(409,'VERSION_CONFLICT');
+   const saved=sharedScheduleRecord({...record,id:current?.id||'qa-created-schedule',version:previous?previous.version+1:1});
+   remote.rows=remote.rows.filter(row=>row.id!==saved.id);remote.rows.push(saved);remote.revision++;return {schedule:copy(saved)};
+  },
+  ...overrides,
+ };
+ const a=await sharedApp(client,{}, {...options,onInterval:(handler,ms)=>{polls.push({handler,ms});return polls.length},onWindowEvent:(type,handler)=>{if(type==='focus')focus.push(handler)}});
+ a.set("tab='overview';selectTimetableDate('2026-10-08');location.pathname='/account';render()");
+ await a.set('refreshSharedSchedules({paint:false})');
+ return {...a,remote,scheduleCalls,polls,focus};
+}
+
+test('shared timetable creates and edits one recurring schedule and another admin reads the same course calendar',async()=>{
+ const remote={rows:[],revision:1},a=await sharedScheduleApp(remote),ack=deferred(),pricing=a.read("db.courseSettings.map(course=>({id:course.id,price:course.price,fees:course.fees,feeIds:course.feeIds}))");
+ a.set("openSchedule('',{course:'qa-course'})");a.set('scheduleDraft.weekdays=[4];scheduleDraft.customWeekdays=true');
+ const form=sharedScheduleForm(),save=a.client.saveSchedule;
+ a.client.saveSchedule=async(...args)=>{await ack.promise;return save(...args)};
+ const pending=a.submit(form.id,form.values,form);
+ try{assert.equal(a.read('db.schedules.length'),0,'An unacknowledged write must not become a saved calendar entry');assert.ok(a.read('modal'));assert.ok(!a.messages.includes('Schedule saved'));}
+ finally{ack.resolve();await pending;}
+ assert.equal(a.scheduleCalls.filter(call=>call.operation==='save').length,1);assert.equal(remote.rows.length,1);assert.equal(a.read('modal'),'');
+ const id=remote.rows[0].id;assert.equal(a.read('db.schedules[0].id'),id);assert.equal(a.read('db.schedules[0].course'),'qa-course');assert.deepEqual(a.read('schedulePreviewDates(db.schedules[0],8)'),['2026-10-08','2026-10-15','2026-10-22','2026-10-29']);
+ a.set("timetableView='month';render()");let html=a.nodes['#app'].innerHTML;
+ assert.equal((html.match(new RegExp('data-open-lesson="'+id+'"','g'))||[]).length,4);assert.match(html,/Shared studio/);assert.match(html,/10:00 – 10:45/);
+ a.click({openLesson:id,lessonKind:'schedule',lessonDate:'2026-10-08'});assert.equal(a.read('selectedTimetableLesson.id'),id);
+ const detail=a.nodes['#modal-root'].innerHTML;assert.match(detail,/<h3>Students \(—\)<\/h3>/,'An unavailable enrolment list must not be presented as a confirmed count of zero students');assert.doesNotMatch(detail,/<h3>Students \(0\)<\/h3>/);assert.match(detail,/student list for this lesson is not available yet/i);
+ a.click({action:'lesson-close'});
+ a.set(`openSchedule('${id}')`);const editMarkup=a.nodes['#modal-root'].innerHTML,openedVersion=editMarkup.match(/id="schedule-editor"[^>]*data-version="([^"]+)"/)?.[1];assert.equal(openedVersion,'1');assert.match(editMarkup,/Changes or deletion apply to the entire recurring schedule/);assert.match(editMarkup,/Use Undo to restore a deleted schedule/);const edit=sharedScheduleForm({id,version:openedVersion,values:{time:'11:00',duration:'60',remark:'Updated shared lesson'}});
+ a.input({name:'time',value:'11:00',closest:()=>({})});await a.submit(edit.id,edit.values,edit);
+ assert.equal(remote.rows.length,1);assert.equal(remote.rows[0].id,id);assert.equal(remote.rows[0].course,'qa-course');assert.equal(remote.rows[0].version,2);assert.equal(remote.rows[0].time,'11:00');assert.deepEqual(a.read("db.courseSettings.map(course=>({id:course.id,price:course.price,fees:course.fees,feeIds:course.feeIds}))"),pricing,'Scheduling must preserve the existing course and its fee amounts/associations');
+ const other=await sharedScheduleApp(remote,{session:async()=>({user:{...copy(sharedTestUser),id:'qa-second-admin',email:'second@example.test'}})});
+ assert.equal(other.read('authUser.id'),'qa-second-admin');assert.equal(other.read('db.schedules[0].id'),id);assert.equal(other.read('db.schedules[0].time'),'11:00');
+ other.set("courseDetailMonth=new Date(2026,9,1);courseDetailTab='general';location.pathname='/account/courses/qa-course';render()");html=other.nodes['#app'].innerHTML;
+ assert.match(html,/Shared studio/);assert.match(html,/11:00–12:00/);assert.equal((html.match(/class="course-schedule-columns course-schedule-row"/g)||[]).length,4);
+ other.change('','timetable',{id:'course-detail-view'});
+ assert.equal(other.read('location.pathname'),'/account');assert.equal(other.read('timetableSearch'),'Shared studio','View in Timetable must use the readable course name rather than exposing an internal course ID');
+ assert.ok(other.nodes['#app'].innerHTML.includes('data-open-lesson="'+id+'"'),'The public course-to-timetable navigation must show the exact saved schedule instead of an empty filtered calendar');
+});
+
+test('shared timetable cancelling a new schedule discards the draft without sending a write or changing existing lessons',async()=>{
+ const a=await sharedScheduleApp({rows:[sharedScheduleRecord()],revision:1}),before=a.read('db.schedules');
+ a.set("openSchedule('',{course:'qa-course'})");a.input({name:'remark',value:'Unsaved scheduling draft',closest:()=>({})});a.click({action:'close'});
+ assert.equal(a.read('modal'),'');assert.equal(a.read('scheduleDraft'),null);assert.deepEqual(a.read('db.schedules'),before);assert.equal(a.scheduleCalls.filter(call=>call.operation==='save').length,0);
+ a.set("openSchedule('',{course:'qa-course'})");assert.equal(a.read('scheduleDraft.remark'),'');assert.equal(a.remote.rows.length,1);
+});
+
+test('shared timetable keeps the opened version and unsaved draft when a newer background schedule causes a conflict',async()=>{
+ const remote={rows:[sharedScheduleRecord()],revision:1},a=await sharedScheduleApp(remote);a.set("openSchedule('qa-schedule')");
+ const version=a.nodes['#modal-root'].innerHTML.match(/id="schedule-editor"[^>]*data-version="([^"]+)"/)?.[1];assert.equal(version,'1');
+ a.input({name:'remark',value:'Keep my unsaved lesson draft',closest:()=>({})});
+ remote.rows[0]={...remote.rows[0],time:'12:00',version:2};remote.revision++;
+ await a.set('refreshSharedSchedules({paint:false})');assert.equal(a.read('db.schedules[0].version'),2);assert.equal(a.read('scheduleDraft.version'),1);
+ const form=sharedScheduleForm({id:'qa-schedule',version,values:{time:'11:00',remark:'Keep my unsaved lesson draft'}});
+ await a.submit(form.id,form.values,form);const sent=a.scheduleCalls.find(call=>call.operation==='save');
+ assert.equal(sent.current.version,1);assert.equal(remote.rows[0].version,2);assert.equal(remote.rows[0].time,'12:00');assert.equal(a.read('scheduleDraft.remark'),'Keep my unsaved lesson draft');
+ assert.ok(a.read('modal'));assert.match(a.nodes['#schedule-error'].textContent,/changed|reopen|latest/i);assert.equal(form.submitButton.disabled,false);assert.ok(!a.messages.includes('Schedule saved'));
+});
+
+test('shared timetable ignores an old save acknowledgement after sign-out while another identity has its own pending schedule',async()=>{
+ const a=await sharedScheduleApp(),oldAck=deferred(),newAck=deferred();let oldStarted=false,newStarted=false;
+ a.set("openSchedule('',{course:'qa-course'})");const oldForm=sharedScheduleForm();
+ a.client.saveSchedule=()=>{oldStarted=true;return oldAck.promise};const oldPending=a.submit(oldForm.id,oldForm.values,oldForm);
+ await until(()=>oldStarted,'The original schedule must genuinely be waiting for its server acknowledgement');
+ a.set("applySharedUser(null);go('/login')");oldForm.isConnected=false;switchSharedIdentity(a);
+ a.set("openSchedule('',{course:'next-auth-course'})");a.input({name:'remark',value:'New manager pending schedule',closest:()=>({})});
+ const nextForm=sharedScheduleForm({values:{course:'next-auth-course',remark:'New manager pending schedule'}});nextForm.dataset.operationKey='new-identity-schedule';
+ a.client.saveSchedule=()=>{newStarted=true;return newAck.promise};const newPending=a.submit(nextForm.id,nextForm.values,nextForm);
+ try{
+  await until(()=>newStarted,'The new identity must be able to begin its own independent save');assert.equal(nextForm.submitButton.disabled,true);
+  const modal=a.read('modal');oldAck.resolve({schedule:sharedScheduleRecord({id:'old-identity-schedule'})});await oldPending;
+  assert.equal(a.read('authUser.id'),'next-auth-admin');assert.equal(a.read('modal'),modal);assert.equal(a.read('scheduleDraft.remark'),'New manager pending schedule');
+  assert.ok(a.read('db.schedules.every(item=>item.id!=="old-identity-schedule")'));assert.equal(nextForm.submitButton.disabled,true,'The old save must not unlock the new identity’s active form');
+ }finally{
+  oldAck.resolve({schedule:sharedScheduleRecord({id:'old-identity-schedule'})});
+  newAck.resolve({schedule:sharedScheduleRecord({id:'new-identity-schedule',course:'next-auth-course',remark:'New manager pending schedule'})});await oldPending;await newPending;
+ }
+ assert.deepEqual(a.read('db.schedules.map(item=>item.id)'),['new-identity-schedule']);
+});
+
+test('shared timetable lets an authenticated teacher read lessons but blocks creation and forged edit submissions',async()=>{
+ const user={...copy(sharedTestUser),id:'qa-readonly-teacher',role:'teacher'},a=await sharedScheduleApp({rows:[sharedScheduleRecord()],revision:1},{session:async()=>({user})});
+ assert.match(a.nodes['#app'].innerHTML,/data-open-lesson="qa-schedule"/);
+ const add=a.nodes['#app'].innerHTML.match(/<button\b[^>]*data-action="tt-add-schedule"[^>]*>/)?.[0];assert.match(add||'',/\bdisabled\b/);
+ a.click({action:'tt-add-schedule'});assert.equal(a.read('scheduleDraft'),null);assert.equal(a.read('modal'),'');
+ a.ctx.forgedSchedule=sharedScheduleRecord();a.set('scheduleDraft={...forgedSchedule,sourceKind:"schedule",customWeekdays:true}');
+ const form=sharedScheduleForm({id:'qa-schedule',version:'1',values:{time:'13:00'}});await a.submit(form.id,form.values,form);
+ assert.equal(a.scheduleCalls.filter(call=>call.operation==='save').length,0);assert.equal(a.remote.rows[0].time,'10:00');
+});
+
+test('shared timetable polling checks the session before private reads and clears editor state when a successful session changes ID or role',async()=>{
+ for(const change of ['id','role']){
+  const a=await sharedScheduleApp({rows:[sharedScheduleRecord()],revision:1}),session=deferred(),rows=deferred();let sessions=0,reads=0;
+  a.set("openSchedule('qa-schedule');materialCaches.set('qa-course',{items:[{id:'private-material',name:'Private old manager material'}],error:'',loading:false});materialAttachmentDraft=[{localId:'old-upload',name:'Private queued file',status:'queued'}]");
+  a.client.session=()=>{sessions++;return session.promise};a.client.courses=async()=>{reads++;return {courses:[]}};a.client.fees=async()=>{reads++;return {fees:[]}};a.client.schedules=()=>{reads++;return rows.promise};
+  const pending=a.polls[0].handler();await until(()=>sessions===1,'Every scheduled refresh must confirm the browser’s current account first');
+  assert.equal(reads,0,'Private data requests must wait for the session response');
+  const next={...copy(sharedTestUser),...(change==='id'?{id:'another-admin'}:{role:'teacher'})};session.resolve({user:next});
+  await until(()=>a.read('authUser.id')===next.id&&a.read('authUser.role')===next.role,'The changed authenticated identity must be applied');
+  assert.equal(a.read('modal'),'');assert.equal(a.read('scheduleDraft'),null);assert.equal(a.read('selectedTimetableLesson'),null);
+  assert.equal(a.read('materialCaches.size'),0);assert.equal(a.read('materialAttachmentDraft.length'),0);assert.equal(a.read('db.schedules.length'),0);
+  assert.doesNotMatch(a.nodes['#app'].innerHTML,/Private old manager material|Private scheduling note|Private queued file/);
+  rows.resolve({schedules:[],revision:'new-identity-schedule-revision'});await pending;
+ }
+});
+
+test('shared timetable focus refresh of the same identity preserves revisions and an open unsaved lesson draft',async()=>{
+ const a=await sharedScheduleApp({rows:[sharedScheduleRecord()],revision:1});a.set("openSchedule('qa-schedule');scheduleDraft.remark='Typing before focus refresh';sharedCatalogRevision='catalog-open-draft-revision';materialCaches.set('qa-course',{items:[{id:'kept-material'}],error:'',loading:false})");
+ const generation=a.read('sharedGeneration'),draft=a.read('scheduleDraft'),modal=a.read('modal');let sessions=0;
+ a.client.session=async()=>{sessions++;return {user:copy(sharedTestUser)}};
+ await a.focus[0]();
+ assert.equal(sessions,1);assert.equal(a.read('sharedGeneration'),generation);assert.equal(a.read('sharedCatalogRevision'),'catalog-open-draft-revision');
+ assert.deepEqual(a.read('scheduleDraft'),draft);assert.equal(a.read('modal'),modal);assert.equal(a.read('materialCaches.size'),1);
+ assert.equal(a.scheduleCalls.filter(call=>call.operation==='read').at(-1).since,'schedule-1','An unchanged account should reuse the schedule revision instead of forcing a complete reload');
+});
+
+test('shared alignment Courses view-classes navigation opens the shared timetable rather than legacy local class settings',async()=>{
+ const a=await sharedScheduleApp({rows:[sharedScheduleRecord()],revision:1});a.set("tab='catalog';location.pathname='/account';render()");
+ const button=a.nodes['#app'].innerHTML.match(/<button\b[^>]*>(?:View classes and times|View timetable)<\/button>/i)?.[0];assert.ok(button,'The course list must expose its schedule navigation');
+ const dataset=Object.fromEntries([...button.matchAll(/data-([a-z-]+)="([^"]*)"/g)].map(([,name,value])=>[name.replace(/-([a-z])/g,(_,letter)=>letter.toUpperCase()),value]));
+ a.click(dataset);
+ assert.equal(a.read('location.pathname'),'/account');assert.ok(a.nodes['#app'].innerHTML.includes('class="teacher-timetable"'),'The actual rendered button must navigate into the shared timetable');
+ assert.ok(a.nodes['#app'].innerHTML.includes('data-open-lesson="qa-schedule"'),'The shared schedule must remain visible through this course-list entrance');
+ assert.ok(!a.nodes['#app'].innerHTML.includes('class-settings-grid'),'The shared workspace must not silently return to local demo classes');
+});
+
+test('shared alignment course-detail Add locks its course and fee context through cancel, forged data and omitted disabled fields',async()=>{
+ for(const operation of ['cancel','forged-course','omitted-course']){
+  const a=await sharedScheduleApp();a.state.courses.push({...copy(sharedTestCourse),id:'qa-other-course',courseName:'Another shared course',fees:[],feeIds:[]});
+  await a.set('refreshSharedCourses({paint:false})');a.set("courseDetailMonth=new Date(2026,9,1);courseDetailTab='general';location.pathname='/account/courses/qa-course';render()");
+  a.click({action:'course-add-schedule'});const markup=a.nodes['#modal-root'].innerHTML,select=markup.match(/<select\b[^>]*name="course"[^>]*>/)?.[0];
+  assert.match(select||'',/\bdisabled\b/,'Adding from a course must keep that course fixed');assert.equal(a.read('scheduleDraft.course'),'qa-course');
+  assert.ok(markup.includes('id="schedule-fee-summary"'),'The course Add form must expose the current fee summary before submission');assert.match(markup,/Shared lesson fee/);assert.match(markup,/HK\$300/);
+  if(operation==='cancel'){
+   a.input({name:'remark',value:'Unsaved course-specific lesson',closest:()=>({})});a.click({action:'close'});
+   assert.equal(a.read('scheduleDraft'),null);assert.equal(a.remote.rows.length,0);assert.equal(a.scheduleCalls.filter(call=>call.operation==='save').length,0);
+   a.click({tab:'overview'});a.click({action:'tt-add-schedule'});
+   const generalSelect=a.nodes['#modal-root'].innerHTML.match(/<select\b[^>]*name="course"[^>]*>/)?.[0];assert.ok(generalSelect);assert.doesNotMatch(generalSelect,/\bdisabled\b/,'The general timetable Add entrance must still let the manager choose a course');a.click({action:'close'});continue;
+  }
+  const form=sharedScheduleForm();if(operation==='forged-course')form.values.course='qa-other-course';else delete form.values.course;
+  await a.submit(form.id,form.values,form);
+  const writes=a.scheduleCalls.filter(call=>call.operation==='save');assert.equal(writes.length,1,operation);assert.equal(writes[0].record.course,'qa-course','The captured course context must win over a forged or omitted form field');
+  assert.equal(a.remote.rows.length,1);assert.equal(a.remote.rows[0].course,'qa-course');assert.equal(a.read('db.schedules[0].course'),'qa-course');assert.equal(a.read('location.pathname'),'/account/courses/qa-course');assert.equal(a.read('modal'),'');
+  assert.ok(a.nodes['#app'].innerHTML.includes('data-edit-activity="qa-created-schedule"'),'The saved course-specific schedule must appear on the course page that created it');
+ }
+});
+
+test('shared alignment editing a schedule deleted before or during save reports the missing record and retains the draft without recreating it',async()=>{
+ for(const deletion of ['before-submit','during-write']){
+  const remote={rows:[sharedScheduleRecord()],revision:1},a=await sharedScheduleApp(remote);a.set("openSchedule('qa-schedule')");
+  const version=a.nodes['#modal-root'].innerHTML.match(/id="schedule-editor"[^>]*data-version="([^"]+)"/)?.[1],form=sharedScheduleForm({id:'qa-schedule',version,values:{remark:'Preserve this deleted-record draft'}});
+  assert.ok(a.nodes['#modal-root'].innerHTML.includes('id="schedule-error"'));a.nodes['#schedule-error']={textContent:'',isConnected:true};
+  a.input({name:'remark',value:form.values.remark,closest:()=>({})});let attempts=[];
+  if(deletion==='before-submit'){
+   remote.rows=[];remote.revision++;await a.set('refreshSharedSchedules({paint:false})');assert.equal(a.read('db.schedules.length'),0);
+   await a.submit(form.id,form.values,form);assert.equal(a.scheduleCalls.filter(call=>call.operation==='save').length,0,'A known missing edit target must not become an accidental create');
+  }else{
+   const response=deferred();a.client.saveSchedule=(record,current,operationKey)=>{attempts.push({record:copy(record),current:copy(current),operationKey});return response.promise};
+   const pending=a.submit(form.id,form.values,form);
+   try{
+    await until(()=>attempts.length===1,'The edit must genuinely be in flight when the record is deleted');assert.equal(attempts[0].current.id,'qa-schedule');assert.equal(attempts[0].current.version,1);
+    remote.rows=[];remote.revision++;await a.set('refreshSharedSchedules({paint:false})');response.reject(serviceError(404,'SCHEDULE_NOT_FOUND'));await pending;
+   }finally{response.resolve({schedule:sharedScheduleRecord()});await pending;}
+   assert.equal(attempts.length,1);assert.ok(attempts.every(attempt=>attempt.current?.id==='qa-schedule'),'A server 404 must not retry the edit as a create');
+  }
+  assert.match(a.nodes['#schedule-error'].textContent,/no longer available|no longer exists|not found|deleted/i,'The user must receive a visible explanation instead of a silent Save');
+  assert.ok(a.read('modal'));assert.equal(a.read('scheduleDraft.id'),'qa-schedule');assert.equal(a.read('scheduleDraft.remark'),'Preserve this deleted-record draft');assert.equal(form.values.remark,'Preserve this deleted-record draft');assert.equal(form.submitButton.disabled,false);
+  assert.equal(remote.rows.length,0);assert.equal(a.read('db.schedules.length'),0);assert.ok(!a.messages.includes('Schedule saved'));
+ }
 });

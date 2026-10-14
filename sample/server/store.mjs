@@ -6,6 +6,7 @@ import { hashPassword, normaliseEmail } from './security.mjs';
 import { validateCourse, ApplicationError } from './validation.mjs';
 import { createMaterialStore } from './materials.mjs';
 import { createAttachmentStore } from './attachments.mjs';
+import { createScheduleStore } from './schedules.mjs';
 
 const publicUser = row => row ? { id: row.id, email: row.email, displayName: row.display_name, role: row.role } : null;
 const pricingKeys = ['feeName', 'pricingModel', 'price', 'months', 'duration', 'packageType', 'packageTotal', 'bookingExpiry', 'onlineStore'];
@@ -303,14 +304,15 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
       createCourse(validateCourse(input), null, seed.id);
     }
   } catch (error) { database.close(); throw error; }
-  let materials, attachments;
+  let materials, attachments, schedules;
   try {
     attachments = await createAttachmentStore({ database, transaction, directory: attachmentsDir || (databasePath === ':memory:' ? undefined : `${resolve(databasePath)}.attachments`) });
     materials = createMaterialStore({ database, transaction, attachments });
+    schedules = createScheduleStore({ database, transaction });
   }
   catch (error) { await attachments?.close(); database.close(); throw error; }
   return {
-    listCourses, getCourse, createCourse, updateCourse, listFees, getFee, createFee, updateFee, createOnce, mutateOnce, catalogSnapshot, materials, attachments,
+    listCourses, getCourse, createCourse, updateCourse, listFees, getFee, createFee, updateFee, createOnce, mutateOnce, catalogSnapshot, materials, attachments, schedules,
     listUsers: () => database.prepare('SELECT * FROM users ORDER BY email').all().map(publicUser),
     userByEmail: email => database.prepare('SELECT * FROM users WHERE email = ?').get(email),
     publicUser,

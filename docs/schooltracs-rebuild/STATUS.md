@@ -165,3 +165,7 @@
 **最後完整測試更新：** 上方445／469失敗及首次468結果保留為歷史；限定修正後Root已真正重跑 **469／469，56.8668秒、exit0、0 fail／cancel／skip／todo**（`/tmp/beamal-availability-final-green-test.log`）。隨後最後build仍進行，不沿用首次3.90秒作最新build。Root已有Admin同Slot ID建立／改17:00／hide→default、真正Teacher唯讀、匿名同ID及無內部remark、全域Rescheduling展示、public390中英文及英文Admin表單有限畫面證據；Cancel／Back、匿名Hide、最新側邊導航等仍待補。Chrome中斷後17:00以無cookie HTTP／內建瀏覽器核對，linked／Full fixture畫面與300 active未宣稱通過；完整界限見[檢查點](availability-checkpoint.md)。
 
 **本片最後狀態（2026-10-15）：** 最後來源469／469、56.8668秒、exit0；隨後依序build 5.47秒、exit0。中途445／469是已修正並重跑的歷史結果。最新實際畫面已補Admin同ID17:00與hide/default、無cookie隱藏404、公開手機0 Slot與恢復自動同步、Teacher只讀、390中英文管理表單、Tab／Escape／Cancel／Back不保存、People詳情轉時間表正常。詳見[Availability檢查點](availability-checkpoint.md)。尚未完成TrialSubmit、Total合算、Linked／Full真正畫面、整111項及300 active；完整Goal持續進行。
+
+## 2026-10-15 最新：老師代表色（限定C-03前置）
+
+正式Teacher代表色可Admin保存／清除，單人實際授課色已接五檢視與只讀詳情；Room不收色，舊文字不配對，多老師保原底色＋姓名色樣，未選主要老師。單純改色不改排課／Slot自身版本／quota／held來源、授權或public白名單。6flow（原5＋review補1）／7helper／5新resourceUI／16AvailUI（1新）／20HTTP（2新＋18舊）及最新獨立前端267／267（3.9728秒）通過；source-only晚ACK回復舊name/color／linked事實已先RED、按ID／來源合併修正再GREEN。最後全套490／490（44.7252秒、exit0）及隨後build2.81秒成功。真畫面已驗同Teacher保存／清除／重開、Teacher唯讀、colour-only詳情保焦點、正常課＋linked單堂B→C且另一堂仍B、390中英文Cancel／Escape／Back不保存；匿名HTTP改色前後連revision逐byte相同。集中[老師代表色檢查點](teacher-colour-checkpoint.md)記證據及scope變更清舊詳情的界線；黑／白持久保存、多老師主色、SchoolTracs Chrome新對照、整C-03／111項及300 active未完成。

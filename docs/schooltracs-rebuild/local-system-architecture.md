@@ -281,3 +281,9 @@ Teacher去除remark／excluded IDs，public再去除資源ID／source refs／ver
 限定grid恢復只在Availability頁後，獨立前端全檔已真正重跑 **261／261，8.3393秒、exit0**（flows240＋SDK21，保留全部舊斷言）；完整npm及最新build仍待Root提供，不能將這個前端套件當作全套通過。
 
 **最後完整測試更新：** 上方445／469失敗及首次468結果保留為歷史；限定修正後Root已真正重跑 **469／469，56.8668秒、exit0、0 fail／cancel／skip／todo**（`/tmp/beamal-availability-final-green-test.log`）。隨後最後build仍進行，不沿用首次3.90秒作最新build。Root已有Admin同Slot ID建立／改17:00／hide→default、真正Teacher唯讀、匿名同ID及無內部remark、全域Rescheduling展示、public390中英文及英文Admin表單有限畫面證據；Cancel／Back、匿名Hide、最新側邊導航等仍待補。Chrome中斷後17:00以無cookie HTTP／內建瀏覽器核對，linked／Full fixture畫面與300 active未宣稱通過；完整界限見[檢查點](availability-checkpoint.md)。
+
+## 2026-10-15 Teacher顏色metadata與投影追加
+
+沿用scheduling resource的現有metadata、交易／audit／receipt與UUID，Teacher新增可null representativeColor，Room拒該欄；沒有新schema、依賴、登入或ACL。資源改色只提高resource.version，私有AvailableSlot投影增加teacherColors／來源版本，不改schedule.color、Slot自身版本、held來源或quota。public白名單維持，未公開老師ID／私人色metadata。
+
+[teacher-colour-ui.js](../../sample/client/teacher-colour-ui.js)以單一正式ID決定主色，多人只參考姓名／色樣，legacy不按名稱配對；只讀詳情單純改色時更新dot／色樣／CSS不remount，真GUI已驗原關閉鈕焦點保留。較舊resource不能覆蓋較新Slot姓名／色tuple；source-only晚ACK已按UUID合併新配置與較新來源；linked同ref保最新effective資料，standalone新來源採ACK。新增永久回歸後最新全前端267／267（3.9728秒），不以此前266結果冒作完整保障。完整490／490（44.7252秒）及依序build2.81秒成功；真GUI已驗同UUID保存／清除、單堂有效老師驅動普通課及linked色、Teacher唯讀與390雙語不保存操作，匿名HTTP含revision在改色前後逐byte相同。Colour／姓名不參與access fingerprint，實際B→C指派仍改scopeRevision並清舊詳情／快取；不是改色局部更新的反例。[集中檢查點](teacher-colour-checkpoint.md)保留黑／白持久保存、多人政策未驗及111項／300 active規模、ClassFull／Enrollment／Trial交易界線。

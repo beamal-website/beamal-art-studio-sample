@@ -5,15 +5,22 @@ const plain=value=>value!==null&&typeof value==='object'&&!Array.isArray(value)&
 const invalid=message=>{throw new ApplicationError(400,'INVALID_RESOURCE',message);};
 const nameKey=value=>value.trim().toLowerCase();
 const roomFields=['capacity','detail','remark','externalLocation'];
+const metadataFields=kind=>kind==='teacher'?['representativeColor']:roomFields;
+const colour=value=>typeof value==='string'&&/^#[0-9a-f]{6}$/i.test(value)?value.toLowerCase():null;
 
 export function validateSchedulingResource(input,{update=false}={}) {
   if(!plain(input))invalid('Scheduling resource must be a JSON object.');
   if(update&&(!Number.isSafeInteger(input.version)||input.version<1))throw new ApplicationError(409,'VERSION_REQUIRED','Reload the scheduling resource and include its current version before saving.');
-  const allowed=update?['version','displayName','active',...roomFields]:['kind','displayName','active',...roomFields];
+  const allowed=update?['version','displayName','active','representativeColor',...roomFields]:['kind','displayName','active','representativeColor',...roomFields];
   if(Object.keys(input).some(key=>!allowed.includes(key)))invalid('Unsupported scheduling resource field.');
   if(!update&&!['teacher','room'].includes(input.kind))invalid('Choose a teacher or room resource.');
   if(!update&&input.kind==='teacher'&&roomFields.some(key=>Object.hasOwn(input,key)))invalid('Room fields cannot be assigned to a teacher resource.');
+  if(!update&&input.kind==='room'&&Object.hasOwn(input,'representativeColor'))invalid('Representative colour is only available for teachers.');
   const result=update?{version:input.version}:{kind:input.kind};
+  if(Object.hasOwn(input,'representativeColor')) {
+    if(input.representativeColor!==null&&colour(input.representativeColor)===null)invalid('Representative colour must be empty or a six-digit hex colour.');
+    result.representativeColor=colour(input.representativeColor);
+  }else if(!update&&input.kind==='teacher')result.representativeColor=null;
   if(!update||Object.hasOwn(input,'displayName')) {
     if(typeof input.displayName!=='string'||!input.displayName.trim()||input.displayName.trim().length>200)invalid('Enter a display name of 1 to 200 characters.');
     result.displayName=input.displayName.trim();
@@ -36,7 +43,7 @@ export function validateSchedulingResource(input,{update=false}={}) {
     if(typeof input.externalLocation!=='boolean')invalid('External location must be true or false.');
     result.externalLocation=input.externalLocation;
   } else if(!update&&input.kind==='room')result.externalLocation=false;
-  if(update&&Object.keys(result).length===1)invalid('Choose a display name or active status to change.');
+  if(update&&Object.keys(result).length===1)invalid('Choose a resource field to change.');
   return result;
 }
 
@@ -61,7 +68,7 @@ export function createSchedulingResourceStore({database,transaction}) {
     );
   `);
   if(!database.prepare('PRAGMA table_info(scheduling_resources)').all().some(column=>column.name==='metadata'))database.exec("ALTER TABLE scheduling_resources ADD COLUMN metadata TEXT NOT NULL DEFAULT '{}'");
-  const dto=row=>row?{id:row.id,kind:row.kind,displayName:row.display_name,active:!!row.active,version:row.version,createdAt:row.created_at,updatedAt:row.updated_at,...(row.kind==='room'?{capacity:null,detail:'',remark:'',externalLocation:false,...JSON.parse(row.metadata)}:{})}:null;
+  const dto=row=>row?{id:row.id,kind:row.kind,displayName:row.display_name,active:!!row.active,version:row.version,createdAt:row.created_at,updatedAt:row.updated_at,...(row.kind==='room'?{capacity:null,detail:'',remark:'',externalLocation:false,...JSON.parse(row.metadata)}:{representativeColor:colour(JSON.parse(row.metadata).representativeColor)})}:null;
   const get=id=>dto(database.prepare('SELECT * FROM scheduling_resources WHERE id=?').get(id));
   const getMany=ids=> {
     const unique=[...new Set(ids)],rows=[];
@@ -84,7 +91,7 @@ export function createSchedulingResourceStore({database,transaction}) {
   const create=(input,actorId)=>transaction(()=> {
     administrator(actorId);const data=validateSchedulingResource(input);uniqueName(data.kind,data.displayName);
     const id=randomUUID(),now=new Date().toISOString();
-    const metadata=Object.fromEntries(roomFields.filter(key=>Object.hasOwn(data,key)).map(key=>[key,data[key]]));
+    const metadata=Object.fromEntries(metadataFields(data.kind).filter(key=>Object.hasOwn(data,key)).map(key=>[key,data[key]]));
     database.prepare('INSERT INTO scheduling_resources(id,kind,display_name,name_key,active,version,created_at,updated_at,metadata) VALUES (?,?,?,?,?,1,?,?,?)').run(id,data.kind,data.displayName,nameKey(data.displayName),data.active?1:0,now,now,JSON.stringify(metadata));
     const resource=get(id);audit(actorId,'scheduling-resource.create',resource);return resource;
   });
@@ -92,9 +99,10 @@ export function createSchedulingResourceStore({database,transaction}) {
     administrator(actorId);const data=validateSchedulingResource(input,{update:true}),current=get(id);
     if(!current)throw new ApplicationError(404,'RESOURCE_NOT_FOUND','Scheduling resource was not found.');
     if(current.kind==='teacher'&&roomFields.some(key=>Object.hasOwn(data,key)))invalid('Room fields cannot be assigned to a teacher resource.');
+    if(current.kind==='room'&&Object.hasOwn(data,'representativeColor'))invalid('Representative colour is only available for teachers.');
     if(current.version!==data.version)throw new ApplicationError(409,'VERSION_CONFLICT','This scheduling resource was changed by someone else. Reload it before saving.');
     const displayName=data.displayName??current.displayName,active=data.active??current.active;uniqueName(current.kind,displayName,id);
-    const metadata=Object.fromEntries(roomFields.filter(key=>Object.hasOwn(current,key)||Object.hasOwn(data,key)).map(key=>[key,Object.hasOwn(data,key)?data[key]:current[key]]));
+    const metadata=Object.fromEntries(metadataFields(current.kind).filter(key=>Object.hasOwn(current,key)||Object.hasOwn(data,key)).map(key=>[key,Object.hasOwn(data,key)?data[key]:current[key]]));
     const now=new Date().toISOString(),changed=database.prepare('UPDATE scheduling_resources SET display_name=?,name_key=?,active=?,metadata=?,version=version+1,updated_at=? WHERE id=? AND version=?').run(displayName,nameKey(displayName),active?1:0,JSON.stringify(metadata),now,id,data.version);
     if(changed.changes!==1)throw new ApplicationError(409,'VERSION_CONFLICT','This scheduling resource was changed by someone else. Reload it before saving.');
     const resource=get(id);audit(actorId,'scheduling-resource.update',resource);return resource;

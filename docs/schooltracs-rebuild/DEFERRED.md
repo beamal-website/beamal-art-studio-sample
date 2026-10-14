@@ -87,3 +87,7 @@ Request／Confirm Payment／Convert、Family／激活、PDF Receipt、Coupon、A
 限定grid恢復只在Availability頁後，獨立前端全檔已真正重跑 **261／261，8.3393秒、exit0**（flows240＋SDK21，保留全部舊斷言）；完整npm及最新build仍待Root提供，不能將這個前端套件當作全套通過。
 
 **最後完整測試更新：** 上方445／469失敗及首次468結果保留為歷史；限定修正後Root已真正重跑 **469／469，56.8668秒、exit0、0 fail／cancel／skip／todo**（`/tmp/beamal-availability-final-green-test.log`）。隨後最後build仍進行，不沿用首次3.90秒作最新build。Root已有Admin同Slot ID建立／改17:00／hide→default、真正Teacher唯讀、匿名同ID及無內部remark、全域Rescheduling展示、public390中英文及英文Admin表單有限畫面證據；Cancel／Back、匿名Hide、最新側邊導航等仍待補。Chrome中斷後17:00以無cookie HTTP／內建瀏覽器核對，linked／Full fixture畫面與300 active未宣稱通過；完整界限見[檢查點](availability-checkpoint.md)。
+
+## 2026-10-15 老師代表色：沒有新增minor
+
+單老師C-03主色已有保存與投影，multi保fallback＋姓名色樣不等於主老師已定；平均分段／指定主要老師問題仍待答，不能自行用teacherIds[0]。source-only晚ACK姓名／色及linked事實退版曾是重要資料問題，已修正並有永久回歸，不列略過。最後完整490／490與依序build2.81秒通過；限定本機GUI已驗保存／清除／重開、唯讀、普通課／linked單堂換老師及390雙語Cancel／Escape／Back。黑／白持久保存、多人主色與SchoolTracs Chrome新對照仍未驗；集中證據見[本片檢查點](teacher-colour-checkpoint.md)。C-04／C-05、Trial配額交易／Total公式、Convert／Family及其他111項仍為核心；顏色不建立座位、ClassFull、出席、付款或Payroll，300 active大檢查不因窄切片而完成。

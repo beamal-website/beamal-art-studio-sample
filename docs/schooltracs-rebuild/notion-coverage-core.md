@@ -199,3 +199,7 @@ Enrollment、Trial、家庭登入／激活、正式 Student 建立／Convert、�
 限定grid恢復只在Availability頁後，獨立前端全檔已真正重跑 **261／261，8.3393秒、exit0**（flows240＋SDK21，保留全部舊斷言）；完整npm及最新build仍待Root提供，不能將這個前端套件當作全套通過。
 
 **最後完整測試更新：** 上方445／469失敗及首次468結果保留為歷史；限定修正後Root已真正重跑 **469／469，56.8668秒、exit0、0 fail／cancel／skip／todo**（`/tmp/beamal-availability-final-green-test.log`）。隨後最後build仍進行，不沿用首次3.90秒作最新build。Root已有Admin同Slot ID建立／改17:00／hide→default、真正Teacher唯讀、匿名同ID及無內部remark、全域Rescheduling展示、public390中英文及英文Admin表單有限畫面證據；Cancel／Back、匿名Hide、最新側邊導航等仍待補。Chrome中斷後17:00以無cookie HTTP／內建瀏覽器核對，linked／Full fixture畫面與300 active未宣稱通過；完整界限見[檢查點](availability-checkpoint.md)。
+
+## 2026-10-15 C-03代表色追加（不改原48／111來源列）
+
+原C-03沒有正式老師色的基線，現已新增Teacher representativeColor與單人有效指派投影，五檢視／詳情使用同一色，未設定／legacy維持原底色。多老師主色政策待答，姓名色樣只是識別，不能將整C-03標完成；資源／Slot來源tuple與linked晚ACK review已修正、永久回歸通過。精確6flow（原5＋補1）／7helper／5resourceUI／16AvailUI／20HTTP及267前端（3.9728秒）、最後完整490／490（44.7252秒）與依序build2.81秒成功。限定真GUI確認同老師保存／清除、Teacher唯讀、普通課＋linked有效單堂換老師、390雙語不保存操作；colour-only局部更新保焦點，指派變更仍按R-01清舊scope。匿名HTTP含revision改色前後相同；黑／白持久保存及多人主色未驗，集中[檢查點](teacher-colour-checkpoint.md)記錄。原48／全111來源狀態不變，R-01不放大權限，C-04／05正式Full與學生／Trial／Total／Convert、300 active大檢查均不由本片完成。

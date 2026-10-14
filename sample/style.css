@@ -712,5 +712,34 @@
 .availability-empty{margin:24px 0;padding:28px 16px;border:1px dashed var(--availability-field-border);color:var(--availability-note);text-align:center;line-height:1.7;overflow-wrap:anywhere}
 .availability-error-state{margin-bottom:24px}
 .availability-error-state button{min-height:44px;padding:8px 16px;border-radius:3px}
+
+/* Teacher representative colours: names stay readable on a fixed cream surface. */
+.teacher-colour-markers{display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px;min-width:0;max-width:100%}
+.teacher-colour-marker{display:inline-flex;align-items:center;gap:6px;min-width:0;max-width:100%;padding:4px 6px;border:1px solid #d9ddd2;border-radius:3px;background:#fffdf8;color:#253d3b;font-size:12px;line-height:1.5}
+.teacher-colour-name{min-width:0;color:inherit;font-weight:400;white-space:normal;overflow-wrap:anywhere}
+.teacher-colour-swatch{display:inline-block;flex:none;width:18px;height:14px;border:1px solid #526a60;border-radius:2px;background:var(--teacher-colour,#fffdf8)}
+.teacher-colour-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+.resource-list-teacher-colour{min-width:0;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain}
+.resource-list-teacher-colour table{min-width:600px}
+.resource-list-teacher-colour th:nth-child(2){width:140px}
+.resource-list-teacher-colour th:nth-child(3){width:96px}
+.resource-colour-preview{display:inline-flex;align-items:center;gap:8px;max-width:100%;color:#253d3b;font-size:14px;line-height:1.6;font-variant-numeric:tabular-nums;white-space:nowrap}
+.resource-colour-unset{color:#687770;font-size:14px;line-height:1.6}
+.resource-colour-fields{min-width:0;margin:0 0 24px;padding:20px 0;border-top:1px solid #d9ddd2;border-bottom:1px solid #d9ddd2}
+.resource-colour-fields h3{margin:0 0 12px;font-size:18px;font-weight:600;line-height:1.5;overflow-wrap:anywhere}
+.resource-colour-fields>.resource-note{margin-top:12px}
+.resource-colour-picker{display:flex;align-items:center;flex-wrap:wrap;gap:12px;min-width:0;margin:12px 0 0;color:#526a60;font-size:15px;line-height:1.5}
+.resource-colour-picker input[type=color]{display:block;flex:none;width:80px;min-width:0;height:48px;min-height:48px;padding:4px;border:1px solid #526a60;border-radius:3px;background:#fffdf8;cursor:pointer}
+.resource-colour-picker input[type=color]::-webkit-color-swatch-wrapper{padding:4px}
+.resource-colour-picker input[type=color]::-webkit-color-swatch{border:1px solid #526a60;border-radius:2px}
+.resource-colour-picker input[type=color]::-moz-color-swatch{border:1px solid #526a60;border-radius:2px}
+.resource-colour-picker input[type=color]:disabled{cursor:not-allowed;opacity:.6}
+.availability-colour-header{position:relative}
+.availability-colour-header:before{content:"";position:absolute;top:0;right:0;left:0;height:6px;background:var(--tt-lesson-color,#27777b);pointer-events:none}
+.availability-detail-colour-markers{min-width:0;max-width:100%;margin:0 0 16px}
+.availability-detail-colour-markers:empty{display:none}
+.availability-detail-colour-markers .teacher-colour-marker{font-size:14px}
+@media(max-width:600px){.resource-list-teacher-colour table{min-width:560px}.resource-list-teacher-colour th:nth-child(2){width:132px}.resource-list-teacher-colour th:nth-child(3){width:80px}.resource-colour-fields{padding:16px 0}.teacher-colour-markers{gap:4px 6px}.availability-detail-colour-markers .teacher-colour-marker{font-size:13px}}
+
 @media(max-width:760px){.availability-public-days{grid-template-columns:minmax(0,1fr)}.availability-resource-options{grid-template-columns:minmax(0,1fr)}.availability-field-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.availability-modal{padding:8px}.availability-editor-dialog,.availability-detail-dialog,.availability-settings-dialog{max-height:calc(100dvh - 16px)}.availability-editor-dialog{height:calc(100dvh - 16px)}.availability-header{padding:16px}.availability-header h2{font-size:21px}.availability-body{padding:20px 16px}.availability-field-grid{grid-template-columns:minmax(0,1fr)}.availability-facts{grid-template-columns:minmax(0,1fr);gap:16px}.availability-checks{display:block}.availability-footer{padding:14px 16px}.availability-footer button{padding:10px 14px}.availability-public{padding:12px 0;margin-bottom:32px}.availability-public-header h1{font-size:30px}.availability-public-notice{font-size:14px}.availability-course-row{align-items:flex-start;flex-direction:column;gap:16px;padding:20px 0}.availability-course-row h2{font-size:21px}.availability-course-row>button{width:100%}.availability-public-controls{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;margin:24px 0}.availability-public-controls>label,.availability-public-controls input{width:100%}.availability-public-controls>div{width:100%;gap:12px}.availability-public-controls button{flex:1;padding:10px 12px;font-size:15px}.availability-public-days{gap:20px}.availability-public-day>h2{padding:12px 16px;font-size:17px}.availability-public-slot{padding:16px}.availability-public-slot dl{grid-template-columns:minmax(0,1fr)}.availability-day-empty{padding:20px 16px}}

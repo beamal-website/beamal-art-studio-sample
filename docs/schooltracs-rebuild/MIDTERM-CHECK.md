@@ -115,3 +115,7 @@ Notion正式Overall Slot已與班次排課分開：Admin可新增獨立時段或
 **最後完整測試更新：** 上方445／469失敗及首次468結果保留為歷史；限定修正後Root已真正重跑 **469／469，56.8668秒、exit0、0 fail／cancel／skip／todo**（`/tmp/beamal-availability-final-green-test.log`）。隨後最後build仍進行，不沿用首次3.90秒作最新build。Root已有Admin同Slot ID建立／改17:00／hide→default、真正Teacher唯讀、匿名同ID及無內部remark、全域Rescheduling展示、public390中英文及英文Admin表單有限畫面證據；Cancel／Back、匿名Hide、最新側邊導航等仍待補。Chrome中斷後17:00以無cookie HTTP／內建瀏覽器核對，linked／Full fixture畫面與300 active未宣稱通過；完整界限見[檢查點](availability-checkpoint.md)。
 
 Availability本片最後驗證：469／469後依序build成功5.47秒；Admin／Teacher／匿名、同ID公开与隐藏、390雙語、鍵盤及返回限定畫面已补。[完整邊界及證據](availability-checkpoint.md)列明TrialSubmit／Total公式、Linked／Full真正畫面與300 active仍未通過，並非整個系統驗收完成。
+
+## 2026-10-15 後續：老師主色與業務狀態分開
+
+單一正式老師的代表色已接日／週／range／月／List與詳情；實際單堂指派不同時按該堂老師，legacy同名不配對。多老師主色仍待使用者選政策，暫只顯各人姓名／色樣；C-03不整列完成。原5主流程／266前端之後發現source-only晚ACK tuple退版，新增1永久回歸並修正；最新6flow／267前端（3.9728秒）、完整490／490（44.7252秒）與依序build2.81秒成功。真正本機GUI已驗色保存／清除、Teacher唯讀、正常課及linked单堂橙色／另一堂藍色、colour-only保焦點、390雙語不保存操作；五檢視全面證據仍是指定主流程，黑／白持久保存未驗。匿名HTTP包含revision改色前後相同；[集中檢查點](teacher-colour-checkpoint.md)另列指派改動會清舊權限視窗。正式Full／容量、Enrollment、Trial／Total／Convert及整頁／300 active仍缺，不由顏色推定。

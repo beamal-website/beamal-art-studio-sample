@@ -195,3 +195,20 @@ test('internal unavailable states never expose a raw technical reason code', () 
     }
   }
 });
+
+test('readonly available-time detail uses a single formal teacher colour and preserves all named colours for multiple teachers', () => {
+  const single = availabilityDetailMarkup({ slot: { ...slot, teacherIds: ['teacher-a'], teacherNames: ['Teacher A'], teacherColors: ['#000000'] }, canEdit: false }, ui('en'));
+  assert.match(single, /availability-detail-dialog" tabindex="-1" style="--tt-lesson-color:#000000"/);
+  assert.match(single, /class="availability-detail-colour-markers"/);
+  assert.match(single, /data-teacher-id="teacher-a"/);
+  assert.match(single, /Representative colour #000000/);
+  assert.doesNotMatch(single, /Private note|private-person-a|data-action="availability-edit"/);
+  const multi = availabilityDetailMarkup({ slot: { ...slot, teacherIds: ['teacher-a', 'teacher-b'], teacherNames: ['Teacher A', 'Teacher B'], teacherColors: ['#000000', '#FFFFFF'] } }, ui('en'));
+  assert.match(multi, /availability-detail-dialog" tabindex="-1" style="--tt-lesson-color:#27777b"/);
+  assert.match(multi, /data-teacher-id="teacher-a"/);
+  assert.match(multi, /data-teacher-id="teacher-b"/);
+  assert.match(multi, /--teacher-colour:#ffffff/);
+  const unsafe = availabilityDetailMarkup({ slot: { ...slot, teacherColors: ['red;position:fixed'] } }, ui('en'));
+  assert.doesNotMatch(unsafe, /position:fixed/);
+  assert.match(unsafe, /availability-detail-dialog" tabindex="-1" style="--tt-lesson-color:#27777b"/);
+});

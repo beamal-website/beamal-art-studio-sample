@@ -34,10 +34,12 @@ if(process.argv[2]==='--worker') {
  const source=fileURLToPath(new URL('../',import.meta.url));
  const directory=await mkdtemp(join(tmpdir(),'beamal-service-baseline-'));await mkdir(join(directory,'modules'));
  const manifest={};
- for(const file of ['app.mjs','store.mjs','security.mjs','validation.mjs']) {
+ for(const file of ['app.mjs','store.mjs','security.mjs','validation.mjs','materials.mjs']) {
   const bytes=await readFile(join(source,file));manifest[file]=createHash('sha256').update(bytes).digest('hex');await writeFile(join(directory,'modules',file),bytes);
  }
  const datasetConfigs=[{name:'100 courses / 100 base fees',rows:100,shared:0,links:0},{name:'1000 courses / 1000 base fees',rows:1000,shared:0,links:0},{name:'1000 courses / 1100 fees: 100 shared x 10 courses',rows:1000,shared:100,links:10}];
+ const smoke=process.argv.includes('--smoke'),readsPerPhase=smoke?3:20;
+ const selectedDatasets=smoke?datasetConfigs.slice(0,1):datasetConfigs;
  const results=[];
  const wait=(child,kind)=>new Promise((resolve,reject)=>{
   const timer=setTimeout(()=>{cleanup();reject(new Error(`Timed out waiting for ${kind}`));},60000);
@@ -51,7 +53,7 @@ if(process.argv[2]==='--worker') {
  const summary=values=>({count:values.length,p50Ms:percentile(values,.5),p95Ms:percentile(values,.95),maxMs:Math.max(...values)});
  let active;
  try {
-  for(const config of datasetConfigs) {
+  for(const config of selectedDatasets) {
    active=fork(fileURLToPath(import.meta.url),['--worker',JSON.stringify({...config,application:join(directory,'modules','app.mjs'),databasePath:join(directory,`${config.rows}-${config.shared}.sqlite`)})],{stdio:['ignore','ignore','pipe','ipc']});
    let stderr='';active.stderr.on('data',data=>stderr+=data.toString());
    const ready=await wait(active,'ready');
@@ -62,23 +64,39 @@ if(process.argv[2]==='--worker') {
    const read=async path=>{const start=performance.now();const response=await fetch(ready.base+path,{headers:{Cookie:cookie}});const text=await response.text();if(response.status!==200)throw new Error(`Read failed ${response.status}`);return{milliseconds:performance.now()-start,bytes:Buffer.byteLength(text),text}};
    for(let warm=0;warm<3;warm++)await Promise.all([read('/api/courses'),read('/api/fees')]);
    const row={...config,storage:'isolated temporary file SQLite/WAL',courseCount:ready.courseCount,feeCount:ready.feeCount,associationCount:ready.links,setupMs:ready.setupMs,loginMs,reads:{}};
-   for(const route of ['/api/courses','/api/fees']) {
+   const initialCatalog=await read('/api/catalog'),catalogRevision=JSON.parse(initialCatalog.text).revision;
+   if(typeof catalogRevision!=='string'||!/^[a-f0-9]{64}$/.test(catalogRevision))throw new Error('Catalog returned an invalid revision');
+   const unchangedRoute='/api/catalog?since='+encodeURIComponent(catalogRevision);
+   const endpoints=[{label:'/api/courses',route:'/api/courses'},{label:'/api/fees',route:'/api/fees'},{label:'/api/catalog full',route:'/api/catalog'},{label:'/api/catalog unchanged',route:unchangedRoute}];
+   for(const {route,label} of endpoints) {
     await rpc(active,'start');const reads=[];
-    for(let i=0;i<20;i++)reads.push(await read(route));
+    for(let i=0;i<readsPerPhase;i++)reads.push(await read(route));
     const metrics=await rpc(active,'metrics');
-    const body=JSON.parse(reads[0].text);if((route==='/api/courses'?body.courses.length:body.fees.length)!==(route==='/api/courses'?ready.courseCount:ready.feeCount))throw new Error('Read DTO count mismatch');
-    row.reads[route]={...summary(reads.map(r=>r.milliseconds)),bytes:reads[0].bytes,...metrics};
+    const body=JSON.parse(reads[0].text);
+    if(label==='/api/catalog unchanged') {
+     if(body.unchanged!==true||body.revision!==catalogRevision||Object.hasOwn(body,'courses')||Object.hasOwn(body,'fees'))throw new Error('Expected only an unchanged catalog acknowledgement');
+    } else if(label==='/api/catalog full') {
+     if(body.courses?.length!==ready.courseCount||body.fees?.length!==ready.feeCount)throw new Error('Catalog DTO count mismatch');
+     if(body.courses.some(course=>!Array.isArray(course.feeIds)||Object.hasOwn(course,'fees')||Object.hasOwn(course,'price')))throw new Error('Catalog duplicated nested fee or pricing data');
+    } else if((route==='/api/courses'?body.courses?.length:body.fees?.length)!==(route==='/api/courses'?ready.courseCount:ready.feeCount))throw new Error('Read DTO count mismatch');
+    row.reads[label]={...summary(reads.map(r=>r.milliseconds)),bytes:reads[0].bytes,...metrics};
    }
    await rpc(active,'start');const totals=[],health=[];
-   for(let i=0;i<20;i++) {
+   for(let i=0;i<readsPerPhase;i++) {
     const start=performance.now();const [courses,fees,ping]=await Promise.all([read('/api/courses'),read('/api/fees'),read('/api/health')]);
     totals.push(performance.now()-start);health.push(ping.milliseconds);
    }
    row.pollPair={...summary(totals),health:summary(health),bytesPerClientPoll:row.reads['/api/courses'].bytes+row.reads['/api/fees'].bytes,...await rpc(active,'metrics')};
+   await rpc(active,'start');const unchangedTotals=[],unchangedHealth=[];
+   for(let i=0;i<readsPerPhase;i++) {
+    const start=performance.now();const [catalog,ping]=await Promise.all([read(unchangedRoute),read('/api/health')]);
+    unchangedTotals.push(performance.now()-start);unchangedHealth.push(ping.milliseconds);
+   }
+   row.unchangedPoll={...summary(unchangedTotals),health:summary(unchangedHealth),bytesPerClientPoll:row.reads['/api/catalog unchanged'].bytes,...await rpc(active,'metrics')};
    results.push(row);
    const exit=once(active,'exit');active.send({kind:'stop'});await exit;active=null;
    console.log(JSON.stringify({dataset:row.name,...row}));
   }
-  console.log(JSON.stringify({kind:'manifest',node:process.version,serverModuleSHA256:manifest,method:'Separate Node server/client processes; temp file SQLite; administrator authenticated; 3 warmup paired reads; 20 sequential reads per endpoint; 20 parallel course+fee+health cycles; end-to-end local HTTP read timing includes complete response body, excludes client JSON parsing; event-loop delay measured only in server process, 1ms sampling; background host load uncontrolled.'}));
- }finally{if(active){active.kill('SIGTERM');await once(active,'exit').catch(()=>{});}await rm(directory,{recursive:true,force:true});}
+  console.log(JSON.stringify({kind:'manifest',node:process.version,smoke,readsPerPhase,serverModuleSHA256:manifest,method:`Separate Node server/client processes; temp file SQLite; administrator authenticated; 3 warmup paired reads and 1 initial catalog read; ${readsPerPhase} sequential reads per legacy/full/unchanged endpoint; ${readsPerPhase} parallel course+fee+health cycles and ${readsPerPhase} unchanged-catalog+health cycles; end-to-end local HTTP read timing includes complete response body, excludes client JSON parsing; event-loop delay measured only in server process, 1ms sampling; background host load uncontrolled. Smoke verifies the benchmark only and is not performance acceptance.`}));
+ }finally{if(active&&active.exitCode===null&&active.signalCode===null){const stopped=once(active,'exit');active.kill('SIGTERM');await stopped.catch(()=>{});}await rm(directory,{recursive:true,force:true});}
 }

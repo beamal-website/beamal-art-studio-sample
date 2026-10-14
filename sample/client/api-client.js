@@ -45,6 +45,15 @@ export function createApiClient() {
     async logout() { const result = await request('/auth/logout', { method: 'POST' }); csrfToken = ''; return result; },
     courses: () => request('/courses'),
     fees: () => request('/fees'),
+    catalog: (revision = '') => request(`/catalog${revision ? `?since=${encodeURIComponent(revision)}` : ''}`),
+    materials: courseId => request(`/courses/${encodeURIComponent(courseId)}/materials`),
+    saveMaterial(courseId, material, current, operationKey) {
+      return request(current ? `/materials/${encodeURIComponent(current.id)}` : `/courses/${encodeURIComponent(courseId)}/materials`, {
+        method: current ? 'PATCH' : 'POST',
+        body: { ...material, ...(current ? { version: current.version } : {}) },
+        ...(!current ? { idempotencyKey: operationKey } : {}),
+      });
+    },
     saveFee(fee, current, operationKey) {
       return request(current ? `/fees/${encodeURIComponent(current.id)}` : '/fees', {
         method: current ? 'PATCH' : 'POST',

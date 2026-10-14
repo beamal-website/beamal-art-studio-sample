@@ -2,6 +2,7 @@ import { createServer } from 'node:http';
 import { readFile, realpath, stat } from 'node:fs/promises';
 import { resolve, sep, extname } from 'node:path';
 import { createStore } from './store.mjs';
+import { validateMaterial, requireMaterialVersion } from './materials.mjs';
 import { ApplicationError, validateCourse, validateCourseMetadata, hasPricingFields, validateFee, requireVersion } from './validation.mjs';
 import { hashPassword, verifyPassword, normaliseEmail, randomToken, tokenHash, csrfForToken, matchesHash } from './security.mjs';
 
@@ -57,13 +58,23 @@ function canonicalPayload(value) {
 
 const payloadHash = payload => tokenHash(JSON.stringify(canonicalPayload(payload)));
 
-export async function createApplication({ databasePath = ':memory:', seedUsers = [], seedCourses = [], allowedOrigins = defaultOrigins, staticDir = null, secureCookies = false } = {}) {
+export async function createApplication({ databasePath = ':memory:', seedUsers = [], seedCourses = [], seedMaterialAccess = [], allowedOrigins = defaultOrigins, staticDir = null, secureCookies = false } = {}) {
   const origins = new Set(allowedOrigins.map(value => {
     const parsed = new URL(value);
     if (!['http:', 'https:'].includes(parsed.protocol) || parsed.origin !== value) throw new Error('Allowed origins must be complete http or https origins without paths.');
     return parsed.origin;
   }));
   const store = await createStore({ databasePath, seedUsers, seedCourses });
+  const materials = store.materials;
+  try {
+    if (!Array.isArray(seedMaterialAccess)) throw new Error('Material access seeds must be an array.');
+    for (const seed of seedMaterialAccess) {
+      if (!seed || typeof seed !== 'object' || Array.isArray(seed) || Object.keys(seed).some(key => !['courseId', 'email'].includes(key)) || typeof seed.courseId !== 'string' || !seed.courseId || seed.courseId.length > 200 || !normaliseEmail(seed.email)) throw new Error('Material access seeds require an existing course ID and student email.');
+      const person = store.userByEmail(normaliseEmail(seed.email));
+      if (!person || person.role !== 'student') throw new Error('Material access may only be seeded for an existing student.');
+      materials.grantCourseAccess(seed.courseId, person.id);
+    }
+  } catch (error) { store.close(); throw error; }
   const dummyHash = await hashPassword(randomToken());
   const attempts = new Map();
   const staticRoot = staticDir ? await realpath(resolve(staticDir)).catch(() => null) : null;
@@ -131,7 +142,7 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
       response.setHeader('Vary', 'Origin');
     }
     try {
-      const pathname = new URL(request.url, 'http://localhost').pathname;
+      const requestUrl = new URL(request.url, 'http://localhost'), pathname = requestUrl.pathname;
       if (request.method === 'OPTIONS' && pathname.startsWith('/api/')) {
         requireOrigin(request);
         response.writeHead(204, { 'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, X-CSRF-Token, Idempotency-Key', 'Access-Control-Max-Age': '600' });
@@ -162,6 +173,37 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
         store.deleteSession(tokenHash(session.token));
         response.setHeader('Set-Cookie', cookie('', 0));
         json(response, 200, { user: null }); return;
+      }
+      if (pathname === '/api/catalog' && request.method === 'GET') {
+        const session = requireSession(request);
+        json(response, 200, store.catalogSnapshot({ publicOnly: session.user.role === 'student', since: requestUrl.searchParams.get('since') || '' })); return;
+      }
+      const courseMaterialMatch = /^\/api\/courses\/([^/]+)\/materials$/.exec(pathname);
+      const materialMatch = /^\/api\/materials\/([^/]+)$/.exec(pathname);
+      const decodeId = part => {
+        try { return decodeURIComponent(part); } catch { throw new ApplicationError(400, 'INVALID_PATH', 'Invalid resource identifier.'); }
+      };
+      if (courseMaterialMatch && request.method === 'GET') {
+        const session = requireSession(request);
+        json(response, 200, { materials: materials.list(decodeId(courseMaterialMatch[1]), session.user) }); return;
+      }
+      if (courseMaterialMatch && request.method === 'POST') {
+        const session = requireMutation(request);
+        if (session.user.role !== 'admin') throw new ApplicationError(403, 'ROLE_FORBIDDEN', 'Only an administrator can change materials.');
+        const courseId = decodeId(courseMaterialMatch[1]), key = idempotencyKey(request), material = validateMaterial(await body(request));
+        const result = store.createOnce({ userId: session.user.id, route: `/api/courses/${encodeURIComponent(courseId)}/materials`, key, payloadHash: payloadHash(material) }, () => ({ material: materials.create(courseId, material, session.user) }));
+        json(response, result.status, result.body); return;
+      }
+      if (materialMatch && request.method === 'GET') {
+        const session = requireSession(request), material = materials.get(decodeId(materialMatch[1]), session.user);
+        if (!material) throw new ApplicationError(404, 'MATERIAL_NOT_FOUND', 'Material was not found.');
+        json(response, 200, { material }); return;
+      }
+      if (materialMatch && request.method === 'PATCH') {
+        const session = requireMutation(request);
+        if (session.user.role !== 'admin') throw new ApplicationError(403, 'ROLE_FORBIDDEN', 'Only an administrator can change materials.');
+        const input = await body(request), version = requireMaterialVersion(input);
+        json(response, 200, { material: materials.update(decodeId(materialMatch[1]), input, version, session.user) }); return;
       }
       if (pathname === '/api/courses' && request.method === 'GET') {
         const session = requireSession(request);
@@ -218,7 +260,7 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
         json(response, 200, store.updateFee(id, fee, version, session.user.id, true)); return;
       }
       if (pathname === '/api' || pathname.startsWith('/api/')) {
-        const known = match || feeMatch || ['/api/health', '/api/auth/session', '/api/auth/login', '/api/auth/logout', '/api/courses', '/api/fees'].includes(pathname);
+        const known = match || feeMatch || courseMaterialMatch || materialMatch || ['/api/health', '/api/auth/session', '/api/auth/login', '/api/auth/logout', '/api/courses', '/api/fees', '/api/catalog'].includes(pathname);
         throw new ApplicationError(known ? 405 : 404, known ? 'METHOD_NOT_ALLOWED' : 'NOT_FOUND', 'API route or method is not available.');
       }
       await serveStatic(request, response, pathname);
@@ -233,7 +275,7 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
   });
   let closed = false;
   return {
-    server, store,
+    server, store, materials,
     async close() {
       if (closed) return;
       closed = true;

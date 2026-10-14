@@ -1,9 +1,10 @@
 import { DatabaseSync } from 'node:sqlite';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
 import { mkdirSync, chmodSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { hashPassword, normaliseEmail } from './security.mjs';
 import { validateCourse, ApplicationError } from './validation.mjs';
+import { createMaterialStore } from './materials.mjs';
 
 const publicUser = row => row ? { id: row.id, email: row.email, displayName: row.display_name, role: row.role } : null;
 const pricingKeys = ['feeName', 'pricingModel', 'price', 'months', 'duration', 'packageType', 'packageTotal', 'bookingExpiry', 'onlineStore'];
@@ -73,9 +74,9 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
   database.exec('CREATE UNIQUE INDEX IF NOT EXISTS course_name_key_unique ON courses(name_key)');
   let closed = false;
   let transactionDepth = 0, savepointCounter = 0;
-  const transaction = callback => {
+  const transaction = (callback, mode = 'write') => {
     const outer = transactionDepth === 0, savepoint = `nested_${++savepointCounter}`;
-    database.exec(outer ? 'BEGIN IMMEDIATE' : `SAVEPOINT ${savepoint}`);
+    database.exec(outer ? (mode === 'read' ? 'BEGIN' : 'BEGIN IMMEDIATE') : `SAVEPOINT ${savepoint}`);
     transactionDepth++;
     try {
       const result = callback();
@@ -102,8 +103,56 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
     };
   };
   const getCourse = id => parseCourse(database.prepare('SELECT * FROM courses WHERE id = ?').get(id));
-  const listCourses = ({ publicOnly = false } = {}) => database.prepare(`SELECT * FROM courses ${publicOnly ? 'WHERE EXISTS (SELECT 1 FROM course_fees JOIN fees ON fees.id = course_fees.fee_id WHERE course_fees.course_id = courses.id AND fees.online_store = 1)' : ''} ORDER BY course_code`).all().map(row => parseCourse(row, publicOnly));
-  const listFees = ({ publicOnly = false } = {}) => database.prepare(`SELECT * FROM fees ${publicOnly ? 'WHERE online_store = 1' : ''} ORDER BY fee_code`).all().map(parseFee);
+  const visibleCourses = publicOnly => publicOnly ? 'WHERE EXISTS (SELECT 1 FROM course_fees JOIN fees ON fees.id = course_fees.fee_id WHERE course_fees.course_id = courses.id AND fees.online_store = 1)' : '';
+  const readFeeRows = publicOnly => database.prepare(`SELECT * FROM fees ${publicOnly ? 'WHERE online_store = 1' : ''} ORDER BY fee_code`).all();
+  const readLinkRows = publicOnly => database.prepare(`SELECT course_fees.course_id, course_fees.fee_id, course_fees.position FROM course_fees JOIN fees ON fees.id = course_fees.fee_id ${publicOnly ? 'WHERE fees.online_store = 1' : ''} ORDER BY course_fees.course_id, course_fees.position, fees.fee_code`).all();
+  const feeCatalog = (feeRows, links) => {
+    const courseIdsByFee = new Map(), feeIdsByCourse = new Map();
+    for (const link of links) {
+      if (!courseIdsByFee.has(link.fee_id)) courseIdsByFee.set(link.fee_id, []);
+      courseIdsByFee.get(link.fee_id).push(link.course_id);
+      if (!feeIdsByCourse.has(link.course_id)) feeIdsByCourse.set(link.course_id, []);
+      feeIdsByCourse.get(link.course_id).push(link.fee_id);
+    }
+    const fees = feeRows.map(row => ({
+      ...JSON.parse(row.data), id: row.id, feeCode: row.fee_code, price: row.price_cents / 100,
+      version: row.version, createdAt: row.created_at, updatedAt: row.updated_at,
+      courseIds: courseIdsByFee.get(row.id) || [],
+    }));
+    return { fees, feesById: new Map(fees.map(fee => [fee.id, fee])), feeIdsByCourse };
+  };
+  const readCatalog = publicOnly => {
+    const courseRows = database.prepare(`SELECT * FROM courses ${visibleCourses(publicOnly)} ORDER BY course_code`).all();
+    return { courseRows, ...feeCatalog(readFeeRows(publicOnly), readLinkRows(publicOnly)) };
+  };
+  const compactCourse = (row, feeIds) => ({
+    ...metadata(JSON.parse(row.data)), id: row.id, courseCode: row.course_code, version: row.version,
+    createdAt: row.created_at, updatedAt: row.updated_at, feeIds,
+  });
+  const listCourses = ({ publicOnly = false } = {}) => transaction(() => {
+    const { courseRows, feesById, feeIdsByCourse } = readCatalog(publicOnly);
+    return courseRows.map(row => {
+      const feeIds = feeIdsByCourse.get(row.id) || [], fees = feeIds.map(id => feesById.get(id));
+      return {
+        ...metadata(JSON.parse(row.data)), feeName: '', ...pricing(fees[0] || {}),
+        id: row.id, courseCode: row.course_code, version: row.version,
+        createdAt: row.created_at, updatedAt: row.updated_at, fees, feeIds,
+      };
+    });
+  }, 'read');
+  const listFees = ({ publicOnly = false } = {}) => transaction(() => feeCatalog(readFeeRows(publicOnly), readLinkRows(publicOnly)).fees, 'read');
+  const catalogSnapshot = ({ publicOnly = false, since = '' } = {}) => transaction(() => {
+    const courses = database.prepare(`SELECT id, version FROM courses ${visibleCourses(publicOnly)} ORDER BY id`).all();
+    const fees = database.prepare(`SELECT id, version FROM fees ${publicOnly ? 'WHERE online_store = 1' : ''} ORDER BY id`).all();
+    const revision = createHash('sha256').update(JSON.stringify({ publicOnly, courses, fees })).digest('hex');
+    if (since === revision) return { revision, unchanged: true };
+    const catalog = readCatalog(publicOnly);
+    return {
+      revision,
+      courses: catalog.courseRows.map(row => compactCourse(row, catalog.feeIdsByCourse.get(row.id) || [])),
+      fees: catalog.fees,
+    };
+  }, 'read');
   const auditCourse = (actor, action, record) => database.prepare('INSERT INTO audit_log(actor_id, action, course_id, version, snapshot, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(actor || null, action, record.id, record.version, JSON.stringify(record), record.updatedAt);
   const auditFee = (actor, action, record) => database.prepare('INSERT INTO fee_audit_log(actor_id, action, fee_id, version, snapshot, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(actor || null, action, record.id, record.version, JSON.stringify(record), record.updatedAt);
   const bumpCourses = (ids, actor, now, action = 'course.fee.update') => {
@@ -252,8 +301,11 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
       createCourse(validateCourse(input), null, seed.id);
     }
   } catch (error) { database.close(); throw error; }
+  let materials;
+  try { materials = createMaterialStore({ database, transaction }); }
+  catch (error) { database.close(); throw error; }
   return {
-    listCourses, getCourse, createCourse, updateCourse, listFees, getFee, createFee, updateFee, createOnce,
+    listCourses, getCourse, createCourse, updateCourse, listFees, getFee, createFee, updateFee, createOnce, catalogSnapshot, materials,
     listUsers: () => database.prepare('SELECT * FROM users ORDER BY email').all().map(publicUser),
     userByEmail: email => database.prepare('SELECT * FROM users WHERE email = ?').get(email),
     publicUser,

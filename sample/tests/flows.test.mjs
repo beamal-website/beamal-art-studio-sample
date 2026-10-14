@@ -1,6 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
+import {materialPanelMarkup,materialEditorMarkup,materialVideoRow,safeMaterialUrl} from '../client/materials-ui.js';
 test('Join classes sort by upcoming session and income records show newest payment first',()=>{const a=app();a.set("lang='en';nextClassDate=c=>c.id==='b'?'2030-01-01':'2030-01-02';join={step:1,course:'art',classId:'a'};location.pathname='/join';render()");let html=a.nodes['#app'].innerHTML,ids=[...html.matchAll(/name="classId" value="([^"]+)"/g)].map(match=>match[1]);assert.deepEqual(ids,['b','a']);assert.ok(html.indexOf('Next class: 1 Jan 2030')<html.indexOf('Next class: 2 Jan 2030'));a.set("role='teacher';tab='payments';location.pathname='/account';render()");html=a.nodes['#app'].innerHTML;assert.ok(html.indexOf('Ryan Yu · B1005')<html.indexOf('David Leung · B1002'));});
 test('News page contains sample studio stories and no course listings',()=>{const a=app();a.set("lang='en';location.pathname='/news';render()");const html=a.nodes['#app'].innerHTML,entries=html.match(/<details class="news-entry">[\s\S]*?<\/details>/g)||[];assert.equal(entries.length,3);assert.match(html,/Student Art Showcase/);assert.match(html,/Art Award Highlights/);assert.match(html,/Studio Updates/);assert.doesNotMatch(html.match(/<section class="news-page">[\s\S]*?<\/section>/)?.[0]||'',/>Course [123]</);assert.doesNotMatch(html,/Next class|lessons per term|Places available/);assert.match(entries[0],/class="news-detail-image" src="\/assets\/beamal-canvas\.jpg"/);});
 test('sample News cards show bilingual stories, categories and artwork',()=>{const a=app();a.set("lang='en';location.pathname='/news';render()");let html=a.nodes['#app'].innerHTML;assert.match(html,/class="news-page-heading"/);assert.match(html,/class="news-entry-image" src="\/assets\/beamal-storybook\.jpg"/);assert.match(html,/Art showcase/);assert.match(html,/Awards/);assert.match(html,/Read more/);a.set("lang='zh';render()");html=a.nodes['#app'].innerHTML;assert.match(html,/學生作品展/);assert.match(html,/藝術獎項消息/);assert.match(html,/閱讀更多/);});
@@ -19,7 +20,7 @@ test('teacher can edit a seeded story and keep its existing Beamal image',()=>{c
 test('manager News opens on the published stories before the editor',()=>{const a=app();a.set("lang='en';role='teacher';tab='news';location.pathname='/account';render()");let html=a.nodes['#app'].innerHTML;assert.ok(html.indexOf('class="teacher-news-list"')<html.indexOf('id="teacher-news"'));for(const title of ['Student Art Showcase','Art Award Highlights','Studio Updates'])assert.match(html,new RegExp(title));assert.equal((html.match(/data-edit-news=/g)||[]).length,3);assert.match(html,/data-action="new-news"/);a.click({editNews:'sample-news-1'});assert.match(a.nodes['#app'].innerHTML,/Edit news/);a.click({action:'new-news'});assert.equal(a.read('newsEditId'),'');assert.match(a.nodes['#app'].innerHTML,/Add news/);assert.match(a.nodes['#app'].innerHTML,/Student Art Showcase/);});
 test('cancelling a news edit leaves the published post intact',()=>{const a=app();a.set("lang='en';role='teacher';tab='news';location.pathname='/account';db.news=[{id:'N1',title:'Original',description:'Summary',content:'Content',releaseDate:'2026-09-30',image:''}];render()");a.click({editNews:'N1'});a.click({action:'cancel-news-edit'});assert.equal(a.read('newsEditId'),'');assert.equal(a.read('db.news[0].title'),'Original');assert.match(a.nodes['#app'].innerHTML,/Add news/);});
 test('homepage News shows sample stories and links to the full page',()=>{const a=app();a.set("lang='en';render()");let html=a.nodes['#app'].innerHTML;assert.match(html,/Latest News/);assert.match(html,/Studio updates/);assert.equal((html.match(/name="upcoming-event"/g)||[]).length,3);assert.ok((html.match(/href="\/news" data-go="\/news"/g)||[]).length>=3);const footer=html.slice(html.indexOf('<footer'));assert.match(footer,/href="\/news" data-go="\/news"/);let detail=html.match(/<article class="upcoming-detail teacher-news-detail">([\s\S]*?)<\/article>/)?.[1];assert.match(detail,/Student Art Showcase/);a.change('upcoming-event','1');html=a.nodes['#app'].innerHTML;detail=html.match(/<article class="upcoming-detail teacher-news-detail">([\s\S]*?)<\/article>/)?.[1];assert.match(detail,/Art Award Highlights/);assert.match(html,/value="1" checked/);a.click({go:'/news'});html=a.nodes['#app'].innerHTML;assert.match(html,/Art Award Highlights/);assert.doesNotMatch(html,/Next class|lessons per term/);});
-function app(seed={},clock,mobile=false,injectedClient=null,options={}){const handlers={},store=new Map(Object.entries(seed)),session=new Map(),nodes={};const storage=(m,local=false)=>({getItem:k=>m.get(k)??null,setItem:(k,v)=>{const failure=local?options.localWriteError?.(k,v):null;if(failure)throw failure;return m.set(k,v)},removeItem:k=>m.delete(k)});const ctx=vm.createContext({...(injectedClient?{createApiClient:()=>injectedClient}:{}),localStorage:storage(store,true),sessionStorage:storage(session),navigator:{language:'zh-HK'},location:{pathname:options.pathname||'/'},history:{pushState:(_,__,p)=>ctx.location.pathname=p,replaceState:(_,__,p)=>ctx.location.pathname=p},window:{scrollTo(){},addEventListener:(type,handler)=>options.onWindowEvent?.(type,handler),setInterval:(handler,ms)=>options.onInterval?.(handler,ms)??0,clearInterval(){},matchMedia:()=>({matches:mobile,addEventListener(){}})},document:{documentElement:{},querySelector:s=>nodes[s]??(nodes[s]=(()=>{const classes=new Set(),attributes={};return {innerHTML:'',textContent:'',focus(){},setAttribute:(k,v)=>attributes[k]=String(v),getAttribute:k=>attributes[k],classList:{toggle:(k,on)=>on?classes.add(k):classes.delete(k),contains:k=>classes.has(k)}}})()),addEventListener:(e,h)=>{if(e==='change')(handlers.change??=[]).push(h);else handlers[e]=h},createElement:()=>({remove(){}}),body:{append(){}}},FormData:class{constructor(f){return Object.entries(f.values).flatMap(([k,v])=>Array.isArray(v)?v.map(x=>[k,x]):[[k,v]])}},setTimeout(){},confirm:()=>true,Date:clock?class extends Date{constructor(...args){super(...(args.length?args:[clock]))}static now(){return new Date(clock).getTime()}}:Date,console});vm.runInContext(fs.readFileSync(new URL('../src.js',import.meta.url),'utf8').replace(/^import .*;$/gm,''),ctx);return {ctx,read:s=>JSON.parse(vm.runInContext(`JSON.stringify(${s})`,ctx)),submit:(id,values,extra={})=>handlers.submit({preventDefault(){},target:{id,values,classList:{contains:()=>false},...extra}}),click:dataset=>handlers.click({preventDefault(){},target:{closest:()=>({dataset})}}),input:target=>handlers.input({target}),keydown:(key,extra={})=>handlers.keydown({key,preventDefault(){},...extra}),change:(name,value,extra={})=>handlers.change.forEach(handler=>handler({target:{name,value,...extra}})),set:s=>vm.runInContext(s,ctx),nodes};}
+function app(seed={},clock,mobile=false,injectedClient=null,options={}){const handlers={},store=new Map(Object.entries(seed)),session=new Map(),nodes={};const storage=(m,local=false)=>({getItem:k=>m.get(k)??null,setItem:(k,v)=>{const failure=local?options.localWriteError?.(k,v):null;if(failure)throw failure;return m.set(k,v)},removeItem:k=>m.delete(k)});const ctx=vm.createContext({materialPanelMarkup,materialEditorMarkup,materialVideoRow,safeMaterialUrl,...(injectedClient?{createApiClient:()=>injectedClient}:{}),localStorage:storage(store,true),sessionStorage:storage(session),navigator:{language:'zh-HK'},location:{pathname:options.pathname||'/'},history:{pushState:(_,__,p)=>ctx.location.pathname=p,replaceState:(_,__,p)=>ctx.location.pathname=p},window:{scrollTo(){},addEventListener:(type,handler)=>options.onWindowEvent?.(type,handler),setInterval:(handler,ms)=>options.onInterval?.(handler,ms)??0,clearInterval(){},matchMedia:()=>({matches:mobile,addEventListener(){}})},document:{documentElement:{},querySelector:s=>nodes[s]??(nodes[s]=(()=>{const classes=new Set(),attributes={};return {innerHTML:'',textContent:'',focus(){},setAttribute:(k,v)=>attributes[k]=String(v),getAttribute:k=>attributes[k],classList:{toggle:(k,on)=>on?classes.add(k):classes.delete(k),contains:k=>classes.has(k)}}})()),addEventListener:(e,h)=>{if(e==='change')(handlers.change??=[]).push(h);else handlers[e]=h},createElement:()=>({remove(){}}),body:{append(){}}},FormData:class{constructor(f){return Object.entries(f.values).flatMap(([k,v])=>Array.isArray(v)?v.map(x=>[k,x]):[[k,v]])}},setTimeout(){},confirm:()=>true,Date:clock?class extends Date{constructor(...args){super(...(args.length?args:[clock]))}static now(){return new Date(clock).getTime()}}:Date,console});vm.runInContext(fs.readFileSync(new URL('../src.js',import.meta.url),'utf8').replace(/^import .*;$/gm,''),ctx);return {ctx,read:s=>JSON.parse(vm.runInContext(`JSON.stringify(${s})`,ctx)),submit:(id,values,extra={})=>handlers.submit({preventDefault(){},target:{id,values,classList:{contains:()=>false},...extra}}),click:dataset=>handlers.click({preventDefault(){},target:{closest:()=>({dataset})}}),input:target=>handlers.input({target}),keydown:(key,extra={})=>handlers.keydown({key,preventDefault(){},...extra}),change:(name,value,extra={})=>handlers.change.forEach(handler=>handler({target:{name,value,...extra}})),set:s=>vm.runInContext(s,ctx),nodes};}
 test('home copy switches between polished English and Chinese without special Unicode spacing',()=>{const a=app();a.set("lang='en';render()");let html=a.nodes['#app'].innerHTML;assert.match(html,/Express yourself and tell your story through art/);assert.match(html,/Regular Art Classes for Kids/);assert.match(html,/Storybook Class/);assert.match(html,/Sewing Class/);assert.doesNotMatch(html,/𝗞𝗶𝗱|𝑬𝒙𝒑𝒓𝒆𝒔𝒔/);assert.match(html,/beamal-elephants\.jpg/);assert.match(html,/Clay Classes/);assert.match(html,/Sketching Classes/);assert.match(html,/Drawing Classes/);assert.match(html,/beamal-idioms\.jpg/);assert.match(html,/beamal-sketch\.jpg/);assert.match(html,/beamal-canvas\.jpg/);assert.match(html,/>Home</);a.click({go:'/about'});html=a.nodes['#app'].innerHTML;assert.match(html,/Mission &amp; Vision/);assert.match(html,/Our Story/);assert.match(html,/beamal-colourpencil\.jpg/);assert.match(html,/beamal-guidedog\.jpg/);assert.doesNotMatch(html,/Express yourself|Regular Art Classes for Kids/);a.click({go:'/'});assert.match(a.nodes['#app'].innerHTML,/Express yourself and tell your story through art/);a.set("lang='zh';render()");html=a.nodes['#app'].innerHTML;assert.match(html,/透過藝術表達自己，訴說你的故事/);assert.match(html,/兒童常規藝術課程/);assert.match(html,/繪本課程/);assert.match(html,/縫紉課程/);assert.doesNotMatch(html,/Express yourself|Regular Art Classes for Kids/);});
 test('enrolment steps return to the top so mobile users see each new form',()=>{const a=app();a.set("location.pathname='/join';window.scrollTo=(x,y)=>{window.lastScroll=[x,y]};render()");a.submit('join',{course:'art',classId:'a'});assert.equal(a.read('join.step'),2);assert.deepEqual(a.read('window.lastScroll'),[0,0]);a.set('window.lastScroll=null');a.click({action:'joinback'});assert.equal(a.read('join.step'),1);assert.deepEqual(a.read('window.lastScroll'),[0,0]);a.submit('join',{course:'art',classId:'a'});a.set('window.lastScroll=null');a.submit('join',{student:'Alex Chan',phone:'00000000',email:'alex@example.test'});assert.equal(a.read('join.step'),3);assert.deepEqual(a.read('window.lastScroll'),[0,0]);});
 test('demo login accepts 1/2 with blank password and rejects invalid credentials',()=>{const a=app();a.submit('login',{username:'9',password:''});assert.match(a.nodes['#login-error'].textContent,/1 或 2/);a.submit('login',{username:'1',password:'secret'});assert.equal(a.read('role'),'');a.submit('login',{username:'1',password:''});assert.equal(a.read('role'),'student');a.click({action:'logout'});a.submit('login',{username:'2',password:''});assert.equal(a.read('role'),'teacher');});
@@ -578,7 +579,7 @@ const copy=value=>JSON.parse(JSON.stringify(value));
 const serviceError=(status,code,message='Test service rejected the request')=>Object.assign(new Error(message),{status,code});
 const deferred=()=>{let resolve,reject;const promise=new Promise((yes,no)=>{resolve=yes;reject=no});return {promise,resolve,reject}};
 
-async function sharedApp(overrides={},seed={}){
+async function sharedApp(overrides={},seed={},options={}){
  const state={user:copy(sharedTestUser),courses:[copy(sharedTestCourse)],fees:[copy(sharedTestFee)]},calls=[];
  const client={
   health:async()=>({mode:'shared-test'}),session:async()=>({user:copy(state.user),csrfToken:'qa-csrf'}),
@@ -595,7 +596,7 @@ async function sharedApp(overrides={},seed={}){
   async saveCourse(record,current){calls.push({operation:'saveCourse',record:copy(record),current:current?copy(current):null});const saved={...record,id:current?.id||'qa-created-course',courseCode:'CO-702',version:1,createdAt:'2026-10-14T00:00:00Z',updatedAt:'2026-10-14T00:00:00Z',fees:[],feeIds:[]};state.courses.push(saved);return {course:copy(saved)}},
   ...overrides,
  };
- const a=app(seed,'2026-10-14T12:00:00',false,client);
+ const a=app(seed,'2026-10-14T12:00:00',false,client,options);
  for(let turn=0;turn<30&&!a.read('sharedReady');turn++)await Promise.resolve();
  assert.equal(a.read('sharedReady'),true,'Shared service bootstrap did not complete');
  assert.equal(a.read('sharedMode'),true);
@@ -605,7 +606,7 @@ async function sharedApp(overrides={},seed={}){
 }
 
 function sharedForm(id,{recordId='',version='',courseIds=['qa-course']}={}){
- const submit={disabled:false,textContent:'Create'},cancel={disabled:false},attributes={};
+ const submit={disabled:false,textContent:'Create',focus(){}},cancel={disabled:false},attributes={};
  return {id,dataset:{id:recordId,version},values:{},submitButton:submit,attributes,
   querySelector:()=>submit,
   querySelectorAll:selector=>selector==='[name=courseIds]'?courseIds.map(value=>({value})):[cancel,submit],
@@ -645,9 +646,9 @@ test('switching shared student identities never inherits the previous local phon
 });
 
 test('a full browser storage quota cannot block applying acknowledged shared course data',async()=>{
- const a=await sharedApp(),originalSet=a.ctx.localStorage.setItem;
- a.ctx.localStorage.removeItem('beamal-demo-v1-before-shared');
- a.ctx.localStorage.setItem=(key,value)=>{if(key==='beamal-demo-v1-before-shared')throw Object.assign(new Error('Storage quota exceeded'),{name:'QuotaExceededError'});return originalSet(key,value)};
+ let attempts=0;
+ const a=await sharedApp({}, {'beamal-demo-v1':JSON.stringify(app().read('db'))},{localWriteError:key=>{if(key==='beamal-demo-v1-before-shared'){attempts++;return Object.assign(new Error('Storage quota exceeded'),{name:'QuotaExceededError'})}return null}});
+ assert.ok(attempts>0,'The failed backup write must actually occur, rather than only installing an unused failure mock');
  const saved={...copy(sharedTestCourse),courseName:'Server acknowledged course',version:2};
  a.ctx.savedServerCourses=[saved];
  assert.doesNotThrow(()=>a.set('applySharedCourses(savedServerCourses)'));
@@ -816,4 +817,237 @@ test('a failed startup health check recovers on login and registers exactly one 
  await a.set('initialiseSharedService()');
  await a.submit('login',loginForm.values,loginForm);
  assert.equal(intervals.length,1);assert.equal(events.filter(event=>event.type==='focus').length,1);
+});
+
+const sharedTestMaterial={id:'qa-material',courseId:'qa-course',name:'Preparation material',description:'Bring a sketchbook.',videoLinks:['https://example.test/video'],visibleToStudents:false,studentDownload:false,owner:{id:sharedTestUser.id,displayName:sharedTestUser.displayName},version:1,createdAt:'2026-10-14T00:00:00Z',updatedAt:'2026-10-14T00:00:00Z'};
+async function materialsApp(){
+ const a=await sharedApp(),records=[copy(sharedTestMaterial)];let reads=0;
+ a.client.materials=async()=>{reads++;return {materials:copy(records)}};
+ a.client.saveMaterial=async(courseId,record,current,operationKey)=>{
+  a.calls.push({operation:'material',courseId,record:copy(record),current:current?copy(current):null,operationKey});
+  const saved={...record,id:current?.id||'qa-created-material',courseId,owner:copy(sharedTestMaterial.owner),version:current?current.version+1:1,createdAt:sharedTestMaterial.createdAt,updatedAt:'2026-10-14T01:00:00Z'};
+  const index=records.findIndex(item=>item.id===saved.id);if(index<0)records.push(saved);else records[index]=saved;
+  return {material:copy(saved)};
+ };
+ a.set("location.pathname='/account/courses/qa-course';courseDetailTab='materials';render()");
+ await a.set("refreshCourseMaterials('qa-course',{paint:false})");a.set('render()');
+ return {...a,records,getReads:()=>reads};
+}
+function materialForm({recordId='',version='',links=['https://example.test/video'],operationKey='stable-material-operation'}={}){
+ const form=sharedForm('material-editor',{recordId,version}),query=form.querySelectorAll;
+ form.dataset.courseId='qa-course';form.dataset.operationKey=operationKey;
+ form.querySelectorAll=selector=>selector==='[name=materialVideoLink]'?links.map(value=>({value})):query(selector);
+ form.values={name:'Saved material',description:'Written preparation',visibleToStudents:'on',studentDownload:'on'};
+ return form;
+}
+
+test('course materials load once, show bilingual escaped metadata and keep attachments and lesson sharing visibly unavailable',async()=>{
+ const a=await materialsApp();assert.equal(a.getReads(),1);
+ const bad='<img src=x onerror=alert(1)>';
+ a.records[0]={...a.records[0],name:bad,description:'<script>alert(1)</script>',owner:{id:'qa-admin',displayName:'Owner <unsafe>'}};
+ await a.set("refreshCourseMaterials('qa-course',{force:true})");
+ let html=a.nodes['#app'].innerHTML;
+ assert.match(html,/&lt;img src=x onerror=alert\(1\)&gt;/);assert.match(html,/Owner &lt;unsafe&gt;/);
+ assert.doesNotMatch(html,/<img src=x onerror|<script>alert\(1\)<\/script>/);
+ assert.match(html,/Uploaded on/);assert.match(html,/Hidden from students/);
+ a.set("openMaterialEditor('qa-material')");html=a.nodes['#modal-root'].innerHTML;
+ assert.match(html,/name="name"[^>]*value="&lt;img/);assert.match(html,/name="studentDownload"[^>]*disabled/);
+ assert.match(html,/<select disabled>/);assert.match(html,/<button[^>]*disabled>Choose files/);
+ a.set("lang='zh';modal='';render()");html=a.nodes['#app'].innerHTML;
+ assert.match(html,/教材/);assert.match(html,/擁有人/);assert.match(html,/上載日期/);
+});
+
+test('a teacher opens materials as read-only safe links and cannot create or submit manager edits',async()=>{
+ const a=await materialsApp();
+ a.ctx.testCourse=copy(sharedTestCourse);
+ a.records[0]={...a.records[0],videoLinks:['javascript:alert(1)','https://example.test/safe-video','https://user:password@example.test/private-video']};
+ a.set("applySharedUser({id:'qa-teacher',email:'teacher@example.test',displayName:'Teacher',role:'teacher'});applySharedCourses([testCourse])");
+ await a.set("refreshCourseMaterials('qa-course',{paint:false})");
+ a.set("openMaterialEditor('qa-material')");
+ const html=a.nodes['#modal-root'].innerHTML;
+ assert.match(html,/Material details/);assert.doesNotMatch(html,/id="material-editor"|type="submit"/);
+ assert.match(html,/href="https:\/\/example\.test\/safe-video"/);assert.match(html,/rel="noopener noreferrer"/);
+ assert.doesNotMatch(html,/javascript:|user:password|private-video/);
+ a.set("modal='';openMaterialEditor()");assert.equal(a.read('modal'),'');
+ const form=materialForm({recordId:'qa-material',version:'1'});await a.submit(form.id,form.values,form);
+ assert.equal(a.calls.filter(call=>call.operation==='material').length,0);
+});
+
+test('hiding material visibility clears and disables student download and invalid links never reach the shared service',async()=>{
+ const a=await materialsApp(),download={checked:true,disabled:false},form=materialForm();
+ const query=form.querySelector;form.querySelector=selector=>selector==='[name=studentDownload]'?download:query(selector);
+ a.change('visibleToStudents','',{checked:false,closest:selector=>selector==='#material-editor'?form:null});
+ assert.equal(download.checked,false);assert.equal(download.disabled,true);
+ a.change('visibleToStudents','',{checked:true,closest:selector=>selector==='#material-editor'?form:null});
+ assert.equal(download.disabled,false);assert.equal(download.checked,false);
+ for(const links of [['javascript:alert(1)'],['https://user:password@example.test/private'],Array.from({length:21},()=> 'https://example.test/video')]){
+  const badForm=materialForm({links});await a.submit(badForm.id,badForm.values,badForm);
+  assert.match(a.nodes['#material-editor-error'].textContent,/http|20/);
+ }
+ assert.equal(a.calls.filter(call=>call.operation==='material').length,0);
+});
+
+test('material edits retain the opened version and operation key after a background update and rejected save',async()=>{
+ const a=await materialsApp();a.set("openMaterialEditor('qa-material')");
+ const html=a.nodes['#modal-root'].innerHTML,version=html.match(/data-version="([^"]+)"/)?.[1];assert.equal(version,'1');
+ a.records[0]={...a.records[0],name:'Another manager changed the material',version:2};
+ await a.set("refreshCourseMaterials('qa-course',{paint:false,force:true})");
+ let sent;
+ a.client.saveMaterial=async(courseId,record,current,operationKey)=>{sent={courseId,current:copy(current),operationKey};throw serviceError(409,'VERSION_CONFLICT')};
+ const form=materialForm({recordId:'qa-material',version});await a.submit(form.id,form.values,form);
+ assert.equal(sent.current.version,1);assert.equal(sent.operationKey,'stable-material-operation');
+ assert.match(a.nodes['#material-editor-error'].textContent,/changed|latest/);
+ assert.ok(a.read('modal'));assert.equal(form.submitButton.disabled,false);
+ assert.equal(a.read("materialCaches.get('qa-course').items[0].version"),2);
+});
+
+test('material retry preserves the draft and operation key and an acknowledged save needs no extra GET',async()=>{
+ const a=await materialsApp();a.set('openMaterialEditor()');const form=materialForm();
+ let attempts=0;const save=a.client.saveMaterial,keys=[];
+ a.client.saveMaterial=async(...args)=>{keys.push(args[3]);if(attempts++===0)throw serviceError(0,'connection_failed');return save(...args)};
+ const reads=a.getReads();await a.submit(form.id,form.values,form);
+ assert.ok(a.read('modal'));assert.equal(form.values.name,'Saved material');assert.equal(form.submitButton.disabled,false);
+ assert.match(a.nodes['#material-editor-error'].textContent,/connect|retry|retained/i);
+ await a.submit(form.id,form.values,form);
+ assert.deepEqual(keys,['stable-material-operation','stable-material-operation']);
+ assert.equal(a.read('modal'),'');assert.equal(a.getReads(),reads);
+ assert.equal(a.read("materialCaches.get('qa-course').items.some(item=>item.id==='qa-created-material')"),true);
+ assert.match(a.nodes['#app'].innerHTML,/Saved material/);assert.ok(a.messages.includes('Material saved'));
+});
+
+test('a pending material write blocks closing and an older read cannot erase the acknowledged material',async()=>{
+ const a=await materialsApp(),read=deferred(),save=deferred(),old=copy(a.records);
+ a.client.materials=()=>read.promise;const pendingRead=a.set("refreshCourseMaterials('qa-course',{paint:false})");
+ a.set('openMaterialEditor()');a.client.saveMaterial=()=>save.promise;
+ const form=materialForm(),pendingSave=a.submit(form.id,form.values,form);
+ assert.equal(a.read('materialSaving'),true);assert.equal(form.submitButton.disabled,true);
+ await a.click({action:'close'});assert.ok(a.read('modal'));a.keydown('Escape');assert.ok(a.read('modal'));
+ const created={...copy(sharedTestMaterial),id:'qa-created-material',name:'Saved during old read'};save.resolve({material:created});await pendingSave;
+ read.resolve({materials:old});await pendingRead;
+ assert.equal(a.read('modal'),'');assert.equal(a.read('materialSaving'),false);
+ assert.equal(a.read("materialCaches.get('qa-course').items.some(item=>item.id==='qa-created-material')"),true);
+});
+
+test('material unauthorized errors clear private state and delayed errors from an old identity do not sign out the new one',async()=>{
+ const a=await materialsApp();a.set("openMaterialEditor('qa-material')");
+ a.client.materials=async()=>{throw serviceError(401,'AUTH_REQUIRED')};
+ await a.set("refreshCourseMaterials('qa-course',{force:true})");
+ assert.equal(a.read('authUser'),null);assert.equal(a.read('modal'),'');assert.equal(a.read('materialCaches.size'),0);assert.equal(a.read('location.pathname'),'/login');
+ const b=await materialsApp(),old=deferred();b.client.materials=()=>old.promise;
+ const pending=b.set("refreshCourseMaterials('qa-course')");await b.set('sharedLogout()');
+ b.set("applySharedUser({id:'new-student',displayName:'New student',email:'new@example.test',role:'student'})");
+ old.reject(serviceError(401,'AUTH_REQUIRED'));await pending;
+ assert.equal(b.read('authUser.id'),'new-student');assert.equal(b.read('materialCaches.size'),0);
+});
+
+test('older acknowledged course and fee receipts never downgrade records already refreshed to a higher version',async()=>{
+ const a=await sharedApp(),newFee={...copy(sharedTestFee),version:3,price:900},newCourse={...copy(sharedTestCourse),version:5,courseName:'Newest title',price:900,fees:[newFee]};
+ a.ctx.newFee=newFee;a.ctx.newCourse=newCourse;a.ctx.oldFee=copy(sharedTestFee);a.ctx.oldCourse=copy(sharedTestCourse);
+ a.set('sharedFees=[newFee];applySharedCourses([newCourse]);applyFeeAcknowledgement({fee:oldFee,courses:[oldCourse]});applyCourseAcknowledgement(oldCourse)');
+ assert.equal(a.read('db.courseSettings[0].version'),5);assert.equal(a.read('db.courseSettings[0].courseName'),'Newest title');
+ assert.equal(a.read('sharedFees[0].version'),3);assert.equal(a.read('sharedFees[0].price'),900);
+});
+
+test('unchanged compact catalog replies reuse the hydrated record and still flush an earlier postponed view update',async()=>{
+ const a=await sharedApp(),requests=[],compact=copy(sharedTestCourse);
+ for(const field of ['fees','feeName','pricingModel','price','months','duration','packageType','packageTotal','bookingExpiry','onlineStore'])delete compact[field];
+ compact.courseName='Compact catalog latest title';compact.version=2;
+ a.client.catalog=async revision=>{requests.push(revision);return requests.length===1?{revision:'catalog-r2',courses:[compact],fees:[copy(sharedTestFee)]}:{revision:'catalog-r2',unchanged:true}};
+ a.ctx.document.activeElement={matches:()=>true};await a.set('refreshSharedCourses()');
+ assert.equal(a.read('db.courseSettings[0].price'),300);assert.equal(a.read('db.courseSettings[0].fees[0].id'),'qa-fee');
+ assert.doesNotMatch(a.nodes['#app'].innerHTML,/Compact catalog latest title/);
+ a.ctx.document.activeElement=null;await a.set('refreshSharedCourses()');
+ assert.deepEqual(requests,['','catalog-r2']);assert.match(a.nodes['#app'].innerHTML,/Compact catalog latest title/);
+ assert.equal(a.read('db.courseSettings[0].version'),2);
+});
+
+test('shared startup preserves the exact original local data before sanitizing and a failed backup never destroys the original',async()=>{
+ const original=app().read('db');
+ original.courseSettings=[{id:'legacy-personal-course',courseName:'Original local course',feeName:'Original local fee',pricingModel:'fixed-monthly',price:850,months:2}];
+ original.student={name:'Original local student',email:'original@example.test',phone:'81234567',remark:'Original profile information'};
+ const raw=JSON.stringify(original,null,2),existingBackup='{"untouched":"An earlier retained backup"}';
+ for(const mode of ['new backup','existing backup','quota failure','latest backup quota failure']){
+  const existing=mode==='existing backup'||mode==='latest backup quota failure';
+  const seed={'beamal-demo-v1':raw};if(existing)seed['beamal-demo-v1-before-shared']=existingBackup;
+  let rejectedWrites=0,healthCalls=0;
+  const rejectedKey=mode==='quota failure'?'beamal-demo-v1-before-shared':mode==='latest backup quota failure'?'beamal-demo-v1-before-shared-latest':null;
+  const options={localWriteError:key=>{if(key===rejectedKey){rejectedWrites++;return Object.assign(new Error('Backup quota is full'),{name:'QuotaExceededError'})}return null}};
+  const a=await sharedApp({health:async()=>{healthCalls++;return {mode:'shared-test'}}},seed,options);
+  assert.equal(healthCalls,1,mode);assert.equal(a.read('authUser.id'),sharedTestUser.id,mode);
+  assert.equal(a.read('db.courseSettings[0].id'),'qa-course',`${mode}: server data must still load`);
+  a.set('save()');
+  if(rejectedKey){
+   assert.ok(rejectedWrites>0);
+   assert.equal(a.ctx.localStorage.getItem('beamal-demo-v1'),raw,'Failed backup must not allow the original primary value to be scrubbed');
+   assert.equal(a.ctx.localStorage.getItem('beamal-demo-v1-before-shared'),existing?existingBackup:null);
+   assert.equal(a.ctx.localStorage.getItem('beamal-demo-v1-before-shared-latest'),null);
+  }else{
+   assert.equal(a.ctx.localStorage.getItem('beamal-demo-v1-before-shared'),existing?existingBackup:raw,'Back up the original bytes, including its local course and profile, without replacing an earlier backup');
+   assert.equal(a.ctx.localStorage.getItem('beamal-demo-v1-before-shared-latest'),existing?raw:null,'When an earlier backup differs, the current original must have its own complete recoverable copy before the primary value is sanitized');
+   const sanitized=JSON.parse(a.ctx.localStorage.getItem('beamal-demo-v1'));
+   assert.deepEqual(sanitized.courseSettings,[]);assert.deepEqual(sanitized.student,{name:'',email:'',phone:''});
+   assert.doesNotMatch(JSON.stringify(sanitized),/Original local course|Original local student|original@example\.test/);
+  }
+ }
+});
+
+test('a retained valid session automatically leaves the login form after service recovery without submitting credentials again',async()=>{
+ let healthy=false,healthCalls=0,sessionCalls=0,loginCalls=0;
+ const client={
+  health:async()=>{healthCalls++;if(!healthy)throw serviceError(503,'service_unavailable');return {mode:'shared-test'}},
+  session:async()=>{sessionCalls++;return {user:copy(sharedTestUser)}},
+  login:async()=>{loginCalls++;return {user:copy(sharedTestUser)}},
+  courses:async()=>({courses:[copy(sharedTestCourse)]}),fees:async()=>({fees:[copy(sharedTestFee)]}),
+ };
+ const offline=app({},'2026-10-14T12:00:00',false,client,{pathname:'/login'});
+ for(let turn=0;turn<30&&!offline.read('sharedReady');turn++)await Promise.resolve();
+ assert.equal(offline.read('location.pathname'),'/login');assert.match(offline.nodes['#app'].innerHTML,/id="login"/);
+ assert.equal(sessionCalls,0);
+ // Reloading the UI uses the same retained cookie through session(); it must not require a second login POST.
+ healthy=true;
+ const reloaded=app({},'2026-10-14T12:00:00',false,client,{pathname:'/login'});
+ for(let turn=0;turn<30&&!reloaded.read('sharedReady');turn++)await Promise.resolve();
+ assert.equal(healthCalls,2);assert.equal(sessionCalls,1);assert.equal(loginCalls,0);
+ assert.equal(reloaded.read('authUser.id'),sharedTestUser.id);
+ assert.equal(reloaded.read('location.pathname'),'/account');
+ assert.match(reloaded.nodes['#app'].innerHTML,/Shared studio/);
+ assert.doesNotMatch(reloaded.nodes['#app'].innerHTML,/id="login"/);
+});
+
+for(const scenario of [
+ {label:'course create',formId:'create-course-editor',errorId:'create-course-error',method:'saveCourse',open:'openCreateCourse()',invoke:'persistSharedCourse(pendingWriteInput,null)',recordId:'',input:()=>({...copy(sharedTestCourse),courseName:'Old manager draft'})},
+ {label:'fee edit',formId:'fee-editor',errorId:'fee-editor-error',method:'saveFee',open:"openFeeEditor('qa-fee')",invoke:'saveSharedFee(pendingWriteInput,pendingWriteForm)',recordId:'qa-fee',input:sharedFeeInput},
+ {label:'course metadata edit',formId:'course-metadata-editor',errorId:'course-metadata-error',method:'updateCourseMetadata',open:"openCourseMetadataEditor('qa-course')",invoke:'saveCourseMetadata(pendingWriteInput,pendingWriteForm)',recordId:'qa-course',input:()=>({courseName:'Old manager draft',category:'Art',level:'Beginner'})},
+])test(`a pending ${scenario.label} safely ignores late failures after polling signs out the old identity and removes its real form`,async()=>{
+ for(const status of [503,409,401]){
+  const a=await sharedApp(),write=deferred(),form=sharedForm(scenario.formId,{recordId:scenario.recordId,version:'1'}),oldError={textContent:''};
+  a.set(scenario.open);form.isConnected=true;
+  a.nodes[`#${scenario.formId}`]=form;a.nodes[`#${scenario.errorId}`]=oldError;
+  const query=a.ctx.document.querySelector,removedSelector=new RegExp(`^#(?:${scenario.formId}|${scenario.errorId})(?:$|\\s)`);
+  // Unlike the legacy harness, a removed real DOM form must not manufacture
+  // an error node when an old request eventually rejects.
+  a.ctx.document.querySelector=selector=>!form.isConnected&&removedSelector.test(selector)?null:query(selector);
+  let writes=0;a.client[scenario.method]=()=>{writes++;return write.promise};
+  a.ctx.pendingWriteInput=scenario.input();a.ctx.pendingWriteForm=form;
+  const pending=a.set(scenario.invoke);
+  assert.equal(writes,1);assert.equal(a.read('courseSaving'),true);assert.equal(form.submitButton.disabled,true);
+  a.client.courses=async()=>{throw serviceError(401,'AUTH_REQUIRED')};
+  await a.set('refreshSharedCourses()');
+  assert.equal(a.read('authUser'),null);assert.equal(a.read('modal'),'');assert.equal(a.read('location.pathname'),'/login');
+  assert.doesNotMatch(a.nodes['#app'].innerHTML,new RegExp(`id="${scenario.formId}"`),'The login page must remove the old form from the rendered document');
+  form.isConnected=false;delete a.nodes[`#${scenario.formId}`];delete a.nodes[`#${scenario.errorId}`];
+  assert.equal(a.ctx.document.querySelector(`#${scenario.formId}`),null);
+  assert.equal(a.ctx.document.querySelector(`#${scenario.errorId}`),null);
+  a.ctx.nextCourse={id:'new-account-course',courseCode:'CO-NEW',courseName:'New manager course',category:'Art',level:'Beginner',version:5,feeIds:[],fees:[],feeName:'',createdAt:sharedTestCourse.createdAt,updatedAt:sharedTestCourse.updatedAt};
+  a.set("applySharedUser({id:'next-admin',displayName:'Next manager',email:'next@example.test',role:'admin'});applySharedCourses([nextCourse]);location.pathname='/account';tab='catalog';render()");
+  const currentView=a.nodes['#app'].innerHTML,currentGeneration=a.read('sharedGeneration');
+  write.reject(serviceError(status,status===401?'AUTH_REQUIRED':status===409?'VERSION_CONFLICT':'service_unavailable'));
+  await assert.doesNotReject(pending,`${scenario.label}: the removed old form must not cause a TypeError for status ${status}`);
+  assert.equal(a.read('authUser.id'),'next-admin');assert.equal(a.read('sharedGeneration'),currentGeneration);
+  assert.equal(a.read('location.pathname'),'/account');assert.equal(a.read('courseSaving'),false);
+  assert.equal(a.nodes['#app'].innerHTML,currentView,'An old failure must not replace the new identity view with a login or error');
+  assert.equal(a.read('db.courseSettings[0].courseName'),'New manager course');
+  assert.equal(oldError.textContent,'');assert.equal(a.nodes[`#${scenario.errorId}`],undefined);
+  assert.deepEqual(a.messages,[],'An old failure must not emit an error or saved notification for the new identity');
+ }
 });

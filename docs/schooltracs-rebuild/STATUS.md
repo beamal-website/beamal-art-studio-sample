@@ -16,7 +16,7 @@
 | 推送現有 test | 已完成 | 本機與遠端提交編號相同 |
 | Courses／Fees 參考研究 | 第一輪完成，整頁進行中 | 建立、三種收費及同課程多費用有保存證據；教材表單已觀察，設定及還原待補查 |
 | 帳戶與共用資料基礎 | 此切片已驗證 | 真正登入、共享 Courses／Fees、明確操作命令；其他模組待接入 |
-| 獨立驗收 | 核心保存、課程生命週期、排課範圍、老師讀取及 Applicant 檔案基礎已有限定證據，整頁仍未通過 | 最新完整測試 424／424、build 成功；各輪真正畫面及未測界限見下方最新檢查點。正式 Student／Family／報名／付款／逐學生課務等主要依賴仍待完成 |
+| 獨立驗收 | 核心保存、課程生命週期、排課範圍、老師讀取及 Applicant 檔案基礎已有限定證據，整頁仍未通過 | 最新完整測試 469／469、build 成功；各輪真正畫面及未測界限見下方最新檢查點。正式 Student／Family／報名／付款／逐學生課務等主要依賴仍待完成 |
 | 基準測試及打包 | 已通過 | 修改前 128 項測試及 Vite 打包通過 |
 
 ## 驗收記錄格式
@@ -149,3 +149,19 @@
 - 真畫面新增與修改 v1→v2、兩 Contact、生日／空值／推廣、重載及第二 Admin 分頁持久性、Teacher 直連拒讀、390×844 中英文、鍵盤取消及未儲存 Back 均有限驗證。獨立修正晚到版本降級、403 私人資料殘留、已提交搜尋焦點及新查詢短暫舊 0 筆，修正先有失敗證據再驗通過。
 - 最後凍結來源依序完整 `npm test --prefix sample` **424／424 通過，0 fail／skip／cancel，42.371 秒**及 build **2.28 秒成功**，兩者 exit 0。300 Applicant 分頁是隔離 HTTP 測試，並非 300 active Students、Family 或全系統流暢度大檢查。
 - 詳細來源、證據與未完成清單見 [People 檢查點](people-profile-checkpoint.md)。先繼續完成課程＋時間表的正式人物、報名／配額／逐學生課務關聯；Family、Trial、Order、Payment、Receipt、通知和其他模組仍在完整 Goal。main／AGENTS.md／原提案不改，提交及推送結果以實際 Git 核對為準。
+
+## 2026-10-15 最新：Overall Available Slots 與匿名公開投影
+
+- Admin 的正式 Slot 新增／修改、內部課表／Course Details 與真正匿名公開詳情使用同一固定 Slot ID；獨立時段用正式資源，linked 讀實際單堂，來源取消／缺失不公開為可約。Teacher只讀本人／明確授權資料；公開白名單不含備註、人物、資源ID或管理版本。
+- Total／Trial／Rescheduling配置及公開／隱藏設定可保存，公共日期窗口固定7天；Total合算與正式班內使用數未知，不填假0。沒有訪客TrialSubmit／Reservation寫入API；shared舊Join／Paid已封閉，明示申請未開放。
+- 新增15主流程、3SDK、15純畫面及11真HTTP；既有Teacher scope9條亦通過。獨立前端全檔260／260（11.3006秒），Root完整468／468（69.7004秒、exit0、0 fail／cancel／skip／todo）。上述468為後續sidebar／changed paint修正前；首次依序build3.90秒exit0，最後完整重跑／build及真正畫面仍待Root提供。
+- 已重現並修正舊詳情錯誤關新視窗、離頁／返回原頁後舊opening彈窗、unchanged更新丟焦點三項問題。保存後列表失敗保留目前範圍同ID ACK，不誘發重建；較新版本與普通課19:45有回歸。
+- 規格與界限見[Availability檢查點](availability-checkpoint.md)。Total公式／Trial必填／StudentConvert等問答待決，不阻止可獨立的已確認工作；未啟用相依動作不列minor。整111項、300 active學生、整頁及完整Goal仍進行中；本段不填未知提交／推送結果。
+
+本片後續最新全套重跑為 **445／469，24 fail**（`/tmp/beamal-availability-final-test.log`），Root正在修正；上方468／首次build保留為先前結果，不代表目前來源已全過。最後重跑及build仍待提供，不用指定案例通過掩蓋最新完整失敗。
+
+限定grid恢復只在Availability頁後，獨立前端全檔已真正重跑 **261／261，8.3393秒、exit0**（flows240＋SDK21，保留全部舊斷言）；完整npm及最新build仍待Root提供，不能將這個前端套件當作全套通過。
+
+**最後完整測試更新：** 上方445／469失敗及首次468結果保留為歷史；限定修正後Root已真正重跑 **469／469，56.8668秒、exit0、0 fail／cancel／skip／todo**（`/tmp/beamal-availability-final-green-test.log`）。隨後最後build仍進行，不沿用首次3.90秒作最新build。Root已有Admin同Slot ID建立／改17:00／hide→default、真正Teacher唯讀、匿名同ID及無內部remark、全域Rescheduling展示、public390中英文及英文Admin表單有限畫面證據；Cancel／Back、匿名Hide、最新側邊導航等仍待補。Chrome中斷後17:00以無cookie HTTP／內建瀏覽器核對，linked／Full fixture畫面與300 active未宣稱通過；完整界限見[檢查點](availability-checkpoint.md)。
+
+**本片最後狀態（2026-10-15）：** 最後來源469／469、56.8668秒、exit0；隨後依序build 5.47秒、exit0。中途445／469是已修正並重跑的歷史結果。最新實際畫面已補Admin同ID17:00與hide/default、無cookie隱藏404、公開手機0 Slot與恢復自動同步、Teacher只讀、390中英文管理表單、Tab／Escape／Cancel／Back不保存、People詳情轉時間表正常。詳見[Availability檢查點](availability-checkpoint.md)。尚未完成TrialSubmit、Total合算、Linked／Full真正畫面、整111項及300 active；完整Goal持續進行。

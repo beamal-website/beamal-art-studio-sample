@@ -99,3 +99,19 @@
 已有 Admin 共用 Applicant 檔案 CRUD、基本個人／兩 Contact、固定人物 ID、搜尋排序分頁及修改記錄；不再把新增共享人員寫入舊示範名冊。真正新增／修改／重載／第二 Admin 分頁、Teacher 直連拒讀、手機雙語、取消與 Back 已限定驗證，最後全套424／424及build成功。
 
 來源 Student Create 僅查看空表格後取消，沒有測來源保存／學號／頭像／會員；Notion 額外要求的手動 Convert／直接建立既有學生資格仍等使用者回答，所以目前只建立 Applicant、Convert API 404。Profile 修改記錄不是試堂／課務／付款歷史；Family、Teacher 人物負責範圍、Enrollment／配額／Student Session 仍缺，既有 Student 只在隔離資料測讀寫。本切片不宣稱完整 Students、Courses／Timetable 整頁或 300 active 本機大檢查通過。細節見 [People 檢查點](people-profile-checkpoint.md)。
+
+## 2026-10-15 後續：同源 Available Slot 管理與公開展示
+
+Notion正式Overall Slot已與班次排課分開：Admin可新增獨立時段或引用穩定單堂，Course／Timetable與真正匿名Course Details按同一Slot ID顯示。公開固定7天，Trial／Rescheduling展示及Full開關只改可見性，不改內部內容；不是從舊bookings推算的公開時段，也不是完整訪客Trial流程。
+
+新15flow／3SDK、純UI15／15、真Slot HTTP11／11與原Teacher access9／9通過；前端全檔260／260。Root完整468／468（69.7004秒、exit0、零失敗／跳過／取消／todo）已提供；首次依序build3.90秒成功；468及此build在後續sidebar／changed paint修正前，最後重跑與畫面仍待結果。三項真競態／重畫問題已先重現再修正：舊A503關B、離頁／A→B→A後舊opening彈窗、unchanged丟DOM／焦點。原普通課19:45與較晚Available Slot可見性分別驗證。
+
+三容量配置保存不等於合算政策已定，Total使用數與正式班內佔用仍未知；TrialSubmit立即搶位／Reject釋位、結果／To-do／通知、Enrollment、StudentSession、Convert、Family與測試付款仍是必要主流程。待決問答不把整Goal暫停，相依動作不得按猜測規則開放。後續畫面與完整界限見[本片檢查點](availability-checkpoint.md)，歷史差距表、111項和300 active大檢查門檻保留。
+
+本片後續最新全套重跑為 **445／469，24 fail**（`/tmp/beamal-availability-final-test.log`），Root正在修正；上方468／首次build保留為先前結果，不代表目前來源已全過。最後重跑及build仍待提供，不用指定案例通過掩蓋最新完整失敗。
+
+限定grid恢復只在Availability頁後，獨立前端全檔已真正重跑 **261／261，8.3393秒、exit0**（flows240＋SDK21，保留全部舊斷言）；完整npm及最新build仍待Root提供，不能將這個前端套件當作全套通過。
+
+**最後完整測試更新：** 上方445／469失敗及首次468結果保留為歷史；限定修正後Root已真正重跑 **469／469，56.8668秒、exit0、0 fail／cancel／skip／todo**（`/tmp/beamal-availability-final-green-test.log`）。隨後最後build仍進行，不沿用首次3.90秒作最新build。Root已有Admin同Slot ID建立／改17:00／hide→default、真正Teacher唯讀、匿名同ID及無內部remark、全域Rescheduling展示、public390中英文及英文Admin表單有限畫面證據；Cancel／Back、匿名Hide、最新側邊導航等仍待補。Chrome中斷後17:00以無cookie HTTP／內建瀏覽器核對，linked／Full fixture畫面與300 active未宣稱通過；完整界限見[檢查點](availability-checkpoint.md)。
+
+Availability本片最後驗證：469／469後依序build成功5.47秒；Admin／Teacher／匿名、同ID公开与隐藏、390雙語、鍵盤及返回限定畫面已补。[完整邊界及證據](availability-checkpoint.md)列明TrialSubmit／Total公式、Linked／Full真正畫面與300 active仍未通過，並非整個系統驗收完成。

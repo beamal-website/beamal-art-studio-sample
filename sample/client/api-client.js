@@ -76,6 +76,35 @@ export function createApiClient() {
     logout: () => mutateAuth(async epoch => { const result = await request('/auth/logout', { method: 'POST', authOperation: 'logout' }); if (epoch === authEpoch) csrfToken = ''; return result; }),
     courses: () => request('/courses'),
     fees: () => request('/fees'),
+    availability(range, revision = '') {
+      const query = new URLSearchParams();
+      for (const key of ['from', 'to', 'courseId']) if (range?.[key]) query.set(key, range[key]);
+      if (revision) query.set('since', revision);
+      return request(`/available-slots?${query}`);
+    },
+    availableSlot: id => request(`/available-slots/${encodeURIComponent(id)}`),
+    saveAvailableSlot(profile, current, operationKey) {
+      return request(current ? `/available-slots/${encodeURIComponent(current.id)}` : '/available-slots', {
+        method: current ? 'PATCH' : 'POST',
+        body: { ...profile, ...(current ? { version: current.version } : {}) },
+        idempotencyKey: operationKey,
+      });
+    },
+    availabilityPublicSettings: () => request('/availability-public-settings'),
+    saveAvailabilityPublicSettings(settings, current, operationKey) {
+      return request('/availability-public-settings', {
+        method: 'PATCH',
+        body: { showFullTrialSlots: settings.showFullTrialSlots, showReschedulingSlots: settings.showReschedulingSlots, version: current.version },
+        idempotencyKey: operationKey,
+      });
+    },
+    publicCourses: (revision = '') => request(`/public/courses${revision ? '?since=' + encodeURIComponent(revision) : ''}`),
+    publicCourseDetails(id, from, revision = '') {
+      const query = new URLSearchParams();
+      if (from) query.set('from', from);
+      if (revision) query.set('since', revision);
+      return request(`/public/courses/${encodeURIComponent(id)}${query.size ? '?' + query : ''}`);
+    },
     people: (query = {}, revision = '') => {
       const parameters = new URLSearchParams();
       for (const field of ['kind', 'q', 'page', 'pageSize', 'sort', 'direction']) {

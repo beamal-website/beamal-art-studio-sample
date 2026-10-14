@@ -199,3 +199,19 @@ Admin 顯示名稱為本切片識別資料的必填；其餘個人欄位可留�
 已驗資料保護包括多人版本衝突、重試不重複、管理修改記錄與保存一起成功／撤回、重啟持久性，以及身份／權限失效時清除私有名冊、檔案、History、表單及晚到回覆。People 的 300 Applicant 真 HTTP 分頁是限定資料基礎驗證，不能代替 300 active Student＋家庭＋付款＋課務的端到端規模測試。Root 已完成實際 Admin 新增／兩 Contact 修改、第二 Admin 分頁、Teacher直連拒讀、手機390中英文／鍵盤取消及未保存Back；最後完整424/424與隨後build成功。較早420次紀錄、最後精確時間及所有證據界限見 [People 檢查點](people-profile-checkpoint.md)。
 
 Clock、Payroll、Leave、代班與內部 Remarks 的已確認需求及待定政策亦不因本次檔案基礎改變；本機驗收、未來 server／iOS 共用接口的總體邊界維持原規格。
+
+## 2026-10-15 Availability前置追加：操作63列門檻不變
+
+正式Overall Slot可Admin管理並按同ID向匿名訪客投影、固定7天。這是申請／課務前置，沒有新增TrialRequest、Reservation寫入、Payment、Convert、Family或Staff操作；原63列與全111來源狀態不變。
+
+- **F／FAM／O：** Slot保存與Public Visibility不會Confirm Request／Confirm Payment／Convert、建立家庭／login／座位／課包。shared舊Join／Paid封閉，不把FPS人工核實、Receipt／PDF、Coupon、通知或正式入班標完成；直接Student／Convert前置待答。
+- **S／家庭：** 公開只有Course與Slot白名單，沒有人物／內部備註／排除名單。Teacher的Slot／派課讀權不等於全班學生／Family權；Registered Profile、Remaining、Enrollment History、續報與家長操作仍缺。
+- **ST／TM：** linked引用真單堂與資源，不是Leave／代班、Clock Events或Payroll。來源取消不可公開為可約，不由此推定缺席釋位、假期自動改座位／Full、扣薪或OT；內部remarks不傳匿名訪客。
+
+Total是否合算正式班學生、Trial必填／選填及StudentConvert不靠等待定案。相依動作未開放，其他已確認工作繼續，不把完整Goal標blocked或complete。15flow／3SDK／15pureUI／11新HTTP＋9原Teacheraccess通過，Root完整468／468（69.7004秒）已完成；首次build3.90秒成功；上述468／build在後續sidebar與changed paint修正前，最後全套／build與畫面待補。見[Availability檢查點](availability-checkpoint.md)；300 Applicant分頁不等於300 active學生／Family／付款課務規模驗收。
+
+本片後續最新全套重跑為 **445／469，24 fail**（`/tmp/beamal-availability-final-test.log`），Root正在修正；上方468／首次build保留為先前結果，不代表目前來源已全過。最後重跑及build仍待提供，不用指定案例通過掩蓋最新完整失敗。
+
+限定grid恢復只在Availability頁後，獨立前端全檔已真正重跑 **261／261，8.3393秒、exit0**（flows240＋SDK21，保留全部舊斷言）；完整npm及最新build仍待Root提供，不能將這個前端套件當作全套通過。
+
+**最後完整測試更新：** 上方445／469失敗及首次468結果保留為歷史；限定修正後Root已真正重跑 **469／469，56.8668秒、exit0、0 fail／cancel／skip／todo**（`/tmp/beamal-availability-final-green-test.log`）。隨後最後build仍進行，不沿用首次3.90秒作最新build。Root已有Admin同Slot ID建立／改17:00／hide→default、真正Teacher唯讀、匿名同ID及無內部remark、全域Rescheduling展示、public390中英文及英文Admin表單有限畫面證據；Cancel／Back、匿名Hide、最新側邊導航等仍待補。Chrome中斷後17:00以無cookie HTTP／內建瀏覽器核對，linked／Full fixture畫面與300 active未宣稱通過；完整界限見[檢查點](availability-checkpoint.md)。

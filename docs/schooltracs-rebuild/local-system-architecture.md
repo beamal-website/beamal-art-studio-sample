@@ -255,3 +255,29 @@ SQLite／API 負載可用真 HTTP 測試；頁面流暢必須另外以 300 學�
 直接建立／歷史 Student 與 Convert 的前置規則等待使用者答覆，沒有啟用 Convert endpoint／UI。試課、正式 Enrollment、家庭／電話登入與激活、Payment／Order／Receipt、剩餘堂數及學生課務仍須接入同一服務與權限邊界。
 
 證據見 [People 檢查點](people-profile-checkpoint.md)：真 HTTP 已驗跨 Admin 讀改、版本／重試、管理快照／交易失敗撤回、檔案資料庫重啟與隔離既有 Student 相容；300 Applicant 查詢／分頁測試不等於第 12 節的 300 active 學生完整負載。Root 已操作實際 Admin 新增與兩組聯絡人 v1→v2 修改、DOB 年齡 7、空日期及 promotion null→false，另完成 Teacher 直連拒讀、第二 Admin 分頁、手機390中英文／鍵盤取消及未保存 Back。新查詢載入狀態最後修正後完整424/424（42.371秒）及隨後build2.28秒均exit0；較早420次結果及各種證據界限在檢查點保留。
+
+## 2026-10-15 Overall Available Slots與public投影追加
+
+原第3／7節未有AvailableSlot層的基線已有限前置，Reservation交易、ClassSession／StudentSession與Total公式仍未完成。[available-slots.mjs](../../sample/server/available-slots.mjs)沿用同SQLite連線、交易、權限及receipt，保存available_slots、availability_public_settings、管理audit；availability_reservations僅供已有held事實投影／保護，本輪没有建立預約或TrialSubmit的HTTP入口。
+
+Slot ID與series ID分開。standalone保存course/date/time/duration及正式teacherIds／roomIds；linked引用series＋不可變sequence，經共用helper讀實際單堂。來源課程／排課／資源版本形成sourceVersions，列表revision含投影，故單堂移日／取消／Undo或資源改名即使不改Slot自身version，也能更新同ID。缺失／取消來源明確不可用，不偷換新Slot或公開舊時間。
+
+| API邊界 | 已落地用途 |
+|---|---|
+| /api/available-slots、/:id | Admin管理，Teacher按effective scope只讀；有界日期／course查詢、query-specific since、開表version、CSRF／Origin與穩定key。 |
+| /api/availability-public-settings | Admin保存兩boolean與版本（初始0），固定7天，不改Slot內容。 |
+| /api/public/courses、/:id?from= | 真匿名白名單，不依賴登入／private catalog／localStorage。Course僅id/courseName/category/level；Slot只傳準許公開事實。 |
+
+Teacher去除remark／excluded IDs，public再去除資源ID／source refs／version／操作者／人物。Rescheduling未達公開條件時省略該類全部欄位，不只隱藏文字；Slot派課／grant帶來的相關course/material權不反向放大同course所有時段。
+
+[availability-ui.js](../../sample/client/availability-ui.js)／src分private與匿名public cache，按身份／accessRevision及日期query隔離晚到回覆。可取消opening意圖在離頁／Back／A→B→A後失效；unchanged不換DOM／焦點。成功ACK是權威，後續GET503保留目前範圍的同ID并顯錯誤，不假報清單載入成功；ACKv2不降已讀v3。當前401／403先清private cache／editor，403立即重查身份。
+
+三容量只保存配置；新Slot兩類無預約數0，Total合算／ClassOccupied未知null。真Trial表格／Submit佔額／Reject釋額、To-do／通知、Convert等仍需正式業務交易；未決必填／公式不能由schema反推。shared Join／Paid示範封閉，避免第二套業務資料。
+
+證據為15新flow、3SDK、15pureUI、11新真HTTP＋9原Teacheraccess；獨立前端260／260、Root完整468／468（69.7004秒）通過。首次build3.90秒成功；468／此build為後續sidebar與changed paint修正前，最後重跑及真正畫面待Root回報，見[檢查點](availability-checkpoint.md)。未宣稱111項、300 active大檢查或server／iOS已交付，300 Applicant查詢不替代第12節完整負載。
+
+本片後續最新全套重跑為 **445／469，24 fail**（`/tmp/beamal-availability-final-test.log`），Root正在修正；上方468／首次build保留為先前結果，不代表目前來源已全過。最後重跑及build仍待提供，不用指定案例通過掩蓋最新完整失敗。
+
+限定grid恢復只在Availability頁後，獨立前端全檔已真正重跑 **261／261，8.3393秒、exit0**（flows240＋SDK21，保留全部舊斷言）；完整npm及最新build仍待Root提供，不能將這個前端套件當作全套通過。
+
+**最後完整測試更新：** 上方445／469失敗及首次468結果保留為歷史；限定修正後Root已真正重跑 **469／469，56.8668秒、exit0、0 fail／cancel／skip／todo**（`/tmp/beamal-availability-final-green-test.log`）。隨後最後build仍進行，不沿用首次3.90秒作最新build。Root已有Admin同Slot ID建立／改17:00／hide→default、真正Teacher唯讀、匿名同ID及無內部remark、全域Rescheduling展示、public390中英文及英文Admin表單有限畫面證據；Cancel／Back、匿名Hide、最新側邊導航等仍待補。Chrome中斷後17:00以無cookie HTTP／內建瀏覽器核對，linked／Full fixture畫面與300 active未宣稱通過；完整界限見[檢查點](availability-checkpoint.md)。

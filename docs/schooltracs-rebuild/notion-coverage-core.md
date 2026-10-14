@@ -176,3 +176,26 @@ F-01～F-07 的逐 ID 付款覆蓋由擴展清單承接；此處保留§7、9.3�
 - Root 已實際操作 Admin Applicant 新增及 v1→v2 修改，兩組聯絡人、DOB／年齡 7、空日期、推廣偏好 null→明確 false 可讀回；另完成 Teacher 直連拒讀、第二 Admin 分頁、手機390中英文／鍵盤取消及未保存 Back。最後新查詢首畫面已顯示 Loading、不閃舊0筆；完整424/424（42.371秒）與隨後build2.28秒成功。較早420次結果與來源／程式／畫面界限見 [People 檢查點](people-profile-checkpoint.md)，不把限定拒讀當成完整家庭／Teacher人物授權完成。
 
 Enrollment、Trial、家庭登入／激活、正式 Student 建立／Convert、付款、剩餘堂數及班內學生名單仍未由此切片完成；全規格與最終 4 老師／300 active 學生／6 課驗收繼續保留。
+
+## 2026-10-15 Overall Available Slots 追加（部分能力，原48列不改）
+
+上方「尚無正式AvailableSlot／公開讀示範班次」是原盤點基線，現由[本片規格](availability-spec.md)的獨立Slot與匿名投影取代。原48列、全111列來源狀態與完整門檻不變，不將帶依賴的整列標完成。
+
+| 需求範圍 | 新增有限能力與仍未完成 |
+|---|---|
+| **R-03／T-01** | Admin保存獨立／linked Overall Slot、三容量與兩資格；linked讀實際sequence，Slot ID不借series ID。排除Student ID只供Admin API／原值保留，最終預約校驗、Total合算／Class學生扣額與Submit高併發仍缺。 |
+| **R-01／R-04／W-05** | Teacher本人／grant只讀Slot，不收內部remark／exclusions；匿名更無私人ID／版本。Teacher指定範圍編輯及Public管理授權未建，Admin能寫不算整列完成。 |
+| **W-04／W-06** | Course Details同正式Slot白名單投影；defaultTrial／hide／show／全域Rescheduling分開。顯示不改內部內容，未建Reservation動作，公開可見不等於可預約交易已完成。 |
+| **W-07** | TrialFull預設隱藏、開關顯Full，公開Course不因七日內Full假消失；隔離held fixture已驗。真Submit競位、Reject回復、Absent不釋位仍待Trial業務，不能把顯示測試算整列全過。 |
+| **W-08／C-01** | 公開固定7天／前後7日，日期query revision隔離；內部1–14天保留。公開最大30配置／最短天數未完成，正式Student課表仍需Enrollment。 |
+| **W-02／W-03／T-02～07／D-01～05／M-01～04** | 正式Course名稱／分類／程度與時段入口已有；介紹／適齡／價格發布、訪客表格、Submit配額交易、結果／通知／To-do／Convert／逐學生調課仍缺。shared舊Join／Paid封閉，不借示範成功替代。 |
+
+三容量配置不推導兩類加總或Class佔位公式；新Slot兩類無預約是已知0，Total／ClassOccupied未知保持null。Total與Trial必填問題已提具體選項但仍待答，不任意設required或全部可選；相依Submission未開放，其他可獨立工作繼續。
+
+證據：15新flow／3SDK／15pureUI／11真Slot HTTP＋9既有Teacheraccess通過；獨立前端全檔260／260。Root完整468／468、69.7004秒、exit0已提供，首次build3.90秒成功；468／此build是後續sidebar與changed paint修正前，最後重跑及真正畫面仍待結果；詳見[Availability檢查點](availability-checkpoint.md)。三項詳情／opening／unchanged競態有RED→GREEN，不能換算整列完成。111項、4老師／300 active學生／6課全流程大檢查未完成。
+
+本片後續最新全套重跑為 **445／469，24 fail**（`/tmp/beamal-availability-final-test.log`），Root正在修正；上方468／首次build保留為先前結果，不代表目前來源已全過。最後重跑及build仍待提供，不用指定案例通過掩蓋最新完整失敗。
+
+限定grid恢復只在Availability頁後，獨立前端全檔已真正重跑 **261／261，8.3393秒、exit0**（flows240＋SDK21，保留全部舊斷言）；完整npm及最新build仍待Root提供，不能將這個前端套件當作全套通過。
+
+**最後完整測試更新：** 上方445／469失敗及首次468結果保留為歷史；限定修正後Root已真正重跑 **469／469，56.8668秒、exit0、0 fail／cancel／skip／todo**（`/tmp/beamal-availability-final-green-test.log`）。隨後最後build仍進行，不沿用首次3.90秒作最新build。Root已有Admin同Slot ID建立／改17:00／hide→default、真正Teacher唯讀、匿名同ID及無內部remark、全域Rescheduling展示、public390中英文及英文Admin表單有限畫面證據；Cancel／Back、匿名Hide、最新側邊導航等仍待補。Chrome中斷後17:00以無cookie HTTP／內建瀏覽器核對，linked／Full fixture畫面與300 active未宣稱通過；完整界限見[檢查點](availability-checkpoint.md)。

@@ -67,3 +67,23 @@
 Admin Applicant 基本檔案已接入共用保存，兩 Contact／生日／修改記錄亦可用；目前只建立 Applicant，正式 Student 直接建立／手動 Convert 的資格政策已具體詢問，仍待使用者決定。Student no.、Family／登入啟用、負責老師人物權限、Trial／Enrollment／Payment／Receipt／通知及時間表學生名額連動都是必要核心，沒有列 minor。
 
 來源清單／空白 Create 還見頭像、會員、進階搜尋、動態 Columns、匯入／匯出及四個子頁入口，但本輪沒有測其效果。先記作待研究／待實作；尤其匯入可能影響300學生搬入，不能僅因複雜而判次要略過。本輪不新增未查證的 minor 分類；最後交付仍按本檔已研究的逐項理由列完整略過清單。限定證據見 [People 檢查點](people-profile-checkpoint.md)。
+
+## 2026-10-15 Availability：配置已保存不等於申請／預約完成
+
+正式Overall Slot管理、內部／匿名公開同ID投影及固定7天展示已接入，沒有新增minor略過項目。限定測試、完整468／468結果，以及首次build3.90秒成功、後續修正後完整重跑／build與畫面仍待補的欄位見[Availability檢查點](availability-checkpoint.md)。
+
+| 仍重要的未完成／待決 | 使用影響及本輪界限 |
+|---|---|
+| 真訪客TrialSubmit、Reject釋位及結果 | 只有查看正式時段；申請表尚未開放。Admin新增Slot與隔離Full／held fixture不代替訪客申請、競最後名額、拒絕歷史、To-do／通知。 |
+| Total合算／正式班學生 | 三配置可保存，但Total是否包含Class學生及如何合算仍待答；未知使用數不填0。Enrollment、StudentSession、排除學生的最終預約校驗仍缺。 |
+| Trial必填與Student／Convert | 公開必填／選填、直接／歷史Student、Convert前置仍待答。相依動作未開放，不靠等待時間批准；獨立已確認工作仍前進，不把整Goal標blocked。 |
+| Teacher Slot／Public動作授權 | 目前唯讀本人／grant資料；Admin可寫不代表R-04、W-05的範圍編輯／Public授權已完成。 |
+| 完整Course資訊／7–30天配置 | 正式名稱／分類／程度與時段已有；介紹、適齡、完整價格發布未接，不造圖片文字補齊。7天已接，最大30及最短天數未完成；與內部1–14天分開。 |
+
+Request／Confirm Payment／Convert、Family／激活、PDF Receipt、Coupon、Attendance、To-do、測試通知、Leave／Clock／Payroll均維持主要要求。全111項與4老師／300 active學生／6課本機大檢查未完成，較早300 Applicant查詢不是最終規模驗收。
+
+本片後續最新全套重跑為 **445／469，24 fail**（`/tmp/beamal-availability-final-test.log`），Root正在修正；上方468／首次build保留為先前結果，不代表目前來源已全過。最後重跑及build仍待提供，不用指定案例通過掩蓋最新完整失敗。
+
+限定grid恢復只在Availability頁後，獨立前端全檔已真正重跑 **261／261，8.3393秒、exit0**（flows240＋SDK21，保留全部舊斷言）；完整npm及最新build仍待Root提供，不能將這個前端套件當作全套通過。
+
+**最後完整測試更新：** 上方445／469失敗及首次468結果保留為歷史；限定修正後Root已真正重跑 **469／469，56.8668秒、exit0、0 fail／cancel／skip／todo**（`/tmp/beamal-availability-final-green-test.log`）。隨後最後build仍進行，不沿用首次3.90秒作最新build。Root已有Admin同Slot ID建立／改17:00／hide→default、真正Teacher唯讀、匿名同ID及無內部remark、全域Rescheduling展示、public390中英文及英文Admin表單有限畫面證據；Cancel／Back、匿名Hide、最新側邊導航等仍待補。Chrome中斷後17:00以無cookie HTTP／內建瀏覽器核對，linked／Full fixture畫面與300 active未宣稱通過；完整界限見[檢查點](availability-checkpoint.md)。

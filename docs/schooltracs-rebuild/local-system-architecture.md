@@ -2,6 +2,8 @@
 
 更新：2026-10-14。這是目前工作樹的架構評估與後續設計建議，並非整套 Notion 需求已完成、已部署、已 Commit 或已 push 的聲明。本輪只整理文件，沒有修改正式程式、真實資料或外部服務。
 
+以上更新日期及各節保留初次架構基線；已落地的修正見末尾按日期追加。2026-10-15 的老師範圍與 People 檔案基礎不再沿用舊 teacher read-all／沒有 Person 的描述，也不代表原規劃的家庭、付款及完整學生服務已完成。
+
 ## 1. 目標與需求依據
 
 本輪最終交付以**本機完整測試系統**為準：多人登入、同一份業務資料、完整操作、付款／收據／通知使用測試模式。雲端部署、SEO 與 iOS App 本輪先不做；保留日後網站與 iOS 共用同一後端的接口。
@@ -228,3 +230,28 @@ SQLite／API 負載可用真 HTTP 測試；頁面流暢必須另外以 300 學�
 同一帳戶的權限變更有 accessRevision，前端與 SDK 用來清除私人快取及拒絕舊權限的晚到回覆。尚未接老師授權的舊學生／申請／老師管理示範入口先封閉；這不是把核心模組略過，正式 Student／Enrollment／Request 模型仍須接入相同邊界。普通老師維持唯讀，詳細動作權限仍依 R-02 待定規格處理。
 
 本輪 HTTP／前端／最後畫面及整體驗證證據集中在 [老師範圍與日期檢查點](teacher-scope-range-checkpoint.md)。111 項全規格、4 老師／300 active 學生及最終大檢查仍未完成，不由此切片取代。
+
+## 2026-10-15 共用 People 檔案基礎追加
+
+第 6 節所建議的 Person 基礎已有限定實作，Family／Login／Enrollment 等關聯仍是後續模型。選擇先保存獨立 Person，是為避免把登入 user、舊示範 booking 或同電話聯絡資料誤當成已核實學生／家庭，亦避免在付款與 Convert 政策未定前附帶建立其他業務。
+
+[people.mjs](../../sample/server/people.mjs) 由現有 [store.mjs](../../sample/server/store.mjs) 初始化，使用同一 SQLite 連線與交易工具，新增 `people` 和 `person_audit_log`。檔案保留穩定 ID、Applicant／Student 分類、版本、建立／更新時間與 Person 欄位；修改記錄保存操作者 ID／顯示名稱、時間、動作、版本和快照。這是 Admin 的管理修改記錄，不是 Trial、Enrollment 或 Payment History。
+
+| 共用 API | 已落地的限定效果 |
+|---|---|
+| `GET /api/people` | 依 kind／q／page／pageSize／sort／direction 查詢；pageSize 上限 100，排序為 displayName 或 createdAt；query-specific revision／since 只重用同一查詢。 |
+| `GET /api/people/:id`、`/:id/history` | 讀一份檔案與按管理事件順序的修改快照。 |
+| `POST /api/people` | 只新增 Applicant；由服務產生 ID／版本／時間。不能以 kind=student、studentNumber 或 convertedAt 偽造學生建立／轉換。 |
+| `PATCH /api/people/:id` | Admin 用開表時版本改資料；舊版本返回 409，kind／ID／轉換 metadata 不可寫。可相容讀改已存在的 Student fixture，不是匯入或直接建立 Student 的接口。 |
+
+上述列表、直接 ID、History 與寫入均要求已登入 Admin；Teacher／Student 返回 403。正式家庭／教師與 Person 的關聯尚未定，獲授權某課／某堂不能放大為同課全部學生或家庭資料。Teacher Profile 授課資源、Login user 和 Person 仍不按名稱或電話自動連結。
+
+寫入沿用 Origin／CSRF 及穩定 idempotency key；Profile、管理修改記錄和成功 receipt 在同一交易保存，失敗一起撤回。同一成功操作重試返回原保存結果，不新增第二份資料或重寫修改記錄。沒有把 People 複製進 browser localStorage，也不自動將 legacy studentProfiles 當成正式資料遷入；正式資料以 API／SQLite 為準。
+
+前端透過 [api-client.js](../../sample/client/api-client.js) 與 [people-ui.js](../../sample/client/people-ui.js) 提供 Admin 名冊／檔案／編輯。開表時版本保持固定，衝突保留輸入；已讀較新版本時，遲到成功回覆不能退版。身份改變、當前 401 或 People 403 會清除私有列表／檔案／History／表單及舊回覆的套用資格；403 先清畫面，再立即重新查身份，不等待下一次輪詢。返回頁面會丟棄未送出的草稿；已送出的保存仍可能在服務成功，晚到回覆不能拉回舊頁或干擾新表單。
+
+欄位上的 DOB 用作顯示年齡；enrollmentDate／quitDate 是手動 Profile 日期，不建立 Enrollment、不計 active 學生、不改班額／付款／課表。兩組聯絡人不是 Family 授權；promotion 預設 null，未選不等於同意。Admin 顯示名稱必填只用作識別，其他欄位可留空；未定的公開申請必填、家庭驗證或年齡資格政策沒有自行補上。
+
+直接建立／歷史 Student 與 Convert 的前置規則等待使用者答覆，沒有啟用 Convert endpoint／UI。試課、正式 Enrollment、家庭／電話登入與激活、Payment／Order／Receipt、剩餘堂數及學生課務仍須接入同一服務與權限邊界。
+
+證據見 [People 檢查點](people-profile-checkpoint.md)：真 HTTP 已驗跨 Admin 讀改、版本／重試、管理快照／交易失敗撤回、檔案資料庫重啟與隔離既有 Student 相容；300 Applicant 查詢／分頁測試不等於第 12 節的 300 active 學生完整負載。Root 已操作實際 Admin 新增與兩組聯絡人 v1→v2 修改、DOB 年齡 7、空日期及 promotion null→false，另完成 Teacher 直連拒讀、第二 Admin 分頁、手機390中英文／鍵盤取消及未保存 Back。新查詢載入狀態最後修正後完整424/424（42.371秒）及隨後build2.28秒均exit0；較早420次結果及各種證據界限在檢查點保留。

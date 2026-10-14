@@ -93,3 +93,9 @@
 上節「老師仍全校唯讀／沒有任意1–14天」已在現有課程與排課切片修正。老師預設只見本人／明確授權堂次及相關課程資料，服務端也限制教材與直接附件；舊未授權示範學生入口先封閉。Admin新增真帳戶連結及查看授權介面，無連結／grant者預設空；詳細動作權限仍待R-02細則。連續日子新增任選開始日、1–14天、7＋7兩組，既有四檢視保留。
 
 完整回歸387／387及build成功；實際老師單堂授權、撤權關閉已開詳情，以及桌面／手機中英文已限定核對。SchoolTracs沒有新權限原型實測，這些採用Notion明確要求；正式學生／報名／付款等關聯仍未完成，整頁及最終大檢查保持進行中。詳細證據及未測界限見 [檢查點](teacher-scope-range-checkpoint.md)。
+
+## 2026-10-15 後續：正式人員檔案的必要前置
+
+已有 Admin 共用 Applicant 檔案 CRUD、基本個人／兩 Contact、固定人物 ID、搜尋排序分頁及修改記錄；不再把新增共享人員寫入舊示範名冊。真正新增／修改／重載／第二 Admin 分頁、Teacher 直連拒讀、手機雙語、取消與 Back 已限定驗證，最後全套424／424及build成功。
+
+來源 Student Create 僅查看空表格後取消，沒有測來源保存／學號／頭像／會員；Notion 額外要求的手動 Convert／直接建立既有學生資格仍等使用者回答，所以目前只建立 Applicant、Convert API 404。Profile 修改記錄不是試堂／課務／付款歷史；Family、Teacher 人物負責範圍、Enrollment／配額／Student Session 仍缺，既有 Student 只在隔離資料測讀寫。本切片不宣稱完整 Students、Courses／Timetable 整頁或 300 active 本機大檢查通過。細節見 [People 檢查點](people-profile-checkpoint.md)。

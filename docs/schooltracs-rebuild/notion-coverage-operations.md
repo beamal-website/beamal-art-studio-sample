@@ -2,6 +2,8 @@
 
 盤點日期：2026-10-14。本檔只記錄需求、目前證據與下一步驗收，**不是已完成聲明**。本輪依使用者最新範圍：4 位老師、300 名 active 學生、6 個課程、3–18 歲；先在本機完成真實共用工作流程，中英文與手機網頁保留。部署、SEO、native iOS 不列本輪完成條件，但保留相同身份、交易、課次、通知與檔案接口，日後可接伺服器及 App。
 
+上方日期的原盤點保留為歷史基線；末尾的 2026-10-15 People 追加說明已落地的限定檔案能力。最新證據見 [People 檢查點](people-profile-checkpoint.md)，不以舊「沒有 Applicant 路由」描述否定新基礎，也不因此把家庭、付款或 Student Portal 整項標完成。
+
 ## 來源與覆蓋範圍
 
 - 主文完整快照：[notion-requirements-source.md](notion-requirements-source.md)（XIV–XVII 全文；相關 VII、II 與 EX09–EX25）。
@@ -179,3 +181,21 @@ Confirm Payment→Convert 與 Convert→Confirm Payment 都要防重複；前一
 - 年假／補假初值、累積、扣減、回補、Public Holiday；代班B可用性、override、批量、家長通知與多人編輯衝突。
 
 未決細節不能被舊minor清單吞掉已確認的主要功能，也不能以「有開發預留」代替實際完整工作流程驗收。
+
+## 2026-10-15 People 檔案基礎追加及業務邊界
+
+本節只追加工程完成範圍，不改原 63 列、全表 111 列的來源狀態或原本完整驗收要求。共用 People API 已取代 Admin 名冊入口對舊 localStorage 學生示範的依賴：可新增 Applicant、搜尋／排序／分頁、查看／修改其 Person 檔案及管理修改記錄。隔離既有 Student fixture 可由 Admin 讀改同一 ID，但這不代表已提供 Student 建立、資料匯入或 Convert 流程；POST 只能建 Applicant，Convert endpoint 仍為 404。
+
+| 與操作需求的關係 | 已有基礎與仍未完成的效果 |
+|---|---|
+| Profile 與 Login 分離（FAM-03、04、10） | Person 不建立 user／密碼，不按同電話自動連家庭；Family、成員切換、電話登入、激活／Reset 尚未建。直接／歷史 Student 建立與 Convert 前置條件仍等使用者答覆；FAM-05 的 Paid／激活矛盾保留待討論。 |
+| 家庭與兩組聯絡人（FAM-01、02、06、07、11） | 可保存 Contact 1／2 姓名、電話、電郵；聯絡資料不是家庭或監護授權證明，不提供 sibling 關聯、Add Family Member、Trial 家庭申請或家庭去重。 |
+| Registered Profile（S-02） | 已保存個人／家長／學校／推薦與擴展聯絡欄位，空值不填示範資料；目前供 Admin 管理。Teacher／Student People 讀寫均返回 403，沒有已授權家庭／學生端 Profile、真 Enrollment History、剩餘堂數或個人課表。 |
+| Request、付款與轉換（F-03、07、FAM-08、09、O-04） | 保存 Profile／手動 enrollmentDate 或 quitDate，不會 Confirm Request、Confirm Payment、Convert、建立課包／座位或同步入班；三項業務動作保持獨立且仍待落地。管理修改 History 不是 Trial／Payment／Enrollment History。 |
+| FPS、PDF Receipt、Coupon 與通知（F-04～13、S-03） | 本切片沒有新增收款、交易 Slip、Receipt 模板／PDF、Coupon、Email／通知或發送紀錄。這些仍為主要已確認需求，不能因 Profile 已保存而按舊 minor 安排略過。 |
+
+Admin 顯示名稱為本切片識別資料的必填；其餘個人欄位可留空，DOB／enrollmentDate／quitDate 空白保存為 null，推廣偏好預設 null，不擅自當成同意。3–18 歲保留為最終測試資料分布，未定公開申請必填規則、家庭驗證或年齡資格不自行推定。
+
+已驗資料保護包括多人版本衝突、重試不重複、管理修改記錄與保存一起成功／撤回、重啟持久性，以及身份／權限失效時清除私有名冊、檔案、History、表單及晚到回覆。People 的 300 Applicant 真 HTTP 分頁是限定資料基礎驗證，不能代替 300 active Student＋家庭＋付款＋課務的端到端規模測試。Root 已完成實際 Admin 新增／兩 Contact 修改、第二 Admin 分頁、Teacher直連拒讀、手機390中英文／鍵盤取消及未保存Back；最後完整424/424與隨後build成功。較早420次紀錄、最後精確時間及所有證據界限見 [People 檢查點](people-profile-checkpoint.md)。
+
+Clock、Payroll、Leave、代班與內部 Remarks 的已確認需求及待定政策亦不因本次檔案基礎改變；本機驗收、未來 server／iOS 共用接口的總體邊界維持原規格。

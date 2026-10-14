@@ -203,3 +203,7 @@ Enrollment、Trial、家庭登入／激活、正式 Student 建立／Convert、�
 ## 2026-10-15 C-03代表色追加（不改原48／111來源列）
 
 原C-03沒有正式老師色的基線，現已新增Teacher representativeColor與單人有效指派投影，五檢視／詳情使用同一色，未設定／legacy維持原底色。多老師主色政策待答，姓名色樣只是識別，不能將整C-03標完成；資源／Slot來源tuple與linked晚ACK review已修正、永久回歸通過。精確6flow（原5＋補1）／7helper／5resourceUI／16AvailUI／20HTTP及267前端（3.9728秒）、最後完整490／490（44.7252秒）與依序build2.81秒成功。限定真GUI確認同老師保存／清除、Teacher唯讀、普通課＋linked有效單堂換老師、390雙語不保存操作；colour-only局部更新保焦點，指派變更仍按R-01清舊scope。匿名HTTP含revision改色前後相同；黑／白持久保存及多人主色未驗，集中[檢查點](teacher-colour-checkpoint.md)記錄。原48／全111來源狀態不變，R-01不放大權限，C-04／05正式Full與學生／Trial／Total／Convert、300 active大檢查均不由本片完成。
+
+## 2026-10-15 C-04／C-05手動標記追加（不改原48／111來源列）
+
+§5.4的Admin提前Full／強制Available及獨立角標已有正式某堂ID＋sequence保存、clear未知、Teacher唯讀與五檢視／linked投影；狀態不改老師主色、配額、報名資格或public白名單。來源版本與同ref雙向單調合併、取消／返回不保存、衝突草稿、跨身份及重複503均有獨立回歸；最後前端275／275、Root完整512／512（38.2358秒）及依序build2.04秒通過，[集中檢查點](class-capacity-status-checkpoint.md)已記真桌面五檢視／linked、手動三狀態與未知人數、同帳戶兩視窗409、Teacher唯讀與焦點、固定seq換老師／移日／取消→Undo及public不變。390中英文手機無橫向溢出、Tab循環、Cancel／Escape／Back不保存及重新載入仍Full v4／source7已有實際證據；部分捲動截圖不證完整外觀，本GUI沒有service重啟，未把VM503當真GUI。原48／全111來源狀態不變；正式人數／自動Full、Enrollment／Attendance、Absent／Sick／Pending不釋位及300 active整體流程仍未完成，不能將整C-04／C-05列完成。

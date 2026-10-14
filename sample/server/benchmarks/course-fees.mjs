@@ -34,7 +34,7 @@ if(process.argv[2]==='--worker') {
  const source=fileURLToPath(new URL('../',import.meta.url));
  const directory=await mkdtemp(join(tmpdir(),'beamal-service-baseline-'));await mkdir(join(directory,'modules'));
  const manifest={};
- for(const file of ['app.mjs','store.mjs','security.mjs','validation.mjs','materials.mjs','attachments.mjs','schedules.mjs','scheduling-resources.mjs','access-control.mjs','people.mjs','available-slots.mjs']) {
+ for(const file of ['app.mjs','store.mjs','security.mjs','validation.mjs','materials.mjs','attachments.mjs','schedules.mjs','scheduling-resources.mjs','access-control.mjs','people.mjs','available-slots.mjs','class-capacity-status.mjs']) {
   const bytes=await readFile(join(source,file));manifest[file]=createHash('sha256').update(bytes).digest('hex');await writeFile(join(directory,'modules',file),bytes);
  }
  // Keep the server's ../shared import relative to the copied module folder.

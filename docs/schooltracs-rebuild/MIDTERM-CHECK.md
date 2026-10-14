@@ -119,3 +119,7 @@ Availability本片最後驗證：469／469後依序build成功5.47秒；Admin／
 ## 2026-10-15 後續：老師主色與業務狀態分開
 
 單一正式老師的代表色已接日／週／range／月／List與詳情；實際單堂指派不同時按該堂老師，legacy同名不配對。多老師主色仍待使用者選政策，暫只顯各人姓名／色樣；C-03不整列完成。原5主流程／266前端之後發現source-only晚ACK tuple退版，新增1永久回歸並修正；最新6flow／267前端（3.9728秒）、完整490／490（44.7252秒）與依序build2.81秒成功。真正本機GUI已驗色保存／清除、Teacher唯讀、正常課及linked单堂橙色／另一堂藍色、colour-only保焦點、390雙語不保存操作；五檢視全面證據仍是指定主流程，黑／白持久保存未驗。匿名HTTP包含revision改色前後相同；[集中檢查點](teacher-colour-checkpoint.md)另列指派改動會清舊權限視窗。正式Full／容量、Enrollment、Trial／Total／Convert及整頁／300 active仍缺，不由顏色推定。
+
+## 2026-10-15 後續：手動Full與正式人數分開
+
+正式某一堂已有Admin手動Full／Available／clear、授權Teacher唯讀、五檢視與linked同ref標記；清除後現階段顯未知，不把空學生名單或Trial配額推成正式班額。按ID＋sequence、開表status／來源版本及固定重試識別，Cancel／Escape／Back不保存；紅／綠點不改單堂老師主色或多老師政策。6主流程含晚回覆雙向合併與相同503不重畫，最後完整前端275／275；Root完整512／512（38.2358秒）及依序build2.04秒成功，[集中檢查點](class-capacity-status-checkpoint.md)記精確證據。真桌面畫面已確認五檢視同堂Full且老師主色不變、linked同步／Standalone無點、清除後人數—與未知、同Admin兩視窗衝突保Full草稿、Teacher局部更新保焦點；換老師／移日／取消及Undo仍同seq，最新表單status v4／source7。390中英文手機無橫向溢出，Tab繞回Close；未保存Available的Cancel／Escape／Back後及最新App重新載入仍Full v4／source7，部分捲動截圖不作完整header／footer外觀證明。自動按已確認學生人數判定、Enrollment／Attendance／超額規則及整C-04／05／111／300 active仍缺；本GUI沒有service重啟，503只由VM與review證明。

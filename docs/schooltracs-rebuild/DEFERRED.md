@@ -91,3 +91,7 @@ Request／Confirm Payment／Convert、Family／激活、PDF Receipt、Coupon、A
 ## 2026-10-15 老師代表色：沒有新增minor
 
 單老師C-03主色已有保存與投影，multi保fallback＋姓名色樣不等於主老師已定；平均分段／指定主要老師問題仍待答，不能自行用teacherIds[0]。source-only晚ACK姓名／色及linked事實退版曾是重要資料問題，已修正並有永久回歸，不列略過。最後完整490／490與依序build2.81秒通過；限定本機GUI已驗保存／清除／重開、唯讀、普通課／linked單堂換老師及390雙語Cancel／Escape／Back。黑／白持久保存、多人主色與SchoolTracs Chrome新對照仍未驗；集中證據見[本片檢查點](teacher-colour-checkpoint.md)。C-04／C-05、Trial配額交易／Total公式、Convert／Family及其他111項仍為核心；顏色不建立座位、ClassFull、出席、付款或Payroll，300 active大檢查不因窄切片而完成。
+
+## 2026-10-15 手動班額：自動班額仍為核心
+
+指定正式一堂的手動Full／Available／clear已實作，不列略過；狀態雙向退版及相同503重畫已有永久回歸與修正，最後完整512／512及依序build2.04秒成功。手動標記不建立正式人數、Enrollment／Attendance、報名資格、付款或Trial配額交易；Absent／Sick／個別Pending不釋位的已確認要求仍待正式資料流程落地，未捏造自動7／8→8／8。真桌面GUI已有手動Full／Available／clear、五檢視與linked、Teacher唯讀、同帳戶兩視窗衝突、移日／取消→Undo保同堂狀態及public不變證據，390中英文手機幾何無橫向溢出、Cancel／Escape／Back不保存及重新載入同Full v4／source7亦已驗；部分捲動截圖不證完整頁面外觀，本GUI沒有service重啟。C-04／C-05整項、其他111核心及300 active大檢查不因本片完成；[集中檢查點](class-capacity-status-checkpoint.md)保留未做自動Full／Enrollment、獨立第二Admin帳戶及真GUI503等界線，沒有新增minor。

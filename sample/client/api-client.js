@@ -126,6 +126,18 @@ export function createApiClient() {
     materials: courseId => request(`/courses/${encodeURIComponent(courseId)}/materials`),
     schedules: (revision = '', range = {}) => {const query=[...(revision?[['since',revision]]:[]),...(range.from?[['from',range.from]]:[]),...(range.to?[['to',range.to]]:[])].map(([key,value])=>`${key}=${encodeURIComponent(value)}`).join('&');return request(`/schedules${query?'?'+query:''}`)},
     schedulingResources: (revision = '') => request(`/scheduling-resources${revision ? `?since=${encodeURIComponent(revision)}` : ''}`),
+    classCapacityStatuses(revision = '', range = {}) {
+      const parameters = new URLSearchParams();
+      for (const key of ['from', 'to', 'courseId']) if (range[key]) parameters.set(key, range[key]);
+      if (revision) parameters.set('since', revision);
+      return request(`/class-capacity-statuses${parameters.size ? '?' + parameters.toString() : ''}`);
+    },
+    classCapacityStatus: (scheduleId, sequence) => request(`/schedules/${encodeURIComponent(scheduleId)}/occurrences/${encodeURIComponent(sequence)}/capacity-status`),
+    saveClassCapacityStatus(current, manualStatus, operationKey) {
+      return request(`/schedules/${encodeURIComponent(current.scheduleId)}/occurrences/${encodeURIComponent(current.sequence)}/capacity-status`, {
+        method: 'PATCH', body: { version: current.version, sourceVersion: current.sourceVersion, manualStatus }, idempotencyKey: operationKey,
+      });
+    },
     accessControl: (revision = '') => request(`/access-control${revision ? `?since=${encodeURIComponent(revision)}` : ''}`),
     saveTeacherLink(teacherResourceId, userId, version, operationKey) {
       return request(`/access-control/teacher-links/${encodeURIComponent(teacherResourceId)}`, {

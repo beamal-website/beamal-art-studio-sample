@@ -169,3 +169,7 @@
 ## 2026-10-15 最新：老師代表色（限定C-03前置）
 
 正式Teacher代表色可Admin保存／清除，單人實際授課色已接五檢視與只讀詳情；Room不收色，舊文字不配對，多老師保原底色＋姓名色樣，未選主要老師。單純改色不改排課／Slot自身版本／quota／held來源、授權或public白名單。6flow（原5＋review補1）／7helper／5新resourceUI／16AvailUI（1新）／20HTTP（2新＋18舊）及最新獨立前端267／267（3.9728秒）通過；source-only晚ACK回復舊name/color／linked事實已先RED、按ID／來源合併修正再GREEN。最後全套490／490（44.7252秒、exit0）及隨後build2.81秒成功。真畫面已驗同Teacher保存／清除／重開、Teacher唯讀、colour-only詳情保焦點、正常課＋linked單堂B→C且另一堂仍B、390中英文Cancel／Escape／Back不保存；匿名HTTP改色前後連revision逐byte相同。集中[老師代表色檢查點](teacher-colour-checkpoint.md)記證據及scope變更清舊詳情的界線；黑／白持久保存、多老師主色、SchoolTracs Chrome新對照、整C-03／111項及300 active未完成。
+
+## 2026-10-15 最新：指定一堂的手動班額狀態
+
+Admin可對正式schedule ID＋固定sequence保存Full／Available／清除，授權Teacher只讀；五種時間表及同堂linked Slot共用紅／綠／未知標記，老師主色不變，Standalone不借班額。正式人數與自動狀態仍未知，手動綠點不等於報名已通過，也不改Trial／Rescheduling配額或自身排課版本。新增6主流程／2SDK、8純UI／6HTTP及獨立完整前端275／275（7.9092秒）有證據；狀態雙方向同步及重複503不重畫先RED後修正GREEN。Root最後完整512／512（38.2358秒、exit0），隨後依序build2.04秒成功；證據集中於[手動班額檢查點](class-capacity-status-checkpoint.md)。真桌面GUI已驗Full／Available／clear、五檢視與linked同堂紅／綠／未知、換老師／移日／取消→Undo不丟標記、同帳戶兩視窗409保選擇及Teacher唯讀保焦點；匿名public含revision前後逐byte相同。390×844中英文手機DOM無橫向溢出，Tab由Save繞回Close；未保存Available的Cancel／Escape／Back後，重新載入並重開仍Full v4／source7。部分捲動手機截圖不當完整header／footer外觀證明；本GUI沒有service重啟，持久重啟由backend測試驗。整C-04／C-05、自動班額／Enrollment／Attendance、111項及300 active仍未完成，未把VM的503回歸當真GUI。

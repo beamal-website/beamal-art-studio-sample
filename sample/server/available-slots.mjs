@@ -1,6 +1,7 @@
 import {randomUUID,createHash} from 'node:crypto';
 import {ApplicationError} from './validation.mjs';
 import {scheduleOccurrence} from '../shared/schedule-occurrences.js';
+import {classCapacityStatusDTO} from './class-capacity-status.mjs';
 
 const hash=value=>createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const plain=value=>value!==null&&typeof value==='object'&&!Array.isArray(value)&&Object.getPrototypeOf(value)===Object.prototype;
@@ -28,7 +29,7 @@ export function validateAvailableSlot(input,{update=false}={}) {
   return result;
 }
 export function availableSlotRange(from,to){if(!validDate(from)||!validDate(to)||to<from||(Date.parse(to)-Date.parse(from))/86400000>=366)throw new ApplicationError(400,'INVALID_DATE_RANGE','Choose an inclusive date range of at most 366 days.');return {from,to};}
-export function createAvailableSlotStore({database,transaction,accessControl}) {
+export function createAvailableSlotStore({database,transaction,accessControl,classCapacityStatuses}) {
   database.exec(`
     CREATE TABLE IF NOT EXISTS available_slots(id TEXT PRIMARY KEY,course_id TEXT NOT NULL REFERENCES courses(id),data TEXT NOT NULL,source_identity TEXT NOT NULL,version INTEGER NOT NULL CHECK(version>0),created_at TEXT NOT NULL,updated_at TEXT NOT NULL);
     CREATE INDEX IF NOT EXISTS available_slots_course ON available_slots(course_id);
@@ -42,7 +43,7 @@ export function createAvailableSlotStore({database,transaction,accessControl}) {
   const settings=()=>{const row=database.prepare('SELECT * FROM availability_public_settings WHERE id=1').get();return {version:row.version,rangeDays:7,showFullTrialSlots:!!row.show_full_trial_slots,showReschedulingSlots:!!row.show_rescheduling_slots};};
   const context=()=>{
     const courses=new Map(database.prepare('SELECT * FROM courses').all().map(row=>[row.id,row])),resources=new Map(database.prepare('SELECT * FROM scheduling_resources').all().map(row=>[row.id,row])),schedules=new Map(database.prepare('SELECT * FROM schedules').all().map(row=>[row.id,{...JSON.parse(row.data),id:row.id,course:row.course_id,version:row.version,deleted:!!row.deleted_at}])),holds=new Map();
-    for(const row of database.prepare("SELECT * FROM availability_reservations WHERE state='held'").all()){if(!holds.has(row.slot_id))holds.set(row.slot_id,[]);holds.get(row.slot_id).push(row);}return {courses,resources,schedules,holds};
+    for(const row of database.prepare("SELECT * FROM availability_reservations WHERE state='held'").all()){if(!holds.has(row.slot_id))holds.set(row.slot_id,[]);holds.get(row.slot_id).push(row);}return {courses,resources,schedules,holds,classStatuses:classCapacityStatuses.rawMap()};
   };
   const project=(row,ctx)=>{
     const data=JSON.parse(row.data),linked=!!data.scheduleId,schedule=ctx.schedules.get(data.scheduleId),occurrence=linked&&schedule?scheduleOccurrence(schedule,data.sequence,{includeCancelled:true}):null;
@@ -52,8 +53,12 @@ export function createAvailableSlotStore({database,transaction,accessControl}) {
     let reason=!course?'COURSE_NOT_FOUND':course.deleted_at?'COURSE_DELETED':linked&&!schedule?'SCHEDULE_NOT_FOUND':linked&&schedule.deleted?'SCHEDULE_DELETED':linked&&!occurrence?'OCCURRENCE_NOT_FOUND':occurrence?.cancelled?'LESSON_CANCELLED':!effective.teacherIds.length?'NO_TEACHER':null;
     if(!reason&&[...effective.teacherIds,...effective.roomIds].some(id=>!ctx.resources.has(id)))reason='RESOURCE_NOT_FOUND';
     const identity=sourceIdentity({...effective,scheduleId:data.scheduleId,sequence:data.sequence});if(!reason&&held.some(hold=>(hold.source_identity||row.source_identity)!==identity))reason='HELD_SOURCE_CHANGED';
+    const storedClassStatus=linked?ctx.classStatuses.get(JSON.stringify([data.scheduleId,data.sequence])):null;
+    const classCapacityStatus=linked&&occurrence&&!occurrence.cancelled&&!schedule.deleted&&course&&!course.deleted_at?classCapacityStatusDTO(occurrence,storedClassStatus):null;
+    // Hiding an inactive lesson cannot roll its independent status version back.
+    if(linked)sourceVersions['class-status:'+data.scheduleId+':'+data.sequence]=storedClassStatus?.version??0;
     const trialReserved=held.filter(hold=>hold.kind==='trial').length,reschedulingReserved=held.filter(hold=>hold.kind==='rescheduling').length,trialRemaining=Math.max(0,data.trialCapacity-trialReserved),reschedulingRemaining=Math.max(0,data.reschedulingCapacity-reschedulingReserved);
-    return {...Object.fromEntries(fields.filter(key=>!sourceFields.includes(key)).map(key=>[key,data[key]])),...effective,id:row.id,kind:'available-slot',sourceKind:linked?'linked':'standalone',courseName:course?JSON.parse(course.data).courseName:'',version:row.version,createdAt:row.created_at,updatedAt:row.updated_at,teacherNames:effective.teacherIds.map(id=>ctx.resources.get(id)?.display_name||''),teacherColors:effective.teacherIds.map(id=>teacherColour(ctx.resources.get(id))),roomNames:effective.roomIds.map(id=>ctx.resources.get(id)?.display_name||''),sourceVersions,sourceAvailable:!reason,unavailableReason:reason,trialReserved,reschedulingReserved,trialRemaining,reschedulingRemaining,trialStatus:data.trialEnabled&&!trialRemaining?'full':'available',reschedulingStatus:data.reschedulingEnabled&&!reschedulingRemaining?'full':'available',totalReserved:null,classCapacity:linked?occurrence?.item.capacity??null:null,classOccupied:null};
+    return {...Object.fromEntries(fields.filter(key=>!sourceFields.includes(key)).map(key=>[key,data[key]])),...effective,id:row.id,kind:'available-slot',sourceKind:linked?'linked':'standalone',courseName:course?JSON.parse(course.data).courseName:'',version:row.version,createdAt:row.created_at,updatedAt:row.updated_at,teacherNames:effective.teacherIds.map(id=>ctx.resources.get(id)?.display_name||''),teacherColors:effective.teacherIds.map(id=>teacherColour(ctx.resources.get(id))),roomNames:effective.roomIds.map(id=>ctx.resources.get(id)?.display_name||''),sourceVersions,sourceAvailable:!reason,unavailableReason:reason,trialReserved,reschedulingReserved,trialRemaining,reschedulingRemaining,trialStatus:data.trialEnabled&&!trialRemaining?'full':'available',reschedulingStatus:data.reschedulingEnabled&&!reschedulingRemaining?'full':'available',totalReserved:null,classCapacity:linked?occurrence?.item.capacity??null:null,classOccupied:null,...(linked?{classCapacityStatus}:{})};
   };
   const facts=()=>{const ctx=context();return database.prepare('SELECT * FROM available_slots ORDER BY id').all().map(row=>project(row,ctx));};
   const teacherDTO=slot=>Object.fromEntries(Object.entries(slot).filter(([key])=>!['remark','excludedStudentIds'].includes(key)));

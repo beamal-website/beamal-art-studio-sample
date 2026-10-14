@@ -739,6 +739,58 @@
 .availability-detail-colour-markers{min-width:0;max-width:100%;margin:0 0 16px}
 .availability-detail-colour-markers:empty{display:none}
 .availability-detail-colour-markers .teacher-colour-marker{font-size:14px}
+
+/* Class capacity status is a separate corner indicator, never the lesson fill. */
+.class-capacity-status-badge{display:inline-flex;align-items:center;gap:8px;min-width:0;max-width:100%;padding:4px 8px;border:1px solid #d9ddd2;border-radius:3px;background:#fffdf8;color:#253d3b;font-size:14px;line-height:1.5}
+.class-capacity-status-dot{display:inline-block;flex:none;width:12px;height:12px;border:1px solid #526a60;border-radius:50%;background:#737a73}
+.class-capacity-status-badge[data-class-status=full] .class-capacity-status-dot{background:#b04435}
+.class-capacity-status-badge[data-class-status=available] .class-capacity-status-dot{background:#277d54}
+.class-capacity-status-label{min-width:0;color:#253d3b;white-space:normal;overflow-wrap:anywhere}
+.class-capacity-status-compact{position:absolute;top:6px;right:6px;z-index:1;justify-content:center;width:20px;height:20px;max-width:none;padding:3px;border-radius:50%}
+.class-capacity-status-compact .class-capacity-status-dot{width:12px;height:12px}
+.class-status-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+.class-status-modal{z-index:1510;padding:16px}
+.class-status-editor-dialog{display:flex;flex-direction:column;width:min(660px,100%);height:min(860px,calc(100dvh - 32px));min-width:0;max-width:100%;max-height:calc(100dvh - 32px);padding:0;overflow:hidden;border:1px solid #d9ddd2;border-radius:6px;background:#fffdf8;color:#253d3b}
+.class-status-header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-shrink:0;padding:20px 28px;border-bottom:1px solid #d9ddd2}
+.class-status-header h2{min-width:0;margin:0;font-size:25px;font-weight:500;line-height:1.4;overflow-wrap:anywhere}
+.class-status-editor-dialog .class-status-close{flex:none;width:44px;min-height:44px;margin:0;padding:0;border:0;border-radius:3px;background:transparent;box-shadow:none;color:#687770;font-size:32px;line-height:1}
+.class-status-editor-dialog form{display:flex;flex:1;flex-direction:column;min-width:0;min-height:0;margin:0;overflow:hidden}
+.class-status-body{flex:1;min-width:0;min-height:0;padding:24px 28px;overflow-y:auto;overscroll-behavior-y:contain}
+.class-status-note{margin:0;color:#687770;font-size:14px;line-height:1.7;overflow-wrap:anywhere}
+.class-status-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px 24px;margin:24px 0}
+.class-status-facts>div{min-width:0}
+.class-status-facts dt{margin:0 0 6px;color:#526a60;font-size:14px;line-height:1.5;overflow-wrap:anywhere}
+.class-status-facts dd{margin:0;font-size:16px;line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere}
+.class-status-current{display:flex;align-items:center;flex-wrap:wrap;gap:8px 16px;margin:0 0 24px;color:#526a60;font-size:14px;line-height:1.5}
+.class-status-options{min-width:0;margin:0;padding:0;border:0}
+.class-status-options>legend{margin-bottom:12px;padding:0;font-size:18px;font-weight:600;line-height:1.5}
+.class-status-option{display:flex;align-items:flex-start;gap:12px;min-width:0;min-height:44px;margin:0 0 12px;padding:16px;border:1px solid #bdcbc1;border-radius:3px;background:#fffdf8;cursor:pointer}
+.class-status-option:last-child{margin-bottom:0}
+.class-status-option:has(input:checked){border-color:var(--teal);background:#e9eee5}
+.class-status-option input[type=radio]{flex:none;width:20px;height:20px;min-height:0;margin:2px 0 0;padding:0;accent-color:var(--teal)}
+.class-status-option>span{min-width:0;line-height:1.6;overflow-wrap:anywhere}
+.class-status-option strong{display:block;font-size:16px;font-weight:500}
+.class-status-option small{display:block;margin-top:4px;color:#526a60;font-size:14px;line-height:1.7}
+.class-status-notice{margin:24px 0 0;padding:12px 16px;border-left:3px solid var(--teal);background:#e9eee5;color:#526a60;font-size:14px;line-height:1.7;overflow-wrap:anywhere}
+.class-status-error{margin:16px 0 0;color:#a43d2b;font-size:15px;line-height:1.7;overflow-wrap:anywhere}
+.class-status-error:empty{display:none}
+.class-status-loading{margin:16px 0 0;color:#687770;font-size:14px;line-height:1.6}
+.class-status-footer{display:flex;justify-content:flex-end;align-items:center;gap:12px;flex-shrink:0;padding:16px 28px;border-top:1px solid #d9ddd2}
+.class-status-footer button{min-height:44px;padding:10px 18px;border-radius:4px;white-space:normal;line-height:1.5}
+.class-status-editor-dialog button:disabled{cursor:not-allowed;background:#eee9de;border-color:#d9ddd2;box-shadow:none;color:#687770;filter:none}
+.class-status-options:disabled .class-status-option,.class-status-options:disabled input{cursor:not-allowed}
+.class-status-editor-dialog button:focus-visible,.class-status-editor-dialog input:focus-visible{outline:2px solid var(--teal);outline-offset:3px}
+.class-capacity-status-host>.tt-lesson-time{padding-right:24px}
+.portal-content .tt-month-lesson.class-capacity-status-host{position:relative}
+.class-capacity-status-host>.class-capacity-status-badge{display:inline-flex;overflow:visible;margin:0;white-space:normal;line-height:1}
+.class-capacity-status-host .class-capacity-status-dot{display:inline-block;overflow:visible;margin:0}
+.lesson-class-status{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin:16px 0;padding:12px 14px;border:1px solid #d9ddd2;border-radius:3px;background:#fffdf8;color:#253d3b}
+.lesson-class-status-value{display:inline-flex;min-width:0;max-width:100%}
+.lesson-class-status button{min-height:44px;max-width:100%;margin:0;padding:10px 14px;border-radius:3px;font-size:15px;line-height:1.5;white-space:normal;overflow-wrap:anywhere}
+.lesson-class-status button:focus-visible{outline:2px solid var(--teal);outline-offset:3px}
+.class-capacity-status-read-error{margin:0 16px 16px;padding:12px 16px;border-left:3px solid #aa7837;background:#f7f1e5;color:#615b50;font-size:14px;line-height:1.7;overflow-wrap:anywhere}
+@media(max-width:600px){.class-status-modal{padding:8px}.class-status-editor-dialog{height:calc(100dvh - 16px);max-height:calc(100dvh - 16px)}.class-status-header{padding:16px}.class-status-header h2{font-size:21px}.class-status-body{padding:20px 16px}.class-status-facts{gap:16px 12px;margin:20px 0}.class-status-option{padding:14px 12px}.class-status-footer{padding:14px 16px}.class-status-footer button{padding:10px 14px}.class-status-notice{padding:12px}}
+
 @media(max-width:600px){.resource-list-teacher-colour table{min-width:560px}.resource-list-teacher-colour th:nth-child(2){width:132px}.resource-list-teacher-colour th:nth-child(3){width:80px}.resource-colour-fields{padding:16px 0}.teacher-colour-markers{gap:4px 6px}.availability-detail-colour-markers .teacher-colour-marker{font-size:13px}}
 
 @media(max-width:760px){.availability-public-days{grid-template-columns:minmax(0,1fr)}.availability-resource-options{grid-template-columns:minmax(0,1fr)}.availability-field-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}

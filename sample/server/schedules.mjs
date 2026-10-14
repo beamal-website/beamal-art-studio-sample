@@ -1,16 +1,20 @@
 import {randomUUID,createHash} from 'node:crypto';
 import {ApplicationError} from './validation.mjs';
 import {scheduleOccurrence,scheduleFollowingRule,scheduleLastSequence} from '../shared/schedule-occurrences.js';
+import {validateClassTypeSelection} from './class-types.mjs';
 
 const plain = value => value !== null && typeof value === 'object' && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype;
 const invalid = message => {throw new ApplicationError(400,'INVALID_SCHEDULE',message);};
 const fields = ['course','startDate','time','duration','weekdays','endMode','endDate','count','mustAttendAll','color','teacher','room','teacherIds','roomIds','capacity','session','remark','detail','moreInfo'];
+const selectionFields=['classTypeId','classTypeVersion','classTypeCourseVersion'];
+const ruleFields=[...fields,'classType'];
 const assignments=[['teacherIds','teacher','teacher'],['roomIds','room','room']];
 const equal=(left,right)=> {
   if(Array.isArray(left)||Array.isArray(right)) {
     if(!Array.isArray(left)||!Array.isArray(right)||left.length!==right.length)return false;
     const members=new Set(right);return left.every(id=>members.has(id));
   }
+  if(left&&right&&typeof left==='object'&&typeof right==='object')return JSON.stringify(left)===JSON.stringify(right);
   return left===right;
 };
 const validDate = value => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value+'T00:00:00Z')) && new Date(value+'T00:00:00Z').toISOString().slice(0,10) === value;
@@ -26,9 +30,10 @@ export function requireScheduleVersion(input,versionOnly=false) {
   return input.version;
 }
 
-export function validateSchedule(input,current=null) {
+export function validateSchedule(input,current=null,{stored=false}={}) {
   if (!plain(input)) invalid('Schedule must be a JSON object.');
-  for (const key of Object.keys(input)) if (!fields.includes(key) && !(current && key === 'version')) invalid(`Unsupported schedule field: ${key}.`);
+  for (const key of Object.keys(input)) if (!fields.includes(key) && !selectionFields.includes(key) && !(stored&&key==='classType') && !(current && key === 'version')) invalid(`Unsupported schedule field: ${key}.`);
+  const selection=validateClassTypeSelection(input,{inherit:!current&&!stored});
   const source = current ? {...current,...input} : input;
   const ids={};
   for(const [key] of assignments)if(Object.hasOwn(source,key)) {
@@ -63,19 +68,20 @@ export function validateSchedule(input,current=null) {
     endDate:source.endMode === 'date' ? source.endDate : '',count,mustAttendAll:source.mustAttendAll ?? true,color,
     teacher:text(source.teacher,'Teacher',Math.max(200,(ids.teacherIds?.length||0)*202)),room:text(source.room,'Room',Math.max(200,(ids.roomIds?.length||0)*202)),...ids,capacity,session,
     remark:text(source.remark,'Remark',2000),detail:text(source.detail,'Detail',2000),moreInfo:text(source.moreInfo,'More info',2000),
+    ...selection,...(stored||current?{classType:source.classType??null}:{}),
   };
 }
 
 export function requireOccurrenceRequest(input,editing=false) {
   const version=requireScheduleVersion(input);
   if (!['single','following'].includes(input.scope)) invalid('Choose this lesson only or this and following lessons.');
-  const allowed=editing?[...fields,'version','scope']:['version','scope'];
+  const allowed=editing?[...fields,...selectionFields,'version','scope']:['version','scope'];
   if (Object.keys(input).some(key=>!allowed.includes(key))) invalid('Unsupported lesson operation field.');
-  const data=editing?validateSchedule(Object.fromEntries(fields.filter(key=>Object.hasOwn(input,key)).map(key=>[key,input[key]]))):null;
+  const data=editing?validateSchedule(Object.fromEntries([...fields,...selectionFields].filter(key=>Object.hasOwn(input,key)).map(key=>[key,input[key]]))):null;
   return {version,scope:input.scope,data};
 }
 
-export function createScheduleStore({database,transaction,resources}) {
+export function createScheduleStore({database,transaction,resources,classTypes}) {
   database.exec(`
     CREATE TABLE IF NOT EXISTS schedules (
       id TEXT PRIMARY KEY, course_id TEXT NOT NULL REFERENCES courses(id), data TEXT NOT NULL,
@@ -94,15 +100,32 @@ export function createScheduleStore({database,transaction,resources}) {
       state TEXT NOT NULL
     );
   `);
-  const dto = row => row ? {...JSON.parse(row.data),course:row.course_id,id:row.id,version:row.version,createdAt:row.created_at,updatedAt:row.updated_at,...(row.deleted_at?{activityDeleted:true}:{})} : null;
+  const dto = row => row ? {classType:null,...JSON.parse(row.data),course:row.course_id,id:row.id,version:row.version,createdAt:row.created_at,updatedAt:row.updated_at,...(row.deleted_at?{activityDeleted:true}:{})} : null;
   const get = id => dto(database.prepare('SELECT * FROM schedules WHERE id=?').get(id));
   const administrator = actorId => {
     if (database.prepare('SELECT role FROM users WHERE id=?').get(actorId)?.role !== 'admin') throw new ApplicationError(403,'ROLE_FORBIDDEN','Only an administrator can change schedules.');
   };
   const existingCourse = course => {
-    const current = database.prepare('SELECT id,deleted_at FROM courses WHERE id=?').get(course);
+    const current = database.prepare('SELECT id,data,version,deleted_at FROM courses WHERE id=?').get(course);
     if (!current) invalid('Select an existing course.');
     if (current.deleted_at) throw new ApplicationError(409,'COURSE_DELETED','This course is deleted. Restore it before adding or restoring schedules.');
+    return current;
+  };
+  const resolveClassType=(record,current=null)=> {
+    const course=existingCourse(record.course),result=Object.fromEntries(Object.entries(record).filter(([key])=>!selectionFields.includes(key)));
+    if(Object.hasOwn(record,'classTypeId'))result.classType=record.classTypeId===null?null:classTypes.snapshot(record.classTypeId,record.classTypeVersion);
+    else if(current) {
+      if(selectionFields.some(key=>Object.hasOwn(record,key)))invalid('To edit a lesson type, choose it explicitly or keep the saved configuration.');
+      result.classType=current.classType??null;
+    } else {
+      const id=JSON.parse(course.data).classTypeId??null,guarded=Object.hasOwn(record,'classTypeCourseVersion');
+      if(guarded&&record.classTypeCourseVersion!==course.version)throw new ApplicationError(409,'COURSE_VERSION_CONFLICT','This course default changed. Reload it before scheduling.');
+      if(id===null) {
+        if(guarded&&record.classTypeVersion!==0)throw new ApplicationError(409,'CLASS_TYPE_VERSION_CONFLICT','This course no longer has the selected default class type.');
+        result.classType=null;
+      } else result.classType=classTypes.snapshot(id,guarded?record.classTypeVersion:classTypes.get(id)?.version);
+    }
+    return result;
   };
   const selectionRequired=()=>{throw new ApplicationError(400,'RESOURCE_SELECTION_REQUIRED','Select existing teacher and room resources instead of entering new labels.');};
   const checkSelection=(record,current,rows)=> {
@@ -156,7 +179,7 @@ export function createScheduleStore({database,transaction,resources}) {
     return {revision,schedules:database.prepare('SELECT * FROM schedules WHERE deleted_at IS NULL ORDER BY created_at,id').all().map(dto)};
   },'read');
   const create = (input,actorId) => transaction(()=>{
-    administrator(actorId);const data=resolveAssignments(validateSchedule(input));existingCourse(data.course);
+    administrator(actorId);const data=resolveClassType(resolveAssignments(validateSchedule(input)));
     const id=randomUUID(),now=new Date().toISOString(),{course,...stored}=data;
     database.prepare('INSERT INTO schedules(id,course_id,data,version,created_at,updated_at) VALUES (?,?,?,1,?,?)').run(id,course,JSON.stringify(stored),now,now);
     const schedule=get(id);audit(actorId,'schedule.create',schedule);return schedule;
@@ -171,7 +194,7 @@ export function createScheduleStore({database,transaction,resources}) {
     administrator(actorId);const version=requireScheduleVersion(input),current=currentVersion(id,version);
     if (current.activityDeleted) throw new ApplicationError(404,'SCHEDULE_NOT_FOUND','Schedule was not found.');
     if (current.segments?.length || current.exceptions?.length) throw new ApplicationError(409,'SCHEDULE_HAS_SCOPED_CHANGES','This schedule has individual or following-lesson changes. Edit the selected lesson instead.');
-    const data=resolveAssignments(validateSchedule(input,current),current);existingCourse(data.course);checkAffectedAssignments({...current,...data},current);
+    const data=resolveClassType(resolveAssignments(validateSchedule(input,current),current),current);checkAffectedAssignments({...current,...data},current);
     const now=new Date().toISOString(),{course,...stored}=data;
     const result=database.prepare('UPDATE schedules SET course_id=?,data=?,version=version+1,updated_at=? WHERE id=? AND version=? AND deleted_at IS NULL').run(course,JSON.stringify(stored),now,id,version);
     if (result.changes !== 1) throw new ApplicationError(409,'VERSION_CONFLICT','This schedule was changed by someone else. Reload it before saving.');
@@ -210,7 +233,7 @@ export function createScheduleStore({database,transaction,resources}) {
     const schedule=get(current.id);audit(actorId,action,schedule);return schedule;
   };
   const segmentAt = (current,sequence) => {
-    let result={fromSequence:1,rule:Object.fromEntries(fields.filter(key=>Object.hasOwn(current,key)).map(key=>[key,current[key]]))};
+    let result={fromSequence:1,rule:Object.fromEntries(ruleFields.filter(key=>Object.hasOwn(current,key)).map(key=>[key,current[key]]))};
     for (const segment of current.segments||[]) if (segment.fromSequence<=sequence) result=segment;
     return result;
   };
@@ -225,12 +248,12 @@ export function createScheduleStore({database,transaction,resources}) {
   };
   const recurrenceChanged = (data,opened) => data.startDate!==opened.startDate || JSON.stringify(data.weekdays)!==JSON.stringify(opened.weekdays) || data.endMode!==opened.endMode || data.endMode==='date' && data.endDate!==opened.endDate || data.endMode==='count' && data.count!==opened.count;
   const applyFollowingFields = (current,sequence,data,opened) => {
-    const changed=['time','duration','mustAttendAll','teacher','room','teacherIds','roomIds','capacity','session','color','remark','detail','moreInfo'].filter(key=>!equal(data[key],opened[key]));
+    const changed=['time','duration','mustAttendAll','teacher','room','teacherIds','roomIds','capacity','session','color','remark','detail','moreInfo','classType'].filter(key=>!equal(key==='classType'?data[key]??null:data[key],key==='classType'?opened[key]??null:opened[key]));
     const segments=splitAt(current,sequence).map(segment=> {
       if (segment.fromSequence<sequence) return segment;
       const rule={...segment.rule};
       for (const key of changed) rule[key]=key==='session'?data.session+segment.fromSequence-sequence:data[key];
-      return {...segment,rule:validateSchedule(rule)};
+      return {...segment,rule:validateSchedule(rule,null,{stored:true})};
     });
     const exceptions=(current.exceptions||[]).map(item=> {
       if (item.sequence<sequence) return item;
@@ -240,14 +263,37 @@ export function createScheduleStore({database,transaction,resources}) {
     }).filter(item=>Object.keys(item.overrides).length || typeof item.cancelled==='boolean');
     return {...current,segments,exceptions};
   };
+  const retainFollowingClassTypes=(current,sequence,next,data,typeChanged)=> {
+    if(typeChanged) {
+      next.exceptions=next.exceptions.map(item=> {
+        if(item.sequence<sequence)return item;
+        const {classType,...overrides}=item.overrides;
+        return {...item,overrides};
+      }).filter(item=>Object.keys(item.overrides).length||typeof item.cancelled==='boolean');
+      return next;
+    }
+    // Recurrence changes replace the calendar, not unchanged type assignments.
+    // Preserve the old piecewise type boundaries using the new calendar dates.
+    const first=next.segments.find(segment=>segment.fromSequence===sequence);
+    // The new segment initially shares `data`; copy before changing its
+    // default so the selected single-lesson snapshot remains available below.
+    first.rule={...first.rule,classType:segmentAt(current,sequence).rule.classType??null};
+    for(const previous of current.segments||[])if(previous.fromSequence>sequence) {
+      const row=scheduleOccurrence(next,previous.fromSequence,{includeCancelled:true});
+      if(!row)continue;
+      next.segments=splitAt(next,previous.fromSequence).map(segment=>segment.fromSequence===previous.fromSequence?{...segment,rule:{...segment.rule,classType:previous.rule.classType??null}}:segment);
+    }
+    if(!equal(data.classType??null,first.rule.classType))next.exceptions=exception(next,sequence,{classType:data.classType??null});
+    return next;
+  };
   const editOccurrence = (id,sequence,input,actorId) => transaction(()=>{
-    const {version,scope,data:submitted}=requireOccurrenceRequest(input,true),{current,occurrence}=scopedCurrent(id,version,actorId,sequence),data=resolveAssignments(submitted,occurrence.item);
+    const {version,scope,data:submitted}=requireOccurrenceRequest(input,true),{current,occurrence}=scopedCurrent(id,version,actorId,sequence),data=resolveClassType(resolveAssignments(submitted,occurrence.item),occurrence.item);
     if (data.course!==current.course) throw new ApplicationError(409,'SCHEDULE_COURSE_MISMATCH','Individual and following lessons must keep the same course.');
     if (occurrence.cancelled) throw new ApplicationError(409,'SCHEDULE_OCCURRENCE_CANCELLED','Restore this lesson before editing it.');
     let next={...current};
     if (scope==='single') {
       const base=scheduleOccurrence({...current,exceptions:[]},sequence,{includeCancelled:true}),overrides={};
-      for (const key of ['time','duration','teacher','room','teacherIds','roomIds','capacity','session','color','remark','detail','moreInfo']) if (!equal(data[key],base.item[key])) overrides[key]=data[key];
+      for (const key of ['time','duration','teacher','room','teacherIds','roomIds','capacity','session','color','remark','detail','moreInfo','classType']) if (!equal(data[key],base.item[key])) overrides[key]=data[key];
       if (data.startDate!==base.date) overrides.date=data.startDate;
       const previous=(current.exceptions||[]).find(item=>item.sequence===sequence);
       next.exceptions=exception(current,sequence,overrides,previous?.cancelled);
@@ -262,6 +308,7 @@ export function createScheduleStore({database,transaction,resources}) {
       if ((current.segments||[]).some(segment=>segment.cancelled)) throw new ApplicationError(409,'SCHEDULE_OCCURRENCE_CONFLICT','Restore cancelled following lessons before changing their repeat rule.');
       next.segments=[...(current.segments||[]).filter(segment=>segment.fromSequence<sequence),{fromSequence:sequence,rule:data}];
       next.exceptions=(current.exceptions||[]).filter(item=>item.sequence!==sequence);
+      next=retainFollowingClassTypes(current,sequence,next,data,!equal(data.classType??null,occurrence.item.classType??null));
       if (next.exceptions.some(item=>!scheduleOccurrence(next,item.sequence,{includeCancelled:true}))) throw new ApplicationError(409,'SCHEDULE_OCCURRENCE_CONFLICT','This repeat rule would remove an individually changed lesson. Resolve that lesson before shortening the schedule.');
     }
     checkAffectedAssignments(next,current,sequence);

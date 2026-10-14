@@ -95,3 +95,7 @@ Request／Confirm Payment／Convert、Family／激活、PDF Receipt、Coupon、A
 ## 2026-10-15 手動班額：自動班額仍為核心
 
 指定正式一堂的手動Full／Available／clear已實作，不列略過；狀態雙向退版及相同503重畫已有永久回歸與修正，最後完整512／512及依序build2.04秒成功。手動標記不建立正式人數、Enrollment／Attendance、報名資格、付款或Trial配額交易；Absent／Sick／個別Pending不釋位的已確認要求仍待正式資料流程落地，未捏造自動7／8→8／8。真桌面GUI已有手動Full／Available／clear、五檢視與linked、Teacher唯讀、同帳戶兩視窗衝突、移日／取消→Undo保同堂狀態及public不變證據，390中英文手機幾何無橫向溢出、Cancel／Escape／Back不保存及重新載入同Full v4／source7亦已驗；部分捲動截圖不證完整頁面外觀，本GUI沒有service重啟。C-04／C-05整項、其他111核心及300 active大檢查不因本片完成；[集中檢查點](class-capacity-status-checkpoint.md)保留未做自動Full／Enrollment、獨立第二Admin帳戶及真GUI503等界線，沒有新增minor。
+
+## 2026-10-15 Class Type：資格執行仍為核心
+
+Regular／Special／自訂三態設定、Course預設及新班快照已實作，沒有新增minor；尚未設定不猜允許／禁止。Keep、時間／repeat、停用保歷史及兩項opening／原生省略欄問題已永久回歸修正，最後完整543／543與依序build4.11秒、5181純虛構GUI已有限定證據，5180資料未改，集中[類型檢查點](class-type-checkpoint.md)。整C-06仍須正式StudentSession／調課服務執行規則，P-10試課／補堂繼承與例外覆蓋待細化；C-02 Eye／自訂組合／個人保存、C-07名單與剩餘堂數仍缺。Convert／歷史學生、Total公式、公開Trial必填／生日及多人主老師四項政策待答；TrialSubmit／Reject釋位／To-do、Request／Payment／Enrollment、Family／Receipt／通知／Staff及111項／300 active保持主要工作，不以配置綠燈批准相依動作。

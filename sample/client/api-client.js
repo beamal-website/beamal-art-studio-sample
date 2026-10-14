@@ -126,6 +126,15 @@ export function createApiClient() {
     materials: courseId => request(`/courses/${encodeURIComponent(courseId)}/materials`),
     schedules: (revision = '', range = {}) => {const query=[...(revision?[['since',revision]]:[]),...(range.from?[['from',range.from]]:[]),...(range.to?[['to',range.to]]:[])].map(([key,value])=>`${key}=${encodeURIComponent(value)}`).join('&');return request(`/schedules${query?'?'+query:''}`)},
     schedulingResources: (revision = '') => request(`/scheduling-resources${revision ? `?since=${encodeURIComponent(revision)}` : ''}`),
+    classTypes: (revision = '') => request(`/class-types${revision ? `?since=${encodeURIComponent(revision)}` : ''}`),
+    createClassType(fields, operationKey) {
+      const body = Object.fromEntries(['name', 'studentReschedulingAllowed', 'active'].map(key => [key, fields[key]]));
+      return request('/class-types', { method: 'POST', body, idempotencyKey: operationKey });
+    },
+    updateClassType(current, fields, operationKey) {
+      const body = Object.fromEntries(['name', 'studentReschedulingAllowed', 'active'].map(key => [key, fields[key]]));
+      return request(`/class-types/${encodeURIComponent(current.id)}`, { method: 'PATCH', body: { ...body, version: current.version }, idempotencyKey: operationKey });
+    },
     classCapacityStatuses(revision = '', range = {}) {
       const parameters = new URLSearchParams();
       for (const key of ['from', 'to', 'courseId']) if (range[key]) parameters.set(key, range[key]);
@@ -191,7 +200,7 @@ export function createApiClient() {
     restoreCourse: (current, operationKey) => request(`/courses/${encodeURIComponent(current.id)}/restore`, { method: 'POST', body: { version: current.version }, idempotencyKey: operationKey }),
     updateCourseMetadata: (id, fields) => request(`/courses/${encodeURIComponent(id)}`, { method: 'PATCH', body: fields }),
     saveCourse(course, current, operationKey) {
-      const fields = ['courseName', 'feeName', 'category', 'level', 'pricingModel', 'price', 'months', 'duration', 'packageType', 'packageTotal', 'bookingExpiry', 'onlineStore'];
+      const fields = ['courseName', 'feeName', 'category', 'level', 'classTypeId', 'classTypeVersion', 'pricingModel', 'price', 'months', 'duration', 'packageType', 'packageTotal', 'bookingExpiry', 'onlineStore'];
       const body = Object.fromEntries(fields.filter(key => course[key] !== undefined).map(key => [key, course[key]]));
       if (current) body.version = current.version;
       return request(current ? `/courses/${encodeURIComponent(current.id)}` : '/courses', { method: current ? 'PATCH' : 'POST', body, ...(!current ? { idempotencyKey: operationKey } : {}) });

@@ -8,7 +8,8 @@ export class ApplicationError extends Error {
 
 const invalid = message => { throw new ApplicationError(400, 'INVALID_COURSE', message); };
 const pricingFields = ['pricingModel', 'price', 'months', 'duration', 'packageType', 'packageTotal', 'bookingExpiry', 'onlineStore'];
-const fields = new Set(['courseName', 'feeName', 'category', 'level', ...pricingFields]);
+const typeFields = ['classTypeId', 'classTypeVersion'];
+const fields = new Set(['courseName', 'feeName', 'category', 'level', ...typeFields, ...pricingFields]);
 const plainObject = value => value !== null && typeof value === 'object' && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype;
 
 function text(value, label, required = false) {
@@ -55,11 +56,23 @@ export function hasPricingFields(input) {
   return ['feeName', ...pricingFields].some(field => Object.hasOwn(input, field));
 }
 
+function classTypeSelection(input) {
+  if (!Object.hasOwn(input, 'classTypeId')) {
+    if (Object.hasOwn(input, 'classTypeVersion')) invalid('Class type version requires an explicit selection.');
+    return {};
+  }
+  const id = input.classTypeId;
+  if (id !== null && (typeof id !== 'string' || !id || id.length > 200)) invalid('Choose an existing class type or clear the selection.');
+  if (id !== null && (!Number.isSafeInteger(input.classTypeVersion) || input.classTypeVersion < 1)) throw new ApplicationError(409, 'CLASS_TYPE_VERSION_REQUIRED', 'Reload the class type and include its current version.');
+  if (id === null && Object.hasOwn(input, 'classTypeVersion') && input.classTypeVersion !== 0) invalid('An empty class type must use version zero.');
+  return { classTypeId: id, ...(id !== null ? { classTypeVersion: input.classTypeVersion } : {}) };
+}
+
 export function validateCourseMetadata(input, current = null) {
   if (!plainObject(input)) invalid('Course must be a JSON object.');
-  for (const key of Object.keys(input)) if (!['courseName', 'category', 'level', 'version'].includes(key)) invalid(`Unsupported course field: ${key}.`);
+  for (const key of Object.keys(input)) if (!['courseName', 'category', 'level', 'version', ...typeFields].includes(key)) invalid(`Unsupported course field: ${key}.`);
   const source = current ? { ...current, ...input } : input;
-  return { courseName: text(source.courseName, 'Course name', true), category: text(source.category, 'Category'), level: text(source.level, 'Level') };
+  return { courseName: text(source.courseName, 'Course name', true), category: text(source.category, 'Category'), level: text(source.level, 'Level'), ...classTypeSelection(input) };
 }
 
 export function validateCourse(input, current = null) {
@@ -68,7 +81,7 @@ export function validateCourse(input, current = null) {
   const source = current ? { ...current, ...input } : input;
   return {
     courseName: text(source.courseName, 'Course name', true), category: text(source.category, 'Category'), level: text(source.level, 'Level'),
-    feeName: text(source.feeName, 'Fee name', true), ...validatePricing(source),
+    feeName: text(source.feeName, 'Fee name', true), ...validatePricing(source), ...classTypeSelection(input),
   };
 }
 

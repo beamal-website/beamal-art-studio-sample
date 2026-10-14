@@ -789,6 +789,63 @@
 .lesson-class-status button{min-height:44px;max-width:100%;margin:0;padding:10px 14px;border-radius:3px;font-size:15px;line-height:1.5;white-space:normal;overflow-wrap:anywhere}
 .lesson-class-status button:focus-visible{outline:2px solid var(--teal);outline-offset:3px}
 .class-capacity-status-read-error{margin:0 16px 16px;padding:12px 16px;border-left:3px solid #aa7837;background:#f7f1e5;color:#615b50;font-size:14px;line-height:1.7;overflow-wrap:anywhere}
+
+/* Class types and explicit student-rescheduling rules use independent settings. */
+.class-type-selection,.class-type-details,.class-types-manager-dialog,.class-type-editor-dialog{min-width:0;max-width:100%;color:#253d3b}
+.class-type-selection{margin:20px 0;padding:16px;border:1px solid #d9ddd2;border-radius:3px;background:#fffdf8}
+.class-type-field{display:block;min-width:0;margin:0 0 20px}
+.class-type-field>span{display:block;margin-bottom:8px;color:#526a60;font-size:15px;line-height:1.5;overflow-wrap:anywhere}
+.class-type-field input,.class-type-field select{display:block;width:100%;min-width:0;max-width:100%;min-height:48px;margin:0;padding:10px 12px;border:1px solid #bdcbc1;border-radius:3px;background:#fffdf8;color:#253d3b;font:inherit;font-size:16px;line-height:1.5}
+.class-type-selection .class-type-field{margin-bottom:12px}
+.class-type-details{display:flex;align-items:flex-start;flex-wrap:wrap;gap:8px 12px}
+.class-type-chip{display:inline-block;min-width:0;max-width:100%;padding:4px 8px;border:1px solid #d9ddd2;border-radius:3px;background:#e9eee5;color:#526a60;font-size:14px;line-height:1.5;white-space:normal;overflow-wrap:anywhere}
+.class-type-policy{display:block;min-width:0;max-width:100%;color:#526a60;font-size:14px;line-height:1.7;white-space:normal;overflow-wrap:anywhere}
+.class-type-rules-summary{min-width:0;max-width:100%;margin-bottom:12px}
+.class-type-note{margin:0;color:#687770;font-size:14px;line-height:1.7;overflow-wrap:anywhere}
+.class-type-modal{z-index:1510;padding:16px}
+.class-type-editor-modal{z-index:1520}
+.class-types-manager-dialog,.class-type-editor-dialog{display:flex;flex-direction:column;width:min(660px,100%);max-height:calc(100dvh - 32px);padding:0;overflow:hidden;border:1px solid #d9ddd2;border-radius:6px;background:#fffdf8}
+.class-types-manager-dialog{height:min(760px,calc(100dvh - 32px))}
+.class-type-editor-dialog{width:min(440px,100%)}
+.class-type-header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-shrink:0;padding:20px 24px;border-bottom:1px solid #d9ddd2}
+.class-type-header h2{min-width:0;margin:0;font-size:24px;font-weight:500;line-height:1.4;overflow-wrap:anywhere}
+.class-type-header .class-type-close{flex:none;width:44px;min-height:44px;margin:0;padding:0;border:0;border-radius:3px;background:transparent;box-shadow:none;color:#687770;font-size:32px;line-height:1}
+.class-type-body{flex:1;min-width:0;min-height:0;padding:24px;overflow-y:auto;overscroll-behavior-y:contain}
+.class-type-body>.class-type-note+.class-type-note{margin-top:8px}
+.class-type-manager-actions{margin:20px 0}
+.class-type-manager-actions button{min-height:44px;padding:10px 16px;border-radius:3px}
+.class-type-table-scroll{min-width:0;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;border:1px solid #d9ddd2;border-radius:3px}
+.class-type-table-scroll table{width:100%;min-width:540px;table-layout:fixed;margin:0}
+.class-type-table-scroll th,.class-type-table-scroll td{padding:14px 12px;border-bottom:1px solid #d9ddd2;vertical-align:top;line-height:1.6;overflow-wrap:anywhere}
+.class-type-table-scroll th{background:#e9eee5;color:#526a60;font-size:14px}
+.class-type-table-scroll th:nth-child(2){width:160px}
+.class-type-table-scroll th:nth-child(3){width:76px}
+.class-type-table-scroll th:last-child{width:84px}
+.class-type-table-scroll tr:last-child td{border-bottom:0}
+.class-type-long-name{white-space:pre-wrap;overflow-wrap:anywhere}
+.class-type-table-scroll button{min-height:44px;max-width:100%;margin:0;padding:8px 10px;border-radius:3px;box-shadow:none;white-space:normal;font-size:15px}
+.class-type-editor-dialog form{display:flex;flex:1;flex-direction:column;min-width:0;min-height:0;margin:0;overflow:hidden}
+.class-type-editor-fields{min-width:0;margin:24px 0 20px;padding:0;border:0}
+.class-type-checkbox{display:flex;align-items:center;gap:12px;min-width:0;min-height:44px;margin:0;font-size:16px;line-height:1.6;cursor:pointer}
+.class-type-checkbox input[type=checkbox]{flex:none;width:20px;height:20px;min-height:0;margin:0;padding:0;accent-color:var(--teal)}
+.class-type-error{margin:16px 0;color:#a43d2b;font-size:15px;line-height:1.7;overflow-wrap:anywhere}
+.class-type-error:empty{display:none}
+.class-type-retry{min-height:44px;max-width:100%;margin:0 0 16px;padding:10px 16px;border-radius:3px;white-space:normal;line-height:1.5}
+.class-type-loading{margin:16px 0;color:#687770;font-size:14px;line-height:1.6}
+.class-type-empty{margin:0;padding:28px 16px;border:1px dashed #bdcbc1;color:#687770;text-align:center;line-height:1.7;overflow-wrap:anywhere}
+.class-type-footer{display:flex;justify-content:flex-end;align-items:center;gap:12px;flex-shrink:0;padding:16px 24px;border-top:1px solid #d9ddd2}
+.class-type-footer button{min-height:44px;padding:10px 16px;border-radius:3px;white-space:normal;line-height:1.5}
+.class-types-manager-dialog button:disabled,.class-type-editor-dialog button:disabled{cursor:not-allowed;background:#eee9de;border-color:#d9ddd2;box-shadow:none;color:#687770;filter:none}
+.class-type-editor-fields:disabled input,.class-type-editor-fields:disabled select{cursor:not-allowed;color:#687770;background:#f0f2eb}
+.class-type-selection select:focus-visible,.class-types-manager-dialog button:focus-visible,.class-type-table-scroll:focus-visible,.class-type-editor-dialog button:focus-visible,.class-type-editor-dialog input:focus-visible,.class-type-editor-dialog select:focus-visible{outline:2px solid var(--teal);outline-offset:3px}
+.class-type-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+.class-type-filter{display:flex;align-items:center;gap:12px;max-width:100%;padding:12px 20px;color:#253d3b}
+.class-type-filter select{width:min(360px,100%);min-width:0;min-height:44px;margin:0}
+.course-default-class-type{display:block;margin-top:8px;max-width:260px;white-space:normal;overflow-wrap:anywhere;color:#687770}
+.lesson-class-type-value{margin-top:12px;max-width:100%}
+@media(max-width:600px){.class-type-filter{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;padding:12px 16px}.class-type-filter select{width:100%}}
+@media(max-width:600px){.class-type-modal{padding:8px}.class-types-manager-dialog,.class-type-editor-dialog{max-height:calc(100dvh - 16px)}.class-types-manager-dialog{height:calc(100dvh - 16px)}.class-type-header{padding:16px}.class-type-header h2{font-size:21px}.class-type-body{padding:20px 16px}.class-type-footer{padding:14px 16px}.class-type-manager-actions button{width:100%}.class-type-selection{padding:14px;margin:16px 0}.class-type-field>span{font-size:14px}.class-type-details{gap:8px}.class-type-chip,.class-type-policy{font-size:14px}}
+
 @media(max-width:600px){.class-status-modal{padding:8px}.class-status-editor-dialog{height:calc(100dvh - 16px);max-height:calc(100dvh - 16px)}.class-status-header{padding:16px}.class-status-header h2{font-size:21px}.class-status-body{padding:20px 16px}.class-status-facts{gap:16px 12px;margin:20px 0}.class-status-option{padding:14px 12px}.class-status-footer{padding:14px 16px}.class-status-footer button{padding:10px 14px}.class-status-notice{padding:12px}}
 
 @media(max-width:600px){.resource-list-teacher-colour table{min-width:560px}.resource-list-teacher-colour th:nth-child(2){width:132px}.resource-list-teacher-colour th:nth-child(3){width:80px}.resource-colour-fields{padding:16px 0}.teacher-colour-markers{gap:4px 6px}.availability-detail-colour-markers .teacher-colour-marker{font-size:13px}}

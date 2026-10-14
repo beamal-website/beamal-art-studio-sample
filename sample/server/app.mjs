@@ -9,6 +9,7 @@ import { validateSchedulingResource } from './scheduling-resources.mjs';
 import { validatePerson, validatePeopleQuery } from './people.mjs';
 import { validateAvailableSlot, availableSlotRange } from './available-slots.mjs';
 import { validateClassStatus, validateClassStatusQuery } from './class-capacity-status.mjs';
+import { validateClassType } from './class-types.mjs';
 import { ApplicationError, validateCourse, validateCourseMetadata, hasPricingFields, validateFee, requireVersion } from './validation.mjs';
 import { hashPassword, verifyPassword, normaliseEmail, randomToken, tokenHash, csrfForToken, matchesHash } from './security.mjs';
 
@@ -168,6 +169,9 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
     }
     try {
       const requestUrl = new URL(request.url, 'http://localhost'), pathname = requestUrl.pathname;
+      const decodeId = part => {
+        try { return decodeURIComponent(part); } catch { throw new ApplicationError(400, 'INVALID_PATH', 'Invalid resource identifier.'); }
+      };
       if (request.method === 'OPTIONS' && pathname.startsWith('/api/')) {
         requireOrigin(request);
         response.writeHead(204, { 'Access-Control-Allow-Methods': 'GET, HEAD, POST, PATCH, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, X-CSRF-Token, Idempotency-Key, X-File-Name, Range', 'Access-Control-Max-Age': '600' });
@@ -203,6 +207,27 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
         const session = requireSession(request);
         json(response, 200, store.catalogSnapshot({ user: session.user, publicOnly: session.user.role === 'student', since: requestUrl.searchParams.get('since') || '' })); return;
       }
+      const classTypeMatch = /^\/api\/class-types\/([^/]+)$/.exec(pathname);
+      if (pathname === '/api/class-types' && request.method === 'GET') {
+        const session = requireSession(request);
+        if (!['admin', 'teacher'].includes(session.user.role)) throw new ApplicationError(403, 'ROLE_FORBIDDEN', 'Class types are not available for this role.');
+        if ([...requestUrl.searchParams.keys()].some(key => key !== 'since') || requestUrl.searchParams.getAll('since').length > 1 || (requestUrl.searchParams.get('since') || '').length > 200) throw new ApplicationError(400, 'INVALID_QUERY', 'Only a current class type revision can be queried.');
+        json(response, 200, store.classTypes.list({ since: requestUrl.searchParams.get('since') || '' })); return;
+      }
+      if (pathname === '/api/class-types' && request.method === 'POST') {
+        const session = requireMutation(request);
+        if (session.user.role !== 'admin') throw new ApplicationError(403, 'ROLE_FORBIDDEN', 'Only an administrator can change class types.');
+        const input = validateClassType(await body(request)), key = idempotencyKey(request);
+        const result = store.createOnce({ userId: session.user.id, route: pathname, key, payloadHash: payloadHash(input) }, () => ({ type: store.classTypes.create(input, session.user.id) }));
+        json(response, result.status, result.body); return;
+      }
+      if (classTypeMatch && request.method === 'PATCH') {
+        const session = requireMutation(request);
+        if (session.user.role !== 'admin') throw new ApplicationError(403, 'ROLE_FORBIDDEN', 'Only an administrator can change class types.');
+        const id = decodeId(classTypeMatch[1]), input = validateClassType(await body(request), { update: true }), key = idempotencyKey(request);
+        const result = store.mutateOnce({ userId: session.user.id, route: `PATCH /api/class-types/${encodeURIComponent(id)}`, key, payloadHash: payloadHash(input), status: 200 }, () => ({ type: store.classTypes.update(id, input, session.user.id) }));
+        json(response, result.status, result.body); return;
+      }
       if (pathname === '/api/scheduling-resources' && request.method === 'GET') {
         const session = requireSession(request);
         if (!['admin', 'teacher'].includes(session.user.role)) throw new ApplicationError(403, 'ROLE_FORBIDDEN', 'Scheduling resources are not available for this role.');
@@ -231,9 +256,6 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
       const uploadMatch = /^\/api\/courses\/([^/]+)\/material-uploads$/.exec(pathname);
       const attachmentMatch = /^\/api\/materials\/([^/]+)\/attachments\/([^/]+)$/.exec(pathname);
       const materialMatch = /^\/api\/materials\/([^/]+)$/.exec(pathname);
-      const decodeId = part => {
-        try { return decodeURIComponent(part); } catch { throw new ApplicationError(400, 'INVALID_PATH', 'Invalid resource identifier.'); }
-      };
       const availableSlotMatch = /^\/api\/available-slots\/([^/]+)$/.exec(pathname);
       const publicCourseMatch = /^\/api\/public\/courses\/([^/]+)$/.exec(pathname);
       const slotQuery = keys => {
@@ -452,7 +474,7 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
         json(response, 200, store.updateFee(id, fee, version, session.user.id, true)); return;
       }
       if (pathname === '/api' || pathname.startsWith('/api/')) {
-        const known = match || feeMatch || courseMaterialMatch || materialMatch || uploadMatch || attachmentMatch || scheduleMatch || occurrenceMatch || courseLifecycleMatch || schedulingResourceMatch || personMatch || personHistoryMatch || teacherLinkMatch || accessGrantMatch || availableSlotMatch || publicCourseMatch || capacityStatusMatch || ['/api/class-capacity-statuses', '/api/available-slots', '/api/availability-public-settings', '/api/public/courses', '/api/people', '/api/access-control', '/api/access-control/grants', '/api/health', '/api/auth/session', '/api/auth/login', '/api/auth/logout', '/api/courses', '/api/fees', '/api/catalog', '/api/schedules', '/api/scheduling-resources'].includes(pathname);
+        const known = match || feeMatch || courseMaterialMatch || materialMatch || uploadMatch || attachmentMatch || scheduleMatch || occurrenceMatch || courseLifecycleMatch || schedulingResourceMatch || personMatch || personHistoryMatch || teacherLinkMatch || accessGrantMatch || availableSlotMatch || publicCourseMatch || capacityStatusMatch || classTypeMatch || ['/api/class-types', '/api/class-capacity-statuses', '/api/available-slots', '/api/availability-public-settings', '/api/public/courses', '/api/people', '/api/access-control', '/api/access-control/grants', '/api/health', '/api/auth/session', '/api/auth/login', '/api/auth/logout', '/api/courses', '/api/fees', '/api/catalog', '/api/schedules', '/api/scheduling-resources'].includes(pathname);
         throw new ApplicationError(known ? 405 : 404, known ? 'METHOD_NOT_ALLOWED' : 'NOT_FOUND', 'API route or method is not available.');
       }
       await serveStatic(request, response, pathname);

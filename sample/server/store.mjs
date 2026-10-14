@@ -12,10 +12,11 @@ import { createAccessControlStore } from './access-control.mjs';
 import { createPeopleStore } from './people.mjs';
 import { createAvailableSlotStore } from './available-slots.mjs';
 import { createClassCapacityStatusStore } from './class-capacity-status.mjs';
+import { createClassTypeStore } from './class-types.mjs';
 
 const publicUser = row => row ? { id: row.id, email: row.email, displayName: row.display_name, role: row.role } : null;
 const pricingKeys = ['feeName', 'pricingModel', 'price', 'months', 'duration', 'packageType', 'packageTotal', 'bookingExpiry', 'onlineStore'];
-const metadata = record => ({ courseName: record.courseName, category: record.category || '', level: record.level || '' });
+const metadata = (record, includeClassType = false) => ({ courseName: record.courseName, category: record.category || '', level: record.level || '', ...(includeClassType ? { classTypeId: record.classTypeId ?? null } : {}) });
 const pricing = record => Object.fromEntries(pricingKeys.filter(key => Object.hasOwn(record, key)).map(key => [key, record[key]]));
 const nameKey = name => name.trim().toLowerCase();
 const deletion = row => row.deleted_at ? { deletedAt: row.deleted_at } : {};
@@ -96,6 +97,12 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
       throw error;
     } finally { transactionDepth--; }
   };
+  const classTypes = createClassTypeStore({ database, transaction });
+  const courseMetadata = (data, current = null) => {
+    const classTypeId = Object.hasOwn(data, 'classTypeId') ? data.classTypeId : current?.classTypeId ?? null;
+    if (Object.hasOwn(data, 'classTypeId') && classTypeId !== null) classTypes.snapshot(classTypeId, data.classTypeVersion);
+    return metadata({ ...data, classTypeId }, true);
+  };
   const parseFee = row => row ? {
     ...JSON.parse(row.data), id: row.id, feeCode: row.fee_code, price: row.price_cents / 100,
     version: row.version, createdAt: row.created_at, updatedAt: row.updated_at,
@@ -106,7 +113,7 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
     if (!row) return null;
     const fees = database.prepare(`SELECT fees.* FROM fees JOIN course_fees ON fees.id = course_fees.fee_id WHERE course_fees.course_id = ? ${publicOnly ? 'AND fees.online_store = 1' : ''} ORDER BY course_fees.position, fees.fee_code`).all(row.id).map(parseFee);
     return {
-      ...metadata(JSON.parse(row.data)), feeName: '', ...pricing(fees[0] || {}),
+      ...metadata(JSON.parse(row.data), !publicOnly), feeName: '', ...pricing(fees[0] || {}),
       id: row.id, courseCode: row.course_code, version: row.version,
       createdAt: row.created_at, updatedAt: row.updated_at, ...deletion(row), fees, feeIds: fees.map(fee => fee.id),
     };
@@ -138,8 +145,8 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
     const feeRows = readFeeRows(publicOnly).filter(row => allowedIds === null || feeIds.has(row.id));
     return { courseRows, ...feeCatalog(feeRows, links) };
   };
-  const compactCourse = (row, feeIds) => ({
-    ...metadata(JSON.parse(row.data)), id: row.id, courseCode: row.course_code, version: row.version,
+  const compactCourse = (row, feeIds, publicOnly = false) => ({
+    ...metadata(JSON.parse(row.data), !publicOnly), id: row.id, courseCode: row.course_code, version: row.version,
     createdAt: row.created_at, updatedAt: row.updated_at, ...deletion(row), feeIds,
   });
   const listCourses = ({ publicOnly = false, user = null } = {}) => transaction(() => {
@@ -147,7 +154,7 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
     return courseRows.map(row => {
       const feeIds = feeIdsByCourse.get(row.id) || [], fees = feeIds.map(id => feesById.get(id));
       return {
-        ...metadata(JSON.parse(row.data)), feeName: '', ...pricing(fees[0] || {}),
+        ...metadata(JSON.parse(row.data), !publicOnly), feeName: '', ...pricing(fees[0] || {}),
         id: row.id, courseCode: row.course_code, version: row.version,
         createdAt: row.created_at, updatedAt: row.updated_at, ...deletion(row), fees, feeIds,
       };
@@ -168,7 +175,7 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
     const catalog = readCatalog(publicOnly);
     return {
       revision,
-      courses: catalog.courseRows.map(row => compactCourse(row, catalog.feeIdsByCourse.get(row.id) || [])),
+      courses: catalog.courseRows.map(row => compactCourse(row, catalog.feeIdsByCourse.get(row.id) || [], publicOnly)),
       fees: catalog.fees,
     };
   }, 'read');
@@ -234,12 +241,13 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
     return fee;
   };
   const createCourse = (data, actor = null, seedId = null) => transaction(() => {
+    const storedMetadata = courseMetadata(data);
     const key = ensureUniqueCourseName(data.courseName);
     const sequence = database.prepare('UPDATE course_sequence SET value = value + 1 WHERE id = 1 RETURNING value').get().value;
     const id = seedId || randomUUID(), courseCode = `CO-${String(sequence).padStart(3, '0')}`;
     const now = new Date().toISOString();
     // The old columns remain only for database compatibility; API pricing is always read from normalized fees.
-    database.prepare('INSERT INTO courses(id, course_code, name_key, data, price_cents, online_store, version, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)').run(id, courseCode, key, JSON.stringify(metadata(data)), Math.round(data.price * 100), Number(data.onlineStore), now, now);
+    database.prepare('INSERT INTO courses(id, course_code, name_key, data, price_cents, online_store, version, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)').run(id, courseCode, key, JSON.stringify(storedMetadata), Math.round(data.price * 100), Number(data.onlineStore), now, now);
     insertFee({ ...pricing(data), category: '' }, [id], now, actor);
     const record = getCourse(id);
     auditCourse(actor, 'course.create', record);
@@ -252,7 +260,7 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
     if (current.version !== version) throw new ApplicationError(409, 'VERSION_CONFLICT', 'This course was changed by someone else. Reload it before saving.');
     const key = ensureUniqueCourseName(data.courseName, id);
     const now = new Date().toISOString();
-    database.prepare('UPDATE courses SET data = ?, name_key = ? WHERE id = ?').run(JSON.stringify(metadata(data)), key, id);
+    database.prepare('UPDATE courses SET data = ?, name_key = ? WHERE id = ?').run(JSON.stringify(courseMetadata(data, current)), key, id);
     const affected = new Set([id]);
     if (updatePricing) {
       if (current.fees.length) {
@@ -341,7 +349,7 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
     for (const seed of seedCourses) {
       if (!seed.id || typeof seed.id !== 'string' || seed.id.length > 200) throw new Error('Seed course requires a valid id.');
       if (getCourse(seed.id)) continue;
-      const fields = ['courseName', 'feeName', 'category', 'level', ...pricingKeys.slice(1)];
+      const fields = ['courseName', 'feeName', 'category', 'level', 'classTypeId', 'classTypeVersion', ...pricingKeys.slice(1)];
       const input = Object.fromEntries(fields.filter(field => Object.hasOwn(seed, field)).map(field => [field, seed[field]]));
       createCourse(validateCourse(input), null, seed.id);
     }
@@ -350,7 +358,7 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
   try {
     attachments = await createAttachmentStore({ database, transaction, directory: attachmentsDir || (databasePath === ':memory:' ? undefined : `${resolve(databasePath)}.attachments`) });
     schedulingResources = createSchedulingResourceStore({ database, transaction });
-    schedules = createScheduleStore({ database, transaction, resources: schedulingResources });
+    schedules = createScheduleStore({ database, transaction, resources: schedulingResources, classTypes });
     accessControl = createAccessControlStore({ database, transaction });
     materials = createMaterialStore({ database, transaction, attachments, accessControl });
     people = createPeopleStore({ database, transaction });
@@ -360,7 +368,7 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
   }
   catch (error) { await attachments?.close(); database.close(); throw error; }
   return {
-    listCourses, getCourse, createCourse, updateCourse, deleteCourse: (id, version, actor) => changeCourseDeletion(id, version, actor), restoreCourse: (id, version, actor) => changeCourseDeletion(id, version, actor, true), listFees, getFee, createFee, updateFee, createOnce, mutateOnce, catalogSnapshot, materials, attachments, schedules, schedulingResources, accessControl, people, availableSlots, classCapacityStatuses,
+    listCourses, getCourse, createCourse, updateCourse, deleteCourse: (id, version, actor) => changeCourseDeletion(id, version, actor), restoreCourse: (id, version, actor) => changeCourseDeletion(id, version, actor, true), listFees, getFee, createFee, updateFee, createOnce, mutateOnce, catalogSnapshot, materials, attachments, schedules, schedulingResources, accessControl, people, availableSlots, classCapacityStatuses, classTypes,
     listUsers: () => database.prepare('SELECT * FROM users ORDER BY email').all().map(publicUser),
     userByEmail: email => database.prepare('SELECT * FROM users WHERE email = ?').get(email),
     publicUser,

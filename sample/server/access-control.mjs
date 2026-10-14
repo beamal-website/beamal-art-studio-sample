@@ -6,7 +6,7 @@ const hash=value=>createHash('sha256').update(JSON.stringify(value)).digest('hex
 const plain=value=>value!==null&&typeof value==='object'&&!Array.isArray(value)&&Object.getPrototypeOf(value)===Object.prototype;
 const invalid=message=>{throw new ApplicationError(400,'INVALID_ACCESS',message);};
 const version=input=>{if(!plain(input)||!Number.isSafeInteger(input.version)||input.version<1)throw new ApplicationError(409,'VERSION_REQUIRED','Reload the permission and include its current version.');};
-const safeFields=['id','course','version','createdAt','updatedAt','sequence','time','duration','mustAttendAll','color','teacher','room','teacherIds','roomIds','capacity','session','remark','detail','moreInfo'];
+const safeFields=['id','course','version','createdAt','updatedAt','sequence','time','duration','mustAttendAll','color','teacher','room','teacherIds','roomIds','capacity','session','remark','detail','moreInfo','classType'];
 // Permission fingerprints ignore time/notes and coalesce equivalent split
 // segments. A metadata-only following edit must not look like a new identity.
 function assignmentFingerprint(schedule) {

@@ -173,3 +173,7 @@
 ## 2026-10-15 最新：指定一堂的手動班額狀態
 
 Admin可對正式schedule ID＋固定sequence保存Full／Available／清除，授權Teacher只讀；五種時間表及同堂linked Slot共用紅／綠／未知標記，老師主色不變，Standalone不借班額。正式人數與自動狀態仍未知，手動綠點不等於報名已通過，也不改Trial／Rescheduling配額或自身排課版本。新增6主流程／2SDK、8純UI／6HTTP及獨立完整前端275／275（7.9092秒）有證據；狀態雙方向同步及重複503不重畫先RED後修正GREEN。Root最後完整512／512（38.2358秒、exit0），隨後依序build2.04秒成功；證據集中於[手動班額檢查點](class-capacity-status-checkpoint.md)。真桌面GUI已驗Full／Available／clear、五檢視與linked同堂紅／綠／未知、換老師／移日／取消→Undo不丟標記、同帳戶兩視窗409保選擇及Teacher唯讀保焦點；匿名public含revision前後逐byte相同。390×844中英文手機DOM無橫向溢出，Tab由Save繞回Close；未保存Available的Cancel／Escape／Back後，重新載入並重開仍Full v4／source7。部分捲動手機截圖不當完整header／footer外觀證明；本GUI沒有service重啟，持久重啟由backend測試驗。整C-04／C-05、自動班額／Enrollment／Attendance、111項及300 active仍未完成，未把VM的503回歸當真GUI。
+
+## 2026-10-15 最新：Class Type配置與新班規則快照
+
+Admin已有Regular／Special／自訂類型三態與啟用管理，Course新班預設、Schedule當時規則快照、Keep／scoped時間與repeat保各堂例外及五檢視篩選已接正式服務；Teacher唯讀、linked讀同堂而Standalone／public不借設定。指定6flow／2SDK、14純UI、9真HTTP與相關29回歸，最後前端283／283（51.3002秒）、Root完整543／543（70.7444秒、exit0）及隨後build4.11秒成功。真GUI在全新虛構5181資料完成三態、Course default→新單堂、停用預設省略欄仍保ID、Keep／明確採最新、五檢視／linked、Teacher唯讀及390中英文／未保存退出；public私人類型改前後1074 bytes含revision相同。5181驗後關閉，原分頁還原5180登入畫面及viewport，5180資料未改；不把隔離GUI當5180資料驗收。證據集中[類型檢查點](class-type-checkpoint.md)。來源Chrome只讀Add schedule未看到此欄，這是Notion追加；C-06規則執行、C-02完整條件、四項待決政策、Enrollment／Attendance／Trial／To-do／Payment、111項與300 active仍是主要目標，下一步接正式業務關聯。

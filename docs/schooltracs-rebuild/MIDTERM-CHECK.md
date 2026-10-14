@@ -123,3 +123,7 @@ Availability本片最後驗證：469／469後依序build成功5.47秒；Admin／
 ## 2026-10-15 後續：手動Full與正式人數分開
 
 正式某一堂已有Admin手動Full／Available／clear、授權Teacher唯讀、五檢視與linked同ref標記；清除後現階段顯未知，不把空學生名單或Trial配額推成正式班額。按ID＋sequence、開表status／來源版本及固定重試識別，Cancel／Escape／Back不保存；紅／綠點不改單堂老師主色或多老師政策。6主流程含晚回覆雙向合併與相同503不重畫，最後完整前端275／275；Root完整512／512（38.2358秒）及依序build2.04秒成功，[集中檢查點](class-capacity-status-checkpoint.md)記精確證據。真桌面畫面已確認五檢視同堂Full且老師主色不變、linked同步／Standalone無點、清除後人數—與未知、同Admin兩視窗衝突保Full草稿、Teacher局部更新保焦點；換老師／移日／取消及Undo仍同seq，最新表單status v4／source7。390中英文手機無橫向溢出，Tab繞回Close；未保存Available的Cancel／Escape／Back後及最新App重新載入仍Full v4／source7，部分捲動截圖不作完整header／footer外觀證明。自動按已確認學生人數判定、Enrollment／Attendance／超額規則及整C-04／05／111／300 active仍缺；本GUI沒有service重啟，503只由VM與review證明。
+
+## 2026-10-15 後續：類型配置不等於調課交易
+
+C-06的三態配置、Course預設與新班快照已有正式服務，改目錄不追改舊堂，Keep／scoped時間及repeat保留例外；selected type遺失、inactive default被FormData誤清、opening覆蓋及共用read卡loading等required均有真重現／永久回歸及修正。最後前端283／283、Root完整543／543（70.7444秒）與依序build4.11秒成功，真5181純虛構GUI完成配置／預設／快照／五檢視／Teacher及390雙語不保存操作，5180資料未改；精確證據、較早結果與未做GUI503／雙視窗／DBrestart的界線見[集中檢查點](class-type-checkpoint.md)。Notion有此要求而來源只讀Add schedule未見類型欄；C-02 Eye／自訂／個人保存、P-10資格例外、C-07名單、學生調課、Trial／To-do／Enrollment／Payment及111項／300 active不因此完成。

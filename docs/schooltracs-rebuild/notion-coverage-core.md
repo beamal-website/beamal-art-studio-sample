@@ -207,3 +207,7 @@ Enrollment、Trial、家庭登入／激活、正式 Student 建立／Convert、�
 ## 2026-10-15 C-04／C-05手動標記追加（不改原48／111來源列）
 
 §5.4的Admin提前Full／強制Available及獨立角標已有正式某堂ID＋sequence保存、clear未知、Teacher唯讀與五檢視／linked投影；狀態不改老師主色、配額、報名資格或public白名單。來源版本與同ref雙向單調合併、取消／返回不保存、衝突草稿、跨身份及重複503均有獨立回歸；最後前端275／275、Root完整512／512（38.2358秒）及依序build2.04秒通過，[集中檢查點](class-capacity-status-checkpoint.md)已記真桌面五檢視／linked、手動三狀態與未知人數、同帳戶兩視窗409、Teacher唯讀與焦點、固定seq換老師／移日／取消→Undo及public不變。390中英文手機無橫向溢出、Tab循環、Cancel／Escape／Back不保存及重新載入仍Full v4／source7已有實際證據；部分捲動截圖不證完整外觀，本GUI沒有service重啟，未把VM503當真GUI。原48／全111來源狀態不變；正式人數／自動Full、Enrollment／Attendance、Absent／Sick／Pending不釋位及300 active整體流程仍未完成，不能將整C-04／C-05列完成。
+
+## 2026-10-15 C-06配置／C-02類型條件追加（不改原48／111來源列）
+
+Notion §5.5第99行的三態類型配置、Course新班預設與Schedule快照已有正式服務，C-02多了按保存類型ID的顯示條件；舊堂不追改，Keep／時間／repeat保選定及其他堂例外，停用保歷史不作新選。原「category／level尚非Class Type」保留為歷史基線；本片仍沒有正式StudentSession／申請交易執行允許或禁止，P-10資格與例外覆蓋待細化，整C-06／C-02 Eye／自訂／個人保存不標完成。指定6flow／2SDK、14pureUI、9真HTTP及相關29、最後前端283／283（51.3002秒）、Root543／543（70.7444秒）及依序build4.11秒、5181純虛構GUI與5180未改界線見[集中檢查點](class-type-checkpoint.md)。R-01權限、public白名單、C-03／04／05、C-07及Enrollment／Attendance／Trial／To-do／Payment、4老師／300 active／6課整體驗收仍不由本片完成，原48／全111來源列及狀態不改。

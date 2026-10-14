@@ -10,6 +10,7 @@ import { createScheduleStore } from './schedules.mjs';
 import { createSchedulingResourceStore } from './scheduling-resources.mjs';
 import { createAccessControlStore } from './access-control.mjs';
 import { createPeopleStore } from './people.mjs';
+import { createAvailableSlotStore } from './available-slots.mjs';
 
 const publicUser = row => row ? { id: row.id, email: row.email, displayName: row.display_name, role: row.role } : null;
 const pricingKeys = ['feeName', 'pricingModel', 'price', 'months', 'duration', 'packageType', 'packageTotal', 'bookingExpiry', 'onlineStore'];
@@ -344,7 +345,7 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
       createCourse(validateCourse(input), null, seed.id);
     }
   } catch (error) { database.close(); throw error; }
-  let materials, attachments, schedules, schedulingResources, accessControl, people;
+  let materials, attachments, schedules, schedulingResources, accessControl, people, availableSlots;
   try {
     attachments = await createAttachmentStore({ database, transaction, directory: attachmentsDir || (databasePath === ':memory:' ? undefined : `${resolve(databasePath)}.attachments`) });
     schedulingResources = createSchedulingResourceStore({ database, transaction });
@@ -352,10 +353,12 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
     accessControl = createAccessControlStore({ database, transaction });
     materials = createMaterialStore({ database, transaction, attachments, accessControl });
     people = createPeopleStore({ database, transaction });
+    availableSlots = createAvailableSlotStore({ database, transaction, accessControl });
+    accessControl.setSlotSource(() => availableSlots.scopeFacts());
   }
   catch (error) { await attachments?.close(); database.close(); throw error; }
   return {
-    listCourses, getCourse, createCourse, updateCourse, deleteCourse: (id, version, actor) => changeCourseDeletion(id, version, actor), restoreCourse: (id, version, actor) => changeCourseDeletion(id, version, actor, true), listFees, getFee, createFee, updateFee, createOnce, mutateOnce, catalogSnapshot, materials, attachments, schedules, schedulingResources, accessControl, people,
+    listCourses, getCourse, createCourse, updateCourse, deleteCourse: (id, version, actor) => changeCourseDeletion(id, version, actor), restoreCourse: (id, version, actor) => changeCourseDeletion(id, version, actor, true), listFees, getFee, createFee, updateFee, createOnce, mutateOnce, catalogSnapshot, materials, attachments, schedules, schedulingResources, accessControl, people, availableSlots,
     listUsers: () => database.prepare('SELECT * FROM users ORDER BY email').all().map(publicUser),
     userByEmail: email => database.prepare('SELECT * FROM users WHERE email = ?').get(email),
     publicUser,

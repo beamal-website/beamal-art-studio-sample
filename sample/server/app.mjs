@@ -7,6 +7,7 @@ import { validateMaterial, requireMaterialVersion } from './materials.mjs';
 import { validateSchedule, requireScheduleVersion, requireOccurrenceRequest } from './schedules.mjs';
 import { validateSchedulingResource } from './scheduling-resources.mjs';
 import { validatePerson, validatePeopleQuery } from './people.mjs';
+import { validateAvailableSlot, availableSlotRange } from './available-slots.mjs';
 import { ApplicationError, validateCourse, validateCourseMetadata, hasPricingFields, validateFee, requireVersion } from './validation.mjs';
 import { hashPassword, verifyPassword, normaliseEmail, randomToken, tokenHash, csrfForToken, matchesHash } from './security.mjs';
 
@@ -232,6 +233,39 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
       const decodeId = part => {
         try { return decodeURIComponent(part); } catch { throw new ApplicationError(400, 'INVALID_PATH', 'Invalid resource identifier.'); }
       };
+      const availableSlotMatch = /^\/api\/available-slots\/([^/]+)$/.exec(pathname);
+      const publicCourseMatch = /^\/api\/public\/courses\/([^/]+)$/.exec(pathname);
+      const slotQuery = keys => {
+        for (const [key,value] of requestUrl.searchParams) if (!keys.includes(key) || value.length > 200 || requestUrl.searchParams.getAll(key).length !== 1) throw new ApplicationError(400, 'INVALID_QUERY', 'Choose supported availability query parameters.');
+        return Object.fromEntries(keys.filter(key => requestUrl.searchParams.has(key)).map(key => [key, requestUrl.searchParams.get(key)]));
+      };
+      if (request.method === 'GET' && (pathname === '/api/public/courses' || publicCourseMatch)) {
+        const query = slotQuery(publicCourseMatch ? ['from','since'] : ['since']);
+        json(response, 200, publicCourseMatch ? store.availableSlots.publicDetail(decodeId(publicCourseMatch[1]), query) : store.availableSlots.publicCourses(query)); return;
+      }
+      if (request.method === 'GET' && (pathname === '/api/available-slots' || availableSlotMatch)) {
+        const session = requireSession(request);
+        if (!['admin','teacher'].includes(session.user.role)) throw new ApplicationError(403, 'ROLE_FORBIDDEN', 'Availability is not available for this role.');
+        const query = slotQuery(availableSlotMatch ? [] : ['from','to','since','courseId']);
+        if (!availableSlotMatch) availableSlotRange(query.from, query.to);
+        json(response, 200, availableSlotMatch ? {slot: store.availableSlots.get(decodeId(availableSlotMatch[1]), session.user)} : store.availableSlots.list(session.user, query)); return;
+      }
+      if ((pathname === '/api/available-slots' && request.method === 'POST') || (availableSlotMatch && request.method === 'PATCH')) {
+        const session = requireMutation(request);
+        if (session.user.role !== 'admin') throw new ApplicationError(403, 'ROLE_FORBIDDEN', 'Only an administrator can change availability.');
+        const update = request.method === 'PATCH', input = validateAvailableSlot(await body(request), {update}), key = idempotencyKey(request), id = update ? decodeId(availableSlotMatch[1]) : null;
+        const route = update ? `PATCH /api/available-slots/${encodeURIComponent(id)}` : pathname;
+        const result = store.mutateOnce({userId:session.user.id, route, key, payloadHash:payloadHash(input), status:update?200:201}, () => ({slot: update ? store.availableSlots.update(id,input,session.user.id) : store.availableSlots.create(input,session.user.id)}));
+        json(response,result.status,result.body); return;
+      }
+      if (pathname === '/api/availability-public-settings' && ['GET','PATCH'].includes(request.method)) {
+        const session = request.method === 'PATCH' ? requireMutation(request) : requireSession(request);
+        if (session.user.role !== 'admin') throw new ApplicationError(403, 'ROLE_FORBIDDEN', 'Only an administrator can manage public availability settings.');
+        if (request.method === 'GET') { slotQuery([]); json(response,200,{settings:store.availableSlots.settings(session.user.id)}); return; }
+        const input = await body(request), key = idempotencyKey(request);
+        const result = store.mutateOnce({userId:session.user.id,route:'PATCH '+pathname,key,payloadHash:payloadHash(input),status:200},()=>({settings:store.availableSlots.updateSettings(input,session.user.id)}));
+        json(response,result.status,result.body); return;
+      }
       const personMatch = /^\/api\/people\/([^/]+)$/.exec(pathname);
       const personHistoryMatch = /^\/api\/people\/([^/]+)\/history$/.exec(pathname);
       if ((pathname === '/api/people' && request.method === 'GET') || (personMatch && request.method === 'GET') || (personHistoryMatch && request.method === 'GET')) {
@@ -401,7 +435,7 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
         json(response, 200, store.updateFee(id, fee, version, session.user.id, true)); return;
       }
       if (pathname === '/api' || pathname.startsWith('/api/')) {
-        const known = match || feeMatch || courseMaterialMatch || materialMatch || uploadMatch || attachmentMatch || scheduleMatch || occurrenceMatch || courseLifecycleMatch || schedulingResourceMatch || personMatch || personHistoryMatch || teacherLinkMatch || accessGrantMatch || ['/api/people', '/api/access-control', '/api/access-control/grants', '/api/health', '/api/auth/session', '/api/auth/login', '/api/auth/logout', '/api/courses', '/api/fees', '/api/catalog', '/api/schedules', '/api/scheduling-resources'].includes(pathname);
+        const known = match || feeMatch || courseMaterialMatch || materialMatch || uploadMatch || attachmentMatch || scheduleMatch || occurrenceMatch || courseLifecycleMatch || schedulingResourceMatch || personMatch || personHistoryMatch || teacherLinkMatch || accessGrantMatch || availableSlotMatch || publicCourseMatch || ['/api/available-slots', '/api/availability-public-settings', '/api/public/courses', '/api/people', '/api/access-control', '/api/access-control/grants', '/api/health', '/api/auth/session', '/api/auth/login', '/api/auth/logout', '/api/courses', '/api/fees', '/api/catalog', '/api/schedules', '/api/scheduling-resources'].includes(pathname);
         throw new ApplicationError(known ? 405 : 404, known ? 'METHOD_NOT_ALLOWED' : 'NOT_FOUND', 'API route or method is not available.');
       }
       await serveStatic(request, response, pathname);

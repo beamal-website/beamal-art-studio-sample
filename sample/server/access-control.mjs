@@ -29,6 +29,7 @@ function assignmentFingerprint(schedule) {
 
 
 export function createAccessControlStore({database,transaction}) {
+  let slotSource=()=>[];
   database.exec(`
     CREATE TABLE IF NOT EXISTS teacher_account_links (
       teacher_resource_id TEXT PRIMARY KEY REFERENCES scheduling_resources(id),
@@ -95,11 +96,13 @@ export function createAccessControlStore({database,transaction}) {
     const grant=getGrant(id);audit(actorId,'access.grant.update',id,grant);return {grant,revision:managementSnapshot(actorId).revision};
   });
   const scopeFor=user=>transaction(()=>{
-    const person=identity(user);if(!person)return {courseIds:new Set(),resourceIds:new Set(),revision:hash(null),permits:()=>false,schedules:[]};
+    const person=identity(user);if(!person)return {courseIds:new Set(),resourceIds:new Set(),revision:hash(null),permits:()=>false,permitsSlot:()=>false,schedules:[]};
     if(person.role!=='teacher')return {revision:hash({policy:1,id:person.id,role:person.role}),courseIds:null,resourceIds:null};
     const links=database.prepare('SELECT * FROM teacher_account_links WHERE user_id=? ORDER BY teacher_resource_id').all(person.id),grants=database.prepare('SELECT * FROM scoped_read_grants WHERE user_id=? ORDER BY id').all(person.id);
     const own=new Set(links.map(row=>row.teacher_resource_id)),active=grants.filter(row=>row.active),courses=new Set(active.filter(row=>row.kind==='course').map(row=>row.course_id)),resources=new Set(active.filter(row=>row.kind==='resource').map(row=>row.resource_id)),occurrences=new Set(active.filter(row=>row.kind==='occurrence').map(row=>JSON.stringify([row.schedule_id,row.sequence])));
     const permits=row=>courses.has(row.item.course)||(row.item.teacherIds||[]).some(id=>own.has(id)||resources.has(id))||(row.item.roomIds||[]).some(id=>resources.has(id))||occurrences.has(JSON.stringify([row.item.id,row.sequence]));
+    // Use explicit grants, never courseIds inferred from another assigned lesson.
+    const permitsSlot=slot=>courses.has(slot.courseId)||(slot.teacherIds||[]).some(id=>own.has(id)||resources.has(id))||(slot.roomIds||[]).some(id=>resources.has(id))||(slot.scheduleId&&occurrences.has(JSON.stringify([slot.scheduleId,slot.sequence])));
     const courseIds=new Set(courses),resourceIds=new Set([...own,...resources]),effective=[];
     const schedules=database.prepare('SELECT * FROM schedules ORDER BY id').all().map(scheduleDTO);
     for(const schedule of schedules){
@@ -112,8 +115,9 @@ export function createAccessControlStore({database,transaction}) {
       for(const sequence of [...sequences].sort((a,b)=>a-b)){const row=scheduleOccurrence(sample,sequence,{includeCancelled:true});if(row&&permits(row)){courseIds.add(schedule.course);for(const id of[...(row.item.teacherIds||[]),...(row.item.roomIds||[])])resourceIds.add(id);authorized.push({sequence,teacherIds:row.item.teacherIds||[],roomIds:row.item.roomIds||[],cancelled:!!row.cancelled});}}
       if(authorized.length)effective.push({id:schedule.id,course:schedule.course,deleted:!!schedule.activityDeleted,assignments:assignmentFingerprint(sample)});
     }
+    const available=slotSource().filter(permitsSlot).map(slot=>{courseIds.add(slot.courseId);for(const id of[...slot.teacherIds,...slot.roomIds])resourceIds.add(id);return {id:slot.id,courseId:slot.courseId,scheduleId:slot.scheduleId,sequence:slot.sequence,teacherIds:[...slot.teacherIds].sort(),roomIds:[...slot.roomIds].sort(),active:slot.active,sourceAvailable:slot.sourceAvailable};});
     const courseStates=database.prepare('SELECT id,deleted_at FROM courses ORDER BY id').all().filter(row=>courseIds.has(row.id));
-    return {courseIds,resourceIds,permits,schedules,revision:hash({policy:1,id:person.id,role:person.role,links:links.map(linkDTO),grants:grants.map(grantDTO),effective,courseStates})};
+    return {courseIds,resourceIds,permits,permitsSlot,schedules,revision:hash({policy:2,id:person.id,role:person.role,links:links.map(linkDTO),grants:grants.map(grantDTO),effective,available,courseStates})};
   },'read');
   const revisionFor=user=>scopeFor(user).revision;
   const canReadCourse=(courseId,user)=>{const scope=scopeFor(user);return scope.courseIds===null||scope.courseIds.has(courseId);};
@@ -127,5 +131,5 @@ export function createAccessControlStore({database,transaction}) {
     const revision=hash({scope:scope.revision,from,to,occurrences});return since===revision?{revision,readScope:'occurrences',unchanged:true}:{revision,readScope:'occurrences',occurrences};
   },'read');
   const resourcesSnapshot=(user,resources,{since=''}={})=>transaction(()=>{const scope=scopeFor(user),rows=resources.list().resources.filter(row=>scope.resourceIds===null||scope.resourceIds.has(row.id)),revision=hash({scope:scope.revision,resources:rows});return since===revision?{revision,unchanged:true}:{revision,resources:rows};},'read');
-  return {managementSnapshot,setTeacherLink,createGrant,updateGrant,scopeFor,revisionFor,canReadCourse,teacherSchedules,resourcesSnapshot};
+  return {managementSnapshot,setTeacherLink,createGrant,updateGrant,scopeFor,revisionFor,canReadCourse,teacherSchedules,resourcesSnapshot,setSlotSource:read=>{slotSource=read;}};
 }

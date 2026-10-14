@@ -13,6 +13,7 @@ const pricingKeys = ['feeName', 'pricingModel', 'price', 'months', 'duration', '
 const metadata = record => ({ courseName: record.courseName, category: record.category || '', level: record.level || '' });
 const pricing = record => Object.fromEntries(pricingKeys.filter(key => Object.hasOwn(record, key)).map(key => [key, record[key]]));
 const nameKey = name => name.trim().toLowerCase();
+const deletion = row => row.deleted_at ? { deletedAt: row.deleted_at } : {};
 
 export async function createStore({ databasePath = ':memory:', seedUsers = [], seedCourses = [], attachmentsDir } = {}) {
   if (databasePath !== ':memory:') mkdirSync(dirname(databasePath), { recursive: true, mode: 0o700 });
@@ -73,6 +74,7 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
     );
   `);
   if (!database.prepare('PRAGMA table_info(courses)').all().some(column => column.name === 'name_key')) database.exec('ALTER TABLE courses ADD COLUMN name_key TEXT');
+  if (!database.prepare('PRAGMA table_info(courses)').all().some(column => column.name === 'deleted_at')) database.exec('ALTER TABLE courses ADD COLUMN deleted_at TEXT');
   database.exec('CREATE UNIQUE INDEX IF NOT EXISTS course_name_key_unique ON courses(name_key)');
   let closed = false;
   let transactionDepth = 0, savepointCounter = 0;
@@ -101,13 +103,14 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
     return {
       ...metadata(JSON.parse(row.data)), feeName: '', ...pricing(fees[0] || {}),
       id: row.id, courseCode: row.course_code, version: row.version,
-      createdAt: row.created_at, updatedAt: row.updated_at, fees, feeIds: fees.map(fee => fee.id),
+      createdAt: row.created_at, updatedAt: row.updated_at, ...deletion(row), fees, feeIds: fees.map(fee => fee.id),
     };
   };
   const getCourse = id => parseCourse(database.prepare('SELECT * FROM courses WHERE id = ?').get(id));
-  const visibleCourses = publicOnly => publicOnly ? 'WHERE EXISTS (SELECT 1 FROM course_fees JOIN fees ON fees.id = course_fees.fee_id WHERE course_fees.course_id = courses.id AND fees.online_store = 1)' : '';
-  const readFeeRows = publicOnly => database.prepare(`SELECT * FROM fees ${publicOnly ? 'WHERE online_store = 1' : ''} ORDER BY fee_code`).all();
-  const readLinkRows = publicOnly => database.prepare(`SELECT course_fees.course_id, course_fees.fee_id, course_fees.position FROM course_fees JOIN fees ON fees.id = course_fees.fee_id ${publicOnly ? 'WHERE fees.online_store = 1' : ''} ORDER BY course_fees.course_id, course_fees.position, fees.fee_code`).all();
+  const visibleCourses = publicOnly => publicOnly ? 'WHERE courses.deleted_at IS NULL AND EXISTS (SELECT 1 FROM course_fees JOIN fees ON fees.id = course_fees.fee_id WHERE course_fees.course_id = courses.id AND fees.online_store = 1)' : '';
+  const visibleFees = publicOnly => publicOnly ? 'WHERE online_store = 1 AND EXISTS (SELECT 1 FROM course_fees JOIN courses ON courses.id = course_fees.course_id WHERE course_fees.fee_id = fees.id AND courses.deleted_at IS NULL)' : '';
+  const readFeeRows = publicOnly => database.prepare(`SELECT * FROM fees ${visibleFees(publicOnly)} ORDER BY fee_code`).all();
+  const readLinkRows = publicOnly => database.prepare(`SELECT course_fees.course_id, course_fees.fee_id, course_fees.position FROM course_fees JOIN fees ON fees.id = course_fees.fee_id JOIN courses ON courses.id = course_fees.course_id ${publicOnly ? 'WHERE fees.online_store = 1 AND courses.deleted_at IS NULL' : ''} ORDER BY course_fees.course_id, course_fees.position, fees.fee_code`).all();
   const feeCatalog = (feeRows, links) => {
     const courseIdsByFee = new Map(), feeIdsByCourse = new Map();
     for (const link of links) {
@@ -129,7 +132,7 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
   };
   const compactCourse = (row, feeIds) => ({
     ...metadata(JSON.parse(row.data)), id: row.id, courseCode: row.course_code, version: row.version,
-    createdAt: row.created_at, updatedAt: row.updated_at, feeIds,
+    createdAt: row.created_at, updatedAt: row.updated_at, ...deletion(row), feeIds,
   });
   const listCourses = ({ publicOnly = false } = {}) => transaction(() => {
     const { courseRows, feesById, feeIdsByCourse } = readCatalog(publicOnly);
@@ -138,14 +141,14 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
       return {
         ...metadata(JSON.parse(row.data)), feeName: '', ...pricing(fees[0] || {}),
         id: row.id, courseCode: row.course_code, version: row.version,
-        createdAt: row.created_at, updatedAt: row.updated_at, fees, feeIds,
+        createdAt: row.created_at, updatedAt: row.updated_at, ...deletion(row), fees, feeIds,
       };
     });
   }, 'read');
   const listFees = ({ publicOnly = false } = {}) => transaction(() => feeCatalog(readFeeRows(publicOnly), readLinkRows(publicOnly)).fees, 'read');
   const catalogSnapshot = ({ publicOnly = false, since = '' } = {}) => transaction(() => {
     const courses = database.prepare(`SELECT id, version FROM courses ${visibleCourses(publicOnly)} ORDER BY id`).all();
-    const fees = database.prepare(`SELECT id, version FROM fees ${publicOnly ? 'WHERE online_store = 1' : ''} ORDER BY id`).all();
+    const fees = database.prepare(`SELECT id, version FROM fees ${visibleFees(publicOnly)} ORDER BY id`).all();
     const revision = createHash('sha256').update(JSON.stringify({ publicOnly, courses, fees })).digest('hex');
     if (since === revision) return { revision, unchanged: true };
     const catalog = readCatalog(publicOnly);
@@ -163,16 +166,25 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
       auditCourse(actor, action, getCourse(id));
     }
   };
-  const ensureCourseIds = ids => {
-    for (const id of ids) if (!database.prepare('SELECT id FROM courses WHERE id = ?').get(id)) throw new ApplicationError(400, 'INVALID_COURSE_LINK', 'One of the selected courses no longer exists. Reload the course list.');
+  const ensureCourseIds = (ids, existingIds = []) => {
+    const existing = new Set(existingIds);
+    for (const id of ids) {
+      const course = database.prepare('SELECT id, deleted_at FROM courses WHERE id = ?').get(id);
+      if (!course) throw new ApplicationError(400, 'INVALID_COURSE_LINK', 'One of the selected courses no longer exists. Reload the course list.');
+      if (course.deleted_at && !existing.has(id)) throw new ApplicationError(409, 'COURSE_DELETED', 'A selected course is deleted. Restore it before adding a new fee association.');
+    }
+  };
+  const duplicateCourseName = row => {
+    if (row.deleted_at) throw new ApplicationError(409, 'COURSE_NAME_DELETED', 'A deleted course already has this name. Restore that course instead.');
+    throw new ApplicationError(409, 'COURSE_NAME_EXISTS', 'A course with this name already exists. Add a fee to the existing course instead.');
   };
   const ensureUniqueCourseName = (name, exceptId = null) => {
     const key = nameKey(name);
-    const duplicate = database.prepare('SELECT id FROM courses WHERE name_key = ? AND id <> ?').get(key, exceptId || '');
-    if (duplicate) throw new ApplicationError(409, 'COURSE_NAME_EXISTS', 'A course with this name already exists. Add a fee to the existing course instead.');
+    const duplicate = database.prepare('SELECT id, deleted_at FROM courses WHERE name_key = ? AND id <> ?').get(key, exceptId || '');
+    if (duplicate) duplicateCourseName(duplicate);
     // Also inspect old rows whose duplicate names predate the uniqueness rule.
-    for (const row of database.prepare('SELECT id, data FROM courses WHERE name_key IS NULL').all()) {
-      if (row.id !== exceptId && nameKey(JSON.parse(row.data).courseName) === key) throw new ApplicationError(409, 'COURSE_NAME_EXISTS', 'A course with this name already exists. Add a fee to the existing course instead.');
+    for (const row of database.prepare('SELECT id, data, deleted_at FROM courses WHERE name_key IS NULL').all()) {
+      if (row.id !== exceptId && nameKey(JSON.parse(row.data).courseName) === key) duplicateCourseName(row);
     }
     return key;
   };
@@ -196,7 +208,7 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
   const replaceFee = (current, data, actor, now) => {
     const { price, courseIds, ...stored } = data;
     const nextIds = courseIds || current.courseIds;
-    ensureCourseIds(nextIds);
+    ensureCourseIds(nextIds, current.courseIds);
     const result = database.prepare('UPDATE fees SET data = ?, price_cents = ?, online_store = ?, version = version + 1, updated_at = ? WHERE id = ? AND version = ?').run(JSON.stringify(stored), Math.round(price * 100), Number(data.onlineStore), now, current.id, current.version);
     if (result.changes !== 1) throw new ApplicationError(409, 'VERSION_CONFLICT', 'This fee was changed by someone else. Reload it before saving.');
     const removed = current.courseIds.filter(id => !nextIds.includes(id));
@@ -222,6 +234,7 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
   const updateCourse = (id, data, version, actor, updatePricing = true) => transaction(() => {
     const current = getCourse(id);
     if (!current) throw new ApplicationError(404, 'COURSE_NOT_FOUND', 'Course was not found.');
+    if (current.deletedAt) throw new ApplicationError(409, 'COURSE_DELETED', 'This course is deleted. Restore it before making changes.');
     if (current.version !== version) throw new ApplicationError(409, 'VERSION_CONFLICT', 'This course was changed by someone else. Reload it before saving.');
     const key = ensureUniqueCourseName(data.courseName, id);
     const now = new Date().toISOString();
@@ -239,6 +252,21 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
       auditCourse(actor, courseId === id ? 'course.update' : 'course.fee.update', getCourse(courseId));
     }
     return getCourse(id);
+  });
+  const changeCourseDeletion = (id, version, actor, restore = false) => transaction(() => {
+    if (database.prepare('SELECT role FROM users WHERE id = ?').get(actor)?.role !== 'admin') throw new ApplicationError(403, 'ROLE_FORBIDDEN', 'Only an administrator can change courses.');
+    const current = getCourse(id);
+    if (!current) throw new ApplicationError(404, 'COURSE_NOT_FOUND', 'Course was not found.');
+    if (current.version !== version) throw new ApplicationError(409, 'VERSION_CONFLICT', 'This course was changed by someone else. Reload it before saving.');
+    if (restore && !current.deletedAt) throw new ApplicationError(409, 'COURSE_NOT_DELETED', 'Only a deleted course can be restored.');
+    if (!restore && current.deletedAt) throw new ApplicationError(409, 'COURSE_DELETED', 'This course is already deleted. Restore it before making changes.');
+    if (!restore && database.prepare('SELECT 1 FROM schedules WHERE course_id = ? AND deleted_at IS NULL LIMIT 1').get(id)) throw new ApplicationError(409, 'COURSE_HAS_SCHEDULES', 'This course still has schedules. Delete its schedules before deleting the course.');
+    const now = new Date().toISOString();
+    const changed = database.prepare('UPDATE courses SET deleted_at = ?, version = version + 1, updated_at = ? WHERE id = ? AND version = ?').run(restore ? null : now, now, id, version);
+    if (changed.changes !== 1) throw new ApplicationError(409, 'VERSION_CONFLICT', 'This course was changed by someone else. Reload it before saving.');
+    const course = getCourse(id);
+    auditCourse(actor, restore ? 'course.restore' : 'course.delete', course);
+    return course;
   });
   const createFee = (data, actor) => transaction(() => {
     const now = new Date().toISOString();
@@ -312,7 +340,7 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
   }
   catch (error) { await attachments?.close(); database.close(); throw error; }
   return {
-    listCourses, getCourse, createCourse, updateCourse, listFees, getFee, createFee, updateFee, createOnce, mutateOnce, catalogSnapshot, materials, attachments, schedules,
+    listCourses, getCourse, createCourse, updateCourse, deleteCourse: (id, version, actor) => changeCourseDeletion(id, version, actor), restoreCourse: (id, version, actor) => changeCourseDeletion(id, version, actor, true), listFees, getFee, createFee, updateFee, createOnce, mutateOnce, catalogSnapshot, materials, attachments, schedules,
     listUsers: () => database.prepare('SELECT * FROM users ORDER BY email').all().map(publicUser),
     userByEmail: email => database.prepare('SELECT * FROM users WHERE email = ?').get(email),
     publicUser,

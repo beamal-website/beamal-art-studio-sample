@@ -217,6 +217,17 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
       const decodeId = part => {
         try { return decodeURIComponent(part); } catch { throw new ApplicationError(400, 'INVALID_PATH', 'Invalid resource identifier.'); }
       };
+      const courseLifecycleMatch = /^\/api\/courses\/([^/]+)(\/restore)?$/.exec(pathname);
+      if (courseLifecycleMatch && ((!courseLifecycleMatch[2] && request.method === 'DELETE') || (courseLifecycleMatch[2] && request.method === 'POST'))) {
+        const session = requireMutation(request);
+        if (session.user.role !== 'admin') throw new ApplicationError(403, 'ROLE_FORBIDDEN', 'Only an administrator can change courses.');
+        const input = await body(request), version = requireVersion(input);
+        if (Object.keys(input).some(key => key !== 'version')) throw new ApplicationError(400, 'INVALID_COURSE', 'This operation only accepts the current version.');
+        const id = decodeId(courseLifecycleMatch[1]), restore = !!courseLifecycleMatch[2], key = idempotencyKey(request);
+        const route = `${request.method} /api/courses/${encodeURIComponent(id)}${restore ? '/restore' : ''}`;
+        const result = store.mutateOnce({ userId: session.user.id, route, key, payloadHash: payloadHash(input), status: 200 }, () => ({ course: store[restore ? 'restoreCourse' : 'deleteCourse'](id, version, session.user.id) }));
+        json(response, result.status, result.body); return;
+      }
       const scheduleMatch = /^\/api\/schedules\/([^/]+)(\/restore)?$/.exec(pathname);
       if (scheduleMatch && ((!scheduleMatch[2] && ['PATCH', 'DELETE'].includes(request.method)) || (scheduleMatch[2] && request.method === 'POST'))) {
         const session = requireMutation(request);
@@ -232,6 +243,8 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
         const session = requireMutation(request);
         if (session.user.role !== 'admin') throw new ApplicationError(403, 'ROLE_FORBIDDEN', 'Only an administrator can upload materials.');
         const courseId = decodeId(uploadMatch[1]), key = idempotencyKey(request);
+        const course = store.getCourse(courseId);
+        if (course?.deletedAt) { request.resume(); throw new ApplicationError(409, 'COURSE_DELETED', 'This course is deleted. Restore it before uploading materials.'); }
         let metadata;
         try { metadata = uploadMetadata(request); } catch (error) { request.resume(); throw error; }
         const upload = await attachments.stage(request, courseId, session.user.id, metadata, key);
@@ -285,6 +298,7 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
         try { id = decodeURIComponent(match[1]); } catch { throw new ApplicationError(400, 'INVALID_PATH', 'Invalid course identifier.'); }
         const current = store.getCourse(id);
         if (!current) throw new ApplicationError(404, 'COURSE_NOT_FOUND', 'Course was not found.');
+        if (current.deletedAt) throw new ApplicationError(409, 'COURSE_DELETED', 'This course is deleted. Restore it before making changes.');
         if (current.version !== version) throw new ApplicationError(409, 'VERSION_CONFLICT', 'This course was changed by someone else. Reload it before saving.');
         const updatePricing = hasPricingFields(input);
         const course = updatePricing ? validateCourse(input, current) : validateCourseMetadata(input, current);
@@ -319,7 +333,7 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
         json(response, 200, store.updateFee(id, fee, version, session.user.id, true)); return;
       }
       if (pathname === '/api' || pathname.startsWith('/api/')) {
-        const known = match || feeMatch || courseMaterialMatch || materialMatch || uploadMatch || attachmentMatch || scheduleMatch || ['/api/health', '/api/auth/session', '/api/auth/login', '/api/auth/logout', '/api/courses', '/api/fees', '/api/catalog', '/api/schedules'].includes(pathname);
+        const known = match || feeMatch || courseMaterialMatch || materialMatch || uploadMatch || attachmentMatch || scheduleMatch || courseLifecycleMatch || ['/api/health', '/api/auth/session', '/api/auth/login', '/api/auth/logout', '/api/courses', '/api/fees', '/api/catalog', '/api/schedules'].includes(pathname);
         throw new ApplicationError(known ? 405 : 404, known ? 'METHOD_NOT_ALLOWED' : 'NOT_FOUND', 'API route or method is not available.');
       }
       await serveStatic(request, response, pathname);

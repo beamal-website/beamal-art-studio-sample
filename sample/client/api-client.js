@@ -101,6 +101,8 @@ export function createApiClient() {
         ...(!current ? { idempotencyKey: operationKey } : {}),
       });
     },
+    deleteCourse: (current, operationKey) => request(`/courses/${encodeURIComponent(current.id)}`, { method: 'DELETE', body: { version: current.version }, idempotencyKey: operationKey }),
+    restoreCourse: (current, operationKey) => request(`/courses/${encodeURIComponent(current.id)}/restore`, { method: 'POST', body: { version: current.version }, idempotencyKey: operationKey }),
     updateCourseMetadata: (id, fields) => request(`/courses/${encodeURIComponent(id)}`, { method: 'PATCH', body: fields }),
     saveCourse(course, current, operationKey) {
       const fields = ['courseName', 'feeName', 'category', 'level', 'pricingModel', 'price', 'months', 'duration', 'packageType', 'packageTotal', 'bookingExpiry', 'onlineStore'];

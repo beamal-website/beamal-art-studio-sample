@@ -72,7 +72,9 @@ export function createScheduleStore({database,transaction}) {
     if (database.prepare('SELECT role FROM users WHERE id=?').get(actorId)?.role !== 'admin') throw new ApplicationError(403,'ROLE_FORBIDDEN','Only an administrator can change schedules.');
   };
   const existingCourse = course => {
-    if (!database.prepare('SELECT id FROM courses WHERE id=?').get(course)) invalid('Select an existing course.');
+    const current = database.prepare('SELECT id,deleted_at FROM courses WHERE id=?').get(course);
+    if (!current) invalid('Select an existing course.');
+    if (current.deleted_at) throw new ApplicationError(409,'COURSE_DELETED','This course is deleted. Restore it before adding or restoring schedules.');
   };
   const audit = (actorId,action,schedule) => database.prepare('INSERT INTO schedule_audit_log(actor_id,action,schedule_id,version,snapshot,created_at) VALUES (?,?,?,?,?,?)').run(actorId,action,schedule.id,schedule.version,JSON.stringify(schedule),schedule.updatedAt);
   const list = ({since=''}={}) => transaction(()=>{
@@ -106,6 +108,7 @@ export function createScheduleStore({database,transaction}) {
     administrator(actorId);const version=requireScheduleVersion(input,true),current=currentVersion(id,version);
     if (restore && !current.activityDeleted) throw new ApplicationError(409,'SCHEDULE_NOT_DELETED','Only a deleted schedule can be restored.');
     if (!restore && current.activityDeleted) throw new ApplicationError(404,'SCHEDULE_NOT_FOUND','Schedule was not found.');
+    if (restore) existingCourse(current.course);
     const now=new Date().toISOString();
     const result=database.prepare('UPDATE schedules SET deleted_at=?,version=version+1,updated_at=? WHERE id=? AND version=?').run(restore?null:now,now,id,version);
     if (result.changes !== 1) throw new ApplicationError(409,'VERSION_CONFLICT','This schedule was changed by someone else. Reload it before saving.');

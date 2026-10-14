@@ -59,9 +59,18 @@ export function createMaterialStore({ database, transaction, attachments }) {
     );
   `);
   const identity = user => user && typeof user.id === 'string' ? database.prepare('SELECT id, display_name, role FROM users WHERE id = ?').get(user.id) : null;
-  const courseExists = id => typeof id === 'string' && !!database.prepare('SELECT id FROM courses WHERE id = ?').get(id);
+  const courseRecord = id => typeof id === 'string' ? database.prepare('SELECT id, deleted_at FROM courses WHERE id = ?').get(id) : null;
+  const activeCourse = id => {
+    const course = courseRecord(id);
+    if (!course) throw new ApplicationError(404, 'COURSE_NOT_FOUND', 'Course was not found.');
+    if (course.deleted_at) throw new ApplicationError(409, 'COURSE_DELETED', 'This course is deleted. Restore it before adding materials or access.');
+    return course;
+  };
   const access = (courseId, userId) => !!database.prepare('SELECT 1 FROM course_material_access WHERE course_id = ? AND user_id = ?').get(courseId, userId);
-  const canReadCourse = (courseId, person) => person && courseExists(courseId) && (['admin', 'teacher'].includes(person.role) || person.role === 'student' && access(courseId, person.id));
+  const canReadCourse = (courseId, person) => {
+    const course = person && courseRecord(courseId);
+    return course && (['admin', 'teacher'].includes(person.role) || person.role === 'student' && !course.deleted_at && access(courseId, person.id));
+  };
   const dto = (row, attachmentMap = null) => row ? {
     id: row.id, courseId: row.course_id, name: row.name, description: row.description,
     videoLinks: JSON.parse(row.video_links), visibleToStudents: !!row.visible_to_students, studentDownload: !!row.student_download,
@@ -90,7 +99,7 @@ export function createMaterialStore({ database, transaction, attachments }) {
   const audit = (actor, action, material) => database.prepare('INSERT INTO material_audit_log(actor_id, action, material_id, version, snapshot, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(actor.id, action, material.id, material.version, JSON.stringify(material), material.updatedAt);
   const create = (courseId, input, actor) => transaction(() => {
     const person = administrator(actor);
-    if (!courseExists(courseId)) throw new ApplicationError(404, 'COURSE_NOT_FOUND', 'Course was not found.');
+    activeCourse(courseId);
     const fields = validateMaterial(input), id = randomUUID(), now = new Date().toISOString();
     database.prepare('INSERT INTO materials(id, course_id, name, description, video_links, visible_to_students, student_download, owner_id, version, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)').run(id, courseId, fields.name, fields.description, JSON.stringify(fields.videoLinks), Number(fields.visibleToStudents), Number(fields.studentDownload), person.id, now, now);
     attachments?.bind(id, courseId, fields.attachments, person.id);
@@ -114,7 +123,10 @@ export function createMaterialStore({ database, transaction, attachments }) {
   // Access is granted only by trusted seed/enrolment code, never by a public HTTP route.
   const grantCourseAccess = (courseId, userId) => transaction(() => {
     const person = identity({ id: userId });
-    if (!courseExists(courseId) || person?.role !== 'student') throw new ApplicationError(400, 'INVALID_MATERIAL_ACCESS', 'Material access requires an existing course and student.');
+    if (!courseRecord(courseId) || person?.role !== 'student') throw new ApplicationError(400, 'INVALID_MATERIAL_ACCESS', 'Material access requires an existing course and student.');
+    // Bootstrap may re-assert an existing grant when reopening a deleted course;
+    // deletion preserves it, but must not create any new student access.
+    if (!access(courseId, userId)) activeCourse(courseId);
     database.prepare('INSERT OR IGNORE INTO course_material_access(course_id, user_id) VALUES (?, ?)').run(courseId, userId);
   });
   return { list, get, create, update, grantCourseAccess, audit: () => database.prepare('SELECT * FROM material_audit_log ORDER BY id').all().map(row => ({ ...row, snapshot: JSON.parse(row.snapshot) })) };

@@ -2,6 +2,17 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createApiClient, ApiError } from '../client/api-client.js';
 
+test('course lifecycle requests preserve version, authenticated headers and operation keys without resending course or fee data',async t=>{
+ const wire=network(t),client=createApiClient();await login(client,wire,'B');
+ const current={id:'fictional-course / 一',version:7,courseName:'Preserved course',fees:[{price:300}]},path='/api/courses/'+encodeURIComponent(current.id),deleted={...current,version:8,deletedAt:'2026-10-14T02:00:00Z'};
+ wire.reply(path,{course:deleted});assert.deepEqual((await client.deleteCourse(current,'fictional-delete-course-key')).course,deleted);
+ let call=wire.calls.at(-1);assert.equal(call.method,'DELETE');assert.deepEqual(JSON.parse(call.body),{version:7});assert.equal(call.headers.get('X-CSRF-Token'),'csrf-fictional-B');assert.equal(call.headers.get('Idempotency-Key'),'fictional-delete-course-key');assert.equal(call.credentials,'same-origin');
+ const restored={...current,version:9};wire.reply(path+'/restore',{course:restored});assert.deepEqual((await client.restoreCourse(deleted,'fictional-restore-course-key')).course,restored);
+ call=wire.calls.at(-1);assert.equal(call.method,'POST');assert.deepEqual(JSON.parse(call.body),{version:8});assert.equal(call.headers.get('X-CSRF-Token'),'csrf-fictional-B');assert.equal(call.headers.get('Idempotency-Key'),'fictional-restore-course-key');assert.equal(call.credentials,'same-origin');
+ wire.reply(path,{error:{code:'COURSE_HAS_SCHEDULES',message:'The course still has schedules.'}},409);
+ await assert.rejects(client.deleteCourse(restored,'fictional-scheduled-course-key'),error=>error instanceof ApiError&&error.status===409&&error.code==='COURSE_HAS_SCHEDULES');
+});
+
 const identity = name => ({ id: `fictional-${name}`, email: `${name}@example.test`, displayName: `Fictional ${name}`, role: 'admin' });
 const session = name => ({ user: identity(name), csrfToken: `csrf-fictional-${name}` });
 const response = (data, status = 200) => ({ ok: status >= 200 && status < 300, status, json: async () => data });

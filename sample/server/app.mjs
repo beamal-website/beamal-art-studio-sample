@@ -5,6 +5,7 @@ import { createStore } from './store.mjs';
 import { uploadMetadata } from './attachments.mjs';
 import { validateMaterial, requireMaterialVersion } from './materials.mjs';
 import { validateSchedule, requireScheduleVersion, requireOccurrenceRequest } from './schedules.mjs';
+import { validateSchedulingResource } from './scheduling-resources.mjs';
 import { ApplicationError, validateCourse, validateCourseMetadata, hasPricingFields, validateFee, requireVersion } from './validation.mjs';
 import { hashPassword, verifyPassword, normaliseEmail, randomToken, tokenHash, csrfForToken, matchesHash } from './security.mjs';
 
@@ -198,6 +199,18 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
         const session = requireSession(request);
         json(response, 200, store.catalogSnapshot({ publicOnly: session.user.role === 'student', since: requestUrl.searchParams.get('since') || '' })); return;
       }
+      if (pathname === '/api/scheduling-resources' && request.method === 'GET') {
+        const session = requireSession(request);
+        if (!['admin', 'teacher'].includes(session.user.role)) throw new ApplicationError(403, 'ROLE_FORBIDDEN', 'Scheduling resources are not available for this role.');
+        json(response, 200, store.schedulingResources.list({ since: requestUrl.searchParams.get('since') || '' })); return;
+      }
+      if (pathname === '/api/scheduling-resources' && request.method === 'POST') {
+        const session = requireMutation(request);
+        if (session.user.role !== 'admin') throw new ApplicationError(403, 'ROLE_FORBIDDEN', 'Only an administrator can change scheduling resources.');
+        const input = validateSchedulingResource(await body(request)), key = idempotencyKey(request);
+        const result = store.createOnce({ userId: session.user.id, route: pathname, key, payloadHash: payloadHash(input) }, () => ({ resource: store.schedulingResources.create(input, session.user.id) }));
+        json(response, result.status, result.body); return;
+      }
       if (pathname === '/api/schedules' && request.method === 'GET') {
         const session = requireSession(request);
         if (!['admin', 'teacher'].includes(session.user.role)) throw new ApplicationError(403, 'ROLE_FORBIDDEN', 'School schedules are not available for this role.');
@@ -217,6 +230,15 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
       const decodeId = part => {
         try { return decodeURIComponent(part); } catch { throw new ApplicationError(400, 'INVALID_PATH', 'Invalid resource identifier.'); }
       };
+      const schedulingResourceMatch = /^\/api\/scheduling-resources\/([^/]+)$/.exec(pathname);
+      if (schedulingResourceMatch && request.method === 'PATCH') {
+        const session = requireMutation(request);
+        if (session.user.role !== 'admin') throw new ApplicationError(403, 'ROLE_FORBIDDEN', 'Only an administrator can change scheduling resources.');
+        const input = validateSchedulingResource(await body(request), { update: true }), id = decodeId(schedulingResourceMatch[1]), key = idempotencyKey(request);
+        const route = `PATCH /api/scheduling-resources/${encodeURIComponent(id)}`;
+        const result = store.mutateOnce({ userId: session.user.id, route, key, payloadHash: payloadHash(input), status: 200 }, () => ({ resource: store.schedulingResources.update(id, input, session.user.id) }));
+        json(response, result.status, result.body); return;
+      }
       const courseLifecycleMatch = /^\/api\/courses\/([^/]+)(\/restore)?$/.exec(pathname);
       if (courseLifecycleMatch && ((!courseLifecycleMatch[2] && request.method === 'DELETE') || (courseLifecycleMatch[2] && request.method === 'POST'))) {
         const session = requireMutation(request);
@@ -345,7 +367,7 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
         json(response, 200, store.updateFee(id, fee, version, session.user.id, true)); return;
       }
       if (pathname === '/api' || pathname.startsWith('/api/')) {
-        const known = match || feeMatch || courseMaterialMatch || materialMatch || uploadMatch || attachmentMatch || scheduleMatch || occurrenceMatch || courseLifecycleMatch || ['/api/health', '/api/auth/session', '/api/auth/login', '/api/auth/logout', '/api/courses', '/api/fees', '/api/catalog', '/api/schedules'].includes(pathname);
+        const known = match || feeMatch || courseMaterialMatch || materialMatch || uploadMatch || attachmentMatch || scheduleMatch || occurrenceMatch || courseLifecycleMatch || schedulingResourceMatch || ['/api/health', '/api/auth/session', '/api/auth/login', '/api/auth/logout', '/api/courses', '/api/fees', '/api/catalog', '/api/schedules', '/api/scheduling-resources'].includes(pathname);
         throw new ApplicationError(known ? 405 : 404, known ? 'METHOD_NOT_ALLOWED' : 'NOT_FOUND', 'API route or method is not available.');
       }
       await serveStatic(request, response, pathname);

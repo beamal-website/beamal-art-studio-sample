@@ -78,3 +78,11 @@
 - 真正老師帳戶可讀同資料；Course Add／Edit、Edit lesson 及 More → Duplicate lesson 停用，沒有空白編輯視窗。
 - 390×844 中英文手機範圍視窗無頁面橫溢出（document scrollWidth 390），初始確認停用；Shift+Tab 留在視窗、Escape 返回 Save 並保留草稿，英文 Cancel 已實際操作。完整手機預覽截圖 `sample/preview-schedule-scope-mobile-full.png` 已由統籌查看，底部操作可見。
 - 月份畫面已核對 14 日 12:30、22／28 日 13:15。Start 明改 23 日那一步，Beamal 只做過 HTTP 驗證，沒有本機畫面操作證據；往後範圍 Delete／Undo 亦未在本次補驗回報中確認。
+
+## 2026-10-15 老師／課室連動及最新 Notion 範圍
+
+共用老師、課室與多選指派已接入課程和時間表。已實際保存兩老師單堂、改名後保持篩選、停用保留過往指派、第二分頁重開以及手機中英文；複製漏IDs、同集合反序導致往後修改覆蓋後堂、無變動背景讀取重建視窗等問題均已重現並修正。完整結果及證據邊界見 [資源檢查點](scheduling-resources-checkpoint.md)，沒有把來源只選取未Save的多選草稿當成來源保存證據。
+
+使用者新增 Notion 完整需求後，中期對齊不能只用 SchoolTracs 當標準。最新關鍵缺口包含老師自身／授權資料範圍（目前仍全校唯讀）、內部任意連續1–14天、正式學生／家庭、三配額、逐學生狀態，以及 Request／Confirm Payment／Convert 的獨立流程。Receipt模板、付款憑證及測試通知屬必要工作；未定扣堂、超額及薪酬政策保留待決。
+
+111項來源需求已完整盤點，按4老師、300活躍學生、6課、3–18歲規模準備最後本機大檢查；目前並未執行或通過這個全系統規模驗收。依賴與後續安排見 [Notion驗收路線圖](notion-acceptance-roadmap.md)。課程＋時間表整頁、其他模組及完整Goal仍進行中，沒有進入Products製作或宣告全部aligned。

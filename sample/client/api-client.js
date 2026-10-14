@@ -79,6 +79,13 @@ export function createApiClient() {
     catalog: (revision = '') => request(`/catalog${revision ? `?since=${encodeURIComponent(revision)}` : ''}`),
     materials: courseId => request(`/courses/${encodeURIComponent(courseId)}/materials`),
     schedules: (revision = '') => request(`/schedules${revision ? `?since=${encodeURIComponent(revision)}` : ''}`),
+    schedulingResources: (revision = '') => request(`/scheduling-resources${revision ? `?since=${encodeURIComponent(revision)}` : ''}`),
+    saveSchedulingResource(resource, current, operationKey) {
+      const {kind,...fields}=resource;
+      return request(current ? `/scheduling-resources/${encodeURIComponent(current.id)}` : '/scheduling-resources', {
+        method: current ? 'PATCH' : 'POST', body: {...fields,...(current ? {version:current.version} : {kind})}, idempotencyKey:operationKey,
+      });
+    },
     saveSchedule(schedule, current, operationKey) {
       return request(current ? `/schedules/${encodeURIComponent(current.id)}` : '/schedules', {
         method: current ? 'PATCH' : 'POST', body: { ...schedule, ...(current ? { version: current.version } : {}) }, idempotencyKey: operationKey,

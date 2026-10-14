@@ -1,0 +1,896 @@
+{
+  "source": "https://app.notion.com/p/3f5936c332a981ee92a5cfa571abd457",
+  "dataSource": "collection://706612b7-20db-4b8f-978f-21e61e7d30e3",
+  "retrieved": "2026-10-14",
+  "hasMore": false,
+  "rows": [
+    {
+      "Key Rules": "Admin和负责授课老师可经 Slot 学生名单标记。",
+      "Module": "课堂操作",
+      "Status": "已确认",
+      "Source": "PDF 第3页",
+      "Requirement": "A-01 逐个学生 Attendance",
+      "url": "https://app.notion.com/p/3f5936c332a98117a88ef9bfba4e6f50"
+    },
+    {
+      "Key Rules": "每学生两种备注，支持折叠展示与是否显示于Slot。",
+      "Module": "课堂操作",
+      "Status": "已确认",
+      "Source": "PDF 第3页",
+      "Requirement": "A-02 Text Remarks + Color Stickers",
+      "url": "https://app.notion.com/p/3f5936c332a981beb55ec5c6bb23519e"
+    },
+    {
+      "Key Rules": "Absent、Sick、Leave 等对 Remaining Lessons 的作用未知。",
+      "Module": "课堂操作",
+      "Status": "待讨论",
+      "Source": "对话补充",
+      "Requirement": "A-03 Attendance 扣堂规则",
+      "url": "https://app.notion.com/p/3f5936c332a9812793ebf55a72acc66e"
+    },
+    {
+      "Key Rules": "学生/老师/Admin可设任意连续1–14日，14日显示7×2。",
+      "Module": "时间表",
+      "Status": "已确认",
+      "Source": "PDF 第2页",
+      "Requirement": "C-01 时间表选择1至14天",
+      "url": "https://app.notion.com/p/3f5936c332a981da9b87d88cf70e9aaf"
+    },
+    {
+      "Key Rules": "预设分类加自定义学生/性别/时间/价格等过滤；每行眼睛开关。",
+      "Module": "时间表",
+      "Status": "已确认",
+      "Source": "PDF 第2页",
+      "Requirement": "C-02 Timetable Preset / Custom Filters",
+      "url": "https://app.notion.com/p/3f5936c332a981dba5cdfb355d75c1e2"
+    },
+    {
+      "Key Rules": "Admin设置各老师代表色，Slot主体使用对应颜色。",
+      "Module": "时间表",
+      "Status": "已确认",
+      "Source": "PDF 第2页",
+      "Requirement": "C-03 Teacher Color Coding",
+      "url": "https://app.notion.com/p/3f5936c332a98183b5f8edb98b971d9b"
+    },
+    {
+      "Key Rules": "满额自动 Full，Admin 可手动提前 Full 或强制 Available。",
+      "Module": "时间表",
+      "Status": "已确认",
+      "Source": "PDF 第2页",
+      "Requirement": "C-04 Capacity、自动 Full 与覆盖",
+      "url": "https://app.notion.com/p/3f5936c332a981ea8ebfebab1089ec24"
+    },
+    {
+      "Key Rules": "右上绿点Available红点Full；Absent不释放原有名额。",
+      "Module": "时间表",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "C-05 红绿点与容量不受出席影响",
+      "url": "https://app.notion.com/p/3f5936c332a98194a9dec2119b1ef857"
+    },
+    {
+      "Key Rules": "建立Regular/Special等标签及相应可调课规则。",
+      "Module": "时间表",
+      "Status": "已确认",
+      "Source": "PDF 第2页",
+      "Requirement": "C-06 Class Type Rules",
+      "url": "https://app.notion.com/p/3f5936c332a98171afb0f43daf138e96"
+    },
+    {
+      "Key Rules": "显示学生名单/人数，点开可见年龄/剩余堂数。",
+      "Module": "时间表",
+      "Status": "已确认",
+      "Source": "PDF 第2页",
+      "Requirement": "C-07 Slot 学生详情与剩余堂数",
+      "url": "https://app.notion.com/p/3f5936c332a981c5a1f8e41570fb7c67"
+    },
+    {
+      "Key Rules": "首页顶部按类别汇总数量，展开学生列表后可一键处理。",
+      "Module": "待办通知",
+      "Status": "已确认",
+      "Source": "PDF 第1页",
+      "Requirement": "D-01 Teacher Homepage 分类待办",
+      "url": "https://app.notion.com/p/3f5936c332a98112ba74fcd24a215f08"
+    },
+    {
+      "Key Rules": "齿轮可排序任务类别，类似 Apple Reminders；各老师独立设置。",
+      "Module": "待办通知",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "D-02 老师自订优先级",
+      "url": "https://app.notion.com/p/3f5936c332a98188af39f7feaac0d995"
+    },
+    {
+      "Key Rules": "需行动申请兼有即时通知与To-do；普通成功通知不生成To-do。",
+      "Module": "待办通知",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "D-03 即时通知 + 待办联动",
+      "url": "https://app.notion.com/p/3f5936c332a981cdbf66c7672b5dabd2"
+    },
+    {
+      "Key Rules": "个别学生某节课的待安排任务默认最高，但优先顺序可自订。",
+      "Module": "待办通知",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "D-04 Pending Arrangement 最高默认优先级",
+      "url": "https://app.notion.com/p/3f5936c332a981968cc7d652ce5e4174"
+    },
+    {
+      "Key Rules": "显示姓名、具体课次、Absent；提供家长消息与调课快捷按钮。",
+      "Module": "待办通知",
+      "Status": "已确认",
+      "Source": "PDF 第3页",
+      "Requirement": "D-05 Absent 自动跟进 To-do",
+      "url": "https://app.notion.com/p/3f5936c332a98161b2e7d54aff5df843"
+    },
+    {
+      "Key Rules": "正式学生选择旧课程续报、新课程、下期学费、多Item后申请。",
+      "Module": "付款收据",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "F-01 Request to Pay Items",
+      "url": "https://app.notion.com/p/3f5936c332a981c998d1c076c16e1dd4"
+    },
+    {
+      "Key Rules": "可增删改支付Item和最终金额，老师最终确认值为准。",
+      "Module": "付款收据",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "F-02 老师修改 Items 与 Amount",
+      "url": "https://app.notion.com/p/3f5936c332a98120a655e2b8a16db2c8"
+    },
+    {
+      "Key Rules": "确认后通知学生联系老师FPS付款；Awaiting Payment 不等于 Paid。",
+      "Module": "付款收据",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "F-03 Confirm Request 与 FPS 收款分离",
+      "url": "https://app.notion.com/p/3f5936c332a98138a46df89cafb2b0ff"
+    },
+    {
+      "Key Rules": "老师自定义Logo、布局、字段、学校信息、备注。",
+      "Module": "付款收据",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "F-04 PDF Template Editor",
+      "url": "https://app.notion.com/p/3f5936c332a98121b04de1ff55388410"
+    },
+    {
+      "Key Rules": "原Download PDF名称改为PDF Receipt；在Payment Request详情始终显示，不强制自动生成；点击提供Save或Send by Email。未确认收款不得出具Paid收据。",
+      "Module": "付款收据",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "F-05 常驻 PDF Receipt 按钮",
+      "url": "https://app.notion.com/p/3f5936c332a9815d8a36d4dbc8a88dde"
+    },
+    {
+      "Key Rules": "老师可设置到期日及提醒开关/频率，逾期不自动停权。",
+      "Module": "付款收据",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "F-06 学费到期及提醒频率",
+      "url": "https://app.notion.com/p/3f5936c332a981f58952c2b5fb5da902"
+    },
+    {
+      "Key Rules": "老师点击 Confirm Payment，立即更新已购课程的入班名单/人数、相关老师及学生 Timetable、已购买与剩余堂数。Confirm Request 不更新排课；Convert to Student 始终独立手动。",
+      "Module": "付款收据",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "F-07 Confirm Payment 触发排课与堂数更新",
+      "url": "https://app.notion.com/p/3f5936c332a981a19c3ac8e66212aee2"
+    },
+    {
+      "Key Rules": "老师预设Coupon（例HK\\$20），挑选后派发到指定学生/家长Account；家长端能查看优惠券。EX-09。",
+      "Module": "付款收据",
+      "Status": "已确认",
+      "Source": "PDF 第5页",
+      "Requirement": "F-08 Coupon Templates 与派发",
+      "url": "https://app.notion.com/p/3f5936c332a98102b4f3e9481674ebea"
+    },
+    {
+      "Key Rules": "学生Request to Pay时应用可用Coupon，HK\\$100-HK\\$20=HK\\$80；老师审核端显示Coupon来源与扣减明细。EX-09。",
+      "Module": "付款收据",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "F-09 Coupon 自动扣减 Payment Request",
+      "url": "https://app.notion.com/p/3f5936c332a98105b080d148cc801acb"
+    },
+    {
+      "Key Rules": "家长可WhatsApp发送FPS截图，或Student Portal上传并关联Payment Request；老师看图核实后手动Confirm Payment；上传不会自动Paid。EX-11。",
+      "Module": "付款收据",
+      "Status": "已确认",
+      "Source": "PDF 第5页",
+      "Requirement": "F-10 FPS Payment Slip Upload",
+      "url": "https://app.notion.com/p/3f5936c332a981858bc4d38604d399d6"
+    },
+    {
+      "Key Rules": "Teacher Settings可保存多份邮件Subject+Body模板；选择后自动填充并允许编辑，收件人取学生/家长档案。EX-12。",
+      "Module": "付款收据",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "F-11 Preset Email Templates",
+      "url": "https://app.notion.com/p/3f5936c332a98178ac0ac4170ef3766a"
+    },
+    {
+      "Key Rules": "按钮固定称PDF Receipt；点后选Save或Send by Email；邮件预填To/Subject/Body及PDF Receipt附件。未Paid不得标成已收款。EX-12。",
+      "Module": "付款收据",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "F-12 PDF Receipt → Save / Send by Email",
+      "url": "https://app.notion.com/p/3f5936c332a981f5be8dc9c02b775272"
+    },
+    {
+      "Key Rules": "普通mailto通常无法自动附加PDF。须确定授权邮件服务/分享组件以预填资料并附正确PDF，送出操作与失败处理待定。EX-12。",
+      "Module": "付款收据",
+      "Status": "待细化",
+      "Source": "对话补充",
+      "Requirement": "F-13 Receipt邮件附件技术方案",
+      "url": "https://app.notion.com/p/3f5936c332a98161b1c3ea901a446ccb"
+    },
+    {
+      "Key Rules": "一个家长账户对应多名兄弟姐妹，学生课程、出席和剩余堂数各自独立。",
+      "Module": "家庭帐户",
+      "Status": "已确认",
+      "Source": "PDF 第5页",
+      "Requirement": "FAM-01 Family Group 多名学生共用账户",
+      "url": "https://app.notion.com/p/3f5936c332a9812db350cb8515c1fc01"
+    },
+    {
+      "Key Rules": "从一位学生Profile连接其他孩子，其余关联学生视图亦看到其他兄弟姐妹。",
+      "Module": "家庭帐户",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "FAM-02 老师端建立兄弟姐妹双向关联",
+      "url": "https://app.notion.com/p/3f5936c332a9816491eac62e77ce8a2f"
+    },
+    {
+      "Key Rules": "Convert to Student建立正式学生资料，不自动代表App登录账户已激活。",
+      "Module": "家庭帐户",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "FAM-03 Student Profile 与登录Account分离",
+      "url": "https://app.notion.com/p/3f5936c332a981fe9652ea415e320afc"
+    },
+    {
+      "Key Rules": "老师复制激活链接发家长，家长两次设密码；电话作Username；老师不能看密码只能Reset。",
+      "Module": "家庭帐户",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "FAM-04 Activate Account 安全激活与重设",
+      "url": "https://app.notion.com/p/3f5936c332a981189a10fa1b0b84c1d9"
+    },
+    {
+      "Key Rules": "Paid后才能激活还是Convert后即能发送激活链接，尚待确认。",
+      "Module": "家庭帐户",
+      "Status": "待讨论",
+      "Source": "对话补充",
+      "Requirement": "FAM-05 首次账户激活的付款前置条件",
+      "url": "https://app.notion.com/p/3f5936c332a9816481fee97b60d0baec"
+    },
+    {
+      "Key Rules": "现有家长可新增家庭成员并选Trial Class或Direct Enrollment；不与Invite a Friend混同。",
+      "Module": "家庭帐户",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "FAM-06 Add Family Member 两条报读路径",
+      "url": "https://app.notion.com/p/3f5936c332a981dd991ec0fe24f0109b"
+    },
+    {
+      "Key Rules": "新增孩子基本资料、选课程/Trial Slot、提交Trial Request、老师确认、Convert后加入家庭学生名册。",
+      "Module": "家庭帐户",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "FAM-07 新家庭成员试堂流程",
+      "url": "https://app.notion.com/p/3f5936c332a981f8b9f7ca465f964749"
+    },
+    {
+      "Key Rules": "直接报名跳过试堂，家长 Request to Pay → 老师可修改 Items/Amount → Confirm Request → 老师可自行点击 Convert to Student（不等待 FPS 实收、不自动转换）。",
+      "Module": "家庭帐户",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "FAM-08 新家庭成员直接报名付款",
+      "url": "https://app.notion.com/p/3f5936c332a9817b85d7e5914e4085b8"
+    },
+    {
+      "Key Rules": "Direct Enrollment：Confirm Request 后老师可手动 Convert to Student，无须 FPS 到账；老师点击 Confirm Payment 时即时正式入班，更新相关老师及学生 Timetable、名单人数/堂数；绝不自动 Convert。",
+      "Module": "家庭帐户",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "FAM-09 付款确认及手动学生转换",
+      "url": "https://app.notion.com/p/3f5936c332a98106ac80c943012e1a7a"
+    },
+    {
+      "Key Rules": "第二三名孩子复用既有家长用户名及密码，学生资料仍独立。",
+      "Module": "家庭帐户",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "FAM-10 同家庭新学生不再创建独立Login",
+      "url": "https://app.notion.com/p/3f5936c332a981459be2cfc361cbffca"
+    },
+    {
+      "Key Rules": "建议使用Family ID及验证关联，避免错绑；多监护人/解关联待定。",
+      "Module": "家庭帐户",
+      "Status": "待细化",
+      "Source": "对话补充",
+      "Requirement": "FAM-11 家庭关系验证与多监护人",
+      "url": "https://app.notion.com/p/3f5936c332a9810e91f3cd92fbc35f0e"
+    },
+    {
+      "Key Rules": "保留原按钮名称，涵盖调堂/补堂/延期。",
+      "Module": "课务调整",
+      "Status": "已确认",
+      "Source": "PDF 第3页",
+      "Requirement": "M-01 Make Up This Class 统一入口",
+      "url": "https://app.notion.com/p/3f5936c332a981b3b0a4d10a49805a76"
+    },
+    {
+      "Key Rules": "按YYYY-MM-DD分组；按时间排序，显示课程/颜色及日期筛选。",
+      "Module": "课务调整",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "M-02 日期折叠列表选择 Slot",
+      "url": "https://app.notion.com/p/3f5936c332a9813c8e5ec89e25933a8a"
+    },
+    {
+      "Key Rules": "仅指定学生指定课次待确认；不影响全班和原课堂容量。",
+      "Module": "课务调整",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "M-03 Student-level Pending Confirmation",
+      "url": "https://app.notion.com/p/3f5936c332a98128a6dfea47d29047ac"
+    },
+    {
+      "Key Rules": "确认后更新相关老师、学生、原/目标课次名单及时间表。",
+      "Module": "课务调整",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "M-04 选 Slot 后两端时间表同步",
+      "url": "https://app.notion.com/p/3f5936c332a98102b85df3dcdf55b3ef"
+    },
+    {
+      "Key Rules": "老师不等学生Request to Pay，直接选择学生与Fees/Courses/Products、课次、日期、折扣及金额，按Send送家长。参见EX-16。",
+      "Module": "付款收据",
+      "Status": "已确认",
+      "Source": "PDF 第6页",
+      "Requirement": "O-01 Teacher-initiated Order 直接开单",
+      "url": "https://app.notion.com/p/3f5936c332a9816983d7e226175ff4aa"
+    },
+    {
+      "Key Rules": "家长Student Portal收到老师订单并点击Confirm Order；此动作不等于Paid，也不触发课程/课表更新。",
+      "Module": "学生／家长端",
+      "Status": "已确认",
+      "Source": "PDF 第6页",
+      "Requirement": "O-02 Parent Confirm Order",
+      "url": "https://app.notion.com/p/3f5936c332a98185bed6fd518fd3c548"
+    },
+    {
+      "Key Rules": "家长支付FPS，可WhatsApp发送截图或Student Portal上传FPS Slip；老师查看后手动Confirm Payment。",
+      "Module": "付款收据",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "O-03 主动订单FPS付款与凭证上传",
+      "url": "https://app.notion.com/p/3f5936c332a981b0a15dc3c4548ad9a3"
+    },
+    {
+      "Key Rules": "仅Teacher Confirm Payment后将订单记Paid并更新相关课程名单人数、双端Timetable及剩余堂数；Convert to Student始终独立手动。",
+      "Module": "付款收据",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "O-04 主动订单确认收款后课程同步",
+      "url": "https://app.notion.com/p/3f5936c332a98108aa21efc26abb4c94"
+    },
+    {
+      "Key Rules": "老师创建课程订单时提供 All Lessons / Single Lesson 两种选项，自行选择；不强制整期或单堂，亦不将 All Lessons 写死为4堂。具体日期/名额/收费界面规则待细化。",
+      "Module": "时间表",
+      "Status": "已确认",
+      "Source": "PDF 第6页",
+      "Requirement": "O-05 All Lessons / Single Lesson 选项",
+      "url": "https://app.notion.com/p/3f5936c332a98119bd5af999d8e93b22"
+    },
+    {
+      "Key Rules": "家长对Teacher-initiated Order可选择Confirm Order、Reject Order或Request Changes；Confirm/Reject通知老师，Request Changes可填原因也可空白提交，交老师跟进；不可自动Paid。",
+      "Module": "付款收据",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "O-06 Parent Order Response（三种选择）",
+      "url": "https://app.notion.com/p/3f5936c332a98112b843ce6907105600"
+    },
+    {
+      "Key Rules": "Request Changes原因选填已确定，老师如何修改再发送、家长是否重Confirm、长期未付款订单处理尚未决定。",
+      "Module": "付款收据",
+      "Status": "待细化",
+      "Source": "对话补充",
+      "Requirement": "O-07 Request Changes 重新出单与未付款规则",
+      "url": "https://app.notion.com/p/3f5936c332a9815c8a8ac67e6ba15d17"
+    },
+    {
+      "Key Rules": "选择WhatsApp或App消息，预设模板可填入编辑框后预览。",
+      "Module": "家长消息",
+      "Status": "已确认",
+      "Source": "PDF 第3页",
+      "Requirement": "P-01 Send Message to Parent",
+      "url": "https://app.notion.com/p/3f5936c332a981b2bd8efbda1641d91c"
+    },
+    {
+      "Key Rules": "老师端Settings管理消息模板；发送前可修改文字。",
+      "Module": "家长消息",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "P-02 Preset Message to Parents",
+      "url": "https://app.notion.com/p/3f5936c332a981ada91ddd6ce94b4984"
+    },
+    {
+      "Key Rules": "全部端分System Notification与来自具体老师的消息。",
+      "Module": "家长消息",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "P-03 Notification Center 分类",
+      "url": "https://app.notion.com/p/3f5936c332a981929446c445a9acd7af"
+    },
+    {
+      "Key Rules": "目前只确认消息发送；双向回复未定。",
+      "Module": "家长消息",
+      "Status": "待讨论",
+      "Source": "对话补充",
+      "Requirement": "P-04 App 内家长回复机制",
+      "url": "https://app.notion.com/p/3f5936c332a98186946ceac415ec1b11"
+    },
+    {
+      "Key Rules": "Admin 可授课又可全校管理；普通老师默认仅看获授权课程。",
+      "Module": "人员权限",
+      "Status": "已确认",
+      "Source": "PDF 第2页",
+      "Requirement": "R-01 Admin/普通老师权限",
+      "url": "https://app.notion.com/p/3f5936c332a981b18d2bf64b014926e2"
+    },
+    {
+      "Key Rules": "Available Slot、学生名单、Capacity、代班等可改范围需再确认。",
+      "Module": "人员权限",
+      "Status": "待讨论",
+      "Source": "对话补充",
+      "Requirement": "R-02 普通老师编辑权限细则",
+      "url": "https://app.notion.com/p/3f5936c332a98156a6a3db9ae95d6fa3"
+    },
+    {
+      "Key Rules": "PDF第4页：Admin默认能创建/修改全校正式时段；与公开课程详情共享同一来源。",
+      "Module": "人员权限",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "R-03 Admin 管理正式 Overall Available Slots",
+      "url": "https://app.notion.com/p/3f5936c332a981a2a891d38d9ef8d218"
+    },
+    {
+      "Key Rules": "PDF第4页：Admin可授权指定普通老师修改学校正式时段；具体可改范围待细化。",
+      "Module": "人员权限",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "R-04 授权普通老师编辑 Overall Slots",
+      "url": "https://app.notion.com/p/3f5936c332a9818ba152cbbd7775bbcd"
+    },
+    {
+      "Key Rules": "PDF第4页：老师仅向Admin汇报个人可用时间的独立机制暂未确认；勿作为已批准功能。",
+      "Module": "人员权限",
+      "Status": "待讨论",
+      "Source": "对话补充",
+      "Requirement": "R-05 Personal Available Time Slot 独立层",
+      "url": "https://app.notion.com/p/3f5936c332a9812f9380def5e7631638"
+    },
+    {
+      "Key Rules": "一个App打开先登录，按账户角色进入Student/Parent、Teacher或Admin界面。",
+      "Module": "学生／家长端",
+      "Status": "已确认",
+      "Source": "PDF 第5页",
+      "Requirement": "S-01 统一 App 登录与角色路由",
+      "url": "https://app.notion.com/p/3f5936c332a981a69dccc1d17e403fe7"
+    },
+    {
+      "Key Rules": "显示学生已登记个人资料、报读课程、期数、课表及剩余堂数。",
+      "Module": "学生／家长端",
+      "Status": "已确认",
+      "Source": "PDF 第5页",
+      "Requirement": "S-02 Student Profile 与 Course History",
+      "url": "https://app.notion.com/p/3f5936c332a98199a95ecc6d3a257aa0"
+    },
+    {
+      "Key Rules": "保留名称Payment History，交易详情可查看实际保存的PDF Receipt。",
+      "Module": "学生／家长端",
+      "Status": "已确认",
+      "Source": "PDF 第5页",
+      "Requirement": "S-03 Payment History / Receipt",
+      "url": "https://app.notion.com/p/3f5936c332a981adb682f69f0b6b3e15"
+    },
+    {
+      "Key Rules": "学生端显示新课程、比赛及工作坊资料，来源为老师端统一数据。",
+      "Module": "学生／家长端",
+      "Status": "已确认",
+      "Source": "PDF 第5页",
+      "Requirement": "S-04 Course / Competition / Workshop 信息",
+      "url": "https://app.notion.com/p/3f5936c332a981e1968dc1c3a0ef142b"
+    },
+    {
+      "Key Rules": "老师有发布/不发布选择，已发布资讯同步Website与Student Portal；状态细节待定。",
+      "Module": "学生／家长端",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "S-05 课程活动发布与多端同步",
+      "url": "https://app.notion.com/p/3f5936c332a9813891e2cee1343d0d6f"
+    },
+    {
+      "Key Rules": "家长在某学生某课次右上角三点选择调课或病假，老师收到申请与To-do。",
+      "Module": "学生／家长端",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "S-06 学生课表内调课/病假申请",
+      "url": "https://app.notion.com/p/3f5936c332a981c3aa09d60b300dc1bf"
+    },
+    {
+      "Key Rules": "老师设置剩余堂数阈值，达阈值后自动向相关家长发送续报通知。",
+      "Module": "学生／家长端",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "S-07 常规课程续报提醒阈值",
+      "url": "https://app.notion.com/p/3f5936c332a981d8b322eb5d706c2d34"
+    },
+    {
+      "Key Rules": "是否采用Draft/Pending/Published与Website/Student Portal独立渠道开关待确认。",
+      "Module": "学生／家长端",
+      "Status": "待细化",
+      "Source": "对话补充",
+      "Requirement": "S-08 发布状态与频道开关细则",
+      "url": "https://app.notion.com/p/3f5936c332a9817caffff3255c5878b6"
+    },
+    {
+      "Key Rules": "提交截止、老师审批、剩余堂数及病假扣堂规则待定。",
+      "Module": "学生／家长端",
+      "Status": "待讨论",
+      "Source": "对话补充",
+      "Requirement": "S-09 Sick Leave/Rescheduling 具体政策",
+      "url": "https://app.notion.com/p/3f5936c332a981eba450c4a2ee72d0ae"
+    },
+    {
+      "Key Rules": "Admin设置工作室中心点。距离≤100m：正常；距离\\>100m：外勤。两种距离都允许成功Clock；老师即时显示Check In/Out、正常/外勤与时间，Admin记录亦显示标签。定位失败/误差待讨论。EX-18。",
+      "Module": "员工管理",
+      "Status": "已确认",
+      "Source": "PDF 第7页",
+      "Requirement": "ST-01 GPS 100m 外勤分类",
+      "url": "https://app.notion.com/p/3f5936c332a98150950ee1557faaa861"
+    },
+    {
+      "Key Rules": "单一Clock按钮；依照Admin课前/课后窗口与相关课程判断Check In/Check Out；每次成功须立即在老师端显示该次标签和真实时间。超出课后窗口可为新Check In。边缘判断细节仍待定。EX-18。",
+      "Module": "员工管理",
+      "Status": "待细化",
+      "Source": "对话补充",
+      "Requirement": "ST-02 Clock 自动状态标签及即时回显",
+      "url": "https://app.notion.com/p/3f5936c332a981dd8203c4b27fc1b2a0"
+    },
+    {
+      "Key Rules": "位置符合Admin工作室要求即可Clock；课表与Admin时间窗口只用于自动判别状态而非限制能否按Clock；每次事件独立保存真实时间，老师即时获知该次Check In/Out标签。EX-18。",
+      "Module": "员工管理",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "ST-03 打卡不受排课时间限制",
+      "url": "https://app.notion.com/p/3f5936c332a98113b28bf78e372af35c"
+    },
+    {
+      "Key Rules": "Admin查看按时间排列的独立Clock Events（Teacher/时间/Check In或Out标签）；旧Check In无须配对或自动补Out。例如13:50 Check In，18:00超出窗口再打卡仍记新Check In，两条均保留。边缘标签规则另行研究。EX-18。",
+      "Module": "员工管理",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "ST-04 独立打卡记录及标签异常",
+      "url": "https://app.notion.com/p/3f5936c332a98119b1c5dc5464ac7eb4"
+    },
+    {
+      "Key Rules": "同时支持月薪与时薪老师，Admin按Teacher Profile设置并审核工资，老师按月查看薪金及下载PDF Payslip；月薪病假工资影响待讨论。EX-20～22。",
+      "Module": "员工管理",
+      "Status": "已确认",
+      "Source": "PDF 第7页",
+      "Requirement": "ST-05 Monthly Salary Record & Payslip",
+      "url": "https://app.notion.com/p/3f5936c332a98178ba59e4cc70549b17"
+    },
+    {
+      "Key Rules": "原稿提出老师病假/事假/剩余年假/公众假期补假，均尚未逐项确认细节。",
+      "Module": "员工管理",
+      "Status": "待讨论",
+      "Source": "PDF 第7页",
+      "Requirement": "ST-06 Staff Leave & Public Holiday",
+      "url": "https://app.notion.com/p/3f5936c332a9819ab577f8cee2f4a897"
+    },
+    {
+      "Key Rules": "GPS\\>100m仍可外勤打卡。Admin可独立开关Require Photo及Require Reason，开启才强制填对应资料才能成功提交；成功事件含Check In/Out+外勤及所附图片/原因，老师和Admin可查看。默认开关未定。EX-19。",
+      "Module": "员工管理",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "ST-07 Off-site Clock Photo / Reason Settings",
+      "url": "https://app.notion.com/p/3f5936c332a981fa9ec1f820deba4c4d"
+    },
+    {
+      "Key Rules": "按月同时显示Schedule排班总工时及Clock真实打卡可识别总时数；默认计薪以排班为准，不能把实际提前/迟走时间自动当计薪。EX-20。",
+      "Module": "员工管理",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "ST-08 Monthly Payroll Scheduled vs Actual",
+      "url": "https://app.notion.com/p/3f5936c332a98151b702d42f523a48da"
+    },
+    {
+      "Key Rules": "迟到按分钟而不是百分比计算扣款；Admin可设置/覆核迟到分钟及每分钟扣款金额、最终确认。适用劳动法合规需另行核实。EX-20。",
+      "Module": "员工管理",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "ST-09 Late Deduction By Minutes",
+      "url": "https://app.notion.com/p/3f5936c332a981bbba66e3837f839844"
+    },
+    {
+      "Key Rules": "早到不自动加钱、迟走不自动计OT；Admin参考排班/实际工时后手动批准OT分钟或小时，并纳入薪资。EX-20。",
+      "Module": "员工管理",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "ST-10 Admin Approved Overtime",
+      "url": "https://app.notion.com/p/3f5936c332a981bea4ecdecbea11eda6"
+    },
+    {
+      "Key Rules": "老师按月查看自己的工资记录并下载对应月份PDF Payslip；Admin审核月度工资明细/最终应付金额。EX-20。",
+      "Module": "员工管理",
+      "Status": "已确认",
+      "Source": "PDF 第7页",
+      "Requirement": "ST-11 Monthly Salary History / PDF Payslip",
+      "url": "https://app.notion.com/p/3f5936c332a981749138eed9b30f1750"
+    },
+    {
+      "Key Rules": "Clock是独立事件，可有多次Check In；若无法从记录识别真实区间，Actual Duration须显示待核实，不能虚构Check Out。配对审核与薪酬费率/OT规则待设计。EX-20。",
+      "Module": "员工管理",
+      "Status": "待细化",
+      "Source": "对话补充",
+      "Requirement": "ST-12 Missing Punch Payroll Validation",
+      "url": "https://app.notion.com/p/3f5936c332a981c0ae21eaf5c7072e89"
+    },
+    {
+      "Key Rules": "Admin 在每位 Teacher Profile 独立选择 Hourly Salary 或 Monthly Salary。时薪输入HK\\$/hour并按排班时数计算；月薪输入固定HK\\$/month。两类仍展示打卡对照与薪金记录。EX-21。",
+      "Module": "员工管理",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "ST-13 Teacher Profile Salary Type（月薪/时薪）",
+      "url": "https://app.notion.com/p/3f5936c332a981b18243c4fe3b5ee33a"
+    },
+    {
+      "Key Rules": "老师在Teacher Portal为自己申请病假并选择日期；Admin收通知和To-do，Approve/Reject后保留审批记录。EX-22。",
+      "Module": "员工管理",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "ST-14 Sick Leave Application & Admin Approval",
+      "url": "https://app.notion.com/p/3f5936c332a9819ca4bcc0ab9ee8437c"
+    },
+    {
+      "Key Rules": "Admin批准后在该老师Timetable相关日期可视化显示Sick Leave；独立Leave History持久记录并列出受影响原课次，供Admin后续安排代班；不自动取消全班。EX-22。",
+      "Module": "员工管理",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "ST-15 Sick Leave Timetable Overlay & Leave History",
+      "url": "https://app.notion.com/p/3f5936c332a9814ba7c9e091097b2ffb"
+    },
+    {
+      "Key Rules": "月薪老师病假有薪/无薪、工资影响、证据附件、导出/打印格式和Substitute Teacher实际操作需另行确认，不得直接扣薪或自动代班。EX-22。",
+      "Module": "员工管理",
+      "Status": "待细化",
+      "Source": "对话补充",
+      "Requirement": "ST-16 Sick Leave Payroll & Substitute Details",
+      "url": "https://app.notion.com/p/3f5936c332a9818499d5c87f521ac15f"
+    },
+    {
+      "Key Rules": "Sick/Personal/Annual/Compensation Leave归一套Staff Leave Management。每种假均有Teacher申请及Admin主动登记两种入口，记录并在老师Timetable可视化。EX-23。",
+      "Module": "员工管理",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "ST-17 Unified Staff Leave Types",
+      "url": "https://app.notion.com/p/3f5936c332a98191b2d6de8241328523"
+    },
+    {
+      "Key Rules": "Teacher选择假期类型和日期提交，Admin收到通知与To-do，Approve/Reject后保留记录；批准后才在相关Timetable显示假期类型。EX-23。",
+      "Module": "员工管理",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "ST-18 Teacher Leave Request → Admin Approval",
+      "url": "https://app.notion.com/p/3f5936c332a981168a0dd3a1ae05a8a1"
+    },
+    {
+      "Key Rules": "Admin可直接为指定Teacher建立Sick/Personal/Annual/Compensation Leave，无须先由老师提交，确认后保存Leave History并同步Timetable。EX-23。",
+      "Module": "员工管理",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "ST-19 Admin Direct Leave Entry",
+      "url": "https://app.notion.com/p/3f5936c332a981e192dac873e6070e0f"
+    },
+    {
+      "Key Rules": "老师/管理端须有年假和补假相关记录；余额初值/获得、批准后的扣减、退款/撤回、薪资待遇与公众假期规则未最终确定。EX-23。",
+      "Module": "员工管理",
+      "Status": "待细化",
+      "Source": "PDF 第7页",
+      "Requirement": "ST-20 AL Remain & Compensation Leave Ledger",
+      "url": "https://app.notion.com/p/3f5936c332a98176ad50fe2d88cec86e"
+    },
+    {
+      "Key Rules": "Admin为新课/试堂选择老师，若该老师该日/时间已Approved Leave则弹Teacher Unavailable提醒，并允许直接选Substitute Teacher；不擅自自动指派。EX-25。",
+      "Module": "员工管理",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "ST-21 Leave Conflict Warning During Trial/Class Assignment",
+      "url": "https://app.notion.com/p/3f5936c332a981ec96f6dbc0fc257963"
+    },
+    {
+      "Key Rules": "Admin批准已排课老师的请假后，需显示Affected Sessions和Assign Substitute Teacher任务，避免只标假期但未处理代堂。EX-25。",
+      "Module": "员工管理",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "ST-22 Approved Leave Triggers Substitute To-do",
+      "url": "https://app.notion.com/p/3f5936c332a98142bcd4fa13f42078d6"
+    },
+    {
+      "Key Rules": "检查被指定B老师是否同时间已有课/请假、多个受影响课的代班选择、家长通知及权限等后续细节待确定。不可自动随机分配代班。EX-25。",
+      "Module": "员工管理",
+      "Status": "待细化",
+      "Source": "对话补充",
+      "Requirement": "ST-23 Substitute Teacher Availability Conflict Handling",
+      "url": "https://app.notion.com/p/3f5936c332a98101bec1fbcdccc5abed"
+    },
+    {
+      "Key Rules": "老师配置时间、可试课/可调课课程及三种配额。",
+      "Module": "试课管理",
+      "Status": "已确认",
+      "Source": "PDF 第1页",
+      "Requirement": "T-01 Teacher Available Slot",
+      "url": "https://app.notion.com/p/3f5936c332a981f2a043fd45c21a9edb"
+    },
+    {
+      "Key Rules": "Submit 即占 Trial Capacity；Reject 立即释放且保留历史。",
+      "Module": "试课管理",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "T-02 试课申请即占名额",
+      "url": "https://app.notion.com/p/3f5936c332a981459b41cf71522ae02d"
+    },
+    {
+      "Key Rules": "老师收到申请通知及To-do，查看号码自行 WhatsApp 联络。",
+      "Module": "试课管理",
+      "Status": "已确认",
+      "Source": "PDF 第1页",
+      "Requirement": "T-03 试课老师 WhatsApp 确认",
+      "url": "https://app.notion.com/p/3f5936c332a9817e85a0d906532ca4f2"
+    },
+    {
+      "Key Rules": "试课后尚未记录结果则自动生成持续 To-do。",
+      "Module": "试课管理",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "T-04 试课结束自动提醒",
+      "url": "https://app.notion.com/p/3f5936c332a981c29150dc286ddf2413"
+    },
+    {
+      "Key Rules": "Absent / Enrollment Confirmed / Pending Follow-up，并支持试课改期。",
+      "Module": "试课管理",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "T-05 试课结果与跟进状态",
+      "url": "https://app.notion.com/p/3f5936c332a9819a8b7cec6b295bb1c0"
+    },
+    {
+      "Key Rules": "未按 Convert to Student 一律属于 Applicant List。",
+      "Module": "试课管理",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "T-06 Applicant List / Student List",
+      "url": "https://app.notion.com/p/3f5936c332a9814789aef89888438cd3"
+    },
+    {
+      "Key Rules": "Enrollment Confirmed 与 Convert to Student 分开；资料承接。",
+      "Module": "试课管理",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "T-07 Edit Details 后转正式学生",
+      "url": "https://app.notion.com/p/3f5936c332a981f9ab94e1a27b5d5f13"
+    },
+    {
+      "Key Rules": "Admin及普通老师在获授权时间表日期或班次增加纯文字Remark，备注图标/展开查看避免长行；记录老师/学生可能缺席等事项；学生端无此功能。EX-24。",
+      "Module": "时间表",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "TM-01 Timetable Date / Class Text Remark",
+      "url": "https://app.notion.com/p/3f5936c332a98119b088fdb35e5f883c"
+    },
+    {
+      "Key Rules": "日期/班次纯文字Remark独立于第3页学生Text Remark与Color Sticker。备忘不会自动改变Staff Leave审批、Student Attendance、To-do或班次人数。EX-24。",
+      "Module": "时间表",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "TM-02 Timetable Remark 与正式考勤状态分离",
+      "url": "https://app.notion.com/p/3f5936c332a9816bb3f4ee74c60540f7"
+    },
+    {
+      "Key Rules": "Admin指定B老师代某个课堂/试堂后，B个人Timetable和Admin Overall Timetable同步；Slot教师主色转为B颜色；A请假标签保留。Available/Full角标、入读人数与报名不变。EX-25。",
+      "Module": "时间表",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "TM-03 Substitute Teacher Timetable & Slot Color Sync",
+      "url": "https://app.notion.com/p/3f5936c332a981568cf1f787c6bb550e"
+    },
+    {
+      "Key Rules": "已有初步设计，暂不展开；与老师后台 Homepage 分开。",
+      "Module": "网站设计",
+      "Status": "暂缓",
+      "Source": "PDF 第1页",
+      "Requirement": "W-01 公开网站 Homepage",
+      "url": "https://app.notion.com/p/3f5936c332a98160b3deeafe2d4d98b9"
+    },
+    {
+      "Key Rules": "展示约10种课程、年龄、时长及4/8/12/24等课包。",
+      "Module": "网站设计",
+      "Status": "已确认",
+      "Source": "PDF 第1页",
+      "Requirement": "W-02 Course Details 与课包",
+      "url": "https://app.notion.com/p/3f5936c332a981b79eebe087fdc641ea"
+    },
+    {
+      "Key Rules": "访客选择课程和可用时段后填写学生/家长资料再提交。",
+      "Module": "网站设计",
+      "Status": "已确认",
+      "Source": "PDF 第1页",
+      "Requirement": "W-03 Trial Application Form",
+      "url": "https://app.notion.com/p/3f5936c332a9815bafd2e07edb21d81f"
+    },
+    {
+      "Key Rules": "PDF第4页：正式Overall Available Slots 自动同步公开课程详情时间表；默认仅试课时段。",
+      "Module": "网站设计",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "W-04 Course Details 公开时段自动同步",
+      "url": "https://app.notion.com/p/3f5936c332a98151944fc8b5ee134a42"
+    },
+    {
+      "Key Rules": "PDF第4页：Admin或获授权老师仅能决定现有Overall Slot是否在Course Details公开；不可借此改课程名称、日期、时间、容量等内容。",
+      "Module": "网站设计",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "W-05 Public Visibility 与 Manual Override",
+      "url": "https://app.notion.com/p/3f5936c332a9812aa7a6f02ae67721ed"
+    },
+    {
+      "Key Rules": "Public Override仅改变公开显示/隐藏，不修改实际Slot内容或内部预约资格。",
+      "Module": "网站设计",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "W-06 Public Visibility 仅控制显示",
+      "url": "https://app.notion.com/p/3f5936c332a98138bb21f346406918ec"
+    },
+    {
+      "Key Rules": "默认为关闭：试课配额满额2/2时公开隐藏；授权用户可开启，公开显示Full但不可预约；Reject释放名额后恢复可约。",
+      "Module": "网站设计",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "W-07 Show Fully Booked Trial Slots",
+      "url": "https://app.notion.com/p/3f5936c332a981a68cfdeae7fe89004a"
+    },
+    {
+      "Key Rules": "公开课程详情时间表默认7天、最多30天，可设置；独立于内部1–14天时间表View。",
+      "Module": "网站设计",
+      "Status": "已确认",
+      "Source": "对话补充",
+      "Requirement": "W-08 Public Timetable Display Range",
+      "url": "https://app.notion.com/p/3f5936c332a981d1908ada05a45b533d"
+    },
+    {
+      "Key Rules": "红雨黑雨台风；老师通知，按班或学生使用同一调课引擎。",
+      "Module": "天气停课",
+      "Status": "待讨论",
+      "Source": "对话补充",
+      "Requirement": "X-01 恶劣天气停课与调课",
+      "url": "https://app.notion.com/p/3f5936c332a98184a1bbc421bbc58414"
+    },
+    {
+      "Key Rules": "手动强制Available已满班、退课后名额处理需要定稿。",
+      "Module": "时间表",
+      "Status": "待讨论",
+      "Source": "对话补充",
+      "Requirement": "X-02 超额及取消名额规则",
+      "url": "https://app.notion.com/p/3f5936c332a9817b8fe2f1c5a1e1b55f"
+    }
+  ]
+}

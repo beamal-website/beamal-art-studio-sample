@@ -1,7 +1,7 @@
 const DAY = 86400000;
 const MAX_DAY = Date.parse('9999-12-31T00:00:00Z') / DAY;
-const RULE_FIELDS = ['course', 'startDate', 'time', 'duration', 'weekdays', 'endMode', 'endDate', 'count', 'mustAttendAll', 'color', 'teacher', 'room', 'capacity', 'session', 'remark', 'detail', 'moreInfo'];
-const OVERRIDE_FIELDS = ['time', 'duration', 'teacher', 'room', 'capacity', 'session', 'color', 'remark', 'detail', 'moreInfo'];
+const RULE_FIELDS = ['course', 'startDate', 'time', 'duration', 'weekdays', 'endMode', 'endDate', 'count', 'mustAttendAll', 'color', 'teacher', 'room', 'teacherIds', 'roomIds', 'capacity', 'session', 'remark', 'detail', 'moreInfo'];
+const OVERRIDE_FIELDS = ['time', 'duration', 'teacher', 'room', 'teacherIds', 'roomIds', 'capacity', 'session', 'color', 'remark', 'detail', 'moreInfo'];
 const METADATA_FIELDS = ['id', 'course', 'version', 'createdAt', 'updatedAt'];
 
 function dayNumber(value) {
@@ -10,7 +10,7 @@ function dayNumber(value) {
   return Number.isFinite(timestamp) && new Date(timestamp).toISOString().slice(0, 10) === value ? timestamp / DAY : null;
 }
 const isoDate = day => day <= MAX_DAY ? new Date(day * DAY).toISOString().slice(0, 10) : null;
-const copyRule = rule => ({ ...Object.fromEntries(RULE_FIELDS.map(key => [key, rule[key]])), weekdays: [...rule.weekdays] });
+const copyRule = rule => Object.fromEntries(RULE_FIELDS.filter(key => Object.hasOwn(rule, key)).map(key => [key, Array.isArray(rule[key]) ? [...rule[key]] : rule[key]]));
 
 function ruleInfo(rule) {
   const start = dayNumber(rule?.startDate), weekdays = rule?.weekdays;
@@ -75,7 +75,7 @@ function resolveOccurrence(state, sequence, includeCancelled) {
   if (dayNumber(date) === null) return null;
   const item = copyRule(part.rule);
   item.session = (part.rule.session ?? 1) + sequence - part.fromSequence;
-  for (const key of OVERRIDE_FIELDS) if (Object.hasOwn(overrides, key)) item[key] = overrides[key];
+  for (const key of OVERRIDE_FIELDS) if (Object.hasOwn(overrides, key)) item[key] = Array.isArray(overrides[key]) ? [...overrides[key]] : overrides[key];
   for (const key of METADATA_FIELDS) if (Object.hasOwn(state.schedule, key)) item[key] = state.schedule[key];
   item.sequence = sequence;
   return { sequence, date, item, ...(cancelled ? { cancelled: true } : {}) };

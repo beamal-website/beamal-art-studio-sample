@@ -9,9 +9,17 @@ import {fixture,error} from './helpers.mjs';
 const rule=(extra={})=>({course:'public-course',startDate:'2026-10-14',time:'12:30',duration:30,weekdays:[3],endMode:'count',endDate:'',count:3,mustAttendAll:true,color:'#27777b',teacher:'Original teacher',room:'Room A',capacity:8,session:1,remark:'',detail:'',moreInfo:'',...extra});
 const fromSecond=extra=>rule({startDate:'2026-10-21',count:2,session:2,...extra});
 const send=(client,path,method,body,key)=>client.request(path,{method,body,...(key?{headers:{'Idempotency-Key':key}}:{})});
-async function setup(t,options={}){const app=await fixture(t,options),admin=app.client();await admin.login();const reply=await send(admin,'/api/schedules','POST',rule(options.rule));assert.equal(reply.status,201,reply.text);return {...app,admin,schedule:reply.body.schedule};}
+async function resourceRecord(app,record){
+ const selected={...record};
+ for(const [label,ids,kind]of[['teacher','teacherIds','teacher'],['room','roomIds','room']])if(!Object.hasOwn(selected,ids)){
+  if(!selected[label]){selected[ids]=[];continue;}
+  const reply=await send(app.admin,'/api/scheduling-resources','POST',{kind,displayName:selected[label]},`fixture-${kind}-${selected[label].replace(/\W/g,'_')}`);assert.equal(reply.status,201,reply.text);selected[ids]=[reply.body.resource.id];
+ }
+ return selected;
+}
+async function setup(t,options={}){const app=await fixture(t,options),admin=app.client();await admin.login();const reply=await send(admin,'/api/schedules','POST',await resourceRecord({admin},rule(options.rule)));assert.equal(reply.status,201,reply.text);return {...app,admin,schedule:reply.body.schedule};}
 const path=(schedule,sequence=2)=>`/api/schedules/${schedule.id}/occurrences/${sequence}`;
-async function patch(app,schedule,record,sequence=2,scope='single',key){return send(app.admin,path(schedule,sequence),'PATCH',{...record,version:schedule.version,scope},key);}
+async function patch(app,schedule,record,sequence=2,scope='single',key){return send(app.admin,path(schedule,sequence),'PATCH',{...await resourceRecord(app,record),version:schedule.version,scope},key);}
 async function items(schedule,from='2026-10-01',to='2026-12-31',options={}){const {scheduleOccurrences}=await import('../../shared/schedule-occurrences.js');return scheduleOccurrences(schedule,from,to,options);}
 const summary=entries=>entries.map(entry=>[entry.sequence,entry.date,entry.item.time,entry.item.session]);
 
@@ -82,7 +90,7 @@ test('single and following cancellation and restoration preserve sequence slots 
 
 test('scoped endpoints enforce permissions CSRF origin immutable course and opened versions with exact retry receipts',async t=>{
  const app=await setup(t),teacher=app.client(),student=app.client();await teacher.login(2);await student.login(3);
- const input={...fromSecond({time:'13:00'}),version:1,scope:'single'};
+ const input={...await resourceRecord(app,fromSecond({time:'13:00'})),version:1,scope:'single'};
  for(const [method,endpoint,body]of[['PATCH',path(app.schedule),input],['DELETE',path(app.schedule),{version:1,scope:'single'}],['POST',path(app.schedule)+'/restore',{version:1,scope:'single'}]]){
   error(await send(app.client(),endpoint,method,body),401);for(const client of[teacher,student])error(await send(client,endpoint,method,body),403);
   error(await app.admin.request(endpoint,{method,body,csrf:false}),403);error(await app.admin.request(endpoint,{method,body,requestOrigin:'https://hostile.example.test'}),403);
@@ -98,7 +106,7 @@ test('scoped endpoints enforce permissions CSRF origin immutable course and open
 test('scoped history and receipts survive restart while a real audit failure rolls back the entire operation',async t=>{
  const directory=await mkdtemp(join(tmpdir(),'beamal-scoped-schedules-'));t.after(()=>rm(directory,{recursive:true,force:true}));
  const databasePath=join(directory,'fictional.sqlite'),app=await setup(t,{databasePath}),inspection=new DatabaseSync(databasePath);
- const request={...fromSecond({time:'13:00'}),version:1,scope:'single'};
+ const request={...await resourceRecord(app,fromSecond({time:'13:00'})),version:1,scope:'single'};
  try{
   const before=(await app.admin.request('/api/schedules')).body;
   inspection.exec("CREATE TRIGGER fictional_scoped_failure BEFORE INSERT ON schedule_audit_log WHEN NEW.action LIKE 'schedule.occurrence.%' BEGIN SELECT RAISE(ABORT,'Fictional scoped audit failure'); END;");

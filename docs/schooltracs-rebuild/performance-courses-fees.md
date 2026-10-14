@@ -82,7 +82,7 @@ node sample/server/benchmarks/course-fees.mjs
 node sample/server/benchmarks/course-fees.mjs > /tmp/beamal-performance-new-run.jsonl
 ```
 
-此命令量度三組資料規模，每個舊端點及完整／未變更 Catalog 各 20 次，另量度兩種並行刷新。它複製包括 Materials 在內的五個服務模組，使用隔離暫存資料庫，完成後清除資料，不使用 `sample/.data`。
+此命令量度三組資料規模，每個舊端點及完整／未變更 Catalog 各 20 次，另量度兩種並行刷新。它複製包括 Materials 和 Attachments 在內的六個服務模組，使用隔離暫存資料庫，完成後清除資料，不使用 `sample/.data`。附件版本須同時解析安裝的依賴；快速 smoke 已核對腳本仍能運行，並非重新完成整組速度驗收。
 
 只想確認量度腳本能運行，可執行快速 smoke（基本啟動及回覆檢查）：
 

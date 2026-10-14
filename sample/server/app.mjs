@@ -2,6 +2,7 @@ import { createServer } from 'node:http';
 import { readFile, realpath, stat } from 'node:fs/promises';
 import { resolve, sep, extname } from 'node:path';
 import { createStore } from './store.mjs';
+import { uploadMetadata } from './attachments.mjs';
 import { validateMaterial, requireMaterialVersion } from './materials.mjs';
 import { ApplicationError, validateCourse, validateCourseMetadata, hasPricingFields, validateFee, requireVersion } from './validation.mjs';
 import { hashPassword, verifyPassword, normaliseEmail, randomToken, tokenHash, csrfForToken, matchesHash } from './security.mjs';
@@ -10,7 +11,7 @@ const defaultOrigins = ['http://localhost:5173', 'http://127.0.0.1:5173', 'http:
 const SESSION_SECONDS = 12 * 60 * 60;
 const COOKIE = 'beamal_session';
 const BODY_LIMIT = 256 * 1024;
-const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.woff2': 'font/woff2', '.ico': 'image/x-icon' };
+const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.woff2': 'font/woff2', '.ico': 'image/x-icon' };
 
 function json(response, status, payload) {
   response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -52,21 +53,40 @@ function idempotencyKey(request) {
 
 function canonicalPayload(value) {
   if (Array.isArray(value)) return value.map(canonicalPayload);
-  if (value !== null && typeof value === 'object') return Object.fromEntries(Object.keys(value).sort().map(key => [key, canonicalPayload(key === 'courseIds' ? [...value[key]].sort() : value[key])]));
+  if (value !== null && typeof value === 'object') return Object.fromEntries(Object.keys(value).sort().map(key => [key, canonicalPayload(key === 'courseIds' && Array.isArray(value[key]) ? [...value[key]].sort() : value[key])]));
   return value;
 }
 
 const payloadHash = payload => tokenHash(JSON.stringify(canonicalPayload(payload)));
 
-export async function createApplication({ databasePath = ':memory:', seedUsers = [], seedCourses = [], seedMaterialAccess = [], allowedOrigins = defaultOrigins, staticDir = null, secureCookies = false } = {}) {
+async function physicalPath(path) {
+  const target = resolve(path);
+  const actual = await realpath(target).catch(error => {
+    if (error.code !== 'ENOENT') throw error;
+    return null;
+  });
+  if (actual) return actual;
+  const parent = resolve(target, '..');
+  if (parent === target) return target;
+  return resolve(await physicalPath(parent), target.slice(parent.length + (parent.endsWith(sep) ? 0 : 1)));
+}
+
+export async function createApplication({ databasePath = ':memory:', seedUsers = [], seedCourses = [], seedMaterialAccess = [], allowedOrigins = defaultOrigins, staticDir = null, secureCookies = false, attachmentsDir } = {}) {
   const origins = new Set(allowedOrigins.map(value => {
     const parsed = new URL(value);
     if (!['http:', 'https:'].includes(parsed.protocol) || parsed.origin !== value) throw new Error('Allowed origins must be complete http or https origins without paths.');
     return parsed.origin;
   }));
-  const store = await createStore({ databasePath, seedUsers, seedCourses });
+  const storagePath = attachmentsDir ? resolve(attachmentsDir) : databasePath === ':memory:' ? null : `${resolve(databasePath)}.attachments`;
+  if (staticDir && storagePath && (storagePath === resolve(staticDir) || storagePath.startsWith(`${resolve(staticDir)}${sep}`))) throw new Error('Attachment storage must be outside the public static directory.');
+  const staticRoot = staticDir ? await realpath(resolve(staticDir)).catch(() => null) : null;
+  const insideStatic = path => staticRoot && (path === staticRoot || path.startsWith(`${staticRoot}${sep}`));
+  if (storagePath && insideStatic(await physicalPath(storagePath))) throw new Error('Attachment storage must be outside the public static directory.');
+  const store = await createStore({ databasePath, seedUsers, seedCourses, attachmentsDir });
   const materials = store.materials;
+  const attachments = store.attachments;
   try {
+    if (insideStatic(await realpath(attachments.directory))) throw new Error('Attachment storage must be outside the public static directory.');
     if (!Array.isArray(seedMaterialAccess)) throw new Error('Material access seeds must be an array.');
     for (const seed of seedMaterialAccess) {
       if (!seed || typeof seed !== 'object' || Array.isArray(seed) || Object.keys(seed).some(key => !['courseId', 'email'].includes(key)) || typeof seed.courseId !== 'string' || !seed.courseId || seed.courseId.length > 200 || !normaliseEmail(seed.email)) throw new Error('Material access seeds require an existing course ID and student email.');
@@ -74,10 +94,9 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
       if (!person || person.role !== 'student') throw new Error('Material access may only be seeded for an existing student.');
       materials.grantCourseAccess(seed.courseId, person.id);
     }
-  } catch (error) { store.close(); throw error; }
+  } catch (error) { await store.close(); throw error; }
   const dummyHash = await hashPassword(randomToken());
   const attempts = new Map();
-  const staticRoot = staticDir ? await realpath(resolve(staticDir)).catch(() => null) : null;
   const cookie = (value, seconds) => `${COOKIE}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${seconds}${secureCookies ? '; Secure' : ''}`;
   const allowedOrigin = (request, origin) => {
     if (typeof origin !== 'string') return false;
@@ -132,7 +151,7 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
     response.writeHead(200, { 'Content-Type': types[extname(file).toLowerCase()] || 'application/octet-stream', 'Content-Length': data.length });
     response.end(data);
   };
-  const server = createServer({ maxHeaderSize: 16 * 1024, requestTimeout: 15000 }, async (request, response) => {
+  const server = createServer({ maxHeaderSize: 16 * 1024, requestTimeout: 600000 }, async (request, response) => {
     response.setHeader('Cache-Control', 'no-store');
     response.setHeader('X-Content-Type-Options', 'nosniff');
     response.setHeader('Referrer-Policy', 'same-origin');
@@ -145,7 +164,7 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
       const requestUrl = new URL(request.url, 'http://localhost'), pathname = requestUrl.pathname;
       if (request.method === 'OPTIONS' && pathname.startsWith('/api/')) {
         requireOrigin(request);
-        response.writeHead(204, { 'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, X-CSRF-Token, Idempotency-Key', 'Access-Control-Max-Age': '600' });
+        response.writeHead(204, { 'Access-Control-Allow-Methods': 'GET, HEAD, POST, PATCH, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, X-CSRF-Token, Idempotency-Key, X-File-Name, Range', 'Access-Control-Max-Age': '600' });
         response.end(); return;
       }
       if (pathname === '/api/health' && request.method === 'GET') { json(response, 200, { mode: 'shared-test', service: 'Beamal', storage: 'sqlite' }); return; }
@@ -179,10 +198,25 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
         json(response, 200, store.catalogSnapshot({ publicOnly: session.user.role === 'student', since: requestUrl.searchParams.get('since') || '' })); return;
       }
       const courseMaterialMatch = /^\/api\/courses\/([^/]+)\/materials$/.exec(pathname);
+      const uploadMatch = /^\/api\/courses\/([^/]+)\/material-uploads$/.exec(pathname);
+      const attachmentMatch = /^\/api\/materials\/([^/]+)\/attachments\/([^/]+)$/.exec(pathname);
       const materialMatch = /^\/api\/materials\/([^/]+)$/.exec(pathname);
       const decodeId = part => {
         try { return decodeURIComponent(part); } catch { throw new ApplicationError(400, 'INVALID_PATH', 'Invalid resource identifier.'); }
       };
+      if (uploadMatch && request.method === 'POST') {
+        const session = requireMutation(request);
+        if (session.user.role !== 'admin') throw new ApplicationError(403, 'ROLE_FORBIDDEN', 'Only an administrator can upload materials.');
+        const courseId = decodeId(uploadMatch[1]), key = idempotencyKey(request);
+        let metadata;
+        try { metadata = uploadMetadata(request); } catch (error) { request.resume(); throw error; }
+        const upload = await attachments.stage(request, courseId, session.user.id, metadata, key);
+        json(response, 201, { upload }); return;
+      }
+      if (attachmentMatch && ['GET', 'HEAD'].includes(request.method)) {
+        const session = requireSession(request);
+        await attachments.serve(request, response, decodeId(attachmentMatch[1]), decodeId(attachmentMatch[2]), session.user, materials, requestUrl.searchParams.get('download') === '1'); return;
+      }
       if (courseMaterialMatch && request.method === 'GET') {
         const session = requireSession(request);
         json(response, 200, { materials: materials.list(decodeId(courseMaterialMatch[1]), session.user) }); return;
@@ -202,8 +236,9 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
       if (materialMatch && request.method === 'PATCH') {
         const session = requireMutation(request);
         if (session.user.role !== 'admin') throw new ApplicationError(403, 'ROLE_FORBIDDEN', 'Only an administrator can change materials.');
-        const input = await body(request), version = requireMaterialVersion(input);
-        json(response, 200, { material: materials.update(decodeId(materialMatch[1]), input, version, session.user) }); return;
+        const input = await body(request), version = requireMaterialVersion(input), id = decodeId(materialMatch[1]), key = idempotencyKey(request);
+        const result = store.mutateOnce({ userId: session.user.id, route: `PATCH /api/materials/${encodeURIComponent(id)}`, key, payloadHash: payloadHash(input), status: 200 }, () => ({ material: materials.update(id, input, version, session.user) }));
+        json(response, result.status, result.body); return;
       }
       if (pathname === '/api/courses' && request.method === 'GET') {
         const session = requireSession(request);
@@ -260,7 +295,7 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
         json(response, 200, store.updateFee(id, fee, version, session.user.id, true)); return;
       }
       if (pathname === '/api' || pathname.startsWith('/api/')) {
-        const known = match || feeMatch || courseMaterialMatch || materialMatch || ['/api/health', '/api/auth/session', '/api/auth/login', '/api/auth/logout', '/api/courses', '/api/fees', '/api/catalog'].includes(pathname);
+        const known = match || feeMatch || courseMaterialMatch || materialMatch || uploadMatch || attachmentMatch || ['/api/health', '/api/auth/session', '/api/auth/login', '/api/auth/logout', '/api/courses', '/api/fees', '/api/catalog'].includes(pathname);
         throw new ApplicationError(known ? 405 : 404, known ? 'METHOD_NOT_ALLOWED' : 'NOT_FOUND', 'API route or method is not available.');
       }
       await serveStatic(request, response, pathname);
@@ -275,12 +310,12 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
   });
   let closed = false;
   return {
-    server, store, materials,
+    server, store, materials, attachments, attachmentsDir: attachments.directory,
     async close() {
       if (closed) return;
       closed = true;
       if (server.listening) await new Promise((resolveClose, reject) => server.close(error => error ? reject(error) : resolveClose()));
-      store.close();
+      await store.close();
     },
   };
 }

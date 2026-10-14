@@ -8,9 +8,10 @@ export function validateMaterial(input, current = null) {
   if (!plainObject(input)) invalid('Material must be a JSON object.');
   const allowed = new Set(['name', 'description', 'videoLinks', 'visibleToStudents', 'studentDownload', 'version', 'attachments', 'lessonIds']);
   for (const key of Object.keys(input)) if (!allowed.has(key)) invalid(`Unsupported material field: ${key}.`);
-  for (const key of ['attachments', 'lessonIds']) {
+  for (const key of ['lessonIds']) {
     if (Object.hasOwn(input, key) && (!Array.isArray(input[key]) || input[key].length)) invalid(`${key} are not available in this material service yet.`);
   }
+  if (Object.hasOwn(input, 'attachments') && (!Array.isArray(input.attachments) || input.attachments.length > 20 || input.attachments.some(id => typeof id !== 'string' || !id || id.length > 200) || new Set(input.attachments).size !== input.attachments.length)) invalid('Select at most 20 different uploaded attachment IDs.');
   const source = current ? { ...current, ...input } : input;
   if (typeof source.name !== 'string' || !source.name.trim() || source.name.trim().length > 200) invalid('Name must be non-empty text of at most 200 characters.');
   const description = source.description === undefined ? '' : source.description;
@@ -26,7 +27,7 @@ export function validateMaterial(input, current = null) {
   });
   for (const key of ['visibleToStudents', 'studentDownload']) if (source[key] !== undefined && typeof source[key] !== 'boolean') invalid(`${key} must be true or false.`);
   const visibleToStudents = source.visibleToStudents ?? false;
-  return { name: source.name.trim(), description: description.trim(), videoLinks, visibleToStudents, studentDownload: visibleToStudents && (source.studentDownload ?? false) };
+  return { name: source.name.trim(), description: description.trim(), videoLinks, visibleToStudents, studentDownload: visibleToStudents && (source.studentDownload ?? false), attachments: Object.hasOwn(input, 'attachments') ? [...input.attachments] : current?.attachments?.map(file => file.id) || [] };
 }
 
 export function requireMaterialVersion(input) {
@@ -34,7 +35,7 @@ export function requireMaterialVersion(input) {
   return input.version;
 }
 
-export function createMaterialStore({ database, transaction }) {
+export function createMaterialStore({ database, transaction, attachments }) {
   database.exec(`
     CREATE TABLE IF NOT EXISTS materials (
       id TEXT PRIMARY KEY, course_id TEXT NOT NULL REFERENCES courses(id),
@@ -61,11 +62,12 @@ export function createMaterialStore({ database, transaction }) {
   const courseExists = id => typeof id === 'string' && !!database.prepare('SELECT id FROM courses WHERE id = ?').get(id);
   const access = (courseId, userId) => !!database.prepare('SELECT 1 FROM course_material_access WHERE course_id = ? AND user_id = ?').get(courseId, userId);
   const canReadCourse = (courseId, person) => person && courseExists(courseId) && (['admin', 'teacher'].includes(person.role) || person.role === 'student' && access(courseId, person.id));
-  const dto = row => row ? {
+  const dto = (row, attachmentMap = null) => row ? {
     id: row.id, courseId: row.course_id, name: row.name, description: row.description,
     videoLinks: JSON.parse(row.video_links), visibleToStudents: !!row.visible_to_students, studentDownload: !!row.student_download,
     owner: { id: row.owner_id, displayName: row.owner_name }, version: row.version,
     createdAt: row.created_at, updatedAt: row.updated_at,
+    attachments: attachmentMap ? attachmentMap.get(row.id) || [] : attachments?.list(row.id) || [],
   } : null;
   const select = 'SELECT materials.*, users.display_name AS owner_name FROM materials JOIN users ON users.id = materials.owner_id';
   const record = id => database.prepare(`${select} WHERE materials.id = ?`).get(id);
@@ -73,11 +75,13 @@ export function createMaterialStore({ database, transaction }) {
     const person = identity(user), row = record(id);
     return row && canReadCourse(row.course_id, person) && (person.role !== 'student' || row.visible_to_students) ? dto(row) : null;
   };
-  const list = (courseId, user) => {
+  const list = (courseId, user) => transaction(() => {
     const person = identity(user);
     if (!canReadCourse(courseId, person)) throw new ApplicationError(404, 'COURSE_NOT_FOUND', 'Course was not found.');
-    return database.prepare(`${select} WHERE materials.course_id = ? ${person.role === 'student' ? 'AND materials.visible_to_students = 1' : ''} ORDER BY materials.created_at, materials.id`).all(courseId).map(dto);
-  };
+    const rows = database.prepare(`${select} WHERE materials.course_id = ? ${person.role === 'student' ? 'AND materials.visible_to_students = 1' : ''} ORDER BY materials.created_at, materials.id`).all(courseId);
+    const attachmentMap = attachments?.listMany(rows.map(row => row.id)) || null;
+    return rows.map(row => dto(row, attachmentMap));
+  }, 'read');
   const administrator = actor => {
     const person = identity(actor);
     if (person?.role !== 'admin') throw new ApplicationError(403, 'ROLE_FORBIDDEN', 'Only an administrator can change materials.');
@@ -89,6 +93,7 @@ export function createMaterialStore({ database, transaction }) {
     if (!courseExists(courseId)) throw new ApplicationError(404, 'COURSE_NOT_FOUND', 'Course was not found.');
     const fields = validateMaterial(input), id = randomUUID(), now = new Date().toISOString();
     database.prepare('INSERT INTO materials(id, course_id, name, description, video_links, visible_to_students, student_download, owner_id, version, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)').run(id, courseId, fields.name, fields.description, JSON.stringify(fields.videoLinks), Number(fields.visibleToStudents), Number(fields.studentDownload), person.id, now, now);
+    attachments?.bind(id, courseId, fields.attachments, person.id);
     const material = dto(record(id));
     audit(person, 'material.create', material);
     return material;
@@ -101,6 +106,7 @@ export function createMaterialStore({ database, transaction }) {
     const fields = validateMaterial(input, current), now = new Date().toISOString();
     const changed = database.prepare('UPDATE materials SET name = ?, description = ?, video_links = ?, visible_to_students = ?, student_download = ?, version = version + 1, updated_at = ? WHERE id = ? AND version = ?').run(fields.name, fields.description, JSON.stringify(fields.videoLinks), Number(fields.visibleToStudents), Number(fields.studentDownload), now, id, version);
     if (changed.changes !== 1) throw new ApplicationError(409, 'VERSION_CONFLICT', 'This material was changed by someone else. Reload it before saving.');
+    if (Object.hasOwn(input, 'attachments')) attachments?.bind(id, current.courseId, fields.attachments, person.id);
     const material = dto(record(id));
     audit(person, 'material.update', material);
     return material;

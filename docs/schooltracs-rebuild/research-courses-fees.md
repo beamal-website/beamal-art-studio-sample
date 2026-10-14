@@ -229,3 +229,55 @@ Add schedule 表單（只開啟，未 Add）：
 | Fee filters / Actions | Normal／Single course／Multiple courses／Deleted、Name搜尋及Clear selection；重新確認編輯入口異常 | 多課程fee建立、Fee修改影響歷史訂單、Fee刪除／還原、區分解除連結Fee與刪除Fee |
 
 **建議下一個製作依賴：先做教材純資料表單和共用保存／權限切片，再接具體Lesson分享及附件。** General Settings實際欄位仍缺證據，應先保持未完成狀態並等待Chrome參考連線，不用猜測補上Follows term或booking欄位位置。這不表示跳到下一個模組；Courses／Fees整頁仍未通過。
+
+## 第三切片：Materials 附件及草稿狀態補查（2026-10-14）
+
+本段依統籌 Agent 的本輪 Chrome 直接操作回報及持久截圖補記；整理此段的 Agent 沒有再次控制瀏覽器。本輪只觀察可見介面、讀取表單 DOM 屬性及操作可取消草稿，**沒有選取檔案、上載附件或保存 SchoolTracs 改動**。
+
+### 參考連線及進入路徑
+
+- Chrome 瀏覽器盤點已恢復。既有分頁 `846615829` 由另一操作工作持有，本輪沒有搶佔控制。
+- 統籌使用自己新開的分頁 `846615839`，進入既有課程 URL：`https://web.schooltracs.com/v4/web/courses/1?b=2&o=yausiuhei07&tab=materials`。
+- 初次畫面先呈現 General；透過鍵盤切換至 Materials 成功。Materials 顯示 `No material yet`，再按 Add 開啟 Add material。
+- 前一切片記錄的「工具無法重新取得 Chrome」是當時連線結果；本輪恢復並不補足附件保存、學生端或下載行為的證據。
+
+### 附件：本輪已確認的介面規格
+
+| 項目 | 本輪確切觀察 | 證據限制 |
+|---|---|---|
+| 可見格式提示 | PNG、JPG、GIF、MP4、AVI、MOV、MP3、WAV、M4A、PDF | 只是畫面提示，未測實際格式驗證或檔案內容檢查 |
+| 大小提示 | `max50MB` | 未證實是每檔限制或總量；未測超限、空檔案或失敗反饋 |
+| 檔案輸入 | DOM 的 `input[type=file]` 設有 `multiple=true` | 已確認允許多檔選擇的輸入屬性，沒有開啟檔案選擇視窗或選檔 |
+| `accept` 屬性 | `image/gif,image/jpeg,image/png,application/pdf,video/mp4,video/avi,video/quicktime,audio/mpeg,audio/wav,audio/x-m4a` | 屬性限制不等於伺服器驗證；未證實副檔名與實際內容不符時如何處理 |
+
+因此仍不能確認：選檔是否立即上載、是否有逐檔進度／重試、拖放的實際結果、保存時機、附件預覽／播放、下載、移除／替換及取消時暫存清理。列表沒有既有教材，本輪也沒有利用原有私人檔案補測。
+
+### Visible／Download：草稿依賴及取消已實測
+
+| 操作順序 | Visible to students | Enable student download |
+|---|---|---|
+| 新開 Add material | 關閉 | 未勾選、禁用 |
+| 開啟 Visible | 開啟 | 可操作 |
+| 開啟 Download | 開啟 | 已勾選、可操作 |
+| 再關閉 Visible | 關閉 | **仍然已勾選，但禁用** |
+| 再開啟 Visible | 開啟 | **仍然已勾選，恢復可操作** |
+| Cancel 回清單，再重新 Add | 關閉 | 未勾選、禁用 |
+
+- Cancel 後清單仍是 `No material yet`；重新開啟是初始開關狀態，沒有新增教材。
+- 本輪持久畫面：[Visible 關閉而 Download 保留勾選的草稿](evidence/schooltracs-material-download-draft-20261014.png)。此圖已由統籌保存；本段整理時確認檔案存在並檢視畫面。
+- **更正先前 Beamal 的草稿產品決定：**「Visible 關閉時即清除 Download 勾選」不符合本輪原系統草稿觀察。Beamal 本輪將草稿改為只禁用 Download，保留其勾選，重新開啟 Visible 可恢復操作。
+- Beamal 服務在保存隱藏教材時仍將 `studentDownload` 正規化為 false，這是既有權限政策。**原系統在 Visible 關閉而 Download 草稿仍勾選時，保存後會保留或清除甚麼值仍未知。**不能以本輪草稿觀察證明其保存、預覽或下載權限。
+
+### Share with lesson：選項已確認，選擇效果未通過
+
+- 使用 ArrowDown 展開 Share with lesson，確認 checkbox 列表包含三節：`2026-10-15`、`2026-10-22`、`2026-10-29`，時間均為 `10:00–10:45`。
+- 嘗試以 Space 選 checkbox 後，選單收起，但沒有出現已選課節標籤；**未證實選擇成功**，不能宣稱本輪完成單選或多選操作。
+- 在收起的 combobox 使用 Enter 曾觸發 Name 必填驗證；沒有任何保存。這不構成 Share 已保存或已套用的證據。
+- 未選課節時的分享範圍、多課節保存、學生報名／課節關聯、課節取消後的結果及跨課程分享仍待查證。
+
+### 下一步附件切片的查證及驗收邊界
+
+1. 先查明 Choose files 是先建草稿還是即時傳輸；未取得可控上載授權前，不以實際選檔補猜上載流程。
+2. 原系統未能確認的規則須明確標成 Beamal 產品決定：50MB 按每檔或總量、格式與內容驗證、逐檔失敗處理、預覽與下載的權限差異、取消／失敗暫存清理，以及無 Share 選擇時的教材範圍。
+3. Beamal 附件驗收須包含：錯誤保留其他草稿、傳輸中取消不留下半筆教材、回覆遺失重試不重複附件、版本衝突不覆蓋別人的新檔案、登入過期隔離私人預覽與晚到結果、直接檔案網址的授權檢查及手機操作。
+4. 本輪沒有證明任何附件上載／預覽／下載／移除效果；教材整頁及完整 Goal 仍未完成。後續 UI、服務及獨立 QA 繼續附件切片，不把多檔輸入屬性或草稿開關視為完整功能。

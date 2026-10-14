@@ -1,6 +1,6 @@
 import {fork} from 'node:child_process';
 import {createHash,randomUUID} from 'node:crypto';
-import {mkdtemp,readFile,writeFile,mkdir,rm} from 'node:fs/promises';
+import {mkdtemp,readFile,writeFile,mkdir,rm,symlink} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {fileURLToPath} from 'node:url';
@@ -34,9 +34,10 @@ if(process.argv[2]==='--worker') {
  const source=fileURLToPath(new URL('../',import.meta.url));
  const directory=await mkdtemp(join(tmpdir(),'beamal-service-baseline-'));await mkdir(join(directory,'modules'));
  const manifest={};
- for(const file of ['app.mjs','store.mjs','security.mjs','validation.mjs','materials.mjs']) {
+ for(const file of ['app.mjs','store.mjs','security.mjs','validation.mjs','materials.mjs','attachments.mjs']) {
   const bytes=await readFile(join(source,file));manifest[file]=createHash('sha256').update(bytes).digest('hex');await writeFile(join(directory,'modules',file),bytes);
  }
+ await symlink(join(source,'..','node_modules'),join(directory,'modules','node_modules'),'dir');
  const datasetConfigs=[{name:'100 courses / 100 base fees',rows:100,shared:0,links:0},{name:'1000 courses / 1000 base fees',rows:1000,shared:0,links:0},{name:'1000 courses / 1100 fees: 100 shared x 10 courses',rows:1000,shared:100,links:10}];
  const smoke=process.argv.includes('--smoke'),readsPerPhase=smoke?3:20;
  const selectedDatasets=smoke?datasetConfigs.slice(0,1):datasetConfigs;

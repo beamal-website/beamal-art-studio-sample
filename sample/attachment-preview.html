@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="same-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; worker-src 'self'; connect-src 'self'; img-src 'self' data: blob:; media-src 'self'; font-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'self'">
+    <title>附件預覽 · Beamal</title>
+    <link rel="stylesheet" href="/client/attachment-preview.css">
+  </head>
+  <body>
+    <div id="attachment-preview">
+      <header class="preview-header">
+        <a class="preview-brand" href="/account">BEAMAL <span>ART STUDIO</span></a>
+        <button id="preview-language" class="preview-secondary" type="button" aria-label="中文 / English">EN</button>
+      </header>
+      <main class="preview-main">
+        <div class="preview-heading">
+          <div class="preview-description"><h1 id="preview-name">附件預覽</h1><p id="preview-meta"></p></div>
+          <nav class="preview-actions" aria-label="附件 / Attachment">
+            <a id="preview-back" class="preview-secondary" href="/account/courses">返回課程</a>
+            <a id="preview-download" class="preview-primary" hidden>下載附件</a>
+          </nav>
+        </div>
+        <section id="preview-surface" class="preview-surface" aria-busy="true">
+          <p id="preview-status" class="preview-status" role="status" aria-live="polite">正在確認附件權限…</p>
+          <div id="preview-error-actions" class="preview-error-actions" hidden><button id="preview-retry" type="button" hidden>重新載入</button><a id="preview-login" class="preview-primary" href="/login" hidden>登入</a></div>
+          <canvas id="preview-canvas" hidden></canvas>
+        </section>
+        <nav id="preview-pager" class="preview-pager" aria-label="PDF pages" hidden>
+          <button id="preview-previous" class="preview-secondary" type="button" disabled>上一頁</button>
+          <span id="preview-page-count" role="status" aria-live="polite"></span>
+          <button id="preview-next" class="preview-secondary" type="button" disabled>下一頁</button>
+        </nav>
+        <details id="preview-text" class="preview-text" hidden><summary id="preview-text-label">本頁文字</summary><pre id="preview-pdf-text"></pre></details>
+        <noscript>請啟用 JavaScript 以確認附件閱讀權限。 / Enable JavaScript to check attachment access.</noscript>
+      </main>
+    </div>
+    <script type="module" src="/client/attachment-preview.js"></script>
+  </body>
+</html>

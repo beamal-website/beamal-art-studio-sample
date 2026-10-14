@@ -1,10 +1,11 @@
 import { DatabaseSync } from 'node:sqlite';
 import { randomUUID, createHash } from 'node:crypto';
 import { mkdirSync, chmodSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { hashPassword, normaliseEmail } from './security.mjs';
 import { validateCourse, ApplicationError } from './validation.mjs';
 import { createMaterialStore } from './materials.mjs';
+import { createAttachmentStore } from './attachments.mjs';
 
 const publicUser = row => row ? { id: row.id, email: row.email, displayName: row.display_name, role: row.role } : null;
 const pricingKeys = ['feeName', 'pricingModel', 'price', 'months', 'duration', 'packageType', 'packageTotal', 'bookingExpiry', 'onlineStore'];
@@ -12,7 +13,7 @@ const metadata = record => ({ courseName: record.courseName, category: record.ca
 const pricing = record => Object.fromEntries(pricingKeys.filter(key => Object.hasOwn(record, key)).map(key => [key, record[key]]));
 const nameKey = name => name.trim().toLowerCase();
 
-export async function createStore({ databasePath = ':memory:', seedUsers = [], seedCourses = [] } = {}) {
+export async function createStore({ databasePath = ':memory:', seedUsers = [], seedCourses = [], attachmentsDir } = {}) {
   if (databasePath !== ':memory:') mkdirSync(dirname(databasePath), { recursive: true, mode: 0o700 });
   const database = new DatabaseSync(databasePath);
   if (databasePath !== ':memory:') chmodSync(databasePath, 0o600);
@@ -254,7 +255,7 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
     bumpCourses(affected, actor, now);
     return includeCourses ? { fee, courses: affected.map(courseId => getCourse(courseId)) } : fee;
   });
-  const createOnce = ({ userId, route, key = null, payloadHash }, operation) => transaction(() => {
+  const mutateOnce = ({ userId, route, key = null, payloadHash, status = 201 }, operation) => transaction(() => {
     if (key) {
       const saved = database.prepare('SELECT payload_hash, response_status, response_body FROM idempotent_creates WHERE user_id = ? AND route = ? AND request_key = ?').get(userId, route, key);
       if (saved) {
@@ -262,10 +263,11 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
         return { status: saved.response_status, body: JSON.parse(saved.response_body) };
       }
     }
-    const body = operation(), status = 201;
+    const body = operation();
     if (key) database.prepare('INSERT INTO idempotent_creates(user_id, route, request_key, payload_hash, response_status, response_body, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)').run(userId, route, key, payloadHash, status, JSON.stringify(body), new Date().toISOString());
     return { status, body };
   });
+  const createOnce = (options, operation) => mutateOnce({ ...options, status: 201 }, operation);
   try {
     transaction(() => {
       const highestCourseCode = database.prepare('SELECT course_code FROM courses').all().reduce((highest, row) => {
@@ -301,11 +303,14 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
       createCourse(validateCourse(input), null, seed.id);
     }
   } catch (error) { database.close(); throw error; }
-  let materials;
-  try { materials = createMaterialStore({ database, transaction }); }
-  catch (error) { database.close(); throw error; }
+  let materials, attachments;
+  try {
+    attachments = await createAttachmentStore({ database, transaction, directory: attachmentsDir || (databasePath === ':memory:' ? undefined : `${resolve(databasePath)}.attachments`) });
+    materials = createMaterialStore({ database, transaction, attachments });
+  }
+  catch (error) { await attachments?.close(); database.close(); throw error; }
   return {
-    listCourses, getCourse, createCourse, updateCourse, listFees, getFee, createFee, updateFee, createOnce, catalogSnapshot, materials,
+    listCourses, getCourse, createCourse, updateCourse, listFees, getFee, createFee, updateFee, createOnce, mutateOnce, catalogSnapshot, materials, attachments,
     listUsers: () => database.prepare('SELECT * FROM users ORDER BY email').all().map(publicUser),
     userByEmail: email => database.prepare('SELECT * FROM users WHERE email = ?').get(email),
     publicUser,
@@ -322,6 +327,6 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
     deleteSession: tokenHash => database.prepare('DELETE FROM sessions WHERE token_hash = ?').run(tokenHash),
     audit: () => database.prepare('SELECT * FROM audit_log ORDER BY id').all().map(row => ({ ...row, snapshot: JSON.parse(row.snapshot) })),
     feeAudit: () => database.prepare('SELECT * FROM fee_audit_log ORDER BY id').all().map(row => ({ ...row, snapshot: JSON.parse(row.snapshot) })),
-    close() { if (!closed) { closed = true; database.close(); } },
+    close() { if (!closed) { closed = true; const cleanup = attachments.close(); database.close(); return cleanup; } },
   };
 }

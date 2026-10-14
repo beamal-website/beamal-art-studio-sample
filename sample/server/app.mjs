@@ -4,7 +4,7 @@ import { resolve, sep, extname } from 'node:path';
 import { createStore } from './store.mjs';
 import { uploadMetadata } from './attachments.mjs';
 import { validateMaterial, requireMaterialVersion } from './materials.mjs';
-import { validateSchedule, requireScheduleVersion } from './schedules.mjs';
+import { validateSchedule, requireScheduleVersion, requireOccurrenceRequest } from './schedules.mjs';
 import { ApplicationError, validateCourse, validateCourseMetadata, hasPricingFields, validateFee, requireVersion } from './validation.mjs';
 import { hashPassword, verifyPassword, normaliseEmail, randomToken, tokenHash, csrfForToken, matchesHash } from './security.mjs';
 
@@ -229,6 +229,18 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
         json(response, result.status, result.body); return;
       }
       const scheduleMatch = /^\/api\/schedules\/([^/]+)(\/restore)?$/.exec(pathname);
+      const occurrenceMatch = /^\/api\/schedules\/([^/]+)\/occurrences\/([^/]+)(\/restore)?$/.exec(pathname);
+      if (occurrenceMatch && ((!occurrenceMatch[3] && ['PATCH', 'DELETE'].includes(request.method)) || (occurrenceMatch[3] && request.method === 'POST'))) {
+        const session = requireMutation(request);
+        if (session.user.role !== 'admin') throw new ApplicationError(403, 'ROLE_FORBIDDEN', 'Only an administrator can change lessons.');
+        const id = decodeId(occurrenceMatch[1]), sequenceText = decodeId(occurrenceMatch[2]), sequence = Number(sequenceText);
+        if (!/^\d+$/.test(sequenceText) || !Number.isSafeInteger(sequence) || sequence < 1) throw new ApplicationError(400, 'INVALID_SCHEDULE', 'Select a valid lesson sequence.');
+        const input = await body(request), action = occurrenceMatch[3] ? 'restoreOccurrence' : request.method === 'DELETE' ? 'deleteOccurrence' : 'editOccurrence';
+        requireOccurrenceRequest(input, action === 'editOccurrence');
+        const key = idempotencyKey(request), route = `${request.method} /api/schedules/${encodeURIComponent(id)}/occurrences/${sequence}${occurrenceMatch[3] || ''}`;
+        const result = store.mutateOnce({ userId: session.user.id, route, key, payloadHash: payloadHash(input), status: 200 }, () => ({ schedule: store.schedules[action](id, sequence, input, session.user.id) }));
+        json(response, result.status, result.body); return;
+      }
       if (scheduleMatch && ((!scheduleMatch[2] && ['PATCH', 'DELETE'].includes(request.method)) || (scheduleMatch[2] && request.method === 'POST'))) {
         const session = requireMutation(request);
         if (session.user.role !== 'admin') throw new ApplicationError(403, 'ROLE_FORBIDDEN', 'Only an administrator can change schedules.');
@@ -333,7 +345,7 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
         json(response, 200, store.updateFee(id, fee, version, session.user.id, true)); return;
       }
       if (pathname === '/api' || pathname.startsWith('/api/')) {
-        const known = match || feeMatch || courseMaterialMatch || materialMatch || uploadMatch || attachmentMatch || scheduleMatch || courseLifecycleMatch || ['/api/health', '/api/auth/session', '/api/auth/login', '/api/auth/logout', '/api/courses', '/api/fees', '/api/catalog', '/api/schedules'].includes(pathname);
+        const known = match || feeMatch || courseMaterialMatch || materialMatch || uploadMatch || attachmentMatch || scheduleMatch || occurrenceMatch || courseLifecycleMatch || ['/api/health', '/api/auth/session', '/api/auth/login', '/api/auth/logout', '/api/courses', '/api/fees', '/api/catalog', '/api/schedules'].includes(pathname);
         throw new ApplicationError(known ? 405 : 404, known ? 'METHOD_NOT_ALLOWED' : 'NOT_FOUND', 'API route or method is not available.');
       }
       await serveStatic(request, response, pathname);

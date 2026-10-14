@@ -76,3 +76,56 @@ Beamal 後端目前採用的課節次數 `1–999` 是本專案的驗證界限�
 Print 的獨立輸出入口按使用者「複雜次要功能先略過」指示延後，記錄於 [DEFERRED.md](DEFERRED.md)。原服務 Subscribe、Book a Demo、Help 等已有同檔記錄，不另建立重複待辦。
 
 課程與時間表的共用關聯、真正共用保存、角色及身份隔離、主要新增／修改／刪除、重複日期正確、學生／課程關係與會計數字，仍屬指定主流程；不能因本輪只看過草稿而標為完成或 minor。
+
+## 同日後續：單堂／往後課堂已保存研究
+
+本節是 2026-10-14 較後進行的真實保存研究。**上方「沒有 Add／Save」及驗收表中的「原系統保存未測」，是較早草稿研究當時的狀態，不是本節完成後對整日研究的結論。** 保留早期紀錄，不將後續取得的證據倒寫成早已驗證。
+
+### 來源及受控資料
+
+- 統籌直接操作同一 SchoolTracs 參考網站；Research Agent 整理其回報，並親自檢視下列範圍選項、移日後只改時間及最後改日期的三張關鍵截圖。Research Agent 本輪沒有操作瀏覽器。
+- 原有 Q 沒有改動。本次使用先前已建立的合成課程 `Beamal QA 20261014`，新增 **2026-10-14／21／28** 三堂，每星期三，12:30–13:00，Capacity 5，Remark 為 `Fictional scope QA20261014-no students`，沒有學生。
+- 初始以 Ends after 3 建立。以下每項均依序承接上一步保存後的結果，不是各自從初始資料獨立重做。
+- 本輪沒有按 Delete／Restore，沒有學生報名、付款或通知操作。來源原有費用仍為 $300／$850；本節不把排課修改當作重新計價證據。
+
+### 保存次序與實際結果
+
+下表時間為各堂開始時間；除第一步列明初始 30 分鐘時長外，不由未展示欄位推算其他規則。
+
+| 步驟 | 實際操作 | 保存後／重新開啟的明確結果 |
+| --- | --- | --- |
+| 建立基準 | 新增 14／21／28 日三堂 | 三堂均為 12:30–13:00，Capacity 5，沒有學生 |
+| 開啟第二堂 | 從 21 日那一列進 Edit | Start date 21 日、End 28 日、Session 2；雖以次數建立，Edit 顯示最後日期，不是預填剩餘兩堂的次數模式 |
+| 第一次 Save | 將 21 日開始時間改為 12:45，按 Save | 出現 Apply changes to，只有 This lesson only／This and following lessons 兩個 radio；初始未選，OK 禁用 |
+| 單堂時間 | 選 This lesson only 並確認 | 14／28 日仍為 12:30；只有 21 日變為 12:45 |
+| 往後時間 | 再開 21 日，開始時間改為 13:00，選 This and following lessons | 14 日仍為 12:30；21／28 日均變為 13:00 |
+| 單堂移日 | 把 21 日移到 22 日，選 This lesson only | 日期為 14／22／28；22 日為星期四。重新開啟 22 日 Edit，Start 22 日、End 仍為 28 日、Session 2，敘述為星期四、22 日至 28 日 |
+| 移日後只改時間 | 在 22 日 Edit 只把時間改為 13:15，選 This and following lessons；沒有相對預填值改日期／重複設定 | **14 日仍 12:30，22／28 日均為 13:15；28 日仍是星期三，沒有多生 29 日** |
+| 明確改開始日期 | 再開 22 日 Edit，把 Start 改成 23 日；畫面自動顯示星期五，End 28 日不變；Save 選 This and following lessons | 列表剩下 **14 日 12:30／23 日 13:15**；28 日不再出現，沒有 29 日 |
+
+### 這組結果確認了甚麼
+
+1. 從某一列進入 Edit，表單帶出該堂的日期及課節號，Save 後再詢問「只限這堂／這堂及往後」。不能再把此入口當作無條件修改整套排課。
+2. 本例以三次建立的有限系列，Edit 預填最後日期 28 日。不能為了維持剩餘次數，自動把 End 延至 29 日或改成剩餘兩次。
+3. **表單預填的星期四／22–28 日，不代表只改時間就要重新生成所有往後日期。** 移日後只改時間，22 日與原有星期三的 28 日均保留；實作須辨認使用者相對打開表單時實際改了哪些欄位。
+4. 明確把 Start 改為 23 日時，這個測例的後段日期才按新星期五及不變的 End 28 日重排，因此只剩 23 日一堂；不能以「保留堂數」擅自加出 End 之後的日期。
+5. 這些是本例的畫面及保存結果；沒有讀取 SchoolTracs 內部資料格式，也沒有確認它使用固定序號、日期例外或其他儲存結構。
+
+### 本輪持久證據
+
+| 檔案 | 對應證據 |
+| --- | --- |
+| [schooltracs-scope-three-lessons.png](evidence/schooltracs-scope-three-lessons.png) | 初始三堂及時間 |
+| [schooltracs-scope-options.png](evidence/schooltracs-scope-options.png) | Save 後的兩個範圍選項，初始未選、OK 禁用；Research Agent 已親自檢視 |
+| [schooltracs-scope-only-result.png](evidence/schooltracs-scope-only-result.png) | 單堂時間修改結果 |
+| [schooltracs-scope-following-result.png](evidence/schooltracs-scope-following-result.png) | 往後時間修改結果 |
+| [schooltracs-scope-moved-result.png](evidence/schooltracs-scope-moved-result.png) | 單堂移至 22 日後的列表 |
+| [schooltracs-scope-moved-following-time.png](evidence/schooltracs-scope-moved-following-time.png) | 只改往後時間仍保留 14／22／28，28 日仍星期三；Research Agent 已親自檢視 |
+| [schooltracs-scope-following-date-result.png](evidence/schooltracs-scope-following-date-result.png) | 明確改 Start 後列表只剩 14／23；Research Agent 已親自檢視 |
+
+### 保留的未確認事項
+
+- 只限本課程、2026 年 10 月、每星期三三堂、上述日期及時間變更；不推廣為所有多星期組合、無限排課、假日、跨月／時區或移日先後順序的完整規則。
+- 沒有測試有學生、訂單、付款、出席或教材分享時，改日期／時間對關聯資料的影響。
+- 單堂／往後課堂刪除、取消及還原仍未在原系統操作；Beamal 為此提供的保護及還原安排不能標為原系統已驗證規則。
+- 本節更新的是參考來源證據，不把 Beamal 的服務、整合測試、手機畫面或整頁驗收自動標為通過；該切片的驗收界限另見 [範圍修改檢查點](schedule-scope-checkpoint.md)。

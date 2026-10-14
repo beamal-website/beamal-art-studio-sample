@@ -326,3 +326,27 @@
 .course-delete-confirm{background:#a03e30;border-color:#a03e30}
 .course-delete-confirm:hover{background:#873326}
 @media(max-width:600px){.course-lifecycle-modal{padding:8px}.course-lifecycle-dialog{width:calc(100vw - 24px);max-height:calc(100dvh - 16px)}.course-lifecycle-dialog .create-course-header{padding:18px}.course-lifecycle-dialog .create-course-header h2{font-size:1.25rem}.course-lifecycle-dialog .create-course-body{padding:18px}.course-lifecycle-dialog .create-course-footer{padding:14px 18px}}
+.course-schedule-row .course-schedule-date-edit{display:block;max-width:100%;padding:0;margin:0;border:0;border-radius:2px;background:transparent;box-shadow:none;color:var(--teal);font:inherit;text-align:left;white-space:normal;overflow-wrap:anywhere;text-decoration:underline;text-underline-offset:3px}
+.course-schedule-row .course-schedule-date-edit:focus-visible{outline:2px solid var(--teal);outline-offset:4px}
+.schedule-scope-modal{z-index:1500;padding:12px}
+.schedule-scope-dialog{width:min(560px,100%);height:auto;max-height:calc(100dvh - 24px)}
+.schedule-scope-dialog .create-course-header{padding:20px 24px}
+.schedule-scope-dialog .create-course-header h2{font-size:24px}
+.schedule-scope-dialog form{flex:0 1 auto;overflow:hidden}
+.schedule-scope-body{flex:0 1 auto;padding:24px;line-height:1.6}
+.schedule-scope-course{margin:0;font-size:20px;font-weight:600;overflow-wrap:anywhere}
+.schedule-scope-date{margin:4px 0 20px;color:#687770;font-variant-numeric:tabular-nums}
+.schedule-scope-options{min-width:0;margin:0;padding:0;border:0}
+.schedule-scope-options legend{margin-bottom:12px;font-size:17px}
+.schedule-scope-options label{display:flex;align-items:flex-start;gap:12px;padding:12px 16px;border:1px solid #bdcbc1;border-radius:3px;background:#e9eee5;font-size:17px;line-height:1.5;cursor:pointer}
+.schedule-scope-options label+label{margin-top:12px}
+.schedule-scope-options input{width:20px;height:20px;flex:none;margin:3px 0 0;padding:0;accent-color:var(--teal)}
+.schedule-scope-options span{min-width:0;overflow-wrap:anywhere}
+.schedule-scope-options:disabled label{cursor:wait;opacity:.7}
+.schedule-scope-impact{margin:20px 0 0;font-size:15px;color:#687770}
+.schedule-scope-body .error{margin:12px 0 0;overflow-wrap:anywhere}
+.schedule-scope-body .error:empty{display:none}
+.schedule-scope-footer{flex-shrink:0;padding:16px 24px}
+.schedule-scope-footer button:disabled{cursor:not-allowed}
+.schedule-scope-dialog form[aria-busy=true] button:disabled{cursor:wait}
+@media(max-width:600px){.schedule-scope-modal{padding:8px}.schedule-scope-dialog{height:auto;max-height:calc(100dvh - 16px)}.schedule-scope-dialog .create-course-header{padding:16px 20px}.schedule-scope-dialog .create-course-header h2{font-size:21px}.schedule-scope-body{padding:20px}.schedule-scope-options label{padding:12px;font-size:16px}.schedule-scope-footer{padding:14px 20px}}

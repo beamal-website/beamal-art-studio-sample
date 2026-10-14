@@ -8,18 +8,24 @@ import {createServer} from 'vite';
 
 test('the actual Vite dev server denies fictional private data and SQLite files through normal and /@fs URLs while keeping public assets available',{timeout:15000},async t=>{
  const directory=await mkdtemp(join(tmpdir(),'beamal-vite-private-'));
- t.after(()=>rm(directory,{recursive:true,force:true}));
+ let server;
+ t.after(async()=>{try{if(server){server.httpServer?.closeAllConnections();await server.close()}}finally{await rm(directory,{recursive:true,force:true})}});
  const configFile=fileURLToPath(new URL('../vite.config.mjs',import.meta.url));
  const privateNames=['.data/database.sqlite','.data/bootstrap-users.json','.data/attachments/0b81558d-947d-4f36-8c0e-41832de2a0f1.bin','legacy.sqlite','legacy.sqlite-wal','.env'];
  for(const name of privateNames){const path=join(directory,name);await mkdir(join(path,'..'),{recursive:true});await writeFile(path,'FICTIONAL_QA_PRIVATE_BYTES');}
  await writeFile(join(directory,'index.html'),'<!doctype html><title>QA public fixture</title>');
  await writeFile(join(directory,'public-script.js'),'export const publicFixture = true;\n');
- const server=await createServer({root:directory,configFile,logLevel:'silent',optimizeDeps:{noDiscovery:true},server:{host:'127.0.0.1',watch:null,preTransformRequests:false,fs:{allow:[directory]}}});
- t.after(()=>{server.httpServer?.closeAllConnections();return server.close()});
+ // Vite drops null-valued inline overrides while merging a config file. Set
+ // watch on the resolved test config so deleting fictional .env cannot restart
+ // this server on the user's default preview port during cleanup.
+ const isolation={name:'qa-isolated-dev-server',configResolved(config){config.server.watch=null;config.server.hmr=false}};
+ server=await createServer({root:directory,configFile,plugins:[isolation],logLevel:'silent',optimizeDeps:{noDiscovery:true},server:{host:'127.0.0.1',watch:null,preTransformRequests:false,fs:{allow:[directory]}}});
+ assert.equal(server.config.server.watch,null,'The isolated fixture must disable file watching before cleanup can remove its env files');assert.equal(server.config.server.hmr,false);
  // Vite's server.listen() treats port:0 as its default port. The underlying
  // server must bind zero directly so this test never occupies the user's preview.
  await new Promise((resolve,reject)=>{server.httpServer.once('error',reject);server.httpServer.listen(0,'127.0.0.1',resolve)});
- const origin=`http://127.0.0.1:${server.httpServer.address().port}`;
+ const port=server.httpServer.address().port;assert.ok(port>0);assert.notEqual(port,5173,'The fixture must not occupy the preview port');
+ const origin=`http://127.0.0.1:${port}`;
  async function get(path){return fetch(origin+path,{headers:{Connection:'close'},signal:AbortSignal.timeout(5000)})}
  for(const prefix of ['', '/@fs'+directory+'/']){
   const publicPath=prefix?prefix+'public-script.js':'/public-script.js',publicResponse=await get(publicPath);

@@ -227,3 +227,13 @@ test('a current B session discovered after another tab switches accounts superse
   superseded(outcome);
   assert.deepEqual(applied, []);
 });
+
+test('scoped schedule writes use immutable occurrence paths, opened version, chosen scope and stable authenticated operation keys',async t=>{
+ const wire=network(t),client=createApiClient();await login(client,wire,'B');
+ const current={id:'fictional-series / 一',version:7},path='/api/schedules/'+encodeURIComponent(current.id)+'/occurrences/2',record={course:'fictional-course',startDate:'2026-10-21',endMode:'count',count:2,weekdays:[3],time:'12:45',duration:45,session:2},saved={...current,version:8,exceptions:[{sequence:2,overrides:{date:'2026-10-21',time:'12:45'}}]};
+ wire.reply(path,{schedule:saved});assert.deepEqual((await client.saveScheduleOccurrence(record,current,2,'single','fictional-occurrence-save-key')).schedule,saved);
+ let call=wire.calls.at(-1);assert.equal(call.method,'PATCH');assert.deepEqual(JSON.parse(call.body),{...record,version:7,scope:'single'});assert.equal(call.headers.get('Idempotency-Key'),'fictional-occurrence-save-key');assert.equal(call.headers.get('X-CSRF-Token'),'csrf-fictional-B');assert.equal(call.credentials,'same-origin');
+ wire.reply(path,{schedule:{...saved,version:9}});await client.deleteScheduleOccurrence(saved,2,'following','fictional-occurrence-delete-key');call=wire.calls.at(-1);assert.equal(call.method,'DELETE');assert.deepEqual(JSON.parse(call.body),{version:8,scope:'following'});assert.equal(call.headers.get('Idempotency-Key'),'fictional-occurrence-delete-key');assert.equal(call.headers.get('X-CSRF-Token'),'csrf-fictional-B');
+ wire.reply(path+'/restore',{schedule:{...saved,version:10}});await client.restoreScheduleOccurrence({...saved,version:9},2,'following','fictional-occurrence-restore-key');call=wire.calls.at(-1);assert.equal(call.method,'POST');assert.deepEqual(JSON.parse(call.body),{version:9,scope:'following'});assert.equal(call.headers.get('Idempotency-Key'),'fictional-occurrence-restore-key');assert.equal(call.headers.get('X-CSRF-Token'),'csrf-fictional-B');
+ wire.reply(path,{error:{code:'VERSION_CONFLICT',message:'The series changed in another session.'}},409);await assert.rejects(client.saveScheduleOccurrence(record,current,2,'single','fictional-occurrence-save-key'),error=>error instanceof ApiError&&error.status===409&&error.code==='VERSION_CONFLICT');
+});

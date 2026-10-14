@@ -84,6 +84,13 @@ export function createApiClient() {
         method: current ? 'PATCH' : 'POST', body: { ...schedule, ...(current ? { version: current.version } : {}) }, idempotencyKey: operationKey,
       });
     },
+    saveScheduleOccurrence(schedule, current, sequence, scope, operationKey) {
+      return request(`/schedules/${encodeURIComponent(current.id)}/occurrences/${encodeURIComponent(sequence)}`, {
+        method: 'PATCH', body: { ...schedule, version: current.version, scope }, idempotencyKey: operationKey,
+      });
+    },
+    deleteScheduleOccurrence: (current, sequence, scope, operationKey) => request(`/schedules/${encodeURIComponent(current.id)}/occurrences/${encodeURIComponent(sequence)}`, { method: 'DELETE', body: { version: current.version, scope }, idempotencyKey: operationKey }),
+    restoreScheduleOccurrence: (current, sequence, scope, operationKey) => request(`/schedules/${encodeURIComponent(current.id)}/occurrences/${encodeURIComponent(sequence)}/restore`, { method: 'POST', body: { version: current.version, scope }, idempotencyKey: operationKey }),
     deleteSchedule: (current, operationKey) => request(`/schedules/${encodeURIComponent(current.id)}`, { method: 'DELETE', body: { version: current.version }, idempotencyKey: operationKey }),
     restoreSchedule: (current, operationKey) => request(`/schedules/${encodeURIComponent(current.id)}/restore`, { method: 'POST', body: { version: current.version }, idempotencyKey: operationKey }),
     uploadMaterialAttachment: (courseId, file, options) => uploadMaterialAttachment(courseId, file, { ...options, csrfToken }),

@@ -265,8 +265,11 @@ test('the public PDF renderer configures local character maps so a genuine Tradi
 
 test('Vite development serves the exact local PDF character maps and fonts for GET and HEAD without a remote fallback',{timeout:15000},async t=>{
  const {createServer}=await import('vite'),root=fileURLToPath(new URL('../',import.meta.url));
- const server=await createServer({root,configFile:join(root,'vite.config.mjs'),logLevel:'silent',optimizeDeps:{noDiscovery:true},server:{host:'127.0.0.1',port:0,strictPort:false,watch:null,preTransformRequests:false}});
- t.after(()=>{server.httpServer?.closeAllConnections();return server.close()});await new Promise((resolve,reject)=>{server.httpServer.once('error',reject);server.httpServer.listen(0,'127.0.0.1',resolve)});const origin=`http://127.0.0.1:${server.httpServer.address().port}`;
+ // Inline watch:null is discarded by Vite's config merge; the resolved
+ // fixture must disable watching/HMR so parallel tests cannot restart it.
+ const isolation={name:'qa-isolated-pdf-dev-server',configResolved(config){config.server.watch=null;config.server.hmr=false}};
+ const server=await createServer({root,configFile:join(root,'vite.config.mjs'),plugins:[isolation],logLevel:'silent',optimizeDeps:{noDiscovery:true},server:{host:'127.0.0.1',port:0,strictPort:false,watch:null,preTransformRequests:false}});
+ t.after(()=>{server.httpServer?.closeAllConnections();return server.close()});assert.equal(server.config.server.watch,null);assert.equal(server.config.server.hmr,false);await new Promise((resolve,reject)=>{server.httpServer.once('error',reject);server.httpServer.listen(0,'127.0.0.1',resolve)});const port=server.httpServer.address().port;assert.ok(port>0);assert.notEqual(port,5173,'The PDF fixture must not occupy the preview port');const origin=`http://127.0.0.1:${port}`;
  for(const asset of ['cmaps/UniCNS-UCS2-H.bcmap','cmaps/Adobe-CNS1-UCS2.bcmap','standard_fonts/FoxitSerif.pfb']){
   const expected=await readFile(join(root,'node_modules/pdfjs-dist',asset));
   const response=await fetch(origin+'/pdf-assets/'+asset,{headers:{Connection:'close'},signal:AbortSignal.timeout(5000)});assert.equal(response.status,200,asset);assert.deepEqual(Buffer.from(await response.arrayBuffer()),expected,asset);

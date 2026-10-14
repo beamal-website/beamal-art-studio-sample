@@ -5,6 +5,8 @@ import {materialPanelMarkup,materialEditorMarkup,materialVideoRow,safeMaterialUr
 import {materialAttachmentDrafts} from '../client/attachments-ui.js';
 import {attachmentIssue} from '../client/attachment-client.js';
 import {courseScheduleTableMarkup} from '../client/course-schedule-ui.js';
+import {scheduleScopeMarkup} from '../client/schedule-scope-ui.js';
+import {scheduleOccurrences,scheduleOccurrence,scheduleFollowingRule} from '../shared/schedule-occurrences.js';
 test('Join classes sort by upcoming session and income records show newest payment first',()=>{const a=app();a.set("lang='en';nextClassDate=c=>c.id==='b'?'2030-01-01':'2030-01-02';join={step:1,course:'art',classId:'a'};location.pathname='/join';render()");let html=a.nodes['#app'].innerHTML,ids=[...html.matchAll(/name="classId" value="([^"]+)"/g)].map(match=>match[1]);assert.deepEqual(ids,['b','a']);assert.ok(html.indexOf('Next class: 1 Jan 2030')<html.indexOf('Next class: 2 Jan 2030'));a.set("role='teacher';tab='payments';location.pathname='/account';render()");html=a.nodes['#app'].innerHTML;assert.ok(html.indexOf('Ryan Yu · B1005')<html.indexOf('David Leung · B1002'));});
 test('News page contains sample studio stories and no course listings',()=>{const a=app();a.set("lang='en';location.pathname='/news';render()");const html=a.nodes['#app'].innerHTML,entries=html.match(/<details class="news-entry">[\s\S]*?<\/details>/g)||[];assert.equal(entries.length,3);assert.match(html,/Student Art Showcase/);assert.match(html,/Art Award Highlights/);assert.match(html,/Studio Updates/);assert.doesNotMatch(html.match(/<section class="news-page">[\s\S]*?<\/section>/)?.[0]||'',/>Course [123]</);assert.doesNotMatch(html,/Next class|lessons per term|Places available/);assert.match(entries[0],/class="news-detail-image" src="\/assets\/beamal-canvas\.jpg"/);});
 test('sample News cards show bilingual stories, categories and artwork',()=>{const a=app();a.set("lang='en';location.pathname='/news';render()");let html=a.nodes['#app'].innerHTML;assert.match(html,/class="news-page-heading"/);assert.match(html,/class="news-entry-image" src="\/assets\/beamal-storybook\.jpg"/);assert.match(html,/Art showcase/);assert.match(html,/Awards/);assert.match(html,/Read more/);a.set("lang='zh';render()");html=a.nodes['#app'].innerHTML;assert.match(html,/學生作品展/);assert.match(html,/藝術獎項消息/);assert.match(html,/閱讀更多/);});
@@ -23,7 +25,7 @@ test('teacher can edit a seeded story and keep its existing Beamal image',()=>{c
 test('manager News opens on the published stories before the editor',()=>{const a=app();a.set("lang='en';role='teacher';tab='news';location.pathname='/account';render()");let html=a.nodes['#app'].innerHTML;assert.ok(html.indexOf('class="teacher-news-list"')<html.indexOf('id="teacher-news"'));for(const title of ['Student Art Showcase','Art Award Highlights','Studio Updates'])assert.match(html,new RegExp(title));assert.equal((html.match(/data-edit-news=/g)||[]).length,3);assert.match(html,/data-action="new-news"/);a.click({editNews:'sample-news-1'});assert.match(a.nodes['#app'].innerHTML,/Edit news/);a.click({action:'new-news'});assert.equal(a.read('newsEditId'),'');assert.match(a.nodes['#app'].innerHTML,/Add news/);assert.match(a.nodes['#app'].innerHTML,/Student Art Showcase/);});
 test('cancelling a news edit leaves the published post intact',()=>{const a=app();a.set("lang='en';role='teacher';tab='news';location.pathname='/account';db.news=[{id:'N1',title:'Original',description:'Summary',content:'Content',releaseDate:'2026-09-30',image:''}];render()");a.click({editNews:'N1'});a.click({action:'cancel-news-edit'});assert.equal(a.read('newsEditId'),'');assert.equal(a.read('db.news[0].title'),'Original');assert.match(a.nodes['#app'].innerHTML,/Add news/);});
 test('homepage News shows sample stories and links to the full page',()=>{const a=app();a.set("lang='en';render()");let html=a.nodes['#app'].innerHTML;assert.match(html,/Latest News/);assert.match(html,/Studio updates/);assert.equal((html.match(/name="upcoming-event"/g)||[]).length,3);assert.ok((html.match(/href="\/news" data-go="\/news"/g)||[]).length>=3);const footer=html.slice(html.indexOf('<footer'));assert.match(footer,/href="\/news" data-go="\/news"/);let detail=html.match(/<article class="upcoming-detail teacher-news-detail">([\s\S]*?)<\/article>/)?.[1];assert.match(detail,/Student Art Showcase/);a.change('upcoming-event','1');html=a.nodes['#app'].innerHTML;detail=html.match(/<article class="upcoming-detail teacher-news-detail">([\s\S]*?)<\/article>/)?.[1];assert.match(detail,/Art Award Highlights/);assert.match(html,/value="1" checked/);a.click({go:'/news'});html=a.nodes['#app'].innerHTML;assert.match(html,/Art Award Highlights/);assert.doesNotMatch(html,/Next class|lessons per term/);});
-function app(seed={},clock,mobile=false,injectedClient=null,options={}){const handlers={},store=new Map(Object.entries(seed)),session=new Map(),nodes={};const storage=(m,local=false)=>({getItem:k=>m.get(k)??null,setItem:(k,v)=>{const failure=local?options.localWriteError?.(k,v):null;if(failure)throw failure;return m.set(k,v)},removeItem:k=>m.delete(k)});const ctx=vm.createContext({courseScheduleTableMarkup,materialPanelMarkup,materialEditorMarkup,materialVideoRow,safeMaterialUrl,materialAttachmentDrafts,attachmentIssue,AbortController,...(injectedClient?{createApiClient:()=>injectedClient}:{}),localStorage:storage(store,true),sessionStorage:storage(session),navigator:{language:'zh-HK'},location:{pathname:options.pathname||'/'},history:{pushState:(_,__,p)=>ctx.location.pathname=p,replaceState:(_,__,p)=>ctx.location.pathname=p},window:{scrollTo(){},addEventListener:(type,handler)=>options.onWindowEvent?.(type,handler),setInterval:(handler,ms)=>options.onInterval?.(handler,ms)??0,clearInterval(){},matchMedia:()=>({matches:mobile,addEventListener(){}})},document:{documentElement:{},querySelector:s=>nodes[s]??(nodes[s]=(()=>{const classes=new Set(),attributes={};return {innerHTML:'',textContent:'',focus(){},setAttribute:(k,v)=>attributes[k]=String(v),getAttribute:k=>attributes[k],classList:{toggle:(k,on)=>on?classes.add(k):classes.delete(k),contains:k=>classes.has(k)}}})()),addEventListener:(e,h)=>{if(e==='change')(handlers.change??=[]).push(h);else handlers[e]=h},createElement:()=>({remove(){}}),body:{append(){}}},FormData:class{constructor(f){return Object.entries(f.values).flatMap(([k,v])=>Array.isArray(v)?v.map(x=>[k,x]):[[k,v]])}},setTimeout(){},confirm:()=>true,Date:clock?class extends Date{constructor(...args){super(...(args.length?args:[clock]))}static now(){return new Date(clock).getTime()}}:Date,console});vm.runInContext(fs.readFileSync(new URL('../src.js',import.meta.url),'utf8').replace(/^import .*;$/gm,''),ctx);return {ctx,read:s=>JSON.parse(vm.runInContext(`JSON.stringify(${s})`,ctx)),submit:(id,values,extra={})=>handlers.submit({preventDefault(){},target:{id,values,classList:{contains:()=>false},...extra}}),click:dataset=>handlers.click({preventDefault(){},target:{closest:()=>({dataset})}}),input:target=>handlers.input({target}),keydown:(key,extra={})=>handlers.keydown({key,preventDefault(){},...extra}),change:(name,value,extra={})=>handlers.change.forEach(handler=>handler({target:{name,value,...extra}})),set:s=>vm.runInContext(s,ctx),nodes};}
+function app(seed={},clock,mobile=false,injectedClient=null,options={}){const handlers={},store=new Map(Object.entries(seed)),session=new Map(),nodes={};const storage=(m,local=false)=>({getItem:k=>m.get(k)??null,setItem:(k,v)=>{const failure=local?options.localWriteError?.(k,v):null;if(failure)throw failure;return m.set(k,v)},removeItem:k=>m.delete(k)});const ctx=vm.createContext({scheduleOccurrences,scheduleOccurrence,scheduleFollowingRule,scheduleScopeMarkup,courseScheduleTableMarkup,materialPanelMarkup,materialEditorMarkup,materialVideoRow,safeMaterialUrl,materialAttachmentDrafts,attachmentIssue,AbortController,...(injectedClient?{createApiClient:()=>injectedClient}:{}),localStorage:storage(store,true),sessionStorage:storage(session),navigator:{language:'zh-HK'},location:{pathname:options.pathname||'/'},history:{pushState:(_,__,p)=>ctx.location.pathname=p,replaceState:(_,__,p)=>ctx.location.pathname=p},window:{scrollTo(){},addEventListener:(type,handler)=>options.onWindowEvent?.(type,handler),setInterval:(handler,ms)=>options.onInterval?.(handler,ms)??0,clearInterval(){},matchMedia:()=>({matches:mobile,addEventListener(){}})},document:{documentElement:{},querySelector:s=>nodes[s]??(nodes[s]=(()=>{const classes=new Set(),attributes={};return {innerHTML:'',textContent:'',focus(){},setAttribute:(k,v)=>attributes[k]=String(v),getAttribute:k=>attributes[k],classList:{toggle:(k,on)=>on?classes.add(k):classes.delete(k),contains:k=>classes.has(k)}}})()),addEventListener:(e,h)=>{if(e==='change')(handlers.change??=[]).push(h);else handlers[e]=h},createElement:()=>({remove(){}}),body:{append(){}}},FormData:class{constructor(f){return Object.entries(f.values).flatMap(([k,v])=>Array.isArray(v)?v.map(x=>[k,x]):[[k,v]])}},setTimeout(){},confirm:()=>true,Date:clock?class extends Date{constructor(...args){super(...(args.length?args:[clock]))}static now(){return new Date(clock).getTime()}}:Date,console});vm.runInContext(fs.readFileSync(new URL('../src.js',import.meta.url),'utf8').replace(/^import .*;$/gm,''),ctx);return {ctx,read:s=>JSON.parse(vm.runInContext(`JSON.stringify(${s})`,ctx)),submit:(id,values,extra={})=>handlers.submit({preventDefault(){},target:{id,values,classList:{contains:()=>false},...extra}}),click:dataset=>handlers.click({preventDefault(){},target:{closest:()=>({dataset})}}),input:target=>handlers.input({target}),keydown:(key,extra={})=>handlers.keydown({key,preventDefault(){},...extra}),change:(name,value,extra={})=>handlers.change.forEach(handler=>handler({target:{name,value,...extra}})),set:s=>vm.runInContext(s,ctx),nodes};}
 test('home copy switches between polished English and Chinese without special Unicode spacing',()=>{const a=app();a.set("lang='en';render()");let html=a.nodes['#app'].innerHTML;assert.match(html,/Express yourself and tell your story through art/);assert.match(html,/Regular Art Classes for Kids/);assert.match(html,/Storybook Class/);assert.match(html,/Sewing Class/);assert.doesNotMatch(html,/𝗞𝗶𝗱|𝑬𝒙𝒑𝒓𝒆𝒔𝒔/);assert.match(html,/beamal-elephants\.jpg/);assert.match(html,/Clay Classes/);assert.match(html,/Sketching Classes/);assert.match(html,/Drawing Classes/);assert.match(html,/beamal-idioms\.jpg/);assert.match(html,/beamal-sketch\.jpg/);assert.match(html,/beamal-canvas\.jpg/);assert.match(html,/>Home</);a.click({go:'/about'});html=a.nodes['#app'].innerHTML;assert.match(html,/Mission &amp; Vision/);assert.match(html,/Our Story/);assert.match(html,/beamal-colourpencil\.jpg/);assert.match(html,/beamal-guidedog\.jpg/);assert.doesNotMatch(html,/Express yourself|Regular Art Classes for Kids/);a.click({go:'/'});assert.match(a.nodes['#app'].innerHTML,/Express yourself and tell your story through art/);a.set("lang='zh';render()");html=a.nodes['#app'].innerHTML;assert.match(html,/透過藝術表達自己，訴說你的故事/);assert.match(html,/兒童常規藝術課程/);assert.match(html,/繪本課程/);assert.match(html,/縫紉課程/);assert.doesNotMatch(html,/Express yourself|Regular Art Classes for Kids/);});
 test('enrolment steps return to the top so mobile users see each new form',()=>{const a=app();a.set("location.pathname='/join';window.scrollTo=(x,y)=>{window.lastScroll=[x,y]};render()");a.submit('join',{course:'art',classId:'a'});assert.equal(a.read('join.step'),2);assert.deepEqual(a.read('window.lastScroll'),[0,0]);a.set('window.lastScroll=null');a.click({action:'joinback'});assert.equal(a.read('join.step'),1);assert.deepEqual(a.read('window.lastScroll'),[0,0]);a.submit('join',{course:'art',classId:'a'});a.set('window.lastScroll=null');a.submit('join',{student:'Alex Chan',phone:'00000000',email:'alex@example.test'});assert.equal(a.read('join.step'),3);assert.deepEqual(a.read('window.lastScroll'),[0,0]);});
 test('demo login accepts 1/2 with blank password and rejects invalid credentials',()=>{const a=app();a.submit('login',{username:'9',password:''});assert.match(a.nodes['#login-error'].textContent,/1 或 2/);a.submit('login',{username:'1',password:'secret'});assert.equal(a.read('role'),'');a.submit('login',{username:'1',password:''});assert.equal(a.read('role'),'student');a.click({action:'logout'});a.submit('login',{username:'2',password:''});assert.equal(a.read('role'),'teacher');});
@@ -1292,7 +1294,7 @@ function sharedScheduleForm({id='',version='',values={}}={}){
  form.values=scheduleValues({course:'qa-course',startDate:'2026-10-08',endMode:'count',count:'4',time:'10:00',duration:'45',capacity:'8',...values});return form;
 }
 async function sharedScheduleApp(remote={rows:[],revision:1},overrides={},options={}){
- const scheduleCalls=[],polls=[],focus=[];
+ const scheduleCalls=[],polls=[],focus=[],windowEvents={};
  const client={
   async schedules(since){scheduleCalls.push({operation:'read',since});const revision='schedule-'+remote.revision;return since===revision?{unchanged:true,revision}:{schedules:copy(remote.rows),revision}},
   async saveSchedule(record,current,operationKey){
@@ -1304,10 +1306,10 @@ async function sharedScheduleApp(remote={rows:[],revision:1},overrides={},option
   },
   ...overrides,
  };
- const a=await sharedApp(client,{}, {...options,onInterval:(handler,ms)=>{polls.push({handler,ms});return polls.length},onWindowEvent:(type,handler)=>{if(type==='focus')focus.push(handler)}});
+ const a=await sharedApp(client,{}, {...options,onInterval:(handler,ms)=>{polls.push({handler,ms});return polls.length},onWindowEvent:(type,handler)=>{(windowEvents[type]??=[]).push(handler);if(type==='focus')focus.push(handler)}});
  a.set("tab='overview';selectTimetableDate('2026-10-08');location.pathname='/account';render()");
  await a.set('refreshSharedSchedules({paint:false})');
- return {...a,remote,scheduleCalls,polls,focus};
+ return {...a,remote,scheduleCalls,polls,focus,windowEvents};
 }
 
 test('shared timetable creates and edits one recurring schedule and another admin reads the same course calendar',async()=>{
@@ -1575,4 +1577,122 @@ test('shared course catalogue lifecycle conflicts retain the opened draft, teach
  await until(()=>started,'The previous identity’s delete must genuinely be awaiting acknowledgement');switchSharedIdentity(old);form.isConnected=false;old.set("openCourseMetadataEditor('next-auth-course')");const modal=old.read('modal');
  ack.resolve({course:{...copy(sharedTestCourse),version:2,deletedAt:'2026-10-14T02:00:00Z'}});await pending;
  assert.equal(old.read('authUser.id'),'next-auth-admin');assert.equal(old.read('modal'),modal);assert.deepEqual(old.read('db.courseSettings.map(course=>course.id)'),['next-auth-course']);assert.equal(old.read('courseStatusFilter'),'active');assert.deepEqual(old.messages,[]);
+});
+
+const scopedScheduleRecord=(fields={})=>sharedScheduleRecord({id:'qa-scoped-series',startDate:'2026-10-14',weekdays:[3],count:3,time:'12:30',duration:45,session:1,...fields});
+const singleOccurrenceReceipt=()=>scopedScheduleRecord({version:2,exceptions:[{sequence:2,overrides:{date:'2026-10-21',time:'12:45'}}]});
+const followingOccurrenceReceipt=()=>{
+ const {id,version,createdAt,updatedAt,...rule}=scopedScheduleRecord();
+ return scopedScheduleRecord({version:3,segments:[{fromSequence:2,rule:{...rule,startDate:'2026-10-21',count:2,session:2,time:'13:00'}}],exceptions:[]});
+};
+async function scopedScheduleApp(rows=[scopedScheduleRecord()],overrides={}){
+ const a=await sharedScheduleApp({rows:copy(rows),revision:1},overrides),query=a.ctx.document.querySelector,root=query('#modal-root');a.occurrenceCalls=[];
+ const privateSelectors=new Set(['.schedule-scope-modal','#schedule-scope-editor','#schedule-scope-confirm','#schedule-scope-error','#schedule-scope-editor [name=scope]']);
+ a.ctx.document.querySelector=selector=>privateSelectors.has(selector)?a.nodes[selector]||null:query(selector);
+ root.insertAdjacentHTML=(position,markup)=>{
+  assert.equal(position,'beforeend');const start=root.innerHTML.length;root.innerHTML+=markup;
+  assert.match(markup,/id="schedule-scope-editor"/,'Only a real scope confirmation may create these DOM nodes');
+  const form=sharedForm('schedule-scope-editor'),radios=['single','following'].map(value=>({name:'scope',value,checked:false,disabled:false,focus(){},closest:selector=>selector==='#schedule-scope-editor'?form:null}));
+  form.isConnected=true;form.values={};const submit=form.submitButton;submit.disabled=true;submit.textContent='OK';
+  const error={textContent:'',isConnected:true},cancel={disabled:false};
+  const dialog={querySelectorAll:selector=>selector==='[name=scope]'?radios:[cancel,...radios,submit],remove(){root.innerHTML=root.innerHTML.slice(0,start);form.isConnected=false;error.isConnected=false;for(const selector of privateSelectors)delete a.nodes[selector]}};
+  a.nodes['.schedule-scope-modal']=dialog;a.nodes['#schedule-scope-editor']=form;a.nodes['#schedule-scope-confirm']=submit;a.nodes['#schedule-scope-error']=error;a.nodes['#schedule-scope-editor [name=scope]']=radios[0];a.scopeRadios=radios;
+ };
+ a.client.saveScheduleOccurrence=async(record,current,sequence,scope,operationKey)=>{
+  a.occurrenceCalls.push({record:copy(record),current:copy(current),sequence,scope,operationKey});
+  assert.ok(a.receipt,'The test must provide the external service acknowledgement');
+  a.remote.rows=[copy(a.receipt)];a.remote.revision++;return {schedule:copy(a.receipt)};
+ };
+ return a;
+}
+function scopedEditor(a,{sequence=2,date='2026-10-21',values={}}={}){
+ a.click({editActivity:'qa-scoped-series',activityKind:'schedule',activityDate:date,activitySequence:String(sequence)});
+ const markup=a.nodes['#modal-root'].innerHTML,tag=markup.match(/<form\b[^>]*id="schedule-editor"[^>]*>/)?.[0];assert.ok(tag,'A selected occurrence must open the actual schedule editor');
+ const draft=a.read('scheduleDraft'),form=sharedScheduleForm({id:draft.id,version:markupDataset(tag).version,values:{...draft,...values}});form.dataset=markupDataset(tag);
+ const controls=Object.fromEntries(Object.entries(form.values).map(([name,value])=>[name,{name,value,disabled:name==='course',focus(){}}])),buttons=form.querySelectorAll('button'),attributes={};
+ const parent={inert:false,setAttribute:(key,value)=>attributes[key]=String(value),removeAttribute:key=>delete attributes[key],getAttribute:key=>attributes[key]??null};
+ form.controls=controls;form.dialog=parent;form.closest=selector=>selector==='.schedule-modal'?parent:null;form.querySelectorAll=()=>[...buttons,...Object.values(controls)];form.querySelector=selector=>controls[selector.match(/\[name=["']?([a-zA-Z]+)/)?.[1]]||form.submitButton;
+ a.nodes['.schedule-modal']=parent;a.nodes['#schedule-editor']=form;a.nodes['.schedule-dialog header button']={disabled:false};
+ return form;
+}
+function chooseScopedSave(a,scope){
+ const radio=a.scopeRadios.find(item=>item.value===scope);assert.ok(radio);radio.checked=true;a.nodes['#schedule-scope-editor'].values.scope=scope;a.change('scope',scope,{closest:selector=>selector==='#schedule-scope-editor'?a.nodes['#schedule-scope-editor']:null});
+}
+async function confirmScopedSave(a){const form=a.nodes['#schedule-scope-editor'];assert.ok(form?.isConnected,'Confirmation must still be mounted');await a.submit(form.id,form.values,form);}
+function assertScopedViews(a,expected){
+ a.set("location.pathname='/account';tab='overview';timetableSearch='';timetableLessonFilter=null;timetableSelections={rooms:[],teachers:[]}");
+ for(const view of ['day','week','month','list'])for(const [date,time]of expected){
+  a.set(`timetableView=${JSON.stringify(view)};selectTimetableDate(${JSON.stringify(date)});render()`);
+  const tags=[...a.nodes['#app'].innerHTML.matchAll(/<button\b[^>]*data-open-lesson="qa-scoped-series"[^>]*>/g)].map(match=>match[0]),tag=tags.find(value=>value.includes(`data-lesson-date="${date}"`));
+  assert.ok(tag,`${view} must retain the same saved series on ${date}`);assert.ok(tag.includes(time),`${view} must display ${time} for ${date}`);
+ }
+ a.set("courseDetailMonth=new Date(2026,9,1);courseDetailTab='general';location.pathname='/account/courses/qa-course';render()");
+ const rows=[...a.nodes['#app'].innerHTML.matchAll(/class="course-schedule-columns course-schedule-row"[^>]*>([\s\S]*?)<\/div>/g)].map(match=>[...match[1].matchAll(/<span\b[^>]*role="cell"[^>]*>([\s\S]*?)<\/span>/g)].map(cell=>cell[1]));
+ assert.equal(rows.length,expected.length,'The course must retain exactly the original three lesson dates');
+ for(const [date,time]of expected){const row=rows.find(cells=>cells[0].includes(date));assert.ok(row);assert.equal(row[2],time);}
+}
+
+test('shared scoped timetable edits the selected occurrence only after an explicit scope choice',async()=>{
+ const a=await scopedScheduleApp(),pricing=a.read('db.courseSettings[0].fees'),form=scopedEditor(a,{values:{time:'12:45'}});a.receipt=singleOccurrenceReceipt();
+ assert.equal(a.read('scheduleDraft.occurrenceSequence??null'),2,'An occurrence editor must retain the selected immutable sequence');
+ assert.equal(a.read('scheduleDraft.startDate'),'2026-10-21');assert.equal(a.read('scheduleDraft.session'),2);assert.equal(a.read('scheduleDraft.endMode'),'date');assert.equal(a.read('scheduleDraft.endDate'),'2026-10-28','Selected lesson editing must prefill the observed last date even when the original series was entered by count');assert.deepEqual(a.read('schedulePreviewDates(scheduleDraft,8)'),['2026-10-21','2026-10-28']);
+ await a.submit(form.id,form.values,form);
+ assert.equal(a.scheduleCalls.filter(call=>call.operation==='save').length,0,'Saving one occurrence must not immediately overwrite its recurring series');assert.equal(a.occurrenceCalls.length,0);assert.ok(form.dialog.inert);
+ assert.equal(a.nodes['#schedule-scope-confirm'].disabled,true);assert.ok(a.scopeRadios.every(radio=>!radio.checked),'Neither scope should be preselected');
+ await confirmScopedSave(a);assert.equal(a.occurrenceCalls.length,0,'An unchosen scope cannot send a write');
+ chooseScopedSave(a,'single');await confirmScopedSave(a);
+ assert.equal(a.occurrenceCalls.length,1);const call=a.occurrenceCalls[0];assert.deepEqual(call.current,{id:'qa-scoped-series',version:1});assert.equal(call.sequence,2);assert.equal(call.scope,'single');assert.equal(call.record.startDate,'2026-10-21');assert.equal(call.record.time,'12:45');assert.ok(call.operationKey);assert.equal(a.read('modal'),'');
+ assert.deepEqual(a.read('db.courseSettings[0].fees'),pricing,'Changing a lesson time must preserve its course prices');
+ assertScopedViews(a,[['2026-10-14','12:30'],['2026-10-21','12:45'],['2026-10-28','12:30']]);
+ const summary=a.nodes['#app'].innerHTML.match(/<details class="course-schedule-group"[^>]*><summary>[\s\S]*?<strong>([\s\S]*?)<\/strong>/)?.[1];assert.ok(summary);assert.match(summary,/Times vary; see individual lessons/,'The group summary must direct users to the per-lesson times after only one lesson changes');assert.doesNotMatch(summary,/12:30|12:45/,'A mixed-time group must not advertise one time as applying to every lesson');
+});
+
+test('shared scoped following edit preserves earlier lessons, remaining sessions and course occurrence links',async()=>{
+ const a=await scopedScheduleApp([singleOccurrenceReceipt()]),form=scopedEditor(a,{values:{time:'13:00'}});a.receipt=followingOccurrenceReceipt();
+ assert.equal(a.read('scheduleDraft.time'),'12:45','Following-edit prefill must include the previously changed selected lesson');assert.equal(a.read('scheduleDraft.count'),2);assert.equal(a.read('scheduleDraft.session'),2);assert.equal(a.read('scheduleDraft.endMode'),'date');assert.equal(a.read('scheduleDraft.endDate'),'2026-10-28');
+ await a.submit(form.id,form.values,form);chooseScopedSave(a,'following');await confirmScopedSave(a);
+ assert.equal(a.occurrenceCalls[0].scope,'following');assert.equal(a.occurrenceCalls[0].sequence,2);assert.equal(a.occurrenceCalls[0].record.count,2);assert.equal(a.occurrenceCalls[0].record.session,2);assert.equal(a.occurrenceCalls[0].current.version,2);
+ assertScopedViews(a,[['2026-10-14','12:30'],['2026-10-21','13:00'],['2026-10-28','13:00']]);
+ const dateButton=[...a.nodes['#app'].innerHTML.matchAll(/<button\b[^>]*class="course-schedule-date-edit"[^>]*>/g)].map(match=>match[0]).find(tag=>tag.includes('data-activity-date="2026-10-28"'));assert.ok(dateButton);await a.click(markupDataset(dateButton));
+ assert.equal(a.read('scheduleDraft.id'),'qa-scoped-series');assert.equal(a.read('scheduleDraft.occurrenceSequence'),3);assert.equal(a.read('scheduleDraft.session'),3);assert.equal(a.read('scheduleDraft.count'),1);assert.equal(a.read('scheduleDraft.startDate'),'2026-10-28');assert.equal(a.read('scheduleDraft.time'),'13:00');
+});
+
+test('shared scoped confirmation cancel preserves the mounted typed editor and readonly teacher duplicate preserves lesson details',async()=>{
+ const a=await scopedScheduleApp(),form=scopedEditor(a,{values:{time:'12:45',remark:'Keep this unsaved note'}});a.input({name:'remark',value:form.values.remark,closest:selector=>selector==='#schedule-editor'?form:null});a.input({name:'time',value:form.values.time,closest:selector=>selector==='#schedule-editor'?form:null});
+ await a.submit(form.id,form.values,form);chooseScopedSave(a,'single');await a.click({action:'schedule-scope-cancel'});
+ assert.equal(a.read('scheduleScopeDraft??null'),null);assert.equal(a.nodes['#schedule-editor'],form);assert.equal(form.values.time,'12:45');assert.equal(form.values.remark,'Keep this unsaved note');assert.equal(a.read('scheduleDraft.remark'),'Keep this unsaved note');assert.equal(a.read('scheduleDraft.time'),'12:45');assert.equal(form.dialog.inert,false);assert.equal(form.dialog.getAttribute('aria-hidden'),null);assert.equal(a.occurrenceCalls.length,0);assert.equal(a.scheduleCalls.filter(call=>call.operation==='save').length,0);assert.match(a.nodes['#modal-root'].innerHTML,/id="schedule-editor"/);
+ await a.click({action:'close'});a.set(`applySharedUser(${JSON.stringify({...copy(sharedTestUser),id:'qa-scoped-teacher',role:'teacher'})})`);await a.set('refreshSharedSchedules({paint:false})');
+ await a.click({openLesson:'qa-scoped-series',lessonKind:'schedule',lessonDate:'2026-10-21',lessonSequence:'2'});const selected=a.read('selectedTimetableLesson');assert.match(a.nodes['#modal-root'].innerHTML,/data-action="lesson-duplicate" disabled/);await a.click({action:'lesson-duplicate'});
+ assert.deepEqual(a.read('selectedTimetableLesson'),selected);assert.ok(a.read('modal'),'A forbidden duplicate action must not close the lesson and leave an unusable dialog');assert.equal(a.read('scheduleDraft??null'),null);assert.equal(a.occurrenceCalls.length,0);
+});
+
+test('shared scoped failures retain scope, opened version and retry key while late identity acknowledgements cannot affect a new editor',async()=>{
+ for(const status of [409,503]){
+  const a=await scopedScheduleApp(),form=scopedEditor(a,{values:{time:'12:45',remark:'Keep on retry'}}),calls=[];let rejectOnce=true;
+  a.client.saveScheduleOccurrence=async(record,current,sequence,scope,key)=>{calls.push({record:copy(record),current:copy(current),sequence,scope,key});if(rejectOnce||status===409){rejectOnce=false;if(status===503){a.remote.rows=[singleOccurrenceReceipt()];a.remote.revision++}throw serviceError(status,status===409?'VERSION_CONFLICT':'SERVICE_UNAVAILABLE')}return {schedule:singleOccurrenceReceipt()}};
+  await a.submit(form.id,form.values,form);chooseScopedSave(a,'single');await confirmScopedSave(a);
+  assert.ok(a.read('scheduleScopeDraft'));assert.equal(a.read('scheduleScopeDraft.scope'),'single');assert.equal(form.values.remark,'Keep on retry');assert.equal(a.nodes['#schedule-scope-confirm'].disabled,false);assert.ok(a.nodes['#schedule-scope-error'].textContent);assert.equal(a.read('db.schedules[0].version'),1);
+  if(status===409){a.remote.rows=[scopedScheduleRecord({version:4})];a.remote.revision++}await a.set('refreshSharedSchedules({paint:false})');await confirmScopedSave(a);
+  assert.equal(calls.length,2);assert.deepEqual(calls[1],calls[0],'A retry must retain the original opened version, immutable sequence, selected scope, payload and operation key');assert.equal(calls[0].current.version,1);assert.ok(calls[0].key);
+ }
+ const a=await scopedScheduleApp(),form=scopedEditor(a,{values:{time:'12:45'}}),late=deferred();let started=false;a.client.saveScheduleOccurrence=async()=>{started=true;return late.promise};
+ await a.submit(form.id,form.values,form);chooseScopedSave(a,'single');const pending=confirmScopedSave(a);await until(()=>started,'The old identity must have genuinely dispatched the scoped save');
+ switchSharedIdentity(a);form.isConnected=false;a.set("openSchedule('',{course:'next-auth-course'})");const currentModal=a.read('modal');assert.equal(a.read('scheduleScopeDraft??null'),null);assert.equal(a.read('scheduleSaving'),false);
+ late.resolve({schedule:singleOccurrenceReceipt()});await pending;assert.equal(a.read('authUser.id'),'next-auth-admin');assert.equal(a.read('modal'),currentModal);assert.equal(a.read('db.schedules.length'),0);assert.equal(a.read('scheduleDraft.course'),'next-auth-course');assert.equal(a.read('scheduleSaving'),false);assert.deepEqual(a.messages,[]);
+});
+
+test('shared scoped browser Back discards the detached confirmation and a pending old acknowledgement cannot close the next editor',async()=>{
+ for(const pendingWrite of [false,true]){
+  const a=await scopedScheduleApp(),form=scopedEditor(a,{values:{time:'12:45'}}),ack=deferred();let started=false,pending;
+  await a.submit(form.id,form.values,form);chooseScopedSave(a,'single');
+  if(pendingWrite){a.client.saveScheduleOccurrence=async()=>{started=true;return ack.promise};pending=confirmScopedSave(a);await until(()=>started,'The scoped save must genuinely be waiting before browser Back');}
+  try{
+   assert.equal(a.windowEvents.popstate.length,1);a.ctx.location.pathname='/about';for(const handler of a.windowEvents.popstate)handler({type:'popstate'});
+   assert.equal(a.read('!!scheduleScopeDraft'),false,'Browser Back must discard scope state when its nested confirmation leaves the DOM');assert.equal(a.read('!!scheduleDraft'),false);assert.equal(a.read('modal'),'');assert.equal(a.read('scheduleSaving'),false);assert.equal(a.read('scheduleSaveJob??null'),null);
+   assert.doesNotMatch(a.nodes['#app'].innerHTML,/id="schedule-editor"|id="schedule-scope-editor"/,'The destination must not contain a leftover editor');
+   await a.click({go:'/account'});assert.equal(a.ctx.location.pathname,'/account','Navigation must remain usable after the confirmation disappears');await a.click({action:'tt-add-schedule'});const newModal=a.read('modal');assert.match(newModal,/id="schedule-editor"/);assert.equal(a.read('scheduleDraft.id'),'');
+   if(pendingWrite){ack.resolve({schedule:singleOccurrenceReceipt()});await pending;assert.equal(a.read('modal'),newModal,'The previous page’s accepted save must not close a new editor');assert.equal(a.read('scheduleDraft.id'),'');assert.equal(a.ctx.location.pathname,'/account');assert.deepEqual(a.messages,[]);}
+   else assert.equal(a.occurrenceCalls.length,0,'Leaving an unconfirmed operation must not write anything');
+  }finally{if(pendingWrite){ack.resolve({schedule:singleOccurrenceReceipt()});await pending;}}
+ }
 });

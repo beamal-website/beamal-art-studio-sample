@@ -37,6 +37,11 @@ if(process.argv[2]==='--worker') {
  for(const file of ['app.mjs','store.mjs','security.mjs','validation.mjs','materials.mjs','attachments.mjs','schedules.mjs']) {
   const bytes=await readFile(join(source,file));manifest[file]=createHash('sha256').update(bytes).digest('hex');await writeFile(join(directory,'modules',file),bytes);
  }
+ // Keep the server's ../shared import relative to the copied module folder.
+ await mkdir(join(directory,'shared'));
+ const occurrenceBytes=await readFile(join(source,'..','shared','schedule-occurrences.js'));
+ manifest['shared/schedule-occurrences.js']=createHash('sha256').update(occurrenceBytes).digest('hex');
+ await writeFile(join(directory,'shared','schedule-occurrences.js'),occurrenceBytes);
  await symlink(join(source,'..','node_modules'),join(directory,'modules','node_modules'),'dir');
  const datasetConfigs=[{name:'100 courses / 100 base fees',rows:100,shared:0,links:0},{name:'1000 courses / 1000 base fees',rows:1000,shared:0,links:0},{name:'1000 courses / 1100 fees: 100 shared x 10 courses',rows:1000,shared:100,links:10}];
  const smoke=process.argv.includes('--smoke'),readsPerPhase=smoke?3:20;

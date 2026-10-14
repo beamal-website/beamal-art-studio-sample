@@ -4,9 +4,10 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
+    "api": "node server/cli.mjs",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "test": "node --test tests/flows.test.mjs"
+    "test": "node --test tests/flows.test.mjs server/tests/*.test.mjs"
   },
   "devDependencies": {
     "vite": "^7.0.0"

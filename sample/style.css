@@ -298,3 +298,10 @@
 
 /* Keep scrolled lesson cards below the fixed time column and date header. */
 .tt-time-heading{position:sticky;left:0;z-index:1;background:#fffdf8;border-right:1px solid #e2e3d7}
+
+/* Shared service startup uses the existing Beamal palette. */
+.shared-loading{min-height:70dvh;display:grid;place-items:center;color:var(--teal);font-size:21px;padding:24px}.create-course-footer button:disabled{cursor:wait;opacity:.65}.create-course-dialog form[aria-busy=true] .create-course-body{pointer-events:none}
+.create-course-body section>.create-course-field+.create-course-field{margin-top:28px}
+.fee-filters{grid-template-columns:170px minmax(190px,340px)}.portal-fee-table table{min-width:760px;width:100%;background:#faf7ef}.portal-fee-table th{background:#e9eee5;padding:18px 16px}.portal-fee-table td{padding:20px 16px;vertical-align:top}.portal-content .fee-course-link{display:block;background:transparent;color:var(--teal);box-shadow:none;padding:3px 0;text-align:left}.fee-course-row{display:flex;align-items:center;gap:12px;margin:20px 0}.fee-course-row .create-course-field{flex:1;margin:0}.fee-remove-course{font-size:24px}.course-metadata-dialog{width:min(760px,96vw)}.course-metadata-dialog .create-course-body{display:grid;gap:26px}.course-detail-fees .portal-course-name{white-space:normal;text-align:left}
+@media(max-width:780px){.fee-filters{grid-template-columns:minmax(0,1fr)}.fee-course-row{gap:6px}.fee-course-row select{font-size:16px}}
+.portal-content .portal-course-name:disabled{background:transparent;color:#526a60;cursor:default;box-shadow:none}.course-list-fee-link{display:block;margin-top:5px}.portal-course-table td:nth-child(6){white-space:normal}

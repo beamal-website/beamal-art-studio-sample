@@ -19,7 +19,7 @@ test('teacher can edit a seeded story and keep its existing Beamal image',()=>{c
 test('manager News opens on the published stories before the editor',()=>{const a=app();a.set("lang='en';role='teacher';tab='news';location.pathname='/account';render()");let html=a.nodes['#app'].innerHTML;assert.ok(html.indexOf('class="teacher-news-list"')<html.indexOf('id="teacher-news"'));for(const title of ['Student Art Showcase','Art Award Highlights','Studio Updates'])assert.match(html,new RegExp(title));assert.equal((html.match(/data-edit-news=/g)||[]).length,3);assert.match(html,/data-action="new-news"/);a.click({editNews:'sample-news-1'});assert.match(a.nodes['#app'].innerHTML,/Edit news/);a.click({action:'new-news'});assert.equal(a.read('newsEditId'),'');assert.match(a.nodes['#app'].innerHTML,/Add news/);assert.match(a.nodes['#app'].innerHTML,/Student Art Showcase/);});
 test('cancelling a news edit leaves the published post intact',()=>{const a=app();a.set("lang='en';role='teacher';tab='news';location.pathname='/account';db.news=[{id:'N1',title:'Original',description:'Summary',content:'Content',releaseDate:'2026-09-30',image:''}];render()");a.click({editNews:'N1'});a.click({action:'cancel-news-edit'});assert.equal(a.read('newsEditId'),'');assert.equal(a.read('db.news[0].title'),'Original');assert.match(a.nodes['#app'].innerHTML,/Add news/);});
 test('homepage News shows sample stories and links to the full page',()=>{const a=app();a.set("lang='en';render()");let html=a.nodes['#app'].innerHTML;assert.match(html,/Latest News/);assert.match(html,/Studio updates/);assert.equal((html.match(/name="upcoming-event"/g)||[]).length,3);assert.ok((html.match(/href="\/news" data-go="\/news"/g)||[]).length>=3);const footer=html.slice(html.indexOf('<footer'));assert.match(footer,/href="\/news" data-go="\/news"/);let detail=html.match(/<article class="upcoming-detail teacher-news-detail">([\s\S]*?)<\/article>/)?.[1];assert.match(detail,/Student Art Showcase/);a.change('upcoming-event','1');html=a.nodes['#app'].innerHTML;detail=html.match(/<article class="upcoming-detail teacher-news-detail">([\s\S]*?)<\/article>/)?.[1];assert.match(detail,/Art Award Highlights/);assert.match(html,/value="1" checked/);a.click({go:'/news'});html=a.nodes['#app'].innerHTML;assert.match(html,/Art Award Highlights/);assert.doesNotMatch(html,/Next class|lessons per term/);});
-function app(seed={},clock,mobile=false){const handlers={},store=new Map(Object.entries(seed)),session=new Map(),nodes={};const storage=m=>({getItem:k=>m.get(k)??null,setItem:(k,v)=>m.set(k,v),removeItem:k=>m.delete(k)});const ctx=vm.createContext({localStorage:storage(store),sessionStorage:storage(session),navigator:{language:'zh-HK'},location:{pathname:'/'},history:{pushState:(_,__,p)=>ctx.location.pathname=p,replaceState:(_,__,p)=>ctx.location.pathname=p},window:{scrollTo(){},addEventListener(){},matchMedia:()=>({matches:mobile,addEventListener(){}})},document:{documentElement:{},querySelector:s=>nodes[s]??(nodes[s]=(()=>{const classes=new Set(),attributes={};return {innerHTML:'',textContent:'',focus(){},setAttribute:(k,v)=>attributes[k]=String(v),getAttribute:k=>attributes[k],classList:{toggle:(k,on)=>on?classes.add(k):classes.delete(k),contains:k=>classes.has(k)}}})()),addEventListener:(e,h)=>{if(e==='change')(handlers.change??=[]).push(h);else handlers[e]=h},createElement:()=>({remove(){}}),body:{append(){}}},FormData:class{constructor(f){return Object.entries(f.values).flatMap(([k,v])=>Array.isArray(v)?v.map(x=>[k,x]):[[k,v]])}},setTimeout(){},confirm:()=>true,Date:clock?class extends Date{constructor(...args){super(...(args.length?args:[clock]))}static now(){return new Date(clock).getTime()}}:Date,console});vm.runInContext(fs.readFileSync(new URL('../src.js',import.meta.url),'utf8').replace(/^import .*;$/gm,''),ctx);return {ctx,read:s=>JSON.parse(vm.runInContext(`JSON.stringify(${s})`,ctx)),submit:(id,values,extra={})=>handlers.submit({preventDefault(){},target:{id,values,classList:{contains:()=>false},...extra}}),click:dataset=>handlers.click({preventDefault(){},target:{closest:()=>({dataset})}}),input:target=>handlers.input({target}),keydown:(key,extra={})=>handlers.keydown({key,preventDefault(){},...extra}),change:(name,value,extra={})=>handlers.change.forEach(handler=>handler({target:{name,value,...extra}})),set:s=>vm.runInContext(s,ctx),nodes};}
+function app(seed={},clock,mobile=false,injectedClient=null,options={}){const handlers={},store=new Map(Object.entries(seed)),session=new Map(),nodes={};const storage=(m,local=false)=>({getItem:k=>m.get(k)??null,setItem:(k,v)=>{const failure=local?options.localWriteError?.(k,v):null;if(failure)throw failure;return m.set(k,v)},removeItem:k=>m.delete(k)});const ctx=vm.createContext({...(injectedClient?{createApiClient:()=>injectedClient}:{}),localStorage:storage(store,true),sessionStorage:storage(session),navigator:{language:'zh-HK'},location:{pathname:options.pathname||'/'},history:{pushState:(_,__,p)=>ctx.location.pathname=p,replaceState:(_,__,p)=>ctx.location.pathname=p},window:{scrollTo(){},addEventListener:(type,handler)=>options.onWindowEvent?.(type,handler),setInterval:(handler,ms)=>options.onInterval?.(handler,ms)??0,clearInterval(){},matchMedia:()=>({matches:mobile,addEventListener(){}})},document:{documentElement:{},querySelector:s=>nodes[s]??(nodes[s]=(()=>{const classes=new Set(),attributes={};return {innerHTML:'',textContent:'',focus(){},setAttribute:(k,v)=>attributes[k]=String(v),getAttribute:k=>attributes[k],classList:{toggle:(k,on)=>on?classes.add(k):classes.delete(k),contains:k=>classes.has(k)}}})()),addEventListener:(e,h)=>{if(e==='change')(handlers.change??=[]).push(h);else handlers[e]=h},createElement:()=>({remove(){}}),body:{append(){}}},FormData:class{constructor(f){return Object.entries(f.values).flatMap(([k,v])=>Array.isArray(v)?v.map(x=>[k,x]):[[k,v]])}},setTimeout(){},confirm:()=>true,Date:clock?class extends Date{constructor(...args){super(...(args.length?args:[clock]))}static now(){return new Date(clock).getTime()}}:Date,console});vm.runInContext(fs.readFileSync(new URL('../src.js',import.meta.url),'utf8').replace(/^import .*;$/gm,''),ctx);return {ctx,read:s=>JSON.parse(vm.runInContext(`JSON.stringify(${s})`,ctx)),submit:(id,values,extra={})=>handlers.submit({preventDefault(){},target:{id,values,classList:{contains:()=>false},...extra}}),click:dataset=>handlers.click({preventDefault(){},target:{closest:()=>({dataset})}}),input:target=>handlers.input({target}),keydown:(key,extra={})=>handlers.keydown({key,preventDefault(){},...extra}),change:(name,value,extra={})=>handlers.change.forEach(handler=>handler({target:{name,value,...extra}})),set:s=>vm.runInContext(s,ctx),nodes};}
 test('home copy switches between polished English and Chinese without special Unicode spacing',()=>{const a=app();a.set("lang='en';render()");let html=a.nodes['#app'].innerHTML;assert.match(html,/Express yourself and tell your story through art/);assert.match(html,/Regular Art Classes for Kids/);assert.match(html,/Storybook Class/);assert.match(html,/Sewing Class/);assert.doesNotMatch(html,/𝗞𝗶𝗱|𝑬𝒙𝒑𝒓𝒆𝒔𝒔/);assert.match(html,/beamal-elephants\.jpg/);assert.match(html,/Clay Classes/);assert.match(html,/Sketching Classes/);assert.match(html,/Drawing Classes/);assert.match(html,/beamal-idioms\.jpg/);assert.match(html,/beamal-sketch\.jpg/);assert.match(html,/beamal-canvas\.jpg/);assert.match(html,/>Home</);a.click({go:'/about'});html=a.nodes['#app'].innerHTML;assert.match(html,/Mission &amp; Vision/);assert.match(html,/Our Story/);assert.match(html,/beamal-colourpencil\.jpg/);assert.match(html,/beamal-guidedog\.jpg/);assert.doesNotMatch(html,/Express yourself|Regular Art Classes for Kids/);a.click({go:'/'});assert.match(a.nodes['#app'].innerHTML,/Express yourself and tell your story through art/);a.set("lang='zh';render()");html=a.nodes['#app'].innerHTML;assert.match(html,/透過藝術表達自己，訴說你的故事/);assert.match(html,/兒童常規藝術課程/);assert.match(html,/繪本課程/);assert.match(html,/縫紉課程/);assert.doesNotMatch(html,/Express yourself|Regular Art Classes for Kids/);});
 test('enrolment steps return to the top so mobile users see each new form',()=>{const a=app();a.set("location.pathname='/join';window.scrollTo=(x,y)=>{window.lastScroll=[x,y]};render()");a.submit('join',{course:'art',classId:'a'});assert.equal(a.read('join.step'),2);assert.deepEqual(a.read('window.lastScroll'),[0,0]);a.set('window.lastScroll=null');a.click({action:'joinback'});assert.equal(a.read('join.step'),1);assert.deepEqual(a.read('window.lastScroll'),[0,0]);a.submit('join',{course:'art',classId:'a'});a.set('window.lastScroll=null');a.submit('join',{student:'Alex Chan',phone:'00000000',email:'alex@example.test'});assert.equal(a.read('join.step'),3);assert.deepEqual(a.read('window.lastScroll'),[0,0]);});
 test('demo login accepts 1/2 with blank password and rejects invalid credentials',()=>{const a=app();a.submit('login',{username:'9',password:''});assert.match(a.nodes['#login-error'].textContent,/1 或 2/);a.submit('login',{username:'1',password:'secret'});assert.equal(a.read('role'),'');a.submit('login',{username:'1',password:''});assert.equal(a.read('role'),'student');a.click({action:'logout'});a.submit('login',{username:'2',password:''});assert.equal(a.read('role'),'teacher');});
@@ -55,7 +55,7 @@ test('manual courses, multiple weekdays and editable unique class codes persist 
 
 test('time lists descend and unpaid enrolments retain original submission time',()=>{const a=app();a.set("join={step:3,course:'art',classId:'a',student:'Alex Chan',phone:'80000000',email:'alex@example.test'};finish()");const stamp=a.read('db.bookings.at(-1).submittedAt');assert.ok(!Number.isNaN(Date.parse(stamp)));a.set("join={step:3,course:'art',classId:'a',student:'Alex Chan',phone:'80000000',email:'alex@example.test'};finish()");assert.equal(a.read('db.bookings.at(-1).submittedAt'),stamp);a.set("role='teacher';tab='new-enrolments';location.pathname='/account';render()");assert.match(a.nodes['#app'].innerHTML,/提交日期/);assert.ok(a.nodes['#app'].innerHTML.includes(a.read('dateTime(db.bookings.at(-1).submittedAt)')));const records=[{id:'1',paid:false,submittedAt:'2026-09-28T03:00:00Z'},{id:'2',paid:false,submittedAt:'2026-09-28T04:00:00Z'},{id:'3',paid:true,paidAt:'2026-09-27'}];a.set('checkRecords='+JSON.stringify(records));assert.deepEqual(a.read('sortedPayments(checkRecords).map(b=>b.id)'),['2','1','3']);assert.deepEqual(a.read('sortedRecords(checkRecords).map(b=>b.id)'),['2','1','3']);assert.equal(a.read("dateTime('2026-09-28T04:00:00Z')"),'28/09/2026, 12:00:00');assert.equal(a.read("recordMonth('2026-09-30T17:00:00Z')"),'2026-10');assert.equal(a.read('dateTime(undefined)'),'未記錄');const weekly=a.read('sortedClasses(db.classes).map(weeklyRank)');assert.deepEqual(weekly,[...weekly].sort((x,y)=>y-x));a.set("role='teacher';tab='payments';render()");assert.match(a.nodes['#app'].innerHTML,/提交日期/);assert.equal(a.read('incomeExportSheets()[0].data[0].at(-1)'),'Submit date');});
 
-test('sample visitor enters their own enrolment and login details instead of receiving prefilled demo credentials',()=>{const a=app();a.set("lang='en';location.pathname='/classes';render()");a.click({go:'/classes/art'});a.click({enrol:'art'});a.submit('join',{course:'art',classId:'a'});let html=a.nodes['#app'].innerHTML;assert.match(html,/id="student" name="student" value="" required/);assert.match(html,/id="phone" name="phone" inputmode="numeric" pattern="\[0-9\]\+" value="" required/);assert.match(html,/id="email" name="email" type="text" value="" required/);assert.doesNotMatch(html,/id="student"[^>]*value="Alex Chan"/);a.submit('join',{student:'Sample Visitor',phone:'81234567',email:'visitor@example.test'});assert.match(a.nodes['#app'].innerHTML,/Sample Visitor · visitor@example\.test/);a.submit('join',{});assert.equal(a.read('db.bookings.at(-1).student'),'Sample Visitor');assert.equal(a.read('Object.hasOwn(join,"student")'),false);a.click({go:'/join'});a.submit('join',{course:'art',classId:'a'});assert.match(a.nodes['#app'].innerHTML,/id="student" name="student" value="" required/);a.click({go:'/login'});assert.match(a.nodes['#app'].innerHTML,/id="username" name="username" value="" autocomplete="off" required/);});
+test('sample visitor enters their own enrolment and login details instead of receiving prefilled demo credentials',()=>{const a=app();a.set("lang='en';location.pathname='/classes';render()");a.click({go:'/classes/art'});a.click({enrol:'art'});a.submit('join',{course:'art',classId:'a'});let html=a.nodes['#app'].innerHTML;assert.match(html,/id="student" name="student" value="" required/);assert.match(html,/id="phone" name="phone" inputmode="numeric" pattern="\[0-9\]\+" value="" required/);assert.match(html,/id="email" name="email" type="text" value="" required/);assert.doesNotMatch(html,/id="student"[^>]*value="Alex Chan"/);a.submit('join',{student:'Sample Visitor',phone:'81234567',email:'visitor@example.test'});assert.match(a.nodes['#app'].innerHTML,/Sample Visitor · visitor@example\.test/);a.submit('join',{});assert.equal(a.read('db.bookings.at(-1).student'),'Sample Visitor');assert.equal(a.read('Object.hasOwn(join,"student")'),false);a.click({go:'/join'});a.submit('join',{course:'art',classId:'a'});assert.match(a.nodes['#app'].innerHTML,/id="student" name="student" value="" required/);a.click({go:'/login'});assert.match(a.nodes['#app'].innerHTML,/id="username" name="username" value="" autocomplete="username" required/);});
 
 test('enrolment details accept names as text, phone digits and unrestricted email text',()=>{const a=app();a.set("lang='en';join={step:2,course:'art',classId:'a'};location.pathname='/join';render()");let html=a.nodes['#app'].innerHTML;assert.match(html,/id="phone" name="phone" inputmode="numeric" pattern="\[0-9\]\+"/);assert.match(html,/id="email" name="email" type="text"/);a.submit('join',{student:'Alex123',phone:'81234567',email:'sample'});assert.equal(a.read('join.step'),2);assert.match(a.nodes['#join-error'].textContent,/letters and spaces/);a.submit('join',{student:'陳 小明',phone:'8a123',email:'sample'});assert.equal(a.read('join.step'),2);assert.match(a.nodes['#join-error'].textContent,/digits only/);const phone={id:'phone',value:'8a 12-34'};a.input(phone);assert.equal(phone.value,'81234');a.submit('join',{student:'陳 小明',phone:'81234',email:'sample'});assert.equal(a.read('join.step'),3);assert.match(a.nodes['#app'].innerHTML,/陳 小明 · sample/);});
 
@@ -430,7 +430,7 @@ test('each pricing model persists only its own values, expiry and store visibili
  }
 });
 test('invalid prices, duplicate course names, totals and booking expiry never save partial records',()=>{
- for(const extra of [{courseName:'course 1'},{feeName:' '},{lessonPrice:'0'},{lessonPrice:'NaN'},{duration:'1.5'},{lessonMonths:'13'},{pricingModel:'unknown'},{pricingModel:'fixed-monthly',monthlyPrice:'300',fixedMonths:'0'},{pricingModel:'package',packagePrice:'300',packageType:'hours',packageTotal:'4'},{pricingModel:'package',packagePrice:'300',packageType:'lessons',packageTotal:'-1'},{expiryEnabled:'on',expiryValue:'0',expiryUnit:'months'},{expiryEnabled:'on',expiryValue:'1',expiryUnit:'years'}]){
+ for(const extra of [{courseName:'course 1'},{feeName:' '},{lessonPrice:'0'},{lessonPrice:'NaN'},{duration:'1.5'},{lessonMonths:'25'},{pricingModel:'unknown'},{pricingModel:'fixed-monthly',monthlyPrice:'300',fixedMonths:'0'},{pricingModel:'package',packagePrice:'300',packageType:'hours',packageTotal:'4'},{pricingModel:'package',packagePrice:'300',packageType:'lessons',packageTotal:'-1'},{expiryEnabled:'on',expiryValue:'0',expiryUnit:'months'},{expiryEnabled:'on',expiryValue:'1',expiryUnit:'years'}]){
   const a=createCourseApp(),before=a.read('db');a.click({action:'new-course'});a.submit('create-course-editor',courseInput(extra),{dataset:{id:''}});assert.deepEqual(a.read('db'),before);assert.ok(a.nodes['#create-course-error'].textContent,JSON.stringify(extra));assert.ok(a.read('modal'));
  }
  const a=createCourseApp();a.submit('create-course-editor',courseInput({expiryValue:'bad',expiryUnit:'bad'}),{dataset:{id:''}});assert.equal(a.read('db.courseSettings.length'),1);assert.equal(a.read('db.courseSettings[0].bookingExpiry'),null);
@@ -446,7 +446,7 @@ test('new courses appear in search, fee details and schedules before any lesson 
 });
 test('pricing switches retain entered values, hide and disable inactive modes and relabel package totals',()=>{
  const a=createCourseApp();a.set(`testFields=['monthly-lessons','fixed-monthly','package'].map(key=>({dataset:{pricingFields:key},hidden:false,disabled:false}));testControls={'[name=pricingModel]:checked':{value:'package'},'[name=expiryEnabled]':{checked:true},'#course-expiry-fields':{disabled:true},'[name=packageType]':{value:'lessons'},'#package-total-label':{textContent:''}};testForm={querySelector:key=>testControls[key],querySelectorAll:()=>testFields};syncCoursePricing(testForm)`);
- assert.deepEqual(a.read('testFields.map(f=>[f.hidden,f.disabled])'),[[true,true],[true,true],[false,false]]);assert.equal(a.read("testControls['#course-expiry-fields'].disabled"),false);assert.equal(a.read("testControls['#package-total-label'].textContent"),'Lessons in total');
+ assert.deepEqual(a.read('testFields.map(f=>[f.hidden,f.disabled])'),[[true,true],[true,true],[false,false]]);assert.equal(a.read("testControls['#course-expiry-fields'].disabled"),false);assert.equal(a.read("testControls['#package-total-label'].textContent"),'No. of visits');
  a.set("testControls['[name=pricingModel]:checked'].value='fixed-monthly';testControls['[name=expiryEnabled]'].checked=false;testControls['[name=packageType]'].value='minutes';syncCoursePricing(testForm)");assert.deepEqual(a.read('testFields.map(f=>[f.hidden,f.disabled])'),[[true,true],[false,false],[true,true]]);assert.equal(a.read("testControls['#course-expiry-fields'].disabled"),true);
 });
 test('student actions cannot create or edit internal courses and reset clears course settings',()=>{
@@ -569,4 +569,251 @@ test('Delete Activity is reversible across reloads and retains class IDs, bookin
 });
 test('Course Schedule edit pencils use the same form and preserve bilingual controls',()=>{
  const a=lessonApp();a.click({openCourse:'story'});const html=a.nodes['#app'].innerHTML;assert.match(html,/data-edit-activity="e" data-activity-kind="class"/);a.click({editActivity:'e',activityKind:'class'});assert.match(a.nodes['#modal-root'].innerHTML,/Edit Course 2/);assert.match(a.nodes['#modal-root'].innerHTML,/id="schedule-editor"/);a.click({action:'close'});a.set("lang='zh'");a.click({editActivity:'e',activityKind:'class'});const edit=a.nodes['#modal-root'].innerHTML;for(const text of ['修改 Course 2','課程概覽','附加資料（可選）','刪除','儲存'])assert.ok(edit.includes(text),text);a.click({action:'close'});assert.equal(a.read('location.pathname'),'/account/courses/story');
+});
+
+const sharedTestUser={id:'qa-admin',email:'qa-admin@example.test',displayName:'QA Manager',role:'admin'};
+const sharedTestFee={id:'qa-fee',feeCode:'FE-701',feeName:'Shared lesson fee',category:'Tuition',pricingModel:'monthly-lessons',price:300,months:24,duration:60,bookingExpiry:null,onlineStore:true,courseIds:['qa-course'],version:1,createdAt:'2026-10-14T00:00:00Z',updatedAt:'2026-10-14T00:00:00Z'};
+const sharedTestCourse={id:'qa-course',courseCode:'CO-701',courseName:'Shared studio',category:'Art',level:'Beginner',feeIds:['qa-fee'],fees:[sharedTestFee],feeName:sharedTestFee.feeName,pricingModel:sharedTestFee.pricingModel,price:sharedTestFee.price,months:24,duration:60,bookingExpiry:null,onlineStore:true,version:1,createdAt:'2026-10-14T00:00:00Z',updatedAt:'2026-10-14T00:00:00Z'};
+const copy=value=>JSON.parse(JSON.stringify(value));
+const serviceError=(status,code,message='Test service rejected the request')=>Object.assign(new Error(message),{status,code});
+const deferred=()=>{let resolve,reject;const promise=new Promise((yes,no)=>{resolve=yes;reject=no});return {promise,resolve,reject}};
+
+async function sharedApp(overrides={},seed={}){
+ const state={user:copy(sharedTestUser),courses:[copy(sharedTestCourse)],fees:[copy(sharedTestFee)]},calls=[];
+ const client={
+  health:async()=>({mode:'shared-test'}),session:async()=>({user:copy(state.user),csrfToken:'qa-csrf'}),
+  login:async()=>({user:copy(state.user),csrfToken:'qa-csrf'}),logout:async()=>({user:null}),
+  courses:async()=>({courses:copy(state.courses)}),fees:async()=>({fees:copy(state.fees)}),
+  async saveFee(record,current){
+   calls.push({operation:'saveFee',record:copy(record),current:current?copy(current):null});
+   const saved={...record,id:current?.id||'qa-created-fee',feeCode:current?'FE-701':'FE-702',version:current?current.version+1:1,createdAt:'2026-10-14T00:00:00Z',updatedAt:'2026-10-14T01:00:00Z'};
+   state.fees=state.fees.filter(f=>f.id!==saved.id);state.fees.push(saved);
+   state.courses=state.courses.map(c=>record.courseIds.includes(c.id)?{...c,version:c.version+1,fees:[...c.fees.filter(f=>f.id!==saved.id),saved],feeIds:[...new Set([...c.feeIds,saved.id])]}:c);
+   return {fee:copy(saved),courses:copy(state.courses.filter(c=>record.courseIds.includes(c.id)))};
+  },
+  async updateCourseMetadata(id,fields){calls.push({operation:'metadata',id,fields:copy(fields)});state.courses=state.courses.map(c=>c.id===id?{...c,...fields,version:c.version+1}:c);return {course:copy(state.courses.find(c=>c.id===id))}},
+  async saveCourse(record,current){calls.push({operation:'saveCourse',record:copy(record),current:current?copy(current):null});const saved={...record,id:current?.id||'qa-created-course',courseCode:'CO-702',version:1,createdAt:'2026-10-14T00:00:00Z',updatedAt:'2026-10-14T00:00:00Z',fees:[],feeIds:[]};state.courses.push(saved);return {course:copy(saved)}},
+  ...overrides,
+ };
+ const a=app(seed,'2026-10-14T12:00:00',false,client);
+ for(let turn=0;turn<30&&!a.read('sharedReady');turn++)await Promise.resolve();
+ assert.equal(a.read('sharedReady'),true,'Shared service bootstrap did not complete');
+ assert.equal(a.read('sharedMode'),true);
+ a.set("lang='en';tab='catalog';location.pathname='/account';render()");
+ const messages=[];a.ctx.document.body.append=node=>messages.push(node.textContent);
+ return {...a,client,state,calls,messages};
+}
+
+function sharedForm(id,{recordId='',version='',courseIds=['qa-course']}={}){
+ const submit={disabled:false,textContent:'Create'},cancel={disabled:false},attributes={};
+ return {id,dataset:{id:recordId,version},values:{},submitButton:submit,attributes,
+  querySelector:()=>submit,
+  querySelectorAll:selector=>selector==='[name=courseIds]'?courseIds.map(value=>({value})):[cancel,submit],
+  setAttribute:(key,value)=>attributes[key]=String(value),removeAttribute:key=>delete attributes[key],
+ };
+}
+const sharedFeeInput=()=>({feeName:'Shared lesson fee',category:'Tuition',pricingModel:'monthly-lessons',lessonPrice:'300',lessonMonths:'24',duration:'60',onlineStore:'on'});
+
+test('shared fee editor submits the opened version even when a background refresh has newer values',async()=>{
+ const a=await sharedApp();a.set("openFeeEditor('qa-fee')");
+ const html=a.nodes['#modal-root'].innerHTML,version=html.match(/id="fee-editor"[^>]*data-version="([^"]+)"/)?.[1];
+ assert.equal(version,'1');
+ a.state.fees[0]={...a.state.fees[0],price:999,version:2};
+ a.state.courses[0]={...a.state.courses[0],version:2,fees:[a.state.fees[0]]};
+ await a.set('refreshSharedCourses({paint:false})');
+ assert.equal(a.read('sharedFees[0].version'),2);
+ let sent;
+ a.client.saveFee=async(record,current)=>{sent=copy(current);throw serviceError(409,'VERSION_CONFLICT')};
+ const form=sharedForm('fee-editor',{recordId:'qa-fee',version});form.values=sharedFeeInput();
+ await a.submit(form.id,form.values,form);
+ assert.equal(sent.version,1);
+ assert.match(a.nodes['#fee-editor-error'].textContent,/changed|latest/i);
+ assert.ok(a.read('modal'));
+ assert.equal(form.submitButton.disabled,false);
+});
+
+test('switching shared student identities never inherits the previous local phone or private profile fields',async()=>{
+ const a=await sharedApp();
+ a.set("db.student={name:'Previous student',phone:'81234567',email:'old@example.test',privateNotes:'Private old profile'};applySharedUser({id:'student-a',displayName:'Student A',email:'a@example.test',role:'student'})");
+ assert.deepEqual(a.read('db.student'),{id:'student-a',name:'Student A',email:'a@example.test',phone:''});
+ a.set("db.student.phone='89999999';applySharedUser({id:'student-b',displayName:'Student B',email:'b@example.test',role:'student'});tab='payments';render()");
+ assert.equal(a.read('db.student.phone'),'');
+ assert.doesNotMatch(a.nodes['#app'].innerHTML,/81234567|89999999|old@example|Private old profile/);
+ assert.match(a.nodes['#app'].innerHTML,/Student B|b@example\.test/);
+ a.set('save()');
+ assert.doesNotMatch(a.ctx.localStorage.getItem('beamal-demo-v1'),/Student B|b@example\.test|89999999/,'Shared identity must not be serialized into the legacy browser data');
+});
+
+test('a full browser storage quota cannot block applying acknowledged shared course data',async()=>{
+ const a=await sharedApp(),originalSet=a.ctx.localStorage.setItem;
+ a.ctx.localStorage.removeItem('beamal-demo-v1-before-shared');
+ a.ctx.localStorage.setItem=(key,value)=>{if(key==='beamal-demo-v1-before-shared')throw Object.assign(new Error('Storage quota exceeded'),{name:'QuotaExceededError'});return originalSet(key,value)};
+ const saved={...copy(sharedTestCourse),courseName:'Server acknowledged course',version:2};
+ a.ctx.savedServerCourses=[saved];
+ assert.doesNotThrow(()=>a.set('applySharedCourses(savedServerCourses)'));
+ assert.equal(a.read('db.courseSettings[0].courseName'),'Server acknowledged course');
+ assert.equal(a.read('db.courseSettings[0].version'),2);
+});
+
+test('an acknowledged fee create stays saved if the following refresh fails and cannot leave a retryable create form',async()=>{
+ const a=await sharedApp();a.set('openFeeEditor()');
+ const form=sharedForm('fee-editor');form.values=sharedFeeInput();
+ const save=a.client.saveFee;
+ a.client.saveFee=async(...args)=>{const result=await save(...args);a.client.courses=async()=>{throw serviceError(503,'service_unavailable')};a.client.fees=async()=>{throw serviceError(503,'service_unavailable')};return result};
+ await a.submit(form.id,form.values,form);
+ assert.equal(a.calls.filter(c=>c.operation==='saveFee').length,1);
+ assert.equal(a.read('modal'),'');
+ assert.equal(a.read("sharedFees.some(f=>f.id==='qa-created-fee')"),true);
+ assert.equal(a.read("db.courseSettings[0].fees.some(f=>f.id==='qa-created-fee')"),true);
+ assert.doesNotMatch(a.nodes['#fee-editor-error']?.textContent||'',/could not save|未能儲存/i);
+ assert.ok(a.messages.some(message=>/saved|儲存/i.test(message)),JSON.stringify(a.messages));
+});
+
+test('an acknowledged course metadata edit is applied even when a subsequent refresh is unavailable',async()=>{
+ const a=await sharedApp();a.set("openCourseMetadataEditor('qa-course')");
+ const form=sharedForm('course-metadata-editor',{recordId:'qa-course',version:'1'});form.values={courseName:'Already saved title',category:'Updated category',level:'Advanced'};
+ const update=a.client.updateCourseMetadata;
+ a.client.updateCourseMetadata=async(...args)=>{const result=await update(...args);a.client.courses=async()=>{throw serviceError(503,'service_unavailable')};return result};
+ await a.submit(form.id,form.values,form);
+ assert.equal(a.calls.filter(c=>c.operation==='metadata').length,1);
+ assert.equal(a.read('modal'),'');
+ assert.equal(a.read('db.courseSettings[0].courseName'),'Already saved title');
+ assert.equal(a.read('db.courseSettings[0].version'),2);
+ assert.doesNotMatch(a.nodes['#course-metadata-error']?.textContent||'',/could not save|未能儲存/i);
+});
+
+test('expired shared authentication closes private forms and clears the previous account course and fee cache',async()=>{
+ const a=await sharedApp();a.set("openFeeEditor('qa-fee')");
+ a.client.courses=async()=>{throw serviceError(401,'AUTH_REQUIRED')};
+ await a.set('refreshSharedCourses()');
+ assert.equal(a.read('authUser'),null);assert.equal(a.read('role'),'');
+ assert.equal(a.read('modal'),'');assert.equal(a.read('sharedFees.length'),0);
+ assert.equal(a.read('db.courseSettings.length'),0);
+ assert.equal(a.read('location.pathname'),'/login');
+ assert.doesNotMatch(a.nodes['#app'].innerHTML,/id="fee-editor"|Shared lesson fee|Shared studio/);
+});
+
+test('a delayed old-account read cannot repopulate private state after logout and another student logs in',async()=>{
+ const a=await sharedApp(),courses=deferred(),fees=deferred();
+ a.client.courses=()=>courses.promise;a.client.fees=()=>fees.promise;
+ const pending=a.set('refreshSharedCourses()');
+ await a.set('sharedLogout()');
+ a.set("applySharedUser({id:'student-new',displayName:'New student',email:'new@example.test',role:'student'})");
+ courses.resolve({courses:[copy(sharedTestCourse)]});fees.resolve({fees:[copy(sharedTestFee)]});
+ await pending;
+ assert.equal(a.read('authUser.id'),'student-new');
+ assert.equal(a.read('sharedFees.length'),0);
+ assert.equal(a.read('db.courseSettings.length'),0);
+ assert.equal(a.read('db.student.name'),'New student');
+});
+
+test('a delayed pre-save refresh cannot erase an acknowledged new fee in the same account',async()=>{
+ const a=await sharedApp(),courses=deferred(),fees=deferred();
+ const oldCourses=copy(a.state.courses),oldFees=copy(a.state.fees);
+ a.client.courses=()=>courses.promise;a.client.fees=()=>fees.promise;
+ const pending=a.set('refreshSharedCourses()');
+ a.set('openFeeEditor()');
+ const form=sharedForm('fee-editor');form.values=sharedFeeInput();
+ await a.submit(form.id,form.values,form);
+ assert.equal(a.read("sharedFees.some(f=>f.id==='qa-created-fee')"),true);
+ courses.resolve({courses:oldCourses});fees.resolve({fees:oldFees});await pending;
+ assert.equal(a.read("sharedFees.some(f=>f.id==='qa-created-fee')"),true);
+ assert.equal(a.read("db.courseSettings[0].fees.some(f=>f.id==='qa-created-fee')"),true);
+ assert.equal(a.read('db.courseSettings[0].version'),2);
+});
+
+test('private shared course titles and codes cannot leak through matching legacy class projections after identity changes',async()=>{
+ const previous=app().read('db');
+ previous.classes.filter(c=>c.course==='art').forEach(c=>c.courseName='Existing local painting title');
+ previous.courseCodes.art='CO-LOCAL-ART';
+ const privateFee={...copy(sharedTestFee),courseIds:['art'],onlineStore:false};
+ const privateCourse={...copy(sharedTestCourse),id:'art',courseName:'Confidential manager-only studio',courseCode:'CO-PRIVATE-ART',fees:[privateFee],onlineStore:false};
+ const a=await sharedApp({courses:async()=>({courses:[privateCourse]}),fees:async()=>({fees:[privateFee]})},{'beamal-demo-v1':JSON.stringify(previous)});
+ assert.equal(a.read("name('art')"),privateCourse.courseName,'The manager must see the actual shared title');
+ assert.equal(a.read("courseCodeFor('art')"),privateCourse.courseCode,'The manager must see the actual shared code');
+ a.set('save()');
+ const local=JSON.parse(a.ctx.localStorage.getItem('beamal-demo-v1'));
+ assert.deepEqual(local.courseSettings,[]);
+ assert.doesNotMatch(JSON.stringify(local),/Confidential manager-only studio|CO-PRIVATE-ART/);
+ assert.ok(local.classes.filter(c=>c.course==='art').every(c=>c.courseName==='Existing local painting title'));
+ assert.equal(local.courseCodes.art,'CO-LOCAL-ART');
+ await a.set('sharedLogout()');
+ a.set("location.pathname='/classes';render()");
+ assert.doesNotMatch(a.nodes['#app'].innerHTML,/Confidential manager-only studio|CO-PRIVATE-ART/);
+ assert.ok(a.read("db.classes.filter(c=>c.course==='art').every(c=>c.courseName==='Existing local painting title')"));
+ assert.equal(a.read('db.courseCodes.art'),'CO-LOCAL-ART','Identity loss must not retain the manager-only projected course code');
+ a.client.courses=async()=>({courses:[]});a.client.fees=async()=>({fees:[]});
+ a.set("applySharedUser({id:'no-course-student',displayName:'Unenrolled student',email:'unenrolled@example.test',role:'student'})");
+ await a.set('refreshSharedCourses({paint:false})');
+ a.set("location.pathname='/classes';render()");
+ assert.doesNotMatch(a.nodes['#app'].innerHTML,/Confidential manager-only studio|CO-PRIVATE-ART/);
+ assert.equal(a.read('db.courseSettings.length'),0);
+ assert.equal(a.read('db.courseCodes.art'),'CO-LOCAL-ART');
+});
+
+test('polling during an open course editor keeps the opened version and cancellation displays the latest shared list',async()=>{
+ const a=await sharedApp();a.set("openCourseMetadataEditor('qa-course')");
+ const editor=a.nodes['#modal-root'].innerHTML;
+ assert.match(editor,/data-version="1"/);
+ assert.match(editor,/value="Shared studio"/);
+ a.state.courses[0]={...a.state.courses[0],courseName:'Latest title from another manager',version:2};
+ await a.set('refreshSharedCourses()');
+ assert.equal(a.read('db.courseSettings[0].version'),2);
+ assert.match(a.nodes['#app'].innerHTML,/Shared studio/);
+ assert.doesNotMatch(a.nodes['#app'].innerHTML,/Latest title from another manager/);
+ assert.equal(a.nodes['#modal-root'].innerHTML,editor,'Polling must preserve the unfinished editor and original version');
+ await a.click({action:'close'});
+ assert.equal(a.read('modal'),'');
+ assert.match(a.nodes['#app'].innerHTML,/Latest title from another manager/);
+ assert.doesNotMatch(a.nodes['#app'].innerHTML,/Shared studio/);
+ // A focused search field may postpone repainting too, but the next unfocused poll must flush it even when data is unchanged.
+ a.ctx.document.activeElement={matches:()=>true};
+ a.state.courses[0]={...a.state.courses[0],courseName:'Latest title after search focus',version:3};
+ await a.set('refreshSharedCourses()');
+ assert.doesNotMatch(a.nodes['#app'].innerHTML,/Latest title after search focus/);
+ a.ctx.document.activeElement=null;
+ await a.set('refreshSharedCourses()');
+ assert.match(a.nodes['#app'].innerHTML,/Latest title after search focus/);
+});
+
+test('a primary browser storage quota failure at startup does not stop shared health checks or the usable login form',async()=>{
+ let healthCalls=0,writes=0;
+ const client={health:async()=>{healthCalls++;return {mode:'shared-test'}},session:async()=>({user:null})};
+ const quota=Object.assign(new Error('Main browser storage is full'),{name:'QuotaExceededError'});
+ let a;
+ assert.doesNotThrow(()=>{a=app({},'2026-10-14T12:00:00',false,client,{pathname:'/login',localWriteError:key=>{if(key==='beamal-demo-v1'){writes++;return quota}return null}})});
+ for(let turn=0;turn<30&&!a.read('sharedReady');turn++)await Promise.resolve();
+ assert.ok(writes>0,'The actual primary-key write was not attempted');
+ assert.equal(healthCalls,1,'Bootstrap must reach the shared service despite the failed legacy write');
+ assert.equal(a.read('sharedReady'),true);assert.equal(a.read('sharedMode'),true);
+ assert.match(a.nodes['#app'].innerHTML,/id="login"/);
+ assert.match(a.nodes['#app'].innerHTML,/name="username"[^>]*type="email"/);
+ assert.match(a.nodes['#app'].innerHTML,/name="password"[^>]*required/);
+ assert.doesNotMatch(a.nodes['#app'].innerHTML,/shared-loading/);
+});
+
+test('a failed startup health check recovers on login and registers exactly one recurring refresh and focus handler',async()=>{
+ let healthy=false,healthCalls=0,courseReads=0;
+ const intervals=[],events=[];
+ const client={
+  health:async()=>{healthCalls++;if(!healthy)throw serviceError(503,'service_unavailable');return {mode:'shared-test'}},
+  session:async()=>({user:null}),login:async()=>({user:copy(sharedTestUser)}),logout:async()=>({user:null}),
+  courses:async()=>{courseReads++;return {courses:[copy(sharedTestCourse)]}},fees:async()=>({fees:[copy(sharedTestFee)]}),
+ };
+ const a=app({},'2026-10-14T12:00:00',false,client,{pathname:'/login',onInterval:(handler,ms)=>{intervals.push({handler,ms});return intervals.length},onWindowEvent:(type,handler)=>events.push({type,handler})});
+ for(let turn=0;turn<30&&!a.read('sharedReady');turn++)await Promise.resolve();
+ assert.equal(healthCalls,1);assert.equal(a.read('sharedMode'),false);assert.equal(intervals.length,0);
+ healthy=true;
+ const loginForm=sharedForm('login');loginForm.values={username:sharedTestUser.email,password:'A valid test password'};
+ await a.submit('login',loginForm.values,loginForm);
+ assert.equal(a.read('authUser.id'),sharedTestUser.id);assert.equal(a.read('sharedMode'),true);
+ assert.equal(a.read('location.pathname'),'/account');
+ assert.equal(intervals.length,1);assert.equal(intervals[0].ms,5000);
+ assert.equal(events.filter(event=>event.type==='focus').length,1);
+ const before=courseReads;await intervals[0].handler();await events.find(event=>event.type==='focus').handler();
+ assert.equal(courseReads,before+2,'Both registered callbacks must actually refresh shared data');
+ // Re-establishing the session and logging in again must reuse the original registrations.
+ await a.set('initialiseSharedService()');
+ await a.submit('login',loginForm.values,loginForm);
+ assert.equal(intervals.length,1);assert.equal(events.filter(event=>event.type==='focus').length,1);
 });

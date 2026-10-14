@@ -9,3 +9,4 @@ research-uiux/
 !**/.env.example
 sample/preview-*.png
 sample/email-draft.md
+sample/.data/

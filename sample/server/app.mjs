@@ -85,6 +85,7 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
   const insideStatic = path => staticRoot && (path === staticRoot || path.startsWith(`${staticRoot}${sep}`));
   if (storagePath && insideStatic(await physicalPath(storagePath))) throw new Error('Attachment storage must be outside the public static directory.');
   const store = await createStore({ databasePath, seedUsers, seedCourses, attachmentsDir });
+  const authUser = user => user ? { ...user, accessRevision: store.accessControl.revisionFor(user) } : null;
   const materials = store.materials;
   const attachments = store.attachments;
   try {
@@ -172,7 +173,7 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
       if (pathname === '/api/health' && request.method === 'GET') { json(response, 200, { mode: 'shared-test', service: 'Beamal', storage: 'sqlite' }); return; }
       if (pathname === '/api/auth/session' && request.method === 'GET') {
         const token = sessionToken(request), session = token ? store.getSession(tokenHash(token)) : null;
-        json(response, 200, session ? { user: session.user, csrfToken: csrfForToken(token) } : { user: null }); return;
+        json(response, 200, session ? { user: authUser(session.user), csrfToken: csrfForToken(token) } : { user: null }); return;
       }
       if (pathname === '/api/auth/login' && request.method === 'POST') {
         requireOrigin(request);
@@ -187,7 +188,7 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
         const token = randomToken(), csrfToken = csrfForToken(token);
         store.createSession({ tokenHash: tokenHash(token), userId: user.id, csrfHash: tokenHash(csrfToken), expiresAt: Date.now() + SESSION_SECONDS * 1000 });
         response.setHeader('Set-Cookie', cookie(token, SESSION_SECONDS));
-        json(response, 200, { user: store.publicUser(user), csrfToken }); return;
+        json(response, 200, { user: authUser(store.publicUser(user)), csrfToken }); return;
       }
       if (pathname === '/api/auth/logout' && request.method === 'POST') {
         const session = requireMutation(request);
@@ -197,12 +198,12 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
       }
       if (pathname === '/api/catalog' && request.method === 'GET') {
         const session = requireSession(request);
-        json(response, 200, store.catalogSnapshot({ publicOnly: session.user.role === 'student', since: requestUrl.searchParams.get('since') || '' })); return;
+        json(response, 200, store.catalogSnapshot({ user: session.user, publicOnly: session.user.role === 'student', since: requestUrl.searchParams.get('since') || '' })); return;
       }
       if (pathname === '/api/scheduling-resources' && request.method === 'GET') {
         const session = requireSession(request);
         if (!['admin', 'teacher'].includes(session.user.role)) throw new ApplicationError(403, 'ROLE_FORBIDDEN', 'Scheduling resources are not available for this role.');
-        json(response, 200, store.schedulingResources.list({ since: requestUrl.searchParams.get('since') || '' })); return;
+        json(response, 200, session.user.role === 'teacher' ? store.accessControl.resourcesSnapshot(session.user, store.schedulingResources, { since: requestUrl.searchParams.get('since') || '' }) : store.schedulingResources.list({ since: requestUrl.searchParams.get('since') || '' })); return;
       }
       if (pathname === '/api/scheduling-resources' && request.method === 'POST') {
         const session = requireMutation(request);
@@ -214,7 +215,7 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
       if (pathname === '/api/schedules' && request.method === 'GET') {
         const session = requireSession(request);
         if (!['admin', 'teacher'].includes(session.user.role)) throw new ApplicationError(403, 'ROLE_FORBIDDEN', 'School schedules are not available for this role.');
-        json(response, 200, store.schedules.list({ since: requestUrl.searchParams.get('since') || '' })); return;
+        json(response, 200, session.user.role === 'teacher' ? store.accessControl.teacherSchedules(session.user, { from: requestUrl.searchParams.get('from'), to: requestUrl.searchParams.get('to'), since: requestUrl.searchParams.get('since') || '' }) : store.schedules.list({ since: requestUrl.searchParams.get('since') || '' })); return;
       }
       if (pathname === '/api/schedules' && request.method === 'POST') {
         const session = requireMutation(request);
@@ -230,6 +231,20 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
       const decodeId = part => {
         try { return decodeURIComponent(part); } catch { throw new ApplicationError(400, 'INVALID_PATH', 'Invalid resource identifier.'); }
       };
+      if (pathname === '/api/access-control' && request.method === 'GET') {
+        const session = requireSession(request);
+        json(response, 200, store.accessControl.managementSnapshot(session.user.id)); return;
+      }
+      const teacherLinkMatch = /^\/api\/access-control\/teacher-links\/([^/]+)$/.exec(pathname);
+      const accessGrantMatch = /^\/api\/access-control\/grants\/([^/]+)$/.exec(pathname);
+      if ((teacherLinkMatch && request.method === 'PATCH') || (pathname === '/api/access-control/grants' && request.method === 'POST') || (accessGrantMatch && request.method === 'PATCH')) {
+        const session = requireMutation(request);
+        if (session.user.role !== 'admin') throw new ApplicationError(403, 'ROLE_FORBIDDEN', 'Only an administrator can manage access.');
+        const input = await body(request), key = idempotencyKey(request), id = decodeId((teacherLinkMatch || accessGrantMatch)?.[1] || '');
+        const route = `${request.method} ${teacherLinkMatch ? '/api/access-control/teacher-links/' + encodeURIComponent(id) : accessGrantMatch ? '/api/access-control/grants/' + encodeURIComponent(id) : pathname}`;
+        const result = store.mutateOnce({ userId: session.user.id, route, key, payloadHash: payloadHash(input), status: request.method === 'POST' ? 201 : 200 }, () => teacherLinkMatch ? store.accessControl.setTeacherLink(id, input, session.user.id) : accessGrantMatch ? store.accessControl.updateGrant(id, input, session.user.id) : store.accessControl.createGrant(input, session.user.id));
+        json(response, result.status, result.body); return;
+      }
       const schedulingResourceMatch = /^\/api\/scheduling-resources\/([^/]+)$/.exec(pathname);
       if (schedulingResourceMatch && request.method === 'PATCH') {
         const session = requireMutation(request);
@@ -313,7 +328,7 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
       }
       if (pathname === '/api/courses' && request.method === 'GET') {
         const session = requireSession(request);
-        json(response, 200, { courses: store.listCourses({ publicOnly: session.user.role === 'student' }) }); return;
+        json(response, 200, { courses: store.listCourses({ user: session.user, publicOnly: session.user.role === 'student' }) }); return;
       }
       if (pathname === '/api/courses' && request.method === 'POST') {
         const session = requireMutation(request);
@@ -340,7 +355,7 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
       }
       if (pathname === '/api/fees' && request.method === 'GET') {
         const session = requireSession(request);
-        json(response, 200, { fees: store.listFees({ publicOnly: session.user.role === 'student' }) }); return;
+        json(response, 200, { fees: store.listFees({ user: session.user, publicOnly: session.user.role === 'student' }) }); return;
       }
       if (pathname === '/api/fees' && request.method === 'POST') {
         const session = requireMutation(request);
@@ -367,7 +382,7 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
         json(response, 200, store.updateFee(id, fee, version, session.user.id, true)); return;
       }
       if (pathname === '/api' || pathname.startsWith('/api/')) {
-        const known = match || feeMatch || courseMaterialMatch || materialMatch || uploadMatch || attachmentMatch || scheduleMatch || occurrenceMatch || courseLifecycleMatch || schedulingResourceMatch || ['/api/health', '/api/auth/session', '/api/auth/login', '/api/auth/logout', '/api/courses', '/api/fees', '/api/catalog', '/api/schedules', '/api/scheduling-resources'].includes(pathname);
+        const known = match || feeMatch || courseMaterialMatch || materialMatch || uploadMatch || attachmentMatch || scheduleMatch || occurrenceMatch || courseLifecycleMatch || schedulingResourceMatch || teacherLinkMatch || accessGrantMatch || ['/api/access-control', '/api/access-control/grants', '/api/health', '/api/auth/session', '/api/auth/login', '/api/auth/logout', '/api/courses', '/api/fees', '/api/catalog', '/api/schedules', '/api/scheduling-resources'].includes(pathname);
         throw new ApplicationError(known ? 405 : 404, known ? 'METHOD_NOT_ALLOWED' : 'NOT_FOUND', 'API route or method is not available.');
       }
       await serveStatic(request, response, pathname);

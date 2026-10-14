@@ -55,7 +55,7 @@ export function createApiClient() {
       if (epoch !== authEpoch) throw superseded();
       if (!response.ok) throw new ApiError(data.error?.message || 'Request failed.', response.status, data.error?.code);
       if (path === '/auth/session' || authOperation) {
-        const nextIdentity = data.user ? `${data.user.id}:${data.user.role}` : '';
+        const nextIdentity = data.user ? `${data.user.id}:${data.user.role}:${data.user.accessRevision??''}` : '';
         if (path === '/auth/session' && identityKey !== nextIdentity) epoch = ++authEpoch;
         identityKey = nextIdentity;
         if (!nextIdentity) csrfToken = cookieCsrfToken = '';
@@ -78,8 +78,22 @@ export function createApiClient() {
     fees: () => request('/fees'),
     catalog: (revision = '') => request(`/catalog${revision ? `?since=${encodeURIComponent(revision)}` : ''}`),
     materials: courseId => request(`/courses/${encodeURIComponent(courseId)}/materials`),
-    schedules: (revision = '') => request(`/schedules${revision ? `?since=${encodeURIComponent(revision)}` : ''}`),
+    schedules: (revision = '', range = {}) => {const query=[...(revision?[['since',revision]]:[]),...(range.from?[['from',range.from]]:[]),...(range.to?[['to',range.to]]:[])].map(([key,value])=>`${key}=${encodeURIComponent(value)}`).join('&');return request(`/schedules${query?'?'+query:''}`)},
     schedulingResources: (revision = '') => request(`/scheduling-resources${revision ? `?since=${encodeURIComponent(revision)}` : ''}`),
+    accessControl: (revision = '') => request(`/access-control${revision ? `?since=${encodeURIComponent(revision)}` : ''}`),
+    saveTeacherLink(teacherResourceId, userId, version, operationKey) {
+      return request(`/access-control/teacher-links/${encodeURIComponent(teacherResourceId)}`, {
+        method: 'PATCH', body: { userId, version }, idempotencyKey: operationKey,
+      });
+    },
+    createScopeGrant(grant, operationKey) {
+      return request('/access-control/grants', { method: 'POST', body: grant, idempotencyKey: operationKey });
+    },
+    setScopeGrantActive(grant, active, operationKey) {
+      return request(`/access-control/grants/${encodeURIComponent(grant.id)}`, {
+        method: 'PATCH', body: { version: grant.version, active }, idempotencyKey: operationKey,
+      });
+    },
     saveSchedulingResource(resource, current, operationKey) {
       const {kind,...fields}=resource;
       return request(current ? `/scheduling-resources/${encodeURIComponent(current.id)}` : '/scheduling-resources', {

@@ -35,7 +35,7 @@ export function requireMaterialVersion(input) {
   return input.version;
 }
 
-export function createMaterialStore({ database, transaction, attachments }) {
+export function createMaterialStore({ database, transaction, attachments, accessControl }) {
   database.exec(`
     CREATE TABLE IF NOT EXISTS materials (
       id TEXT PRIMARY KEY, course_id TEXT NOT NULL REFERENCES courses(id),
@@ -69,7 +69,7 @@ export function createMaterialStore({ database, transaction, attachments }) {
   const access = (courseId, userId) => !!database.prepare('SELECT 1 FROM course_material_access WHERE course_id = ? AND user_id = ?').get(courseId, userId);
   const canReadCourse = (courseId, person) => {
     const course = person && courseRecord(courseId);
-    return course && (['admin', 'teacher'].includes(person.role) || person.role === 'student' && !course.deleted_at && access(courseId, person.id));
+    return course && (person.role === 'admin' || person.role === 'teacher' && accessControl.canReadCourse(courseId, person) || person.role === 'student' && !course.deleted_at && access(courseId, person.id));
   };
   const dto = (row, attachmentMap = null) => row ? {
     id: row.id, courseId: row.course_id, name: row.name, description: row.description,

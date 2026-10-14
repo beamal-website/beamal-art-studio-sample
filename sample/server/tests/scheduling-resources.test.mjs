@@ -4,7 +4,7 @@ import {mkdtemp,rm} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {DatabaseSync} from 'node:sqlite';
-import {fixture,error} from './helpers.mjs';
+import {fixture,error,grantTeacherAccess} from './helpers.mjs';
 
 const endpoint='/api/scheduling-resources';
 const request=(client,path,method,body,key)=>client.request(path,{method,body,...(key?{headers:{'Idempotency-Key':key}}:{})});
@@ -17,11 +17,12 @@ test('shared scheduling resources have stable identities without creating accoun
  assert.match(teacher.id,/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/);assert.equal(teacher.version,1);assert.equal(teacher.active,true);assert.notEqual(teacher.id,room.id);
  assert.deepEqual(Object.keys(teacher).sort(),['id','kind','displayName','active','version','createdAt','updatedAt'].sort());
  const second=app.client(),reader=app.client();await second.login(1);await reader.login(2);
- const shared=(await second.request(endpoint)).body;assert.equal(shared.resources.length,2);assert.notEqual(shared.revision,empty.body.revision);assert.deepEqual((await reader.request(endpoint)).body,shared);
+ await grantTeacherAccess(app,app.admin,{resources:[teacher.id,room.id]});
+ const shared=(await second.request(endpoint)).body;assert.equal(shared.resources.length,2);assert.notEqual(shared.revision,empty.body.revision);const teacherShared=(await reader.request(endpoint)).body;assert.deepEqual(teacherShared.resources,shared.resources);assert.notEqual(teacherShared.revision,shared.revision);
  const disabled=await request(second,`${endpoint}/${teacher.id}`,'PATCH',{version:1,displayName:'Renamed fictional teacher',active:false});assert.equal(disabled.status,200,disabled.text);
  assert.equal(disabled.body.resource.id,teacher.id);assert.equal(disabled.body.resource.kind,'teacher');assert.equal(disabled.body.resource.version,2);assert.equal(disabled.body.resource.active,false);assert.equal(disabled.body.resource.createdAt,teacher.createdAt);
  const after=(await app.admin.request(endpoint)).body;assert.ok(after.resources.some(item=>item.id===teacher.id&&!item.active));assert.notEqual(after.revision,shared.revision);
- assert.deepEqual((await reader.request(`${endpoint}?since=${after.revision}`)).body,{revision:after.revision,unchanged:true});assert.deepEqual(app.store.listUsers(),accounts);
+ const teacherAfter=(await reader.request(endpoint)).body;assert.deepEqual(teacherAfter.resources,after.resources);assert.notEqual(teacherAfter.revision,teacherShared.revision);assert.deepEqual((await reader.request(`${endpoint}?since=${teacherAfter.revision}`)).body,{revision:teacherAfter.revision,unchanged:true});assert.deepEqual(app.store.listUsers(),accounts);
 });
 
 test('resource API enforces roles origin CSRF strict fields versions and provisional per-kind name uniqueness',async t=>{

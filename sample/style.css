@@ -123,7 +123,7 @@
 /* Keep toolbar controls on one shared vertical centre. */
 .teacher-timetable{width:100%;min-width:0;container-type:inline-size}
 .tt-sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-.tt-toolbar{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid #d9ddd2;background:#fffdf8}
+.tt-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid #d9ddd2;background:#fffdf8}
 .tt-toolbar input,.tt-toolbar select{height:46px;border-radius:3px;background:#fffdf8;font-size:15px;line-height:1.2}
 .tt-date-navigation{display:flex;align-items:center;gap:8px;flex:none;min-width:0}
 .tt-toolbar .tt-date{width:173px;flex:none;padding:0 12px;height:46px}
@@ -434,3 +434,89 @@
 .resource-picker:disabled .resource-picker-details{background:#f0f2eb;color:#687770}
 .resource-picker:disabled .resource-picker-row{cursor:not-allowed}
 @media(max-width:600px){.resource-manager-modal,.resource-editor-modal{padding:8px}.resource-dialog{max-height:calc(100dvh - 16px)}.resource-header{padding:16px}.resource-header h2{font-size:21px}.resource-manager-body,.resource-editor-body{padding:20px 16px}.resource-controls{grid-template-columns:minmax(0,1fr) auto;gap:16px 12px}.resource-search{grid-column:1/-1}.resource-dialog .resource-add{min-width:116px}.resource-footer{padding:14px 16px}.resource-list th,.resource-list td{padding:12px 8px}.resource-list th:nth-child(2){width:76px}.resource-list th:last-child{width:64px}.resource-dialog .resource-row-actions button{padding:8px 4px}.resource-badge{padding:4px 6px}.resource-name{font-size:15px}.resource-tabs{gap:16px}}
+
+/* Consecutive date ranges: every original group contains at most seven dates. */
+.tt-range-control{display:flex;align-items:center;gap:6px 12px;flex-wrap:wrap;flex:0 1 270px;min-width:0;max-width:100%;color:#526a60}
+.tt-range-view-control{width:166px;max-width:100%}
+.tt-toolbar .resource-open,.tt-toolbar .access-open{flex:0 0 auto;width:auto;min-width:120px;min-height:46px;padding:10px 14px;white-space:normal;line-height:1.4}
+@container(max-width:850px){.tt-toolbar .resource-open{grid-column:1/4;grid-row:auto;min-width:0;width:100%}.tt-toolbar .access-open{grid-column:4/-1;grid-row:auto;min-width:0;width:100%}}
+.tt-range-count-label{display:flex;align-items:center;gap:8px;min-width:0;margin:0;font-size:14px;line-height:1.4}
+.tt-toolbar .tt-range-count-label{width:auto;max-width:100%;flex:0 0 auto}
+.tt-range-count-label>span{flex:none;white-space:nowrap}
+.tt-range-count-label select{flex:none;width:auto;min-width:86px;max-width:100%;padding:0 10px;border:1px solid #bdcbc1;background:#fffdf8;color:#253d3b}
+.tt-range-count-label select:focus-visible{outline:2px solid var(--teal);outline-offset:3px}
+.tt-range-dates{min-width:0;margin:0;font-size:12px;line-height:1.5;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.tt-range-dates time{white-space:nowrap}
+.tt-range-groups{display:flex;flex-direction:column;gap:16px;min-width:0;min-height:0;max-width:100%;height:100%;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;background:#faf7ef}
+.tt-range-group{flex:none;min-width:0;max-width:100%;overflow:hidden;border:1px solid #d9ddd2;background:#fffdf8}
+.tt-range-group-heading{margin:0;padding:12px 16px;border-bottom:1px solid #d9ddd2;background:#e9eee5;color:#526a60;font-size:15px;font-weight:500;line-height:1.5;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.tt-range-group>.tt-grid-scroll{height:clamp(320px,48dvh,520px);max-width:100%}
+.tt-range-group-empty{margin:0;padding:24px 16px;color:#687770;font-size:15px;line-height:1.6}
+.tt-range-groups.tt-student-range-groups{height:auto;max-height:none;overflow:visible}
+.tt-range-student-days{display:grid;grid-template-columns:repeat(var(--tt-range-days,7),minmax(160px,1fr));min-width:0;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain}
+.tt-range-student-days>.calendar-day{min-width:0;min-height:160px;overflow-wrap:anywhere}
+.tt-range-student-days>.calendar-day:last-child{border-right:0}
+.tt-range-student-days .calendar-event{min-width:0;max-width:100%;white-space:normal;overflow-wrap:anywhere}
+@container(max-width:850px){.tt-range-control{grid-column:1/-1;justify-content:space-between;flex-basis:auto;width:100%;padding-top:4px}.tt-range-view-control{grid-column:1/-1;grid-row:auto;width:100%}.tt-range-count-label{flex-wrap:wrap}.tt-range-count-label select{height:42px}.tt-range-dates{font-size:12px}}
+@media(max-width:780px){.tt-range-control{grid-column:1/-1;justify-content:space-between;flex-basis:auto;width:100%;padding-top:4px}.tt-range-groups{height:auto;max-height:none;overflow:visible;gap:12px}.tt-range-group-heading{padding:10px 12px;font-size:14px}.tt-range-group>.tt-grid-scroll{height:420px}.tt-range-student-days{grid-template-columns:repeat(var(--tt-range-days,7),minmax(150px,1fr))}.tt-range-student-days>.calendar-day{min-height:150px}}
+@media print{.tt-range-control{display:none}.tt-range-groups{height:auto;overflow:visible}.tt-range-group{break-inside:avoid;overflow:visible}.tt-range-group>.tt-grid-scroll{height:auto;overflow:visible}.tt-range-student-days{grid-template-columns:repeat(var(--tt-range-days,7),minmax(0,1fr));overflow:visible}}
+
+/* Student range controls and their single horizontal scroll boundary. */
+.tt-range-personal-controls{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;min-width:0;max-width:100%;margin:16px 0 24px}
+.tt-range-personal-controls>label{display:flex;flex-direction:column;gap:8px;min-width:0;max-width:100%;font-size:14px;color:#526a60}
+.tt-range-personal-controls>label input,.tt-range-personal-controls>label select{width:180px;min-width:0;max-width:100%;height:46px;padding:10px 12px;border:1px solid #bdcbc1;border-radius:3px;background:#fffdf8;color:#253d3b;font-size:16px}
+.tt-range-personal-controls>.tt-range-control{align-self:flex-end}
+.tt-range-personal-controls .tt-range-count-label select{height:46px}
+.tt-range-personal-controls>button{min-height:46px;max-width:100%;padding:10px 16px}
+.tt-range-student-scroll{min-width:0;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain}
+.tt-range-student-scroll>.tt-range-student-days{width:calc(var(--tt-range-days,7) * 180px);min-width:100%;max-width:none;grid-template-columns:repeat(var(--tt-range-days,7),minmax(0,1fr));overflow:visible}
+@media(max-width:600px){.tt-range-personal-controls{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px 12px}.tt-range-personal-controls>label input,.tt-range-personal-controls>label select{width:100%;font-size:15px;padding:10px 8px}.tt-range-personal-controls>.tt-range-control,.tt-range-personal-controls>button{grid-column:1/-1;width:100%}.tt-range-personal-controls>.tt-range-control{justify-content:space-between}}
+
+/* Administrative teacher identity links and explicit read grants. */
+.access-modal,.access-editor-modal{z-index:1500;padding:16px}
+.access-editor-modal{z-index:1510}
+.access-dialog{display:flex;flex-direction:column;width:min(920px,100%);min-width:0;max-width:100%;max-height:calc(100dvh - 32px);padding:0;overflow:hidden;background:#fffdf8;border:1px solid #d9ddd2;border-radius:6px;color:#253d3b}
+.access-header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-shrink:0;padding:20px 28px;border-bottom:1px solid #d9ddd2}
+.access-header h2{min-width:0;margin:0;font-size:25px;font-weight:500;line-height:1.4;overflow-wrap:anywhere}
+.access-dialog .access-close{flex:none;width:44px;min-height:44px;margin:0;padding:0;border:0;border-radius:3px;background:transparent;box-shadow:none;color:#687770;font-size:32px;line-height:1}
+.access-body{min-width:0;min-height:0;overflow:auto;padding:24px 28px}
+.access-note{margin:0;color:#687770;font-size:14px;line-height:1.7;overflow-wrap:anywhere}
+.access-tabs{display:flex;gap:20px;margin:20px 0 24px;border-bottom:1px solid #bdcbc1}
+.access-dialog .access-tabs button{min-width:0;min-height:44px;padding:10px 8px;margin:0 0 -1px;border:0;border-bottom:3px solid transparent;border-radius:0;background:transparent;box-shadow:none;color:#687770;font-size:16px;line-height:1.5;white-space:normal}
+.access-dialog .access-tabs button[aria-pressed=true]{border-bottom-color:var(--teal);color:var(--teal);font-weight:600}
+.access-controls{display:flex;align-items:flex-end;gap:16px;min-width:0;margin-bottom:16px}
+.access-controls .access-field{flex:1;margin:0}
+.access-controls>button{flex:none;min-height:46px;border-radius:4px;padding:10px 16px}
+.access-scope-note{margin-bottom:20px}
+.access-field{display:block;min-width:0;margin:24px 0}
+.access-field>span{display:block;margin-bottom:8px;color:#526a60;font-size:15px;line-height:1.5}
+.access-field select{display:block;width:100%;min-width:0;max-width:100%;min-height:48px;margin:0;padding:10px 12px;border:1px solid #bdcbc1;border-radius:3px;background:#fffdf8;color:#253d3b;font-size:16px}
+.access-table-scroll{min-width:0;max-width:100%;overflow-x:auto;border:1px solid #d9ddd2;border-radius:3px;overscroll-behavior-x:contain}
+.access-table-scroll table{width:100%;min-width:660px;table-layout:fixed;margin:0}
+.access-table-scroll th,.access-table-scroll td{padding:14px 16px;border-bottom:1px solid #d9ddd2;vertical-align:top;line-height:1.6}
+.access-table-scroll th{background:#e9eee5;color:#526a60;font-size:14px}
+.access-table-scroll th:last-child{width:130px}
+.access-table-scroll tr:last-child td{border-bottom:0}
+.access-long-name{white-space:pre-wrap;overflow-wrap:anywhere}
+.access-long-name small{display:block;margin-top:6px;color:#687770;font-size:13px}
+.access-dialog .access-table-scroll button{min-height:44px;margin:0;padding:8px 10px;border-radius:3px;box-shadow:none;white-space:normal}
+.access-badge{display:inline-block;padding:4px 8px;border-radius:3px;background:#e4f1ed;color:#215c5d;font-size:13px;white-space:nowrap}
+.access-badge-inactive{background:#eee9de;color:#615b50}
+.access-footer{display:flex;justify-content:flex-end;align-items:center;gap:12px;flex-shrink:0;padding:16px 28px;border-top:1px solid #d9ddd2}
+.access-footer button{min-height:44px;border-radius:4px}
+.access-resource-name{margin:0 0 16px;font-size:20px;font-weight:600;overflow-wrap:anywhere}
+.access-editor-dialog{width:min(600px,100%)}
+.access-editor-dialog form{display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.access-target-fields{min-width:0;margin:0;padding:0;border:0}
+.access-target-fields>legend{padding:0;color:#526a60;font-size:15px}
+.access-target-fields[hidden]{display:none}
+.access-target-fields .access-field{margin:12px 0}
+.access-empty{margin:16px 0 0;padding:24px 16px;border:1px dashed #bdcbc1;text-align:center;color:#687770;line-height:1.6}
+.access-dialog .access-error{margin:16px 0 0;overflow-wrap:anywhere;font-size:15px;line-height:1.6}
+.access-error:empty{display:none}
+.access-loading{margin:16px 0;color:#687770;font-size:14px}
+.access-loading[hidden]{display:none}
+.access-dialog button:disabled{cursor:not-allowed;background:#eee9de;color:#687770;border-color:#d9ddd2;box-shadow:none;filter:none}
+.access-dialog select:disabled{color:#687770;background:#f0f2eb}
+.access-dialog button:focus-visible,.access-dialog select:focus-visible{outline:2px solid var(--teal);outline-offset:3px}
+@media(max-width:600px){.access-modal,.access-editor-modal{padding:8px}.access-dialog{max-height:calc(100dvh - 16px)}.access-header{padding:16px}.access-header h2{font-size:21px}.access-body{padding:20px 16px}.access-tabs{gap:12px}.access-dialog .access-tabs button{flex:1;font-size:15px;padding:10px 4px}.access-controls{display:block}.access-controls>button{width:100%;margin-top:12px}.access-footer{padding:14px 16px}.access-field select{padding:12px 8px;font-size:16px}}

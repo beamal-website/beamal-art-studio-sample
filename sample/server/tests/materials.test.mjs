@@ -4,7 +4,7 @@ import {randomUUID} from 'node:crypto';
 import {mkdtemp,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {fixture,error,users,noCredentials} from './helpers.mjs';
+import {fixture,error,users,noCredentials,grantTeacherAccess} from './helpers.mjs';
 
 const material=(extra={})=>({name:'Watercolour preparation',description:'Bring a sketchbook.\nWatch the preparation video.',videoLinks:['https://example.test/preparation?lesson=1'],visibleToStudents:false,studentDownload:false,...extra});
 async function adminFixture(t,options={}){
@@ -46,6 +46,7 @@ test('materials HTTP endpoints require authentication and only administrators ma
  const saved=await add(app);
  error(await anonymous.request('/api/courses/public-course/materials'),401);
  error(await anonymous.request(`/api/materials/${saved.id}`),401);
+ await grantTeacherAccess(app,app.admin,{courses:['public-course']});
  assert.deepEqual(await list(teacher),[saved]);
  assert.equal((await teacher.request(`/api/materials/${saved.id}`)).status,200);
  for(const client of [teacher,student]){

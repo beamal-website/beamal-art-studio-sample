@@ -4,7 +4,7 @@ import {mkdtemp,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {DatabaseSync} from 'node:sqlite';
-import {fixture,error,course,users,origin} from './helpers.mjs';
+import {fixture,error,course,users,origin,grantTeacherAccess} from './helpers.mjs';
 
 const send=(client,path,method,body,key)=>client.request(path,{method,body,...(key?{headers:{'Idempotency-Key':key}}:{})});
 async function manager(t,options={}){const app=await fixture(t,options),admin=app.client();await admin.login();return {...app,admin};}
@@ -103,6 +103,7 @@ test('students cannot discover deleted courses or fee links and lose direct acce
  assert.ok((await student.request('/api/courses')).body.courses.every(item=>item.id!=='public-course'));
  error(await student.request('/api/courses/public-course/materials'),404);error(await student.request(`/api/materials/${note.body.material.id}`),404);
  assert.equal((await readAttachment(student)).status,404);assert.equal((await readAttachment(student,'?download=1')).status,404);
+ await grantTeacherAccess(app,app.admin,{courses:['public-course']});
  assert.equal((await teacher.request(`/api/materials/${note.body.material.id}`)).status,200);
  assert.deepEqual((await readAttachment(teacher)).bytes,bytes,'Recoverable course deletion must preserve the private file bytes.');
  const restored=await send(app.admin,'/api/courses/public-course/restore','POST',{version:deleted.body.course.version});assert.equal(restored.status,200,restored.text);

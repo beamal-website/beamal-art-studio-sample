@@ -8,6 +8,7 @@ import { createMaterialStore } from './materials.mjs';
 import { createAttachmentStore } from './attachments.mjs';
 import { createScheduleStore } from './schedules.mjs';
 import { createSchedulingResourceStore } from './scheduling-resources.mjs';
+import { createAccessControlStore } from './access-control.mjs';
 
 const publicUser = row => row ? { id: row.id, email: row.email, displayName: row.display_name, role: row.role } : null;
 const pricingKeys = ['feeName', 'pricingModel', 'price', 'months', 'duration', 'packageType', 'packageTotal', 'bookingExpiry', 'onlineStore'];
@@ -127,16 +128,19 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
     }));
     return { fees, feesById: new Map(fees.map(fee => [fee.id, fee])), feeIdsByCourse };
   };
-  const readCatalog = publicOnly => {
-    const courseRows = database.prepare(`SELECT * FROM courses ${visibleCourses(publicOnly)} ORDER BY course_code`).all();
-    return { courseRows, ...feeCatalog(readFeeRows(publicOnly), readLinkRows(publicOnly)) };
+  const readCatalog = (publicOnly, allowedIds = null) => {
+    const courseRows = database.prepare(`SELECT * FROM courses ${visibleCourses(publicOnly)} ORDER BY course_code`).all().filter(row => allowedIds === null || allowedIds.has(row.id));
+    const links = readLinkRows(publicOnly).filter(row => allowedIds === null || allowedIds.has(row.course_id));
+    const feeIds = new Set(links.map(row => row.fee_id));
+    const feeRows = readFeeRows(publicOnly).filter(row => allowedIds === null || feeIds.has(row.id));
+    return { courseRows, ...feeCatalog(feeRows, links) };
   };
   const compactCourse = (row, feeIds) => ({
     ...metadata(JSON.parse(row.data)), id: row.id, courseCode: row.course_code, version: row.version,
     createdAt: row.created_at, updatedAt: row.updated_at, ...deletion(row), feeIds,
   });
-  const listCourses = ({ publicOnly = false } = {}) => transaction(() => {
-    const { courseRows, feesById, feeIdsByCourse } = readCatalog(publicOnly);
+  const listCourses = ({ publicOnly = false, user = null } = {}) => transaction(() => {
+    const { courseRows, feesById, feeIdsByCourse } = readCatalog(publicOnly, user?.role === 'teacher' ? accessControl.scopeFor(user).courseIds : null);
     return courseRows.map(row => {
       const feeIds = feeIdsByCourse.get(row.id) || [], fees = feeIds.map(id => feesById.get(id));
       return {
@@ -146,8 +150,14 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
       };
     });
   }, 'read');
-  const listFees = ({ publicOnly = false } = {}) => transaction(() => feeCatalog(readFeeRows(publicOnly), readLinkRows(publicOnly)).fees, 'read');
-  const catalogSnapshot = ({ publicOnly = false, since = '' } = {}) => transaction(() => {
+  const listFees = ({ publicOnly = false, user = null } = {}) => transaction(() => user?.role === 'teacher' ? readCatalog(publicOnly, accessControl.scopeFor(user).courseIds).fees : feeCatalog(readFeeRows(publicOnly), readLinkRows(publicOnly)).fees, 'read');
+  const catalogSnapshot = ({ publicOnly = false, since = '', user = null } = {}) => transaction(() => {
+    if (user?.role === 'teacher') {
+      const scope = accessControl.scopeFor(user), catalog = readCatalog(publicOnly, scope.courseIds);
+      const courses = catalog.courseRows.map(row => compactCourse(row, catalog.feeIdsByCourse.get(row.id) || [])), fees = catalog.fees;
+      const revision = createHash('sha256').update(JSON.stringify({ access: scope.revision, courses, fees })).digest('hex');
+      return since === revision ? { revision, unchanged: true } : { revision, courses, fees };
+    }
     const courses = database.prepare(`SELECT id, version FROM courses ${visibleCourses(publicOnly)} ORDER BY id`).all();
     const fees = database.prepare(`SELECT id, version FROM fees ${visibleFees(publicOnly)} ORDER BY id`).all();
     const revision = createHash('sha256').update(JSON.stringify({ publicOnly, courses, fees })).digest('hex');
@@ -333,16 +343,17 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
       createCourse(validateCourse(input), null, seed.id);
     }
   } catch (error) { database.close(); throw error; }
-  let materials, attachments, schedules, schedulingResources;
+  let materials, attachments, schedules, schedulingResources, accessControl;
   try {
     attachments = await createAttachmentStore({ database, transaction, directory: attachmentsDir || (databasePath === ':memory:' ? undefined : `${resolve(databasePath)}.attachments`) });
-    materials = createMaterialStore({ database, transaction, attachments });
     schedulingResources = createSchedulingResourceStore({ database, transaction });
     schedules = createScheduleStore({ database, transaction, resources: schedulingResources });
+    accessControl = createAccessControlStore({ database, transaction });
+    materials = createMaterialStore({ database, transaction, attachments, accessControl });
   }
   catch (error) { await attachments?.close(); database.close(); throw error; }
   return {
-    listCourses, getCourse, createCourse, updateCourse, deleteCourse: (id, version, actor) => changeCourseDeletion(id, version, actor), restoreCourse: (id, version, actor) => changeCourseDeletion(id, version, actor, true), listFees, getFee, createFee, updateFee, createOnce, mutateOnce, catalogSnapshot, materials, attachments, schedules, schedulingResources,
+    listCourses, getCourse, createCourse, updateCourse, deleteCourse: (id, version, actor) => changeCourseDeletion(id, version, actor), restoreCourse: (id, version, actor) => changeCourseDeletion(id, version, actor, true), listFees, getFee, createFee, updateFee, createOnce, mutateOnce, catalogSnapshot, materials, attachments, schedules, schedulingResources, accessControl,
     listUsers: () => database.prepare('SELECT * FROM users ORDER BY email').all().map(publicUser),
     userByEmail: email => database.prepare('SELECT * FROM users WHERE email = ?').get(email),
     publicUser,

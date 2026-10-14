@@ -4,7 +4,7 @@ import {mkdtemp,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {DatabaseSync} from 'node:sqlite';
-import {fixture,error,course} from './helpers.mjs';
+import {fixture,error,course,grantTeacherAccess} from './helpers.mjs';
 
 const schedule = (changes={}) => ({course:'public-course',startDate:'2026-10-14',time:'10:00',duration:45,weekdays:[1,3],endMode:'count',endDate:'',count:4,mustAttendAll:true,color:'#27777b',teacher:'Fictional teacher',room:'Fictional room',capacity:8,session:1,remark:'Preparation',detail:'Bring paper.',moreInfo:'Student information',...changes});
 const send = (client,path,method,body,key) => client.request(path,{method,body,headers:key?{'Idempotency-Key':key}:{}});
@@ -25,10 +25,13 @@ test('shared timetable saves one recurring series, shares it with teachers and a
  assert.ok(Number.isFinite(Date.parse(item.createdAt)));assert.equal(item.createdAt,item.updatedAt);
  assert.deepEqual((await send(app.admin,'/api/schedules','POST',app.rule(),'schedule-create-stable')).body,saved.body);
  error(await send(app.admin,'/api/schedules','POST',app.rule({time:'11:00'}),'schedule-create-stable'),409);
- const teacher=app.client();await teacher.login(2);const listed=await teacher.request('/api/schedules');
- assert.equal(listed.status,200,listed.text);assert.deepEqual(listed.body.schedules,[item]);assert.notEqual(listed.body.revision,before.body.revision);
- const unchanged=await app.admin.request('/api/schedules?since='+listed.body.revision);
- assert.deepEqual(unchanged.body,{revision:listed.body.revision,unchanged:true});
+ await grantTeacherAccess(app,app.admin,{courses:['public-course']});
+ const teacher=app.client();await teacher.login(2);const window='/api/schedules?from=2026-10-01&to=2026-10-31',listed=await teacher.request(window);
+ assert.equal(listed.status,200,listed.text);assert.equal(listed.body.readScope,'occurrences');assert.equal(listed.body.schedules,undefined);
+ assert.deepEqual(listed.body.occurrences.map(row=>[row.item.id,row.item.course,row.sequence,row.date,row.item.time]),[[item.id,item.course,1,'2026-10-14','10:00'],[item.id,item.course,2,'2026-10-19','10:00'],[item.id,item.course,3,'2026-10-21','10:00'],[item.id,item.course,4,'2026-10-26','10:00']]);
+ const managerRead=(await app.admin.request('/api/schedules')).body;assert.deepEqual(managerRead.schedules,[item]);assert.notEqual(listed.body.revision,managerRead.revision);
+ assert.deepEqual((await teacher.request(window+'&since='+listed.body.revision)).body,{revision:listed.body.revision,readScope:'occurrences',unchanged:true});
+ assert.deepEqual((await app.admin.request('/api/schedules?since='+managerRead.revision)).body,{revision:managerRead.revision,unchanged:true});
  assert.equal(app.store.schedules.audit().length,1);
 });
 

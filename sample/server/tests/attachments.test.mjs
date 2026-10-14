@@ -8,7 +8,7 @@ import {request as httpRequest} from 'node:http';
 import {DatabaseSync} from 'node:sqlite';
 import fs from 'node:fs';
 import {syncBuiltinESMExports} from 'node:module';
-import {fixture,error,origin,users,noCredentials} from './helpers.mjs';
+import {fixture,error,origin,users,noCredentials,grantTeacherAccess} from './helpers.mjs';
 
 // Complete files generated once with ffmpeg, verified with ffprobe, then
 // embedded here so the HTTP suite needs no media programs or network access.
@@ -204,7 +204,7 @@ test('ten identical upload retries store one file and identical material creates
 
 test('material attachment view and download enforce grants, visibility and student download settings for GET HEAD and ranges',async t=>{
  const app=await adminFixture(t,{seedMaterialAccess:[{courseId:'public-course',email:users[3].email}]}),granted=app.client(),ungranted=app.client(),teacher=app.client(),anonymous=app.client();
- await granted.login(3);await ungranted.login(4);await teacher.login(2);
+ await granted.login(3);await ungranted.login(4);await teacher.login(2);await grantTeacherAccess(app,app.admin,{courses:['public-course']});
  const file=uploadDTO(await upload(app.admin),png),saved=await createMaterial(app.admin,[file.id],{visibleToStudents:true,studentDownload:false}),path=attachmentPath(saved,file);
  assert.deepEqual((await binary(granted,path)).bytes,png.bytes);
  assert.equal((await binary(granted,path,{method:'HEAD'})).status,200);
@@ -384,7 +384,7 @@ test('invalid top-level video atom boundaries or missing media/index boxes canno
 });
 
 test('large material lists preserve exact role-scoped attachment DTOs across batch boundaries without one attachment query per material',async t=>{
- const app=await adminFixture(t,{seedMaterialAccess:[{courseId:'public-course',email:users[3].email}]}),teacher=app.client(),student=app.client(),ungranted=app.client();await teacher.login(2);await student.login(3);await ungranted.login(4);
+ const app=await adminFixture(t,{seedMaterialAccess:[{courseId:'public-course',email:users[3].email}]}),teacher=app.client(),student=app.client(),ungranted=app.client();await teacher.login(2);await student.login(3);await ungranted.login(4);await grantTeacherAccess(app,app.admin,{courses:['public-course']});
  const first=uploadDTO(await upload(app.admin),png),pdf=media.find(file=>file.name.endsWith('.pdf')),last=uploadDTO(await upload(app.admin,pdf),pdf),all=[];
  all.push(await createMaterial(app.admin,[first.id],{name:'First attached material',visibleToStudents:true}));
  // Fixture setup uses the real repository; the operation under measurement

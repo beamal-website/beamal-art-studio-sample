@@ -99,3 +99,13 @@ export function serverCourse(saved) {
   assert.ok(Number.isInteger(saved.version)&&saved.version>=1);
   for (const field of ['createdAt','updatedAt']) assert.ok(Number.isFinite(Date.parse(saved[field])),`Invalid ${field}`);
 }
+
+// Tests that need teacher reads explicitly arrange administrator-issued scope;
+// fixture() itself intentionally leaves every teacher unlinked and ungranted.
+export async function grantTeacherAccess(app,admin,{courses=[],resources=[]}={}) {
+  const userId=app.store.listUsers().find(user=>user.email===users[2].email).id;
+  for(const [kind,ids,field] of [['course',courses,'courseId'],['resource',resources,'resourceId']])for(const id of ids){
+    const result=await admin.request('/api/access-control/grants',{method:'POST',body:{userId,kind,[field]:id}});
+    assert.equal(result.status,201,result.text);
+  }
+}

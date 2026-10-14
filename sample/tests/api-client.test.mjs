@@ -30,7 +30,7 @@ function network(t) {
   globalThis.fetch = async (path, options) => {
     const next = queue.shift();
     assert.ok(next, `Unexpected fictional fetch: ${path}`);
-    assert.equal(path, next.path);
+    if(typeof next.path==='function')next.path(path);else assert.equal(path, next.path);
     const call = { path, method: options.method, credentials: options.credentials, headers: new Headers(options.headers), body: options.body };
     calls.push(call);
     return typeof next.result === 'function' ? next.result(call) : next.result;
@@ -246,4 +246,26 @@ test('shared scheduling resource requests preserve revision, immutable record id
  const fields={displayName:'Renamed teaching artist',active:false},updated={...created,...fields,version:2},path='/api/scheduling-resources/'+encodeURIComponent(created.id);wire.reply(path,{resource:updated});assert.deepEqual((await client.saveSchedulingResource({...fields,kind:'teacher'},created,'fictional-resource-update-key')).resource,updated);
  call=wire.calls.at(-1);assert.equal(call.method,'PATCH');assert.deepEqual(JSON.parse(call.body),{...fields,version:1});assert.equal(call.headers.get('Idempotency-Key'),'fictional-resource-update-key');assert.equal(call.headers.get('X-CSRF-Token'),'csrf-fictional-B');assert.equal(call.credentials,'same-origin');
  wire.reply(path,{error:{code:'VERSION_CONFLICT',message:'The resource changed in another session.'}},409);await assert.rejects(client.saveSchedulingResource(fields,created,'fictional-resource-update-key'),error=>error instanceof ApiError&&error.status===409&&error.code==='VERSION_CONFLICT');
+});
+
+test('schedule reads send the requested date window and revision while retaining the original unbounded admin request',async t=>{
+ const wire=network(t),client=createApiClient();await login(client,wire,'B');const revision='scope revision / 一',range={from:'2026-12-29',to:'2027-01-11'},payload={revision:'next-scope',readScope:'occurrences',occurrences:[]};
+ wire.reply(path=>{const url=new URL(path,'http://fictional.test');assert.equal(url.pathname,'/api/schedules');assert.equal(url.searchParams.get('since'),revision);assert.equal(url.searchParams.get('from'),range.from);assert.equal(url.searchParams.get('to'),range.to);assert.deepEqual([...url.searchParams.keys()].sort(),['from','since','to']);},payload);
+ assert.deepEqual(await client.schedules(revision,range),payload);assert.equal(wire.calls.at(-1).method,'GET');assert.equal(wire.calls.at(-1).credentials,'same-origin');wire.reply('/api/schedules',{revision:'admin-view',schedules:[]});assert.deepEqual(await client.schedules(),{revision:'admin-view',schedules:[]});
+});
+
+test('a changed access revision supersedes old private reads for the same teacher while an unchanged scope keeps current reads usable',async t=>{
+ const wire=network(t),client=createApiClient(),user={...identity('teacher'),role:'teacher',accessRevision:'scope-A'};wire.reply('/api/auth/session',{user,csrfToken:'csrf-scope-A'});await client.session();
+ const wait=wire.pending('/api/catalog?since=scope-A'),old=observe(client.catalog('scope-A'));wire.reply('/api/auth/session',{user:{...user,accessRevision:'scope-B'},csrfToken:'csrf-scope-B'});await client.session();
+ const currentWait=wire.pending('/api/catalog'),current=observe(client.catalog());wire.reply('/api/auth/session',{user:{...user,accessRevision:'scope-B'},csrfToken:'csrf-scope-B'});await client.session();currentWait.resolve(response({revision:'scope-B',courses:[],fees:[]}));assert.equal((await current).fulfilled,true,'The same identity and access scope must not invalidate legitimate current reads');
+ wait.resolve(response({revision:'scope-A',courses:[{id:'revoked-course',courseName:'Private revoked class'}],fees:[]}));superseded(await old);
+});
+
+test('access-control requests preserve encoded targets, first-link version zero, unlink versions and stable keys without resending unrelated account data',async t=>{
+ const wire=network(t),client=createApiClient();await login(client,wire,'B');const revision='access revision / 一',snapshot={revision,accounts:[{id:'teacher-account',displayName:'Artist',role:'teacher'}],teacherLinks:[],grants:[]};wire.reply('/api/access-control?since='+encodeURIComponent(revision),snapshot);assert.deepEqual(await client.accessControl(revision),snapshot);
+ const resourceId='teacher resource / 一',path='/api/access-control/teacher-links/'+encodeURIComponent(resourceId),link={resourceId,userId:'teacher-account',version:1};wire.reply(path,{teacherLink:link});assert.deepEqual((await client.saveTeacherLink(resourceId,'teacher-account',0,'fictional-first-link')).teacherLink,link);let call=wire.calls.at(-1);assert.equal(call.method,'PATCH');assert.deepEqual(JSON.parse(call.body),{userId:'teacher-account',version:0});assert.equal(call.headers.get('Idempotency-Key'),'fictional-first-link');assert.equal(call.headers.get('X-CSRF-Token'),'csrf-fictional-B');
+ wire.reply(path,{teacherLink:{...link,userId:null,version:2}});await client.saveTeacherLink(resourceId,null,1,'fictional-unlink');call=wire.calls.at(-1);assert.deepEqual(JSON.parse(call.body),{userId:null,version:1});assert.equal(call.headers.get('Idempotency-Key'),'fictional-unlink');
+ const input={userId:'teacher-account',kind:'occurrence',scheduleId:'series / 一',sequence:2},grant={...input,id:'grant / 一',active:true,version:1};wire.reply('/api/access-control/grants',{grant},201);assert.deepEqual((await client.createScopeGrant(input,'fictional-grant-create')).grant,grant);call=wire.calls.at(-1);assert.equal(call.method,'POST');assert.deepEqual(JSON.parse(call.body),input);assert.equal(call.headers.get('Idempotency-Key'),'fictional-grant-create');
+ const grantPath='/api/access-control/grants/'+encodeURIComponent(grant.id);wire.reply(grantPath,{grant:{...grant,active:false,version:2}});await client.setScopeGrantActive(grant,false,'fictional-grant-revoke');call=wire.calls.at(-1);assert.equal(call.method,'PATCH');assert.deepEqual(JSON.parse(call.body),{version:1,active:false},'Revocation must send only the opened version and chosen active flag');assert.equal(call.headers.get('Idempotency-Key'),'fictional-grant-revoke');assert.equal(call.credentials,'same-origin');
+ wire.reply(grantPath,{error:{code:'ROLE_FORBIDDEN',message:'Administrator access is required.'}},403);await assert.rejects(client.setScopeGrantActive(grant,true,'fictional-role-rejected'),error=>error instanceof ApiError&&error.status===403&&error.code==='ROLE_FORBIDDEN');
 });

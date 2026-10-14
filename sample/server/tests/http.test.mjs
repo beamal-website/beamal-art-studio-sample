@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdtemp, readFile, rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {origin,users,seedCourses,course,fixture,error,publicUser,noCredentials,serverCourse} from './helpers.mjs';
+import {origin,users,seedCourses,course,fixture,error,publicUser,noCredentials,serverCourse,grantTeacherAccess} from './helpers.mjs';
 
 test('HTTP health and anonymous session identify shared test mode without exposing accounts',async t=>{
   const app=await fixture(t),anonymous=app.client();
@@ -61,6 +61,7 @@ test('student visibility and manager-only writes are enforced by HTTP authorizat
   await admin.login(0);await teacher.login(2);await student.login(3);
   const all=(await admin.request('/api/courses')).body.courses;
   assert.equal(all.length,seedCourses.length);
+  await grantTeacherAccess(app,admin,{courses:all.map(item=>item.id)});
   assert.deepEqual((await teacher.request('/api/courses')).body.courses,all);
   assert.deepEqual((await student.request('/api/courses')).body.courses.map(item=>item.courseName),['Published art']);
   for (const client of [teacher,student]) {

@@ -5,7 +5,7 @@ import {mkdtemp,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {DatabaseSync} from 'node:sqlite';
-import {fixture,error,course,noCredentials} from './helpers.mjs';
+import {fixture,error,course,noCredentials,grantTeacherAccess} from './helpers.mjs';
 
 const pricingFields=['feeName','pricingModel','price','months','duration','packageType','packageTotal','bookingExpiry','onlineStore'];
 function expandedCourse(compact,canonicalFees){
@@ -21,6 +21,7 @@ async function catalog(client,since){
 
 test('catalog authentication and role scope agree with existing course and fee DTOs without nested pricing duplication',async t=>{
  const app=await fixture(t),anonymous=app.client();error(await anonymous.request('/api/catalog'),401);
+ const admin=app.client();await admin.login();await grantTeacherAccess(app,admin,{courses:['public-course','private-course']});
  for(const index of [0,2,3]){
   const client=app.client();await client.login(index);
   const full=await catalog(client),oldCourses=(await client.request('/api/courses')).body.courses,oldFees=(await client.request('/api/fees')).body.fees;

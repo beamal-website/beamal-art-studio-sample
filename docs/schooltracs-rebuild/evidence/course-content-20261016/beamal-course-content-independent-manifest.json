@@ -1,0 +1,121 @@
+{
+  "baseHead": "22187a68863498b5d4a82f8d573b0e93ec971765",
+  "branch": "refs/heads/test",
+  "scope": "Independent Course content Stage A UI; source/VM and screenshot-only, no DB/browser/full suite/build",
+  "targetedTests": {
+    "executed": 38,
+    "passed": 38,
+    "failed": 0,
+    "composition": {
+      "currentBaseline": 2,
+      "fullSourceHost": 15,
+      "pure": 9,
+      "errorGeometry": 2,
+      "newDurableHost": 10
+    }
+  },
+  "files": {
+    "sample/src.js": "a7e2d72e58e0d486bbf33e1a3757759dc056eecaa746e5efb67dbc886addc832",
+    "sample/tests/flows.test.mjs": "df677af09493a05241202b1e4bbc0f8855a00838e8b0d25e9de49147f29a91cf",
+    "sample/client/course-content-ui.js": "db7729f526d9a0a69d63843281382f71a73ad8e441c83c068a364e896de11d4b",
+    "sample/client/course-content-ui.css": "33703d3d9bbf130de10dccc2684df4c53d738c0c64dba99310ba2a9ab22ad056",
+    "sample/tests/course-content-ui.test.mjs": "9b4bfa567b866483db9bebfc66408bec243dc3791f6514d2e77d5231691ae9af",
+    "sample/client/availability-ui.js": "2c2f2466eaddbc929127e8f0e07498cf2583369eab64dff7ae5daeaa8bfdf72b",
+    "sample/tests/availability-ui.test.mjs": "4972fe189634ed3e63f92818d87682a24e213e0455406fcaeebdc41336d6b1c7",
+    "sample/tests/course-content-host.test.mjs": "9053bbe9c8e5810955690403a03e99945ff19d223fbf21b97ed70dcbd58a2cde"
+  },
+  "screenshots": {
+    "/tmp/beamal-course-content-390-error-fixed.jpg": {
+      "sha256": "5a087c8979e1b15e0195648cf9882bd7ad347dc66b11da010e0f57c4debebdea",
+      "size": "390x844",
+      "format": "JPEG",
+      "evidence": "view_image screenshot-only"
+    },
+    "/tmp/beamal-course-content-390-review-zh.jpg": {
+      "sha256": "95e891d7f0ab8132f42e579e0dbe755abe23013362a6e2ac6c3376d8a93d025d",
+      "size": "390x844",
+      "format": "JPEG",
+      "evidence": "view_image screenshot-only"
+    },
+    "/tmp/beamal-course-content-768-review-zh.jpg": {
+      "sha256": "25257d177710029d3d5fab259c84722b41584905d4f9ac7d34732c1cbfd34532",
+      "size": "768x900",
+      "format": "JPEG",
+      "evidence": "view_image screenshot-only"
+    },
+    "/tmp/beamal-course-content-1280-review-en.jpg": {
+      "sha256": "283cd1838e7739d9fae074eff464a34a5a8ffaf7611cd0df13d495efa907716f",
+      "size": "1280x900",
+      "format": "JPEG",
+      "evidence": "view_image screenshot-only"
+    },
+    "/tmp/beamal-course-content-390-final.jpg": {
+      "sha256": "63cb555e4c6dce72b5c745d36e485e1f373f6451320b4415e94c0778d628b74f",
+      "size": "390x844",
+      "format": "JPEG",
+      "evidence": "view_image screenshot-only; current corrected capture reopened after Parent replacement",
+      "usableFinalEvidence": true
+    },
+    "/tmp/beamal-course-content-768-final.jpg": {
+      "sha256": "e4ec8b24b119b9853ac6d3b009202874d65260c134f477c5a197d956b2962358",
+      "size": "768x900",
+      "format": "JPEG",
+      "evidence": "view_image screenshot-only",
+      "usableFinalEvidence": true
+    },
+    "/tmp/beamal-course-content-1280-final.jpg": {
+      "sha256": "e9b680af6d9c38757c7a359dcc9262a34110102dd8f53f713aeda671fed7d39b",
+      "size": "1280x900",
+      "format": "JPEG",
+      "evidence": "view_image screenshot-only",
+      "usableFinalEvidence": true
+    },
+    "/tmp/beamal-course-content-390-final-error.jpg": {
+      "sha256": "f149643616f2de8425fa741e3f23266fd71044405b73282dd69340075dc48810",
+      "size": "390x844",
+      "format": "JPEG",
+      "evidence": "view_image screenshot-only",
+      "usableFinalEvidence": true
+    }
+  },
+  "followUpHarness": {
+    "onlyFile": "sample/tests/flows.test.mjs",
+    "candidateFailures": 76,
+    "sameError": "courseContentPanelMarkup is not defined",
+    "actualSingleCaseBefore": {
+      "passed": 0,
+      "failed": 1,
+      "log": "/tmp/beamal-course-content-flows-harness-actual-red.log"
+    },
+    "affectedWorktreeFile": {
+      "passed": 480,
+      "failed": 0,
+      "durationMs": 12933.659208,
+      "log": "/tmp/beamal-course-content-flows-harness-green.log"
+    },
+    "assertionsAndFixtures": "Removing real import and vm namespace injection restores exact before bytes",
+    "oldCandidateProductionProbe": {
+      "passed": 478,
+      "incompleteFixtureFailures": 2,
+      "reason": "Temporary reduced overlay omitted node_modules and public symlinks",
+      "correctedTwoCases": {
+        "passed": 2,
+        "failed": 0,
+        "log": "/tmp/beamal-course-content-flows-harness-clean-fixture-green.log"
+      }
+    },
+    "gitIndex": "Not operated or staged by reviewer"
+  },
+  "finalCssOnly": {
+    "selector": ".course-content-footer",
+    "onlyChange": "align-items: center -> flex-start",
+    "reverseHashMatchesPrevious": "b95b4a884ea4a5ec22a13320ef09412f3ee57c2bb7a9dde74acc61a0c9c7bdd4",
+    "allOtherSevenSourceTestHashes": "unchanged",
+    "testsRerunByReviewer": false
+  },
+  "finalVisualResult": {
+    "fourFinalImages": "PASS with correct dimensions; no blocking overlap/clipping observed",
+    "thumbnailIssue": "Earlier390x457 capture rejected and replaced; final current390x844 verified",
+    "liveGuiByReviewer": false
+  }
+}

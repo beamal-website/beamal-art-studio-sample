@@ -1,0 +1,10 @@
+{
+  "sample/client/availability-ui.js": "2c2f2466eaddbc929127e8f0e07498cf2583369eab64dff7ae5daeaa8bfdf72b",
+  "sample/client/course-content-ui.css": "33703d3d9bbf130de10dccc2684df4c53d738c0c64dba99310ba2a9ab22ad056",
+  "sample/client/course-content-ui.js": "db7729f526d9a0a69d63843281382f71a73ad8e441c83c068a364e896de11d4b",
+  "sample/src.js": "a7e2d72e58e0d486bbf33e1a3757759dc056eecaa746e5efb67dbc886addc832",
+  "sample/tests/course-content-host.test.mjs": "9053bbe9c8e5810955690403a03e99945ff19d223fbf21b97ed70dcbd58a2cde",
+  "sample/tests/course-content-public.test.mjs": "397161b1b5f9d04eb2a451ae5202baf5a17a1d89d350bedcfd47222d98fb0b09",
+  "sample/tests/course-content-ui.test.mjs": "9b4bfa567b866483db9bebfc66408bec243dc3791f6514d2e77d5231691ae9af",
+  "sample/tests/flows.test.mjs": "df677af09493a05241202b1e4bbc0f8855a00838e8b0d25e9de49147f29a91cf"
+}

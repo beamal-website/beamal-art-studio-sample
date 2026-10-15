@@ -1,0 +1,12 @@
+{
+  "user": {
+    "tables": 42,
+    "changed": []
+  },
+  "gui": {
+    "tables": 42,
+    "changed": [
+      "sessions"
+    ]
+  }
+}

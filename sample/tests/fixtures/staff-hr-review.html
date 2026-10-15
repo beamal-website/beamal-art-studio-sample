@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Beamal — Staff HR UI test fixture</title>
+  <link rel="stylesheet" href="../../style.css">
+  <link rel="stylesheet" href="../../client/staff-portal-ui.css">
+  <link rel="stylesheet" href="../../client/staff-payroll-ui.css">
+  <link rel="stylesheet" href="../../client/staff-attendance-ui.css">
+  <style>
+    .fixture-toolbar{display:flex;gap:16px;align-items:end;flex-wrap:wrap;padding:20px 24px;border-bottom:1px solid #c9d5ca;background:#eef2e8}.fixture-toolbar>strong{align-self:center;margin-right:auto;color:#284940}.fixture-toolbar>label{display:grid;gap:6px;min-width:130px;font-size:12px;color:#526a60}.fixture-toolbar select{min-height:44px;font-size:14px}.fixture-badge{position:fixed;right:12px;bottom:12px;z-index:70;padding:6px 10px;border:1px solid #c4ad61;border-radius:4px;background:#fff3bf;color:#4e451e;font-size:11px;pointer-events:none}.fixture-page{width:calc(100% - 48px);max-width:1360px;margin:24px auto 56px;min-width:0;border:1px solid #d6ddd1;border-radius:8px;background:#fffdf8;overflow:hidden}.fixture-profiles{padding:0 28px 28px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}.fixture-profiles>section{padding:20px;border:1px solid #d6ddd1;border-radius:8px;min-width:0}.fixture-person-name{margin:0 0 16px;font-size:17px;color:#284940}@media(max-width:680px){.fixture-toolbar{padding:16px;gap:12px}.fixture-toolbar>strong{flex-basis:100%;margin:0}.fixture-toolbar>label{flex:1;min-width:120px}.fixture-page{width:calc(100% - 24px);margin-top:16px}.fixture-profiles{padding:0 16px 20px;grid-template-columns:minmax(0,1fr);gap:16px}.fixture-profiles>section{padding:16px}}
+  </style>
+</head>
+<body>
+  <div class="fixture-toolbar" id="fixture-toolbar" role="group" aria-label="UI test fixture controls">
+    <strong>UI test fixture · Staff HR</strong>
+    <label>Page<select id="fixture-page"><option value="payroll">Payroll</option><option value="attendance">Clock records</option></select></label>
+    <label>Viewer<select id="fixture-role"><option value="admin">Admin · Maya Lam</option><option value="teacher">Teacher · Leo Chan</option></select></label>
+    <label>Source state<select id="fixture-source"><option value="records">Records</option><option value="unavailable">Unavailable</option><option value="error">Error</option><option value="loading">Loading</option><option value="empty">Empty</option></select></label>
+    <label>Language<select id="fixture-language"><option value="en">English</option><option value="zh">繁體中文</option></select></label>
+  </div>
+  <main id="fixture-content" class="fixture-page"></main>
+  <div id="fixture-dialog"></div>
+  <span class="fixture-badge">UI test fixture — fictional records, no saving</span>
+  <script type="module">
+    import {payrollPageMarkup,payrollDialogMarkup,salaryProfileMarkup,advancePayrollUi} from '../../client/staff-payroll-ui.js';
+    import {attendancePageMarkup,attendanceDialogMarkup,advanceAttendanceUi} from '../../client/staff-attendance-ui.js';
+    const staff=[
+      {id:'fixture-maya',userId:'fixture-admin',displayName:'Maya Lam',salaryProfile:{salaryType:'monthly',monthlyBaseSalary:18000}},
+      {id:'fixture-leo',userId:'fixture-teacher',displayName:'Leo Chan',salaryProfile:{salaryType:'hourly',hourlyRate:320}}
+    ];
+    // Every amount and duration below is supplied fixture data, never calculated here.
+    const rows=[
+      {id:'fixture-pay-maya-202610',staffId:'fixture-maya',month:'2026-10',reference:'Fixture monthly record',salaryType:'monthly',scheduledMinutes:4800,actualMinutes:5000,actualVerified:true,approvedLateMinutes:10,approvedOtMinutes:60,basePay:18000,approvedOtPay:300,approvedDeduction:20,netPay:18280,status:'released',visibleToTeacher:false,payslipGenerated:false},
+      {id:'fixture-pay-leo-202610',staffId:'fixture-leo',month:'2026-10',reference:'Fixture hourly record',salaryType:'hourly',scheduledMinutes:480,actualMinutes:null,actualVerified:false,approvedLateMinutes:0,approvedOtMinutes:0,basePay:2560,approvedOtPay:0,approvedDeduction:null,netPay:null,status:'pending',visibleToTeacher:true,payslipGenerated:false}
+    ];
+    const events=[
+      {id:'fixture-clock-leo-1350',staffId:'fixture-leo',timestamp:'2026-10-15T13:50:00+08:00',label:'in',locationStatus:'normal',distanceMeters:100,photoAvailable:false,reason:''},
+      {id:'fixture-clock-leo-1800',staffId:'fixture-leo',timestamp:'2026-10-15T18:00:00+08:00',label:'in',locationStatus:'offsite',distanceMeters:150,photoAvailable:true,reason:'Covering an afternoon lesson at the other studio.'},
+      {id:'fixture-clock-leo-1830',staffId:'fixture-leo',timestamp:'2026-10-15T18:30:00+08:00',label:'out',locationStatus:'offsite',distanceMeters:150,photoAvailable:null,reason:'Lesson finished at the other studio.'}
+    ];
+    const content=document.querySelector('#fixture-content'),dialogHost=document.querySelector('#fixture-dialog'),toolbar=document.querySelector('#fixture-toolbar');
+    const choices={page:document.querySelector('#fixture-page'),role:document.querySelector('#fixture-role'),source:document.querySelector('#fixture-source'),language:document.querySelector('#fixture-language')};
+    let models={},opener=null;
+    const ctx=()=>({t:(zh,en)=>choices.language.value==='zh'?zh:en});
+    const mode=()=>choices.page.value;
+    const formFields=form=>form?Object.fromEntries(new FormData(form).entries()):{};
+    const remember=element=>({name:element?.name,command:element?.dataset?.uiCommand,id:element?.dataset?.uiId,start:element?.selectionStart,end:element?.selectionEnd});
+    function reset(){
+      const teacher=choices.role.value==='teacher',source=choices.source.value,ready=source==='records'||source==='empty';
+      const common={viewer:{id:teacher?'fixture-teacher':'fixture-admin',role:teacher?'teacher':'admin',teacherResourceIds:[teacher?'fixture-leo':'fixture-maya']},staff:structuredClone(staff),today:'2026-10-15',ready,loading:source==='loading',error:source==='error'?'PRIVATE_SOURCE_FAILURE <fixture diagnostic & internal details>':'',dialog:null};
+      models={payroll:{...structuredClone(common),rows:source==='records'?structuredClone(rows):[],month:'2026-10',teacherId:'',status:'all',query:''},attendance:{...structuredClone(common),events:source==='records'?structuredClone(events):[],from:'',to:'',teacherId:'',label:'',locationStatus:'',settingsReady:false,settings:{studioName:'',address:'',latitude:'',longitude:'',preClassMinutes:'',postClassMinutes:'',requirePhoto:null,requireReason:null}}};
+      opener=null;document.documentElement.lang=choices.language.value==='zh'?'zh-Hant':'en';draw();
+    }
+    function findControl(root,key){
+      return [...root.querySelectorAll('input:not(:disabled),select:not(:disabled),textarea:not(:disabled),button:not(:disabled)')].find(element=>key.name?element.name===key.name:element.dataset.uiCommand===key.command&&element.dataset.uiId===key.id);
+    }
+    function draw(){
+      const active=document.activeElement,key=remember(active),model=models[mode()],wasDialog=!!dialogHost.firstElementChild;
+      content.innerHTML=mode()==='payroll'?payrollPageMarkup(model,ctx()):attendancePageMarkup(model,ctx());
+      if(mode()==='payroll'&&choices.source.value==='records'){
+        const visible=model.viewer.role==='admin'?model.staff:model.staff.filter(member=>member.userId===model.viewer.id);
+        content.insertAdjacentHTML('beforeend',`<div class="fixture-profiles">${visible.map(member=>`<section><h2 class="fixture-person-name">${member.displayName}</h2>${salaryProfileMarkup(model,member,ctx())}</section>`).join('')}</div>`);
+      }
+      dialogHost.innerHTML=mode()==='payroll'?payrollDialogMarkup(model,ctx()):attendanceDialogMarkup(model,ctx());
+      const dialog=dialogHost.querySelector('.dialog');content.inert=!!dialog;toolbar.inert=!!dialog;document.body.style.overflow=dialog?'hidden':'';
+      if(dialog){const target=wasDialog?findControl(dialog,key):null;(target||dialog.querySelector('button:not(:disabled),input,select,textarea')||dialog).focus({preventScroll:true});}
+      else if(wasDialog&&opener){findControl(content,opener)?.focus({preventScroll:true});}
+      else if(active&&!active.isConnected){const target=findControl(content,key);target?.focus({preventScroll:true});if(target&&typeof key.start==='number'&&typeof target.setSelectionRange==='function')target.setSelectionRange(key.start,key.end);}
+    }
+    function dispatch(command,fields={},redraw=true){
+      models[mode()]=(mode()==='payroll'?advancePayrollUi:advanceAttendanceUi)(models[mode()],command,fields,ctx());if(redraw)draw();
+    }
+    document.addEventListener('click',event=>{
+      const target=event.target.closest('button[data-action="ui-payroll"],button[data-action="ui-attendance"]');if(!target||target.disabled||target.type==='submit')return;
+      event.preventDefault();if(!models[mode()].dialog)opener=remember(target);dispatch(target.dataset.uiCommand,{...formFields(target.closest('form')),id:target.dataset.uiId});
+    });
+    document.addEventListener('submit',event=>{
+      const form=event.target;if(!['ui-payroll-form','ui-attendance-form'].includes(form.id))return;event.preventDefault();dispatch(form.dataset.uiCommand,{...formFields(form),id:form.dataset.uiId});
+    });
+    document.addEventListener('input',event=>{
+      const target=event.target,command=target.dataset.uiCommand;if(!command||command==='payroll-salary-type')return;
+      if(command==='payroll-draft'||command==='attendance-draft')dispatch(command,formFields(target.closest('form')),false);
+      else if(command.endsWith('-filter')&&target.type==='search')dispatch(command,{[target.name]:target.value});
+    });
+    document.addEventListener('change',event=>{
+      const target=event.target;if(Object.values(choices).includes(target)){reset();return;}const command=target.dataset.uiCommand;if(!command)return;
+      if(command==='payroll-salary-type')dispatch(command,{...formFields(target.closest('form')),value:target.value});
+      else if(command.endsWith('-filter'))dispatch(command,{[target.name]:target.value});
+      else if(command==='payroll-draft'||command==='attendance-draft')dispatch(command,formFields(target.closest('form')),false);
+    });
+    document.addEventListener('keydown',event=>{
+      const dialog=dialogHost.querySelector('.dialog');if(!dialog)return;
+      if(event.key==='Escape'){event.preventDefault();dispatch(mode()==='payroll'?'payroll-cancel':'attendance-cancel');}
+      if(event.key==='Tab'){const controls=[...dialog.querySelectorAll('button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled)')];const first=controls[0],last=controls.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}}
+    });
+    document.addEventListener('DOMContentLoaded',reset,{once:true});
+  </script>
+</body>
+</html>

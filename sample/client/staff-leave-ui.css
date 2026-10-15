@@ -1,0 +1,60 @@
+.staff-leave-page,.staff-leave-dialog{--leave-ink:var(--staff-ink,#284940);--leave-muted:var(--staff-muted,#67786d);--leave-teal:var(--staff-teal,#1d7476);--leave-line:var(--staff-line,#d6ddd1);--leave-paper:var(--staff-paper,#fffef8);color:var(--leave-ink);min-width:0}
+.staff-leave-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:24px 28px;border-bottom:1px solid var(--leave-line)}
+.staff-leave-heading h1,.staff-leave-heading h2{margin:0;font-size:28px;line-height:1.4}
+.staff-leave-body{padding:24px 28px;min-width:0}
+.staff-leave-embedded .staff-leave-heading{padding:0 0 20px;margin-bottom:20px}
+.staff-leave-embedded .staff-leave-heading h2{font-size:20px}
+.staff-leave-embedded .staff-leave-body{padding:0}
+.staff-leave-button{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;max-width:100%;padding:10px 16px;border:1px solid var(--leave-teal);border-radius:6px;background:var(--leave-teal);color:white;font:inherit;font-size:14px;line-height:1.5;cursor:pointer;overflow-wrap:anywhere}
+.staff-leave-secondary{background:var(--leave-paper);color:var(--leave-teal);border-color:#bacdc3}
+.staff-leave-button:hover{filter:brightness(.95)}
+.staff-leave-button:disabled,.staff-leave-button:disabled:hover{background:#eef0e9;color:var(--leave-muted);border-color:var(--leave-line);filter:none;cursor:not-allowed}
+.staff-leave-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:16px;margin:0 0 24px;align-items:end}
+.staff-leave-field{display:grid;gap:8px;min-width:0;font-size:13px;margin:0}
+.staff-leave-field>span{color:var(--leave-muted);line-height:1.6}
+.staff-leave-field input,.staff-leave-field select,.staff-leave-field textarea{display:block;width:100%;min-width:0;min-height:44px;padding:10px 12px;border:1px solid #b8c9bd;border-radius:6px;background:white;color:var(--leave-ink);font:inherit;font-size:14px}
+.staff-leave-field textarea{resize:vertical;line-height:1.8}
+.staff-leave-button:focus-visible,.staff-leave-field input:focus-visible,.staff-leave-field select:focus-visible,.staff-leave-field textarea:focus-visible,.staff-leave-table-wrap:focus-visible{outline:3px solid #b79b45;outline-offset:3px}
+.staff-leave-read,.staff-leave-error{padding:16px;margin:0 0 20px;border:1px solid var(--leave-line);border-radius:7px;background:#edf2e8;font-size:14px;line-height:1.8;overflow-wrap:anywhere}
+.staff-leave-error{background:#fbebe3;color:#963e30;border-color:#e7c7b4}
+.staff-leave-table-wrap{width:100%;max-width:100%;overflow-x:auto;border:1px solid var(--leave-line);border-radius:8px;background:var(--leave-paper);scrollbar-width:thin}
+.staff-leave-table{width:100%;min-width:960px;border-collapse:collapse;text-align:left}
+.staff-leave-table th,.staff-leave-table td{padding:14px 16px;vertical-align:top;border-bottom:1px solid var(--leave-line);font-size:13px;line-height:1.7}
+.staff-leave-table th{font-size:12px;font-weight:600;background:#eef2e8;color:var(--leave-muted);white-space:nowrap}
+.staff-leave-table td:not(:first-child){white-space:nowrap}
+.staff-leave-table tr:last-child td{border-bottom:0}
+.staff-leave-table td:first-child{min-width:180px}
+.staff-leave-table td:first-child button{padding:0;min-height:44px;background:transparent;border:0;color:var(--leave-teal);text-align:left;justify-content:flex-start}
+.staff-leave-table td.staff-leave-empty{padding:32px 20px;white-space:normal;color:var(--leave-muted);text-align:left}
+.staff-leave-empty>.staff-leave-read{margin:0;text-align:left}
+.staff-leave-balances{margin:0 0 24px}
+.staff-leave-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px;margin:0}
+.staff-leave-facts>div{min-width:0;padding:16px 0;border-bottom:1px solid var(--leave-line)}
+.staff-leave-facts dt{font-size:12px;line-height:1.7;color:var(--leave-muted);margin-bottom:8px}
+.staff-leave-facts dd{margin:0;font-size:14px;line-height:1.8;white-space:pre-wrap;overflow-wrap:anywhere}
+.staff-leave-person{font-size:18px;font-weight:600;line-height:1.7;margin:0 0 24px;overflow-wrap:anywhere}
+.staff-leave-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;margin:20px 0}
+.staff-leave-note{font-size:13px;line-height:1.8;color:var(--leave-muted);margin:20px 0;overflow-wrap:anywhere}
+.staff-leave-affected{margin:28px 0;min-width:0}
+.staff-leave-affected h3{font-size:18px;margin:0 0 20px;line-height:1.5}
+.staff-leave-sessions{display:grid;gap:12px;margin:0;padding:0;list-style:none}
+.staff-leave-sessions>li{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:16px;border:1px solid var(--leave-line);border-radius:8px;background:#f5f7ef;min-width:0}
+.staff-leave-sessions>li>div{min-width:0}
+.staff-leave-sessions h4{font-size:15px;margin:0 0 8px;line-height:1.6;overflow-wrap:anywhere}
+.staff-leave-sessions p{font-size:13px;color:var(--leave-muted);margin:6px 0;line-height:1.7;overflow-wrap:anywhere}
+.staff-leave-sessions button{flex-shrink:0}
+.staff-leave-dialog{display:flex;flex-direction:column;width:min(900px,100%);max-height:calc(100dvh - 48px);min-height:0;min-width:0;margin:auto;padding:0;overflow:hidden;background:var(--leave-paper);border-radius:10px;box-shadow:0 24px 80px #14282433}
+.staff-leave-dialog>header{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:24px;border-bottom:1px solid var(--leave-line);flex:0 0 auto}
+.staff-leave-dialog>header h2{font-size:22px;line-height:1.5;margin:0}
+.staff-leave-dialog>header>button{font-size:24px;padding:8px;border:0;flex-shrink:0}
+.staff-leave-dialog>form{display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.staff-leave-dialog .ui-staff-dialog-body{padding:24px;min-height:0;overflow:auto;overscroll-behavior:contain;flex:1}
+.staff-leave-dialog footer{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:10px;padding:16px 24px;flex:0 0 auto;border-top:1px solid var(--leave-line);background:var(--leave-paper)}
+@media(max-width:680px){
+  .staff-leave-heading{padding:20px 16px;align-items:flex-start;flex-wrap:wrap}.staff-leave-heading h1{font-size:25px}.staff-leave-body{padding:20px 16px}
+  .staff-leave-filters,.staff-leave-facts,.staff-leave-form-grid{grid-template-columns:minmax(0,1fr)}
+  .staff-leave-dialog{max-height:calc(100dvh - 24px);border-radius:8px}.staff-leave-dialog>header{padding:20px 16px}.staff-leave-dialog>header h2{font-size:20px}
+  .staff-leave-dialog .ui-staff-dialog-body{padding:20px 16px}.staff-leave-dialog footer{padding:16px}.staff-leave-dialog footer>button{flex:1}
+  .staff-leave-sessions>li{flex-direction:column}.staff-leave-sessions button{width:100%}.staff-leave-read{padding:12px}.staff-leave-table td.staff-leave-empty{padding:20px 16px}
+}
+.staff-leave-table td:last-child{white-space:pre-line;min-width:130px}

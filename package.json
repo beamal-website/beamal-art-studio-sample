@@ -1,0 +1,11 @@
+{
+  "name": "beamal-local-demo",
+  "private": true,
+  "type": "module",
+  "engines": {"node": ">=22.13.0"},
+  "scripts": {
+    "start": "node scripts/start-local.mjs --open",
+    "test": "npm test --prefix sample",
+    "build": "npm run build --prefix sample"
+  }
+}

@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Beamal — Staff leave UI test fixture</title>
+  <link rel="stylesheet" href="../../style.css">
+  <link rel="stylesheet" href="../../client/staff-portal-ui.css">
+  <link rel="stylesheet" href="../../client/staff-leave-ui.css">
+  <style>
+    .fixture-toolbar{display:flex;gap:16px;align-items:end;flex-wrap:wrap;padding:36px 24px 20px;border-bottom:1px solid #c9d5ca;background:#eef2e8}.fixture-toolbar>strong{align-self:center;margin-right:auto;color:#284940}.fixture-toolbar>label{display:grid;gap:6px;min-width:140px;font-size:12px;color:#526a60}.fixture-toolbar select{min-height:44px;font-size:14px}.fixture-badge{position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:70;max-width:calc(100% - 16px);padding:4px 10px;border:1px solid #c4ad61;border-radius:0 0 4px 4px;background:#fff3bf;color:#4e451e;font-size:10px;line-height:1.4;text-align:center;pointer-events:none}.fixture-page{width:calc(100% - 48px);max-width:1360px;margin:24px auto 40px;min-width:0;border:1px solid #d6ddd1;border-radius:8px;background:#fffdf8;overflow:hidden}@media(max-width:680px){.fixture-toolbar{padding:40px 16px 16px;gap:12px}.fixture-toolbar>strong{flex-basis:100%;margin:0}.fixture-toolbar>label{flex:1;min-width:130px}.fixture-page{width:calc(100% - 24px);margin-top:16px}}
+  </style>
+</head>
+<body>
+  <div id="fixture-toolbar" class="fixture-toolbar" role="group" aria-label="UI test fixture controls">
+    <strong>UI test fixture · Staff leave</strong>
+    <label>Viewer and page<select id="fixture-mode"><option value="admin">Admin · All staff</option><option value="teacher">Teacher · Leo only</option><option value="profile">Admin · Leo profile</option></select></label>
+    <label>Source state<select id="fixture-source"><option value="records">Records</option><option value="unavailable">Unavailable</option><option value="error">Error</option><option value="loading">Loading</option><option value="empty">Empty</option></select></label>
+    <label>Language<select id="fixture-language"><option value="en">English</option><option value="zh">繁體中文</option></select></label>
+  </div>
+  <main id="fixture-content" class="fixture-page"></main>
+  <div id="fixture-dialog"></div>
+  <span class="fixture-badge">UI test fixture · fictional records · no saving or assignment</span>
+  <script type="module">
+    import {leavePageMarkup,leaveDialogMarkup,advanceLeaveUi} from '../../client/staff-leave-ui.js';
+    const staff=[
+      {id:'fixture-maya',userId:'fixture-admin',displayName:'Maya Lam',color:'#27777b',active:true,substituteEligible:true},
+      {id:'fixture-leo',userId:'fixture-teacher',displayName:'Leo Chan',color:'#b88735',active:true,substituteEligible:true},
+      {id:'fixture-ava',userId:'fixture-ava-user',displayName:'Ava Hui',color:'#6d7c95',active:true,substituteEligible:true}
+    ];
+    // IDs, balances, dates, enrollment counts and approval snapshots are fictional source data.
+    const rows=[
+      {id:'fixture-leave-leo-pending',staffId:'fixture-leo',type:'sick',from:'2026-10-23',to:'2026-10-23',source:'teacher',status:'pending',reason:'Rest and recovery.',affectedSessionIds:[]},
+      {id:'fixture-leave-leo-approved',staffId:'fixture-leo',type:'annual',from:'2026-10-16',to:'2026-10-16',source:'admin',status:'approved',reason:'A planned family appointment.',reviewedBy:{id:'fixture-admin',displayName:'Maya Lam'},reviewedAt:'2026-10-14T10:15:00+08:00',affectedSessionIds:['fixture-session-creative','fixture-session-trial','fixture-session-other-teacher','fixture-session-not-found','']},
+      {id:'fixture-leave-maya-rejected',staffId:'fixture-maya',type:'personal',from:'2026-10-18',to:'2026-10-18',source:'teacher',status:'rejected',reason:'Personal appointment.',reviewNote:'The requested date was not approved.'},
+      {id:'fixture-leave-orphan',staffId:'fixture-missing-staff',type:'sick',from:'2026-10-16',to:'2026-10-16',source:'teacher',status:'approved',reason:'ORPHAN PRIVATE RECORD MUST NOT APPEAR'}
+    ];
+    const sessions=[
+      {id:'fixture-session-creative',staffId:'fixture-leo',originalStaffId:'fixture-leo',date:'2026-10-16',start:'13:30',end:'14:30',courseName:'Creative drawing',roomName:'Studio A',capacity:8,enrolled:8},
+      {id:'fixture-session-trial',staffId:'fixture-leo',originalStaffId:'fixture-leo',date:'2026-10-16',start:'15:00',end:'15:30',courseName:'Watercolour trial',roomName:'Studio B',capacity:2,enrolled:1},
+      {id:'fixture-session-other-date',staffId:'fixture-leo',date:'2026-10-17',start:'10:00',end:'11:00',courseName:'Unrelated next-day class',roomName:'Studio A',capacity:8,enrolled:4},
+      {id:'fixture-session-other-teacher',staffId:'fixture-ava',date:'2026-10-16',start:'13:30',end:'14:30',courseName:'Another teacher’s session',roomName:'Studio C',capacity:6,enrolled:5},
+      {staffId:'fixture-leo',date:'2026-10-16',start:'16:00',end:'17:00',courseName:'Session without a stable ID',roomName:'Studio B',capacity:8,enrolled:3}
+    ];
+    const balances={'fixture-leo':{annual:{value:0,unit:'days'},compensation:{value:null,unit:'days'}},'fixture-maya':{annual:{value:12,unit:'days'},compensation:{value:2,unit:'days'}},'fixture-ava':{annual:{value:8,unit:'hours'},compensation:{value:2,unit:'hours'}}};
+    const content=document.querySelector('#fixture-content'),dialogHost=document.querySelector('#fixture-dialog'),toolbar=document.querySelector('#fixture-toolbar');
+    const choices={mode:document.querySelector('#fixture-mode'),source:document.querySelector('#fixture-source'),language:document.querySelector('#fixture-language')};
+    let model={},opener=null;
+    const ctx=()=>({t:(zh,en)=>choices.language.value==='zh'?zh:en});
+    const fieldsOf=form=>form?Object.fromEntries(new FormData(form).entries()):{};
+    const remember=element=>({name:element?.name,command:element?.dataset?.uiCommand,id:element?.dataset?.uiId,start:element?.selectionStart,end:element?.selectionEnd});
+    function reset(){
+      const teacher=choices.mode.value==='teacher',source=choices.source.value,known=source==='records'||source==='empty';
+      model={viewer:{id:teacher?'fixture-teacher':'fixture-admin',role:teacher?'teacher':'admin',teacherResourceIds:[teacher?'fixture-leo':'fixture-maya']},staff:structuredClone(staff),rows:source==='records'?structuredClone(rows):[],ready:known,loading:source==='loading',error:source==='error'?'PRIVATE_SOURCE_FAILURE <fixture diagnostic & internal details>':'',today:'2026-10-15',from:'',to:'',teacherId:'',status:'all',query:'',balances:source==='records'?structuredClone(balances):{},sessions:source==='records'?structuredClone(sessions):[],sessionsReady:known,profileStaffId:choices.mode.value==='profile'?'fixture-leo':'',dialog:null};
+      opener=null;document.documentElement.lang=choices.language.value==='zh'?'zh-Hant':'en';draw();
+    }
+    function findControl(root,key){return [...root.querySelectorAll('input:not(:disabled),select:not(:disabled),textarea:not(:disabled),button:not(:disabled)')].find(element=>key.name?element.name===key.name:element.dataset.uiCommand===key.command&&element.dataset.uiId===key.id);}
+    function draw(){
+      const active=document.activeElement,key=remember(active),wasDialog=!!dialogHost.firstElementChild;
+      content.innerHTML=leavePageMarkup(model,ctx());dialogHost.innerHTML=leaveDialogMarkup(model,ctx());
+      const dialog=dialogHost.querySelector('.dialog');content.inert=!!dialog;toolbar.inert=!!dialog;document.body.style.overflow=dialog?'hidden':'';
+      if(dialog){const target=wasDialog?findControl(dialog,key):null;(target||dialog.querySelector('button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled)')||dialog).focus({preventScroll:true});}
+      else if(wasDialog&&opener)findControl(content,opener)?.focus({preventScroll:true});
+      else if(active&&!active.isConnected){const target=findControl(content,key);target?.focus({preventScroll:true});if(target&&typeof key.start==='number'&&typeof target.setSelectionRange==='function')target.setSelectionRange(key.start,key.end);}
+    }
+    function dispatch(command,fields={},redraw=true){model=advanceLeaveUi(model,command,fields,ctx());if(redraw)draw();}
+    document.addEventListener('click',event=>{
+      const target=event.target.closest('button[data-action="ui-leave"]');if(!target||target.disabled||target.type==='submit')return;
+      event.preventDefault();if(!model.dialog)opener=remember(target);
+      dispatch(target.dataset.uiCommand,{...fieldsOf(target.closest('form')),id:target.dataset.uiId,...(target.dataset.uiStaffId?{staffId:target.dataset.uiStaffId}:{}),...(target.dataset.uiRecordId?{recordId:target.dataset.uiRecordId}:{}),...(target.dataset.uiSessionId?{sessionId:target.dataset.uiSessionId}:{})});
+    });
+    document.addEventListener('submit',event=>{
+      const form=event.target;if(form.id!=='ui-leave-form')return;event.preventDefault();dispatch(form.dataset.uiCommand,{...fieldsOf(form),id:form.dataset.uiId});
+    });
+    document.addEventListener('input',event=>{
+      const target=event.target,command=target.dataset.uiCommand;if(command==='leave-draft')dispatch(command,fieldsOf(target.closest('form')),false);
+      else if(command==='leave-filter'&&target.type==='search')dispatch(command,{[target.name]:target.value});
+    });
+    document.addEventListener('change',event=>{
+      const target=event.target;if(Object.values(choices).includes(target)){reset();return;}
+      if(target.dataset.uiCommand==='leave-filter')dispatch('leave-filter',{[target.name]:target.value});
+      else if(target.dataset.uiCommand==='leave-draft')dispatch('leave-draft',fieldsOf(target.closest('form')),target.tagName==='SELECT');
+    });
+    document.addEventListener('keydown',event=>{
+      const dialog=dialogHost.querySelector('.dialog');if(!dialog)return;
+      if(event.key==='Escape'){event.preventDefault();dispatch('leave-cancel');}
+      if(event.key==='Tab'){const controls=[...dialog.querySelectorAll('button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled)')],first=controls[0],last=controls.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}}
+    });
+    document.addEventListener('DOMContentLoaded',reset,{once:true});
+  </script>
+</body>
+</html>

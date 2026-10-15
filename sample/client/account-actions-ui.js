@@ -1,6 +1,8 @@
 // Interface drafts only. No account activation, API, browser storage, delivery or
 // enrollment happens here. Launch with {view,data:{student,courses,slots}} to keep
 // authorized facts in the same snapshot for rendering and command validation.
+// Shared profile launches pass shared:true and the exact student. Optional
+// accountLink:{studentId,userId} describes linkage only, never activation.
 const escape=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const views=new Set(['activation','family-enrolment','trial-application']);
 const objectRows=value=>Array.isArray(value)?value.filter(row=>row&&typeof row==='object'):[];
@@ -20,6 +22,7 @@ export function getAccountActionsData(){return {
 
 function factsFor(state={},ctx={}){
  const supplied=state.data||ctx.data||ctx.facts||(state.courses||state.slots?state:null)||(ctx.courses||ctx.slots?ctx:null);
+ if(state.shared===true||ctx.shared===true||supplied?.shared===true)return {shared:true,fictional:false,student:state.student||ctx.student||supplied?.student||{},courses:objectRows(supplied?.courses),slots:objectRows(supplied?.slots),accountLink:state.accountLink||ctx.accountLink||supplied?.accountLink||null};
  if(supplied)return {fictional:supplied.fictional===true,student:state.student||ctx.student||supplied.student||{},courses:objectRows(supplied.courses),slots:objectRows(supplied.slots)};
  return {...getAccountActionsData(),student:state.student||ctx.student||getAccountActionsData().student};
 }
@@ -29,11 +32,12 @@ export function advanceAccountActions(input={},command,fields={}){
  if(command==='launch'){
   const view=fields.view||input.view;if(!views.has(view))return null;
   const supplied=fields.data||(['courses','slots'].some(key=>Object.hasOwn(fields,key))?{courses:fields.courses,slots:fields.slots,student:fields.student,fictional:fields.fictional}:null);
-  const data=structuredClone(factsFor({data:supplied,student:fields.student||input.student}));
-  return {view,step:firstStep(view),data,draft:{...(fields.draft||{}),...(view==='trial-application'?{route:'trial'}:{})},error:''};
+  const shared=fields.shared===true||input.shared===true||supplied?.shared===true,data=structuredClone(factsFor({shared,data:supplied,student:fields.student||input.student,accountLink:fields.accountLink||input.accountLink}));
+  return {view,shared,step:firstStep(view),data,draft:{...(fields.draft||{}),...(view==='trial-application'?{route:'trial'}:{})},error:''};
  }
  if(!input||!views.has(input.view))return input;
  const state={...input,data:input.data||factsFor(input),draft:{...input.draft},error:''},step=currentStep(state);
+ if(state.data.shared&&state.view==='activation')return {...state,step:'details',error:'account-unavailable'};
  const course=state.data.courses.find(row=>String(row.id)===String(state.draft.courseId));
  const slot=state.data.slots.find(row=>String(row.id)===String(state.draft.slotId));
  if(command==='select-course'){
@@ -89,13 +93,18 @@ export function accountActionsMarkup(state={},ctx={}){
   'birth-date-invalid':t('請核對出生日期。','Check the date of birth.'),
   'whatsapp-invalid':t('請填寫有效的 WhatsApp 聯絡號碼。','Enter a valid WhatsApp contact number.'),
   'email-invalid':t('請核對電郵地址，或暫時留空。','Check the email address or leave it blank.'),
+  'account-unavailable':t('帳戶操作尚未接通，暫時不能啟用或重設密碼。','Account actions are not connected yet. Activation and password reset are unavailable.'),
  };
  const error=errors[state.error]||state.error||'';
  const course=data.courses.find(row=>String(row.id)===String(draft.courseId)),slot=data.slots.find(row=>String(row.id)===String(draft.slotId));
  const route=draft.route==='direct'?'Direct Enrollment':'Trial Class';
  let title=state.view==='activation'?t('帳戶啟用與密碼','Account activation and password'):state.view==='family-enrolment'?t('家庭成員報名','Family member enrollment'):t('申請試堂','Trial application'),body='',footer='';
  const summary=rows=>`<dl class="aa-summary">${rows.map(([key,value])=>`<div><dt>${key}</dt><dd>${esc(value||'—')}</dd></div>`).join('')}</dl>`;
- if(step==='complete'){
+ if(data.shared&&state.view==='activation'){
+  const link=data.accountLink,matching=!!student.id&&link?.studentId===student.id&&Object.hasOwn(link,'userId')&&(link.userId===null||typeof link.userId==='string'&&!!link.userId.trim()),status=matching?(link.userId?t('已連結登入帳戶','Login account linked'):t('未連結登入帳戶','No login account linked')):t('帳戶狀態未能確認','Account status could not be confirmed');
+  body=summary([[t('學生','Student'),student.displayName||student.name],[t('聯絡電郵','Contact email'),student.email],[t('帳戶狀態','Account status'),status]])+`<p id="aa-account-unavailable" class="aa-note">${errors['account-unavailable']} ${t('帳戶連結與啟用狀態分開處理，不會顯示或改動密碼。','Account linkage and activation are separate. Passwords are never shown or changed here.')}</p>`;
+  footer=button('close',t('關閉','Close'))+button('next',t('啟用帳戶','Activate Account'),'data-ui-value="activate" disabled aria-describedby="aa-account-unavailable"',true)+button('next',t('重設密碼','Reset Password'),'data-ui-value="reset-password" disabled aria-describedby="aa-account-unavailable"');
+ }else if(step==='complete'){
   const message=state.view==='activation'?t('沒有寄出電郵，帳戶狀態及密碼沒有改動。','No email was sent. Account access and passwords have not changed.'):t('沒有提交申請、建立訂單或預留名額。','No application was submitted. No order or seat reservation was created.');
   body=`<section class="aa-complete"><span aria-hidden="true">✓</span><h3>${t('已完成本次預覽','This preview is complete')}</h3><p>${message}</p></section>`;
   footer=button('back',t('返回核對','Back to review'))+button('close',t('完成','Done'),'',true);
@@ -113,7 +122,7 @@ export function accountActionsMarkup(state={},ctx={}){
   body=form(`<h3>${t('選擇報名方式','Choose an enrollment route')}</h3><div class="aa-route-options">${[['trial','Trial Class','先申請試堂，再由老師跟進。','Request a trial before the teacher follows up.'],['direct','Direct Enrollment','直接選擇課程及課節，再核對資料。','Choose a course and lesson before reviewing details.']].map(([id,text,zh,en])=>`<label class="aa-route"><input type="radio" name="route" value="${id}" ${(draft.route||'trial')===id?'checked':''}><span><strong>${text}</strong><small>${t(zh,en)}</small></span></label>`).join('')}</div>`);
   footer=button('close',t('取消','Cancel'))+submit(t('下一步：選課','Next: choose a course'));
  }else if(step==='selection'){
-  body=`<div class="aa-selection-heading"><h3>${t('選擇課程','Choose a course')}</h3><span>${route}</span></div><div class="aa-courses">${data.courses.map(row=>button('select-course',esc(label(row,t)),`data-ui-id="${esc(row.id)}" aria-pressed="${String(row.id)===String(draft.courseId)}"`)).join('')||`<p class="aa-empty">${t('暫未有可選課程。','No courses are available.')}</p>`}</div><h3>${t('選擇課節','Choose a lesson time')}</h3><div class="aa-slots">${!course?`<p class="aa-empty">${t('選擇課程後，會在這裡顯示可選課節。','Choose a course to see its lesson times.')}</p>`:data.slots.filter(row=>forCourse(row,course.id)).map(row=>`<article class="aa-slot ${String(row.id)===String(draft.slotId)?'is-selected':''}"><div><strong>${esc(row.date||'—')} · ${esc(row.time||'—')}</strong><p>${esc(row.duration||'—')} ${t('分鐘','min')}${row.teacher?' · '+esc(row.teacher):''}</p><small>${available(row)?esc(row.available)+' '+t('個可選名額','places available'):t('未能選擇／已滿','Unavailable / full')}</small></div>${button('select-slot',available(row)?String(row.id)===String(draft.slotId)?t('已選擇','Selected'):t('選擇','Choose'):t('已滿／未提供','Full / unavailable'),`data-ui-id="${esc(row.id)}" aria-pressed="${String(row.id)===String(draft.slotId)}" ${available(row)?'':'disabled'}`)}</article>`).join('')||`<p class="aa-empty">${t('暫未有可選課節。','No lesson times are available.')}</p>`}</div>`;
+  body=`<div class="aa-selection-heading"><h3>${t('選擇課程','Choose a course')}</h3><span>${route}</span></div><div class="aa-courses">${data.courses.map(row=>button('select-course',esc(label(row,t)),`data-ui-id="${esc(row.id)}" aria-pressed="${String(row.id)===String(draft.courseId)}"`)).join('')||`<p class="aa-empty">${data.shared?t('課程資料尚未接通，請稍後再試。','Course details are not connected yet. Please try again later.'):t('暫未有可選課程。','No courses are available.')}</p>`}</div><h3>${t('選擇課節','Choose a lesson time')}</h3><div class="aa-slots">${!course?`<p class="aa-empty">${t('選擇課程後，會在這裡顯示可選課節。','Choose a course to see its lesson times.')}</p>`:data.slots.filter(row=>forCourse(row,course.id)).map(row=>`<article class="aa-slot ${String(row.id)===String(draft.slotId)?'is-selected':''}"><div><strong>${esc(row.date||'—')} · ${esc(row.time||'—')}</strong><p>${esc(row.duration||'—')} ${t('分鐘','min')}${row.teacher?' · '+esc(row.teacher):''}</p><small>${available(row)?esc(row.available)+' '+t('個可選名額','places available'):t('未能選擇／已滿','Unavailable / full')}</small></div>${button('select-slot',available(row)?String(row.id)===String(draft.slotId)?t('已選擇','Selected'):t('選擇','Choose'):t('已滿／未提供','Full / unavailable'),`data-ui-id="${esc(row.id)}" aria-pressed="${String(row.id)===String(draft.slotId)}" ${available(row)?'':'disabled'}`)}</article>`).join('')||`<p class="aa-empty">${data.shared?t('課節資料尚未接通，請稍後再試。','Lesson times are not connected yet. Please try again later.'):t('暫未有可選課節。','No lesson times are available.')}</p>`}</div>`;
   footer=button(state.view==='family-enrolment'?'back':'close',t('返回','Back'))+button('next',t('下一步：填寫資料','Next: student details'),'',true);
  }else if(step==='details'){
   body=`<p class="aa-selection-summary">${esc(course?label(course,t):'')} · ${esc(slot?.date||'')} ${esc(slot?.time||'')}</p>`+form(`<div class="aa-fields-two">${field(t('學生姓名','Student name'),'displayName',draft.displayName??(state.view==='trial-application'?student.displayName||student.name||'':''),'required maxlength="120" autocomplete="name"')}${field(t('出生日期（選填）','Date of birth (optional)'),'dateOfBirth',draft.dateOfBirth??(state.view==='trial-application'?student.dateOfBirth||'':''),'type="date"')}${field(t('家長姓名','Parent name'),'parentName',draft.parentName||'','required maxlength="120" autocomplete="name"')}${field(t('WhatsApp 聯絡號碼','WhatsApp contact number'),'whatsapp',draft.whatsapp||'','type="tel" required maxlength="24" autocomplete="tel"')}${field(t('電郵（選填）','Email (optional)'),'email',draft.email||'','type="email" maxlength="200" autocomplete="email"')}${field(t('學校（選填）','School (optional)'),'school',draft.school||'','maxlength="200"')}${field(t('介紹人／得知途徑（選填）','Referrer / source (optional)'),'referrer',draft.referrer||'','maxlength="200"')}</div><label class="aa-field"><span>${t('補充內容（選填）','Additional details (optional)')}</span><textarea name="remark" rows="3" maxlength="1000">${esc(draft.remark||'')}</textarea></label>`);
@@ -122,5 +131,5 @@ export function accountActionsMarkup(state={},ctx={}){
   body=`<h3>${t('核對資料','Review details')}</h3>`+summary([[t('報名方式','Enrollment route'),route],[t('課程','Course'),course?label(course,t):''],[t('課節','Lesson time'),slot?`${slot.date} · ${slot.time}`:''],[t('學生','Student'),draft.displayName],[t('出生日期','Date of birth'),draft.dateOfBirth],[t('家長','Parent'),draft.parentName],[t('WhatsApp','WhatsApp'),draft.whatsapp],[t('電郵','Email'),draft.email],[t('學校','School'),draft.school],[t('介紹人／得知途徑','Referrer / source'),draft.referrer],[t('補充內容','Additional details'),draft.remark]])+`<p class="aa-note">${t('請核對內容。這一步只展示確認流程，沒有提交、收款或預留名額。','Review the details. This confirms the interface flow only; nothing is submitted, paid or reserved.')}</p>`;
   footer=button('back',t('返回修改','Back to edit'))+button('complete',t('確認預覽','Confirm preview'),'',true);
  }
- return `<div class="modal aa-modal" role="dialog" aria-modal="true" aria-labelledby="aa-title" aria-describedby="aa-preview-note"><div class="dialog aa-dialog" tabindex="-1"><header class="aa-header"><div><small>${t('介面預覽','Interface preview')}</small><h2 id="aa-title">${title}</h2></div>${button('close','×',`aria-label="${t('關閉','Close')}"`)}</header><div class="aa-body"><p id="aa-preview-note" class="aa-preview-note">${data.fictional?`<strong>${t('虛構示例','Fictional example')}</strong>`:''}<span>${t('只檢視畫面及流程，不會改動帳戶或提交申請。','Review the screen and flow only. No account changes or applications are submitted.')}</span></p>${body}${error?`<p class="aa-error" role="alert">${esc(error)}</p>`:''}</div><footer class="aa-footer">${footer}</footer></div></div>`;
+ return `<div class="modal aa-modal" role="dialog" aria-modal="true" aria-labelledby="aa-title" aria-describedby="${data.shared&&state.view==='activation'?'aa-account-unavailable':'aa-preview-note'}"><div class="dialog aa-dialog" tabindex="-1"><header class="aa-header"><div>${data.shared?'':`<small>${t('介面預覽','Interface preview')}</small>`}<h2 id="aa-title">${title}</h2></div>${button('close','×',`aria-label="${t('關閉','Close')}"`)}</header><div class="aa-body">${data.shared?'':`<p id="aa-preview-note" class="aa-preview-note">${data.fictional?`<strong>${t('虛構示例','Fictional example')}</strong>`:''}<span>${t('只檢視畫面及流程，不會改動帳戶或提交申請。','Review the screen and flow only. No account changes or applications are submitted.')}</span></p>`}${data.shared&&state.view!=='activation'?`<p id="aa-preview-note" class="aa-note">${t('申請操作尚未接通，這裡不會提交申請或預留名額。','Applications are not connected yet. Nothing is submitted or reserved here.')}</p>`:''}${body}${error?`<p class="aa-error" role="alert">${esc(error)}</p>`:''}</div><footer class="aa-footer">${footer}</footer></div></div>`;
 }

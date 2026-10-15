@@ -324,6 +324,10 @@
 .course-lifecycle-dialog .create-course-body{line-height:1.75}
 .course-lifecycle-dialog .create-course-body strong{overflow-wrap:anywhere}
 .create-course-footer .course-delete-button{margin-right:auto;color:#a03e30}
+.fee-pricing-dialog{width:min(760px,100%)}
+.fee-pricing-dialog h2,.fee-pricing-dialog h3,.fee-pricing-dialog li{min-width:0;overflow-wrap:anywhere}
+.fee-pricing-dialog .create-course-footer button:disabled{cursor:not-allowed}
+@media(max-width:600px){.fee-pricing-dialog .course-form-two{grid-template-columns:minmax(0,1fr);gap:28px}}
 .course-delete-confirm{background:#a03e30;border-color:#a03e30}
 .course-delete-confirm:hover{background:#873326}
 @media(max-width:600px){.course-lifecycle-modal{padding:8px}.course-lifecycle-dialog{width:calc(100vw - 24px);max-height:calc(100dvh - 16px)}.course-lifecycle-dialog .create-course-header{padding:18px}.course-lifecycle-dialog .create-course-header h2{font-size:1.25rem}.course-lifecycle-dialog .create-course-body{padding:18px}.course-lifecycle-dialog .create-course-footer{padding:14px 18px}}
@@ -947,24 +951,28 @@
 .enrollment-order-status{display:inline-flex;align-items:center;flex-wrap:wrap;gap:6px 12px;max-width:100%;margin:12px 0;padding:5px 10px;border-radius:4px;background:#e9eee5;color:#255c5e;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
 .enrollment-order-actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:18px}
 .enrollment-orders-page button,.enrollment-order-dialog button{min-height:44px;max-width:100%;white-space:normal;line-height:1.5}
-.enrollment-order-dialog{width:min(860px,calc(100vw - 32px));max-height:calc(100dvh - 32px);padding:0;overflow:auto;border-radius:8px}
+.enrollment-order-modal{padding:16px;grid-template-columns:minmax(0,1fr)}
+.enrollment-order-dialog{justify-self:center;display:flex;flex-direction:column;width:min(860px,100%);min-width:0;min-height:0;max-height:calc(100dvh - 32px);padding:0;overflow:hidden;border-radius:8px}
 .enrollment-order-dialog>header,.enrollment-order-dialog>footer,.enrollment-order-form>footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:20px 24px}
-.enrollment-order-dialog>header{border-bottom:1px solid #d9ddd2}
-.enrollment-order-dialog>header h2{margin:0;font-size:23px;line-height:1.5}
+.enrollment-order-dialog>header{flex:none;border-bottom:1px solid #d9ddd2}
+.enrollment-order-dialog>header h2{flex:1;min-width:0;margin:0;font-size:23px;line-height:1.5;overflow-wrap:anywhere}
 .enrollment-order-dialog>header button{flex:none;width:44px;padding:0;font-size:26px}
-.enrollment-order-dialog>footer,.enrollment-order-form>footer{border-top:1px solid #d9ddd2;justify-content:flex-end}
-.enrollment-order-form{min-width:0;margin:0}
-.enrollment-order-form>fieldset{min-width:0;margin:0;padding:0;border:0}
-.enrollment-order-form>fieldset>p{margin:0;padding:0 24px 20px;line-height:1.8}
+.enrollment-order-dialog>footer,.enrollment-order-form>footer{flex:none;margin:0;border-top:1px solid #d9ddd2;justify-content:flex-end}
+.enrollment-order-form{display:flex;flex:1 1 auto;flex-direction:column;min-width:0;min-height:0;margin:0;overflow:hidden}
+.enrollment-order-body{flex:1 1 auto;min-width:0;min-height:0;overflow:auto;overscroll-behavior:contain}
+.enrollment-order-body>fieldset{min-width:0;margin:0;padding:0;border:0}
+.enrollment-order-body>fieldset>p{margin:0;padding:0 24px 20px;line-height:1.8}
+.enrollment-order-body>fieldset>.enrollment-order-flow{padding:20px 24px 0}
 .enrollment-orders-body>.enrollment-order-flow{padding:0;margin:0 0 24px}
 .enrollment-order-fields,.enrollment-order-summary,.enrollment-order-response,.enrollment-order-flow{min-width:0;padding:20px 24px}
 .enrollment-order-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
 .enrollment-order-fields label,.enrollment-order-response label,.student-account-link-row label{display:flex;flex-direction:column;gap:8px;min-width:0;font-size:14px;line-height:1.6}
 .enrollment-order-fields input,.enrollment-order-fields select,.enrollment-order-response textarea,.student-account-link-row select{width:100%;min-width:0;min-height:44px;margin:0}
 .enrollment-order-lessons{margin:0 24px 20px;padding:16px 20px;border:1px solid #d9ddd2;border-radius:4px;min-width:0;max-height:300px;overflow:auto;line-height:1.7}
+.enrollment-order-dialog .enrollment-order-lessons{max-height:none;overflow:visible}
 .enrollment-order-lessons label{display:flex;align-items:flex-start;gap:10px;margin:10px 0;overflow-wrap:anywhere}
 .enrollment-order-lessons input[type=checkbox],.enrollment-order-lessons input[type=radio]{flex:none;width:20px;height:20px;margin:3px 0 0}
-.enrollment-order-summary{background:#f1f3ea;line-height:1.8;overflow-wrap:anywhere}
+.enrollment-order-summary{min-height:0;overflow:auto;overscroll-behavior:contain;background:#f1f3ea;line-height:1.8;overflow-wrap:anywhere}
 .enrollment-order-summary dl{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 20px;margin:0}
 .enrollment-order-summary dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}
 .enrollment-order-summary .enrollment-order-lessons{margin:14px 0 20px;background:#fffdf8}
@@ -980,8 +988,8 @@
 .shared-student-lesson h3{margin:0 0 12px;font-size:18px;line-height:1.5}
 .shared-student-lesson p{margin:6px 0;color:#526a60;line-height:1.7}
 .enrollment-order-dialog :focus-visible,.enrollment-orders-page :focus-visible{outline:2px solid var(--teal);outline-offset:3px}
-@media(max-width:600px){.enrollment-orders-body,.shared-student-classes{padding:20px 16px}.enrollment-order-card,.shared-student-lesson{padding:16px}.enrollment-order-dialog{width:calc(100vw - 24px);max-height:calc(100dvh - 24px)}.enrollment-order-dialog>header,.enrollment-order-dialog>footer,.enrollment-order-form>footer,.enrollment-order-fields,.enrollment-order-summary,.enrollment-order-response,.enrollment-order-flow{padding:16px}.enrollment-order-fields,.student-account-link-row{grid-template-columns:minmax(0,1fr)}.enrollment-order-lessons{margin:0 16px 16px;padding:12px 16px}.enrollment-order-actions>button{flex:1 1 140px}.student-account-link-row button{justify-self:start}.enrollment-order-dialog>header h2{font-size:20px}}
-@media(max-width:600px){.enrollment-order-form>fieldset>p{padding:0 16px 16px}.enrollment-orders-body>.enrollment-order-flow{padding:0}.student-account-link-row>strong{overflow-wrap:anywhere}}
+@media(max-width:600px){.enrollment-orders-body,.shared-student-classes{padding:20px 16px}.enrollment-order-card,.shared-student-lesson{padding:16px}.enrollment-order-dialog>header,.enrollment-order-dialog>footer,.enrollment-order-form>footer,.enrollment-order-fields,.enrollment-order-summary,.enrollment-order-response,.enrollment-order-flow{padding:16px}.enrollment-order-fields,.student-account-link-row{grid-template-columns:minmax(0,1fr)}.enrollment-order-lessons{margin:0 16px 16px;padding:12px 16px}.enrollment-order-actions>button{flex:1 1 140px}.student-account-link-row button{justify-self:start}.enrollment-order-dialog>header h2{font-size:20px}}
+@media(max-width:600px){.enrollment-order-body>fieldset>p{padding:0 16px 16px}.enrollment-order-body>fieldset>.enrollment-order-flow{padding:16px 16px 0}.enrollment-orders-body>.enrollment-order-flow{padding:0}.student-account-link-row>strong{overflow-wrap:anywhere}}
 @media(max-width:600px){.enrollment-orders-page>.portal-page-heading{padding:16px}.enrollment-orders-page>.portal-page-heading h1{font-size:24px}}
 .interface-preview-tools{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:16px 24px;border-bottom:1px solid #d9ddd2;background:#f1f3ea;min-width:0}
 .interface-preview-tools>span{color:#526a60;font-size:13px;letter-spacing:.02em;flex:none}
@@ -995,3 +1003,13 @@
 .portal-content .calendar-event-button strong,.portal-content .calendar-event-button span{display:block;font-size:12px;line-height:1.5}
 .portal-content .calendar-event-button:hover{background:#dcebe4}.portal-content .calendar-event-button:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
 .ops-row-actions button{margin:0}
+
+/* Low-frequency setup belongs to Settings, away from the daily timetable. */
+.portal-settings-tools{padding:24px 28px;border-top:1px solid var(--line,#ddd);background:var(--paper,#fffdf7)}
+.portal-settings-tools h2{font-size:18px;margin:0 0 10px}
+.portal-settings-tools p{margin:0 0 16px;color:var(--muted,#64716b);line-height:1.6;max-width:70ch}
+.portal-settings-actions{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:24px}
+.portal-settings-actions:last-child{margin-bottom:0}
+@media(max-width:600px){.portal-settings-tools{padding:20px 16px}.portal-settings-actions>*{flex:1 1 180px}}
+
+.portal-environment{display:block;color:var(--muted,#64716b);font-size:12px;line-height:1.5;margin:0 0 8px}

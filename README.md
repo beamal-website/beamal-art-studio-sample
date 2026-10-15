@@ -2,9 +2,39 @@
 
 網站及管理系統在 `sample/`，使用 Vite／原生 JavaScript，保留 Beamal 中英文及手機版。完整重建目標及進度見 [Goal](docs/schooltracs-rebuild/GOAL.md) 與 [進度](docs/schooltracs-rebuild/STATUS.md)。目前正逐頁接入共用服務，不能把尚未接駁的頁面當成已完成。
 
-## 開啟目前的共用課程／收費測試
+## 下載後直接開啟本機示例
 
-需要 Node.js **22.13 或更新版本**（本次驗證 22.23.1）。第一次先安裝依賴：
+**請下載 [`test` 分支](https://github.com/beamal-website/beamal-art-studio-sample/tree/test)，或使用 [test ZIP](https://github.com/beamal-website/beamal-art-studio-sample/archive/refs/heads/test.zip)。** GitHub 預設頁可能仍是 `main`；該分支不是目前這個版本。
+
+1. 解壓縮到自己的電腦。需要先安裝 **Node.js LTS，22.13 或更新版本**（包含 npm）。
+2. macOS 可雙擊根目錄的 `Start Beamal.command`；Windows 可開啟 `Start Beamal.cmd`。
+3. 或在解壓縮後的根目錄開終端，只執行：
+
+```sh
+npm start
+```
+
+啟動器會安裝所需套件、打包目前程式、建立本機示例資料，再開啟登入頁。**網頁及資料服務由同一個入口啟動，毋須另外開後端或設定 `.env`。** 第一次需要網絡下載套件；保留終端開著。原有連接埠被其他程式使用時會另選一個本機連接埠，正確網址會印在終端，不會關閉其他服務。
+
+| 身份 | 初始登入電郵 | 初始密碼 |
+|---|---|---|
+| 管理員兼老師 Maya | `admin@gmail.com` | `000000` |
+| 普通老師 Leo | `teacher@gmail.com` | `000000` |
+| 學生 Chloe | `student@gmail.com` | `000000` |
+
+以上只是本機示例身份，不用登入 Gmail。資料包含四位老師、六種課程及 300 位 active 學生名冊；只有 Chloe 的兩份示例訂單已記為測試收款並連到七堂課，其餘 299 人沒有被補造為已付款報讀。
+
+資料保存在 `sample/.data/local-demo/beamal.sqlite`，重開會保留修改，不會每次重建帳戶或重複加學生。關閉終端或按 `Ctrl+C` 停止。不同電腦的副本各有自己的示例資料，**GitHub 更新的是程式，不是共用的即時業務資料庫**；日後接同一部 server，才會跨電腦共用資料。
+
+一般共用服務使用的 `sample/.data/beamal.sqlite` 不會被這個啟動器讀取、重設或替換。不要提交 `.data`、資料庫、bootstrap 憑證或 `.env`。示例身份及資料由程式首次建立，所以全新下載不依賴開發者電腦的私有檔案。
+
+若啟動失敗，終端會說明是 Node/npm、套件安裝或 build 問題，並停止啟動，不會只開一個無法登入的頁面。單獨開 `index.html`、只執行舊 `npm run dev`、或使用 `npm run preview`，都不等於已啟動本機資料服務。
+
+目前仍有未接保存／發送的介面，不能把可開啟示例當作完整系統交付。按使用者最新安排，發布現版後只集中完成 Course、Timetable 及其直接關連流程。
+
+## 工程開發：分開執行網頁與一般資料服務
+
+以下保留給需要開發時自動更新程式的工程師。需要 Node.js **22.13 或更新版本**（本次驗證 22.23.1）。第一次先安裝依賴：
 
 ```sh
 npm ci --prefix sample
@@ -22,7 +52,7 @@ npm run dev --prefix sample
 
 瀏覽器開啟 `http://localhost:5173/login`。共用服務預設只在本機 `127.0.0.1:5180` 運行；Vite 會把資料要求轉交該服務。若改服務位置，設定 `BEAMAL_API_TARGET`。
 
-管理員、老師、學生各有一個隨機密碼的**虛構測試帳戶**。首次啟動產生的登入資料在 `sample/.data/bootstrap-accounts.json`，只保留在本機，不會提交到 GitHub。重開服務不會更換密碼；`1`／`2` 及空密碼只存在於舊的離線畫面測試，不是共用系統登入方式。
+這個一般 `api` 入口首次會建立 `@beamal.test` 隨機密碼帳戶，憑證保存在本機 `sample/.data/bootstrap-accounts.json`，不會提交到 GitHub；它不是上面的 `@gmail.com / 000000` 示例入口。既有資料不會被重設。要使用三個指定示例帳戶，請用上面的 `npm start`。
 
 SQLite 共用資料保存在 `sample/.data/beamal.sqlite`。不要把 `.data`、資料庫、帳戶密碼或私人資料加入 Git。正式的跨裝置網址、持久部署、學生／排課／訂單等其他資料接駁，以及付款／通知測試渠道仍在逐步建設。
 

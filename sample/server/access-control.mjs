@@ -127,6 +127,13 @@ export function createAccessControlStore({database,transaction}) {
     const links=database.prepare('SELECT links.student_id,links.version,people.version AS profile_version FROM student_account_links AS links JOIN people ON people.id=links.student_id WHERE links.user_id=? ORDER BY links.student_id').all(person.id);
     return hash({policy:3,id:person.id,role:person.role,links});
   },'read');
+  // A resource granted for lesson access is not the viewer's own staff profile.
+  // Read only explicit self links, independently of schedules or visible grants.
+  const ownTeacherResourceIds=user=>transaction(()=>{
+    const person=identity(user);
+    if(!person||!['admin','teacher'].includes(person.role))return [];
+    return database.prepare('SELECT teacher_resource_id FROM teacher_account_links WHERE user_id=? ORDER BY teacher_resource_id').all(person.id).map(row=>row.teacher_resource_id);
+  },'read');
   const canReadCourse=(courseId,user)=>{const scope=scopeFor(user);return scope.courseIds===null||scope.courseIds.has(courseId);};
   const teacherSchedules=(user,{from,to,since=''}={})=>transaction(()=>{
     const scope=scopeFor(user);let occurrences=[];
@@ -138,5 +145,5 @@ export function createAccessControlStore({database,transaction}) {
     const revision=hash({scope:scope.revision,from,to,occurrences});return since===revision?{revision,readScope:'occurrences',unchanged:true}:{revision,readScope:'occurrences',occurrences};
   },'read');
   const resourcesSnapshot=(user,resources,{since=''}={})=>transaction(()=>{const scope=scopeFor(user),rows=resources.list().resources.filter(row=>scope.resourceIds===null||scope.resourceIds.has(row.id)),revision=hash({scope:scope.revision,resources:rows});return since===revision?{revision,unchanged:true}:{revision,resources:rows};},'read');
-  return {managementSnapshot,setTeacherLink,createGrant,updateGrant,scopeFor,revisionFor,canReadCourse,teacherSchedules,resourcesSnapshot,setSlotSource:read=>{slotSource=read;}};
+  return {managementSnapshot,setTeacherLink,createGrant,updateGrant,scopeFor,revisionFor,ownTeacherResourceIds,canReadCourse,teacherSchedules,resourcesSnapshot,setSlotSource:read=>{slotSource=read;}};
 }

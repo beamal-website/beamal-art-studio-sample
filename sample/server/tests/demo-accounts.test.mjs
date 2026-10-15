@@ -30,7 +30,16 @@ test('creates the three named test accounts and one explicitly imported existing
     assert.equal(count(db,'users'),3);assert.equal(count(db,'teacher_account_links'),2);assert.equal(count(db,'schedules'),2);
     const person=db.prepare('SELECT * FROM people WHERE id=?').get(DEMO_IDS.studentPerson);
     assert.equal(person.kind,'student');assert.equal(person.converted_at,null);assert.equal(person.converted_by,null);
-    const profile=JSON.parse(person.profile);assert.equal(profile.displayName,'何詠晴 Chloe Ho');assert.equal(profile.email,'student@gmail.com');assert.match(profile.remark,/虛構/);
+    const profile=JSON.parse(person.profile);assert.equal(profile.displayName,'何詠晴 Chloe Ho');assert.equal(profile.email,'student@gmail.com');assert.equal(profile.parentName,'何嘉敏 Carmen Ho');assert.equal(profile.contact1Name,'何嘉敏 Carmen Ho');assert.equal(profile.remark,'喜歡水彩和拼貼創作。');
+    const course=JSON.parse(db.prepare('SELECT data FROM courses WHERE id=?').get(DEMO_IDS.course).data);
+    assert.equal(course.courseName,'創意繪畫');
+    const resources=db.prepare('SELECT id,display_name FROM scheduling_resources ORDER BY id').all();
+    assert.deepEqual(resources.map(row=>[row.id,row.display_name]),[[DEMO_IDS.teachers.maya,'林雅晴 Maya Lam'],[DEMO_IDS.teachers.leo,'陳子朗 Leo Chan'],[DEMO_IDS.room,'畫室 A']]);
+    const fees=DEMO_IDS.fees.map(id=>JSON.parse(db.prepare('SELECT data FROM fees WHERE id=?').get(id).data));
+    assert.deepEqual(fees.map(row=>row.feeName),['每堂60分鐘','固定月費']);
+    const schedules=db.prepare('SELECT data FROM schedules ORDER BY id').all().map(row=>JSON.parse(row.data));
+    assert.deepEqual(schedules.map(row=>[row.teacher,row.room,row.remark]),[['陳子朗 Leo Chan','畫室 A','請自備圍裙及飲用水。'],['林雅晴 Maya Lam','畫室 A','請自備圍裙及飲用水。']]);
+    assert.doesNotMatch(JSON.stringify([course,resources,fees,schedules,profile]),/QA|中期|虛構|測試|checkpoint|fictional/i);
     const history=db.prepare('SELECT * FROM person_audit_log WHERE person_id=?').all(person.id);
     assert.equal(history.length,1);assert.equal(history[0].action,'person.import');assert.equal(history[0].actor_id,DEMO_IDS.users.maya);
     assert.equal(JSON.parse(history[0].snapshot).fixture.profileKey,'checkpoint-demo3-student-v1');

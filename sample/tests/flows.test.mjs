@@ -1,4 +1,6 @@
+import {feePricingMarkup} from '../client/fee-pricing-ui.js';
 import {createInterfacePreview} from '../client/interface-preview.js';
+import {reportsPageMarkup} from '../client/reports-ui.js';
 import { enrollmentOrdersMarkup, enrollmentOrderDetailsMarkup, enrollmentOrderEditorMarkup, studentAccountLinksMarkup, sharedStudentClassesMarkup, enrollmentLessons, suggestedOrderCents } from '../client/enrollment-orders-ui.js';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
@@ -17,6 +19,22 @@ import {accessControlMarkup,accessTeacherLinkEditorMarkup,accessGrantEditorMarku
 import {peopleDirectoryMarkup,peopleProfileMarkup,peopleEditorMarkup} from '../client/people-ui.js';
 import {availabilityEditorMarkup,availabilityDetailMarkup,availabilityPublicSettingsMarkup,availabilityOccurrenceSummaryMarkup,publicCourseDirectoryMarkup,publicCourseDetailsMarkup} from '../client/availability-ui.js';
 import {scheduleOccurrences,scheduleOccurrence,scheduleFollowingRule} from '../shared/schedule-occurrences.js';
+import {sessionIdentityKey} from '../client/session-identity.js';
+import {timetableGridMinimum,timetableCreateCells,timetableCreateCellMarkup} from '../client/timetable-cells.js';
+
+test('same-revision authenticated teacher mapping changes refresh the session and clear stale private identity state',async()=>{
+ const user={...sharedTestUser,teacherResourceIds:['linked-before']},a=await sharedApp({session:async()=>({user})});
+ a.set("materialCaches.set('private',{items:[{name:'Old identity material'}]});modal='Old private dialog';sharedStaffSavedIdentity='old-staff-source'");
+ a.client.session=async()=>({user:{...user,teacherResourceIds:[]}});await a.set('refreshSharedSession()');
+ assert.deepEqual(a.read('authUser.teacherResourceIds'),[]);assert.equal(a.read('materialCaches.size'),0);assert.equal(a.read('modal'),'');assert.equal(a.read('sharedStaffSavedIdentity'),'');
+});
+
+test('equivalent reordered authenticated teacher IDs do not clear an unchanged session or its private draft',async()=>{
+ const user={...sharedTestUser,teacherResourceIds:['resource-a','resource-b']},a=await sharedApp({session:async()=>({user})});
+ a.set("materialCaches.set('private',{items:[{name:'Retained authorized material'}]});modal='Retained authorized draft'");
+ a.client.session=async()=>({user:{...user,teacherResourceIds:['resource-b','resource-a','resource-a']}});await a.set('refreshSharedSession()');
+ assert.equal(a.read('materialCaches.size'),1);assert.equal(a.read('modal'),'Retained authorized draft');
+});
 test('Join classes sort by upcoming session and income records show newest payment first',()=>{const a=app();a.set("lang='en';nextClassDate=c=>c.id==='b'?'2030-01-01':'2030-01-02';join={step:1,course:'art',classId:'a'};location.pathname='/join';render()");let html=a.nodes['#app'].innerHTML,ids=[...html.matchAll(/name="classId" value="([^"]+)"/g)].map(match=>match[1]);assert.deepEqual(ids,['b','a']);assert.ok(html.indexOf('Next class: 1 Jan 2030')<html.indexOf('Next class: 2 Jan 2030'));a.set("role='teacher';tab='payments';location.pathname='/account';render()");html=a.nodes['#app'].innerHTML;assert.ok(html.indexOf('Ryan Yu · B1005')<html.indexOf('David Leung · B1002'));});
 test('News page contains sample studio stories and no course listings',()=>{const a=app();a.set("lang='en';location.pathname='/news';render()");const html=a.nodes['#app'].innerHTML,entries=html.match(/<details class="news-entry">[\s\S]*?<\/details>/g)||[];assert.equal(entries.length,3);assert.match(html,/Student Art Showcase/);assert.match(html,/Art Award Highlights/);assert.match(html,/Studio Updates/);assert.doesNotMatch(html.match(/<section class="news-page">[\s\S]*?<\/section>/)?.[0]||'',/>Course [123]</);assert.doesNotMatch(html,/Next class|lessons per term|Places available/);assert.match(entries[0],/class="news-detail-image" src="\/assets\/beamal-canvas\.jpg"/);});
 test('sample News cards show bilingual stories, categories and artwork',()=>{const a=app();a.set("lang='en';location.pathname='/news';render()");let html=a.nodes['#app'].innerHTML;assert.match(html,/class="news-page-heading"/);assert.match(html,/class="news-entry-image" src="\/assets\/beamal-storybook\.jpg"/);assert.match(html,/Art showcase/);assert.match(html,/Awards/);assert.match(html,/Read more/);a.set("lang='zh';render()");html=a.nodes['#app'].innerHTML;assert.match(html,/學生作品展/);assert.match(html,/藝術獎項消息/);assert.match(html,/閱讀更多/);});
@@ -35,7 +53,7 @@ test('teacher can edit a seeded story and keep its existing Beamal image',()=>{c
 test('manager News opens on the published stories before the editor',()=>{const a=app();a.set("lang='en';role='teacher';tab='news';location.pathname='/account';render()");let html=a.nodes['#app'].innerHTML;assert.ok(html.indexOf('class="teacher-news-list"')<html.indexOf('id="teacher-news"'));for(const title of ['Student Art Showcase','Art Award Highlights','Studio Updates'])assert.match(html,new RegExp(title));assert.equal((html.match(/data-edit-news=/g)||[]).length,3);assert.match(html,/data-action="new-news"/);a.click({editNews:'sample-news-1'});assert.match(a.nodes['#app'].innerHTML,/Edit news/);a.click({action:'new-news'});assert.equal(a.read('newsEditId'),'');assert.match(a.nodes['#app'].innerHTML,/Add news/);assert.match(a.nodes['#app'].innerHTML,/Student Art Showcase/);});
 test('cancelling a news edit leaves the published post intact',()=>{const a=app();a.set("lang='en';role='teacher';tab='news';location.pathname='/account';db.news=[{id:'N1',title:'Original',description:'Summary',content:'Content',releaseDate:'2026-09-30',image:''}];render()");a.click({editNews:'N1'});a.click({action:'cancel-news-edit'});assert.equal(a.read('newsEditId'),'');assert.equal(a.read('db.news[0].title'),'Original');assert.match(a.nodes['#app'].innerHTML,/Add news/);});
 test('homepage News shows sample stories and links to the full page',()=>{const a=app();a.set("lang='en';render()");let html=a.nodes['#app'].innerHTML;assert.match(html,/Latest News/);assert.match(html,/Studio updates/);assert.equal((html.match(/name="upcoming-event"/g)||[]).length,3);assert.ok((html.match(/href="\/news" data-go="\/news"/g)||[]).length>=3);const footer=html.slice(html.indexOf('<footer'));assert.match(footer,/href="\/news" data-go="\/news"/);let detail=html.match(/<article class="upcoming-detail teacher-news-detail">([\s\S]*?)<\/article>/)?.[1];assert.match(detail,/Student Art Showcase/);a.change('upcoming-event','1');html=a.nodes['#app'].innerHTML;detail=html.match(/<article class="upcoming-detail teacher-news-detail">([\s\S]*?)<\/article>/)?.[1];assert.match(detail,/Art Award Highlights/);assert.match(html,/value="1" checked/);a.click({go:'/news'});html=a.nodes['#app'].innerHTML;assert.match(html,/Art Award Highlights/);assert.doesNotMatch(html,/Next class|lessons per term/);});
-function app(seed={},clock,mobile=false,injectedClient=null,options={}){const handlers={},store=new Map(Object.entries(seed)),session=new Map(),nodes={};const storage=(m,local=false)=>({getItem:k=>m.get(k)??null,setItem:(k,v)=>{const failure=local?options.localWriteError?.(k,v):null;if(failure)throw failure;return m.set(k,v)},removeItem:k=>m.delete(k)});const ctx=vm.createContext({...(options.preview?{createInterfacePreview:settings=>createInterfacePreview({...settings,dom:ctx.document,Form:ctx.FormData})}:{}),enrollmentOrdersMarkup,enrollmentOrderDetailsMarkup,enrollmentOrderEditorMarkup,studentAccountLinksMarkup,sharedStudentClassesMarkup,enrollmentLessons,suggestedOrderCents,classTypeName,classTypeSelectionMarkup,classTypeDetailsMarkup,classTypesManagerMarkup,classTypeEditorMarkup,classCapacityStatusMarkup,classCapacityStatusEditorMarkup,representativeColour,timetableTeacherColour,teacherColourMarkersMarkup,availabilityEditorMarkup,availabilityDetailMarkup,availabilityPublicSettingsMarkup,availabilityOccurrenceSummaryMarkup,publicCourseDirectoryMarkup,publicCourseDetailsMarkup,peopleDirectoryMarkup,peopleProfileMarkup,peopleEditorMarkup,accessControlMarkup,accessTeacherLinkEditorMarkup,accessGrantEditorMarkup,timetableDateRange,timetableRangeControlMarkup,schedulingResourcesMarkup,schedulingResourceEditorMarkup,scheduleResourcePickerMarkup,scheduleOccurrences,scheduleOccurrence,scheduleFollowingRule,scheduleScopeMarkup,courseScheduleTableMarkup,materialPanelMarkup,materialEditorMarkup,materialVideoRow,safeMaterialUrl,materialAttachmentDrafts,attachmentIssue,AbortController,...(injectedClient?{createApiClient:()=>injectedClient}:{}),localStorage:storage(store,true),sessionStorage:storage(session),navigator:{language:'zh-HK'},location:{pathname:options.pathname||'/'},history:{pushState:(_,__,p)=>ctx.location.pathname=p,replaceState:(_,__,p)=>ctx.location.pathname=p},window:{scrollTo(){},addEventListener:(type,handler)=>options.onWindowEvent?.(type,handler),setInterval:(handler,ms)=>options.onInterval?.(handler,ms)??0,clearInterval(){},matchMedia:()=>({matches:mobile,addEventListener(){}})},document:{documentElement:{},...(options.initialQuerySelectorAll?{querySelectorAll:options.initialQuerySelectorAll}:{}),querySelector:s=>nodes[s]??(nodes[s]=(()=>{const classes=new Set(),attributes={};return {innerHTML:'',textContent:'',focus(){},setAttribute:(k,v)=>attributes[k]=String(v),getAttribute:k=>attributes[k],classList:{toggle:(k,on)=>on?classes.add(k):classes.delete(k),contains:k=>classes.has(k)}}})()),addEventListener:(e,h)=>{if(e==='change')(handlers.change??=[]).push(h);else handlers[e]=h},createElement:()=>({remove(){}}),body:{append(){}}},FormData:class{constructor(f){return Object.entries(f.values||{}).flatMap(([k,v])=>Array.isArray(v)?v.map(x=>[k,x]):[[k,v]])}},setTimeout(){},confirm:()=>true,Date:clock?class extends Date{constructor(...args){super(...(args.length?args:[clock]))}static now(){return new Date(clock).getTime()}}:Date,console});vm.runInContext(fs.readFileSync(new URL('../src.js',import.meta.url),'utf8').replace(/^import .*;$/gm,''),ctx);return {ctx,read:s=>JSON.parse(vm.runInContext(`JSON.stringify(${s})`,ctx)),submit:(id,values,extra={})=>handlers.submit({preventDefault(){},target:{id,values,classList:{contains:()=>false},...extra}}),click:dataset=>handlers.click({preventDefault(){},target:{closest:()=>({dataset})}}),input:target=>handlers.input({target}),keydown:(key,extra={})=>handlers.keydown({key,preventDefault(){},...extra}),change:(name,value,extra={})=>handlers.change.forEach(handler=>handler({target:{name,value,...extra}})),set:s=>vm.runInContext(s,ctx),nodes};}
+function app(seed={},clock,mobile=false,injectedClient=null,options={}){const handlers={},store=new Map(Object.entries(seed)),session=new Map(),nodes={},windowHandlers={};let historyIndex=0;const historyEntries=[{path:options.pathname||'/',state:null}];const storage=(m,local=false)=>({getItem:k=>m.get(k)??null,setItem:(k,v)=>{const failure=local?options.localWriteError?.(k,v):null;if(failure)throw failure;return m.set(k,v)},removeItem:k=>m.delete(k)});const ctx=vm.createContext({sessionIdentityKey,timetableGridMinimum,timetableCreateCells,timetableCreateCellMarkup,...(options.preview?{createInterfacePreview:settings=>{options.onPreviewContext?.(settings.context);return createInterfacePreview({...settings,dom:ctx.document,Form:ctx.FormData});}}:{}),reportsPageMarkup,feePricingMarkup,enrollmentOrdersMarkup,enrollmentOrderDetailsMarkup,enrollmentOrderEditorMarkup,studentAccountLinksMarkup,sharedStudentClassesMarkup,enrollmentLessons,suggestedOrderCents,classTypeName,classTypeSelectionMarkup,classTypeDetailsMarkup,classTypesManagerMarkup,classTypeEditorMarkup,classCapacityStatusMarkup,classCapacityStatusEditorMarkup,representativeColour,timetableTeacherColour,teacherColourMarkersMarkup,availabilityEditorMarkup,availabilityDetailMarkup,availabilityPublicSettingsMarkup,availabilityOccurrenceSummaryMarkup,publicCourseDirectoryMarkup,publicCourseDetailsMarkup,peopleDirectoryMarkup,peopleProfileMarkup,peopleEditorMarkup,accessControlMarkup,accessTeacherLinkEditorMarkup,accessGrantEditorMarkup,timetableDateRange,timetableRangeControlMarkup,schedulingResourcesMarkup,schedulingResourceEditorMarkup,scheduleResourcePickerMarkup,scheduleOccurrences,scheduleOccurrence,scheduleFollowingRule,scheduleScopeMarkup,courseScheduleTableMarkup,materialPanelMarkup,materialEditorMarkup,materialVideoRow,safeMaterialUrl,materialAttachmentDrafts,attachmentIssue,AbortController,...(injectedClient?{createApiClient:()=>injectedClient}:{}),localStorage:storage(store,true),sessionStorage:storage(session),navigator:{language:'zh-HK'},location:{pathname:options.pathname||'/'},history:{get state(){return JSON.parse(JSON.stringify(historyEntries[historyIndex].state))},pushState(state,_,p){historyEntries.splice(historyIndex+1);historyEntries.push({path:p||ctx.location.pathname,state:JSON.parse(JSON.stringify(state))});historyIndex++;ctx.location.pathname=historyEntries[historyIndex].path},replaceState(state,_,p){historyEntries[historyIndex]={path:p||ctx.location.pathname,state:JSON.parse(JSON.stringify(state))};ctx.location.pathname=historyEntries[historyIndex].path},go(delta){const next=historyIndex+delta;if(next<0||next>=historyEntries.length)return;historyIndex=next;ctx.location.pathname=historyEntries[historyIndex].path;for(const handler of windowHandlers.popstate||[])handler({state:this.state})},back(){this.go(-1)},forward(){this.go(1)}},window:{scrollTo(){},addEventListener:(type,handler)=>{(windowHandlers[type]??=[]).push(handler);options.onWindowEvent?.(type,handler)},setInterval:(handler,ms)=>options.onInterval?.(handler,ms)??0,clearInterval(){},matchMedia:()=>({matches:mobile,addEventListener(){}})},document:{documentElement:{},...(options.initialQuerySelectorAll?{querySelectorAll:options.initialQuerySelectorAll}:{}),querySelector:s=>nodes[s]??(nodes[s]=(()=>{const classes=new Set(),attributes={};return {innerHTML:'',textContent:'',focus(){},setAttribute:(k,v)=>attributes[k]=String(v),getAttribute:k=>attributes[k],classList:{toggle:(k,on)=>on?classes.add(k):classes.delete(k),contains:k=>classes.has(k)}}})()),addEventListener:(e,h)=>{if(e==='change')(handlers.change??=[]).push(h);else handlers[e]=h},createElement:()=>({remove(){}}),body:{append(){}}},FormData:class{constructor(f){return Object.entries(f.values||{}).flatMap(([k,v])=>Array.isArray(v)?v.map(x=>[k,x]):[[k,v]])}},setTimeout(){},confirm:()=>true,Date:clock?class extends Date{constructor(...args){super(...(args.length?args:[clock]))}static now(){return new Date(clock).getTime()}}:Date,console});vm.runInContext(fs.readFileSync(new URL('../src.js',import.meta.url),'utf8').replace(/^import .*;$/gm,''),ctx);return {ctx,read:s=>JSON.parse(vm.runInContext(`JSON.stringify(${s})`,ctx)),submit:(id,values,extra={})=>handlers.submit({preventDefault(){},target:extra.id===id?Object.assign(extra,{values:extra.values||values,classList:extra.classList||{contains:()=>false}}):{id,values,classList:{contains:()=>false},...extra}}),click:(dataset,element)=>handlers.click({preventDefault(){},target:{closest:()=>element||({dataset})}}),input:target=>handlers.input({target}),keydown:(key,extra={})=>handlers.keydown({key,preventDefault(){},...extra}),change:(name,value,extra={})=>handlers.change.forEach(handler=>handler({target:{name,value,...extra}})),set:s=>vm.runInContext(s,ctx),nodes};}
 test('home copy switches between polished English and Chinese without special Unicode spacing',()=>{const a=app();a.set("lang='en';render()");let html=a.nodes['#app'].innerHTML;assert.match(html,/Express yourself and tell your story through art/);assert.match(html,/Regular Art Classes for Kids/);assert.match(html,/Storybook Class/);assert.match(html,/Sewing Class/);assert.doesNotMatch(html,/𝗞𝗶𝗱|𝑬𝒙𝒑𝒓𝒆𝒔𝒔/);assert.match(html,/beamal-elephants\.jpg/);assert.match(html,/Clay Classes/);assert.match(html,/Sketching Classes/);assert.match(html,/Drawing Classes/);assert.match(html,/beamal-idioms\.jpg/);assert.match(html,/beamal-sketch\.jpg/);assert.match(html,/beamal-canvas\.jpg/);assert.match(html,/>Home</);a.click({go:'/about'});html=a.nodes['#app'].innerHTML;assert.match(html,/Mission &amp; Vision/);assert.match(html,/Our Story/);assert.match(html,/beamal-colourpencil\.jpg/);assert.match(html,/beamal-guidedog\.jpg/);assert.doesNotMatch(html,/Express yourself|Regular Art Classes for Kids/);a.click({go:'/'});assert.match(a.nodes['#app'].innerHTML,/Express yourself and tell your story through art/);a.set("lang='zh';render()");html=a.nodes['#app'].innerHTML;assert.match(html,/透過藝術表達自己，訴說你的故事/);assert.match(html,/兒童常規藝術課程/);assert.match(html,/繪本課程/);assert.match(html,/縫紉課程/);assert.doesNotMatch(html,/Express yourself|Regular Art Classes for Kids/);});
 test('enrolment steps return to the top so mobile users see each new form',()=>{const a=app();a.set("location.pathname='/join';window.scrollTo=(x,y)=>{window.lastScroll=[x,y]};render()");a.submit('join',{course:'art',classId:'a'});assert.equal(a.read('join.step'),2);assert.deepEqual(a.read('window.lastScroll'),[0,0]);a.set('window.lastScroll=null');a.click({action:'joinback'});assert.equal(a.read('join.step'),1);assert.deepEqual(a.read('window.lastScroll'),[0,0]);a.submit('join',{course:'art',classId:'a'});a.set('window.lastScroll=null');a.submit('join',{student:'Alex Chan',phone:'00000000',email:'alex@example.test'});assert.equal(a.read('join.step'),3);assert.deepEqual(a.read('window.lastScroll'),[0,0]);});
 test('demo login accepts 1/2 with blank password and rejects invalid credentials',()=>{const a=app();a.submit('login',{username:'9',password:''});assert.match(a.nodes['#login-error'].textContent,/1 或 2/);a.submit('login',{username:'1',password:'secret'});assert.equal(a.read('role'),'');a.submit('login',{username:'1',password:''});assert.equal(a.read('role'),'student');a.click({action:'logout'});a.submit('login',{username:'2',password:''});assert.equal(a.read('role'),'teacher');});
@@ -46,6 +64,31 @@ test('full target prevents approval; rejection preserves original class; reset r
 test('new student has no activity, read-only profile, and only teacher can update it',()=>{const a=app();assert.equal(a.read('db.student.name'),'Alex Chan');assert.equal(a.read('mine().length'),0);assert.equal(a.read('db.requests.length'),0);a.set("role='student';tab='payments';location.pathname='/account';render()");assert.doesNotMatch(a.nodes['#app'].innerHTML,/id="profile"|name="name"|返回網站/);a.submit('teacher-profile',{name:'Not allowed',phone:'1',email:'x@example.test'},{dataset:{student:'demo'}});assert.equal(a.read('db.student.name'),'Alex Chan');a.set("role='teacher'");a.submit('teacher-profile',{name:'<img src=x onerror=alert(1)>',phone:'00000000',email:'demo@example.test'},{dataset:{student:'demo'}});assert.equal(a.read('db.student.name'),'<img src=x onerror=alert(1)>');a.set("role='student';tab='payments';render()");assert.match(a.nodes['#app'].innerHTML,/&lt;img/);assert.doesNotMatch(a.nodes['#app'].innerHTML,/<img src=x/);});
 test('calendar shows confirmed recurring student classes and navigates across years',()=>{const a=app();a.set("role='student';tab='overview';location.pathname='/account';calendarMonth=new Date(2026,9,1);db.bookings.push({id:'TEST',studentId:'demo',student:db.student.name,classId:'a',status:'pending'});render()");assert.doesNotMatch(a.nodes['#app'].innerHTML,/class="calendar-event"/);a.set("db.bookings.at(-1).status='confirmed';render()");assert.doesNotMatch(a.nodes['#app'].innerHTML,/class="calendar-event"/);a.set("db.bookings.at(-1).paid=true;db.bookings.at(-1).paidAt='2026-09-30';render()");assert.equal((a.nodes['#app'].innerHTML.match(/class="calendar-event"/g)||[]).length,4);a.set('calendarMonth=new Date(2026,11,1)');a.click({action:'calendar-next'});assert.equal(a.read('calendarMonth.getFullYear()'),2027);assert.equal(a.read('calendarMonth.getMonth()'),0);a.click({action:'calendar-prev'});assert.equal(a.read('calendarMonth.getMonth()'),11);});
 test('duplicate enrolments retain the paid record and repeated submission does not add a class or charge',()=>{const a=app();a.set("db.bookings.push(...[6,7,8,9].map(n=>({id:'B100'+n,student:db.student.name,studentId:'demo',classId:'a',status:n===8?'confirmed':'pending',paid:n===8,amount:1000})));db.classes[0].occupied=8;sessionStorage.setItem('beamal-enrolment','B1009');deduplicateEnrolments()");assert.equal(a.read('mine().length'),1);assert.equal(a.read('mine()[0].id'),'B1008');assert.equal(a.read('mine()[0].paid'),true);assert.equal(a.read('db.classes[0].occupied'),5);assert.equal(a.read("sessionStorage.getItem('beamal-enrolment')"),'B1008');a.set("join={step:3,course:'art',classId:'a',student:db.student.name,phone:'80000000',email:db.student.email};finish();finish()");assert.equal(a.read('mine().length'),1);assert.equal(a.read('db.classes[0].occupied'),5);assert.equal(a.read('mine()[0].paid'),true);a.set("role='student';tab='courses';location.pathname='/account';render()");assert.match(a.nodes['#app'].innerHTML,/我的課程/);assert.doesNotMatch(a.nodes['#app'].innerHTML,/我的課程與時間表|轉堂申請|申請轉堂/);});
+test('legacy duplicate booking ids resolve request references without blocking startup',()=>{
+ const a=app();a.set("db.bookings=[{id:'SAME',studentId:'same-student',student:'Same student',classId:'a',paid:false,status:'pending'},{id:'SAME',studentId:'same-student',student:'Same student',classId:'a',paid:true,status:'confirmed',marker:'paid-winner'},{id:'KEEP',studentId:'other-student',student:'Other student',classId:'b',paid:true,status:'confirmed'}];db.requests=[{id:'R-SAME',booking:'SAME'},{id:'R-KEEP',booking:'KEEP'}]");
+ vm.runInContext('deduplicateEnrolments()',a.ctx,{timeout:250});
+ assert.equal(a.read('db.bookings.length'),2);assert.equal(a.read("db.bookings.find(row=>row.id==='SAME').marker"),'paid-winner');assert.deepEqual(a.read('db.requests.map(row=>row.booking)'),['SAME','KEEP']);
+});
+
+test('legacy duplicate booking ids retain checkout references without blocking startup',()=>{
+ const a=app();a.set("db.bookings=[{id:'SAME',studentId:'same-student',student:'Same student',classId:'a',paid:false,status:'pending'},{id:'SAME',studentId:'same-student',student:'Same student',classId:'a',paid:true,status:'confirmed'}];db.requests=[];sessionStorage.setItem('beamal-enrolment','SAME')");
+ vm.runInContext('deduplicateEnrolments()',a.ctx,{timeout:250});
+ assert.equal(a.read('db.bookings.length'),1);assert.equal(a.read('db.bookings[0].paid'),true);assert.equal(a.read("sessionStorage.getItem('beamal-enrolment')"),'SAME');
+});
+
+test('legacy cross-group booking id cycles preserve surviving records and references',()=>{
+ const a=app();a.set("db.bookings=[{id:'A',studentId:'student-one',student:'One',classId:'a',paid:false},{id:'B',studentId:'student-one',student:'One',classId:'a',paid:true},{id:'B',studentId:'student-two',student:'Two',classId:'b',paid:false},{id:'A',studentId:'student-two',student:'Two',classId:'b',paid:true},{id:'KEEP',studentId:'student-three',student:'Three',classId:'c',paid:false}];db.requests=[{booking:'A'},{booking:'B'},{booking:'KEEP'}];sessionStorage.setItem('beamal-enrolment','A')");
+ vm.runInContext('deduplicateEnrolments()',a.ctx,{timeout:250});
+ assert.deepEqual(a.read('db.bookings.map(row=>[row.id,row.studentId])'),[['B','student-one'],['A','student-two'],['KEEP','student-three']]);assert.deepEqual(a.read('db.requests.map(row=>row.booking)'),['A','B','KEEP']);assert.equal(a.read("sessionStorage.getItem('beamal-enrolment')"),'A');
+});
+
+test('legacy duplicate booking aliases retain paid-winner references through a chain and are idempotent',()=>{
+ const a=app();a.set("db.bookings=[{id:'A',studentId:'same-student',student:'Same student',classId:'a',paid:false},{id:'B',studentId:'same-student',student:'Same student',classId:'a',paid:false},{id:'C',studentId:'same-student',student:'Same student',classId:'a',paid:true},{id:'KEEP',studentId:'other-student',student:'Other student',classId:'b',paid:true}];db.requests=[{booking:'A'},{booking:'B'},{booking:'C'},{booking:'KEEP'},{booking:'UNKNOWN'}];sessionStorage.setItem('beamal-enrolment','B')");
+ vm.runInContext('deduplicateEnrolments()',a.ctx,{timeout:250});
+ assert.deepEqual(a.read('db.bookings.map(row=>row.id)'),['C','KEEP']);assert.deepEqual(a.read('db.requests.map(row=>row.booking)'),['C','C','C','KEEP','UNKNOWN']);assert.equal(a.read("sessionStorage.getItem('beamal-enrolment')"),'C');
+ const before=a.read('db');vm.runInContext('deduplicateEnrolments()',a.ctx,{timeout:250});assert.deepEqual(a.read('db'),before);
+});
+
 test('teacher edits recurring classes with pencil, validates capacity and unique time, and adds slots',()=>{const a=app();a.set("role='teacher';tab='students';location.pathname='/account';render()");assert.match(a.nodes['#app'].innerHTML,/班別設定/);assert.doesNotMatch(a.nodes['#app'].innerHTML,/type="date"|class-edit|student-directory|學生與班別/);a.click({editClass:'a'});assert.match(a.nodes['#modal-root'].innerHTML,/id="class-editor"/);const original=a.read('db.classes[0]');a.submit('class-editor',{courseName:'Course 1',classCode:'CL-001',weekdays:['2'],time:'14:00',capacity:'8',lessonsPerTerm:'4'},{dataset:{id:'a'}});assert.match(a.nodes['#class-error'].textContent,/已有課程/);assert.deepEqual(a.read('db.classes[0]'),original);a.submit('class-editor',{courseName:'Course 1',classCode:'CL-001',weekdays:['0'],time:'09:30',capacity:'3',lessonsPerTerm:'4'},{dataset:{id:'a'}});assert.equal(a.read('db.classes[0].capacity'),8);a.submit('class-editor',{courseName:'Course 1',classCode:'CL-001',weekdays:['0'],time:'09:30',capacity:'10',lessonsPerTerm:'4'},{dataset:{id:'a'}});assert.equal(a.read('db.classes[0].weekday'),0);assert.equal(a.read('db.classes[0].time'),'09:30');assert.equal(a.read('db.classes[0].occupied'),4);a.click({action:'new-class'});a.submit('class-editor',{courseName:'Course 2',classCode:'CL-007',weekdays:['1'],time:'17:30',capacity:'12',lessonsPerTerm:'4'},{dataset:{id:''}});assert.equal(a.read('db.classes.length'),7);assert.equal(a.read('db.classes.at(-1).occupied'),0);a.set("join={step:1,course:'story',classId:'c'};location.pathname='/join';modal='';render()");assert.match(a.nodes['#app'].innerHTML,/逢星期一 · 17:30/);assert.match(a.nodes['#app'].innerHTML,/堂／期/);a.set("role='student'");a.submit('class-editor',{course:'art',weekday:'0',time:'18:00',capacity:'5',lessonsPerTerm:'4'},{dataset:{id:''}});assert.equal(a.read('db.classes.length'),7);});
 
 test('teacher class cards open a separate enrolled-student list page',()=>{const a=app();a.set("lang='en';role='teacher';tab='students';location.pathname='/account';db.bookings.push({id:'UNPAID',student:'Unpaid Visitor',classId:'a',status:'pending',paid:false});render()");assert.match(a.nodes['#app'].innerHTML,/>View students</);assert.match(a.nodes['#app'].innerHTML,/data-class-roster="a"/);assert.doesNotMatch(a.nodes['#app'].innerHTML,/class-title-button/);a.click({classRoster:'a'});assert.equal(a.read('location.pathname'),'/account/classes/a');assert.match(a.nodes['#app'].innerHTML,/David Leung/);assert.match(a.nodes['#app'].innerHTML,/david@example\.test/);assert.match(a.nodes['#app'].innerHTML,/00000000/);assert.doesNotMatch(a.nodes['#app'].innerHTML,/Unpaid Visitor/);assert.match(a.nodes['#app'].innerHTML,/Back to classes/);assert.match(a.nodes['#app'].innerHTML,/data-tab="catalog" class="active"/);assert.doesNotMatch(a.nodes['#app'].innerHTML,/role="dialog"/);a.set("render()");assert.match(a.nodes['#app'].innerHTML,/David Leung/);a.click({action:'back-classes'});assert.equal(a.read('location.pathname'),'/account');assert.match(a.nodes['#app'].innerHTML,/Class settings/);a.click({classRoster:'b'});assert.match(a.nodes['#app'].innerHTML,/No students have joined this class yet/);a.click({tab:'payments'});assert.equal(a.read('location.pathname'),'/account');assert.match(a.nodes['#app'].innerHTML,/Payments &amp; income|Payments & income/);a.set("role='student';location.pathname='/account/classes/a';render()");assert.equal(a.read('location.pathname'),'/account');assert.doesNotMatch(a.nodes['#app'].innerHTML,/David Leung/);});
@@ -151,7 +194,7 @@ test('older saved classes migrate from date limits to lesson counts without losi
 });
 
 test('teacher and student logins open role-appropriate pages with the unchanged yellow notice',()=>{
- for(const username of ['1','2']){const a=app();a.set("lang='en'");a.submit('login',{username,password:''});const html=a.nodes['#app'].innerHTML;assert.match(html,/class="portal-topbar"/);assert.match(html,/beamal-logo.jpg/);assert.match(html,/beamal-login_icon.png/);assert.match(html,/INTERNAL SAMPLE — FOR REVIEW ONLY/);assert.match(html,/banner-reset/);const nav=html.match(/<nav id="portal-sidebar"[\s\S]*?<\/nav>/)[0];
+ for(const username of ['1','2']){const a=app();a.set("lang='en'");a.submit('login',{username,password:''});const html=a.nodes['#app'].innerHTML;assert.match(html,/class="portal-topbar"/);assert.match(html,/beamal-logo.jpg/);assert.match(html,/beamal-login_icon.png/);assert.match(html,/portal-environment/);assert.doesNotMatch(html,/INTERNAL SAMPLE — FOR REVIEW ONLY/);assert.match(html,/banner-reset/);const nav=html.match(/<nav id="portal-sidebar"[\s\S]*?<\/nav>/)[0];
   if(username==='2'){assert.equal(a.read('tab'),'catalog');assert.match(nav,/data-tab="catalog" class="active"/);assert.ok(nav.indexOf('Sales')<nav.indexOf('Timetable'));for(const label of ['Courses','Fees','Products','Messages','Students','Leads','Accounting','Reports','Staffs','Channels','Settings'])assert.ok(nav.includes(label));assert.equal((html.match(/<th(?:\s[^>]*)?>/g)||[]).filter(tag=>!tag.includes('portal-select-cell')).length,7,'Count the seven data columns separately from the selection checkbox')}
   else{assert.equal(a.read('tab'),'overview');assert.match(nav,/data-tab="overview" class="active"/);assert.deepEqual(a.read('portalItems().map(item=>item[0])'),['overview','courses','payments']);assert.match(html,/My Calendar/);assert.doesNotMatch(nav,/Sales|Products|Messages|Students|Leads|Accounting|Reports|Staffs|Channels|Settings/);assert.doesNotMatch(html,/Meeting link|Follows term|Online Store/)}
   assert.doesNotMatch(html,/Help &amp; Support|Switch branch|Guided Setup|Days left in trial|footer-social/);
@@ -197,6 +240,32 @@ test('mobile sidebar closes after selecting a page so it does not cover the cont
    assert.equal(a.nodes['#portal-sidebar'].inert,true);
   }
  }
+});
+for(const accountRole of ['admin','teacher'])test(`shared ${accountRole} mobile Fees navigation closes the sidebar and keeps subsequent navigation consistent`,async()=>{
+ const user={...sharedTestUser,role:accountRole},a=await sharedApp({session:async()=>({user})});
+ a.set('portalViewport.matches=true;syncPortalMenu()');
+ await a.click({action:'portal-menu'});assert.equal(a.read('role'),'teacher');assert.equal(a.read('authUser.role'),accountRole);assert.equal(a.nodes['#portal-sidebar'].inert,false);
+ await a.click({tab:'fees'});
+ assert.equal(a.read('location.pathname'),'/account/fees');assert.equal(a.read('tab'),'fees');
+ assert.equal(a.read('portalMenu'),false,'Fees navigation must close the mobile sidebar');assert.equal(a.nodes['[data-action="portal-menu"]'].getAttribute('aria-expanded'),'false');assert.equal(a.nodes['#portal-sidebar'].inert,true);
+ await a.click({action:'portal-menu'});await a.click({tab:'catalog'});
+ assert.equal(a.read('location.pathname'),'/account');assert.equal(a.read('tab'),'catalog');assert.equal(a.read('portalMenu'),false);assert.equal(a.nodes['[data-action="portal-menu"]'].getAttribute('aria-expanded'),'false');assert.equal(a.nodes['#portal-sidebar'].inert,true);
+});
+test('shared desktop Fees navigation preserves the manually selected sidebar state',async()=>{
+ for(const accountRole of ['admin','teacher']){
+  const user={...sharedTestUser,role:accountRole},a=await sharedApp({session:async()=>({user})});
+  for(const collapsed of [false,true]){
+   a.set(`portalMenu=${collapsed};tab='catalog';location.pathname='/account';render()`);await a.click({tab:'fees'});
+   assert.equal(a.read('location.pathname'),'/account/fees');assert.equal(a.read('portalMenu'),collapsed);assert.equal(a.nodes['[data-action="portal-menu"]'].getAttribute('aria-expanded'),String(!collapsed));assert.equal(a.nodes['#portal-sidebar'].inert,false);
+   await a.click({tab:'catalog'});assert.equal(a.read('location.pathname'),'/account');assert.equal(a.read('portalMenu'),collapsed);
+  }
+ }
+});
+test('a shared student selecting an unauthorized Fees page keeps the current mobile page and open sidebar',async()=>{
+ const user={...sharedTestUser,role:'student'},a=await sharedApp({session:async()=>({user})});
+ a.set("portalViewport.matches=true;tab='courses';location.pathname='/account';render()");await a.click({action:'portal-menu'});const html=a.nodes['#app'].innerHTML;
+ await a.click({tab:'fees'});
+ assert.equal(a.read('location.pathname'),'/account');assert.equal(a.read('tab'),'courses');assert.equal(a.read('portalMenu'),true);assert.equal(a.nodes['[data-action="portal-menu"]'].getAttribute('aria-expanded'),'true');assert.equal(a.nodes['#portal-sidebar'].inert,false);assert.equal(a.nodes['#app'].innerHTML,html);
 });
 test('sidebar toggles preserve the page, unfinished input, and focus without rerendering',()=>{
  for(const role of ['teacher','student'])for(const mobile of [false,true]){
@@ -262,7 +331,7 @@ test('course detail Add and Edit schedules stay connected to the timetable witho
  a.submit('schedule-editor',scheduleValues({course:'story',time:'10:00',duration:'45',endMode:'count',count:'4'}),{dataset:{id:''}});const id=a.read('db.schedules[0].id');
  assert.equal(a.read('location.pathname'),'/account/courses/story');let html=a.nodes['#app'].innerHTML;assert.match(html,/10:00–10:45/);assert.match(html,/2026-10-29/);assert.match(html,new RegExp(`data-edit-activity="${id}"`));assert.deepEqual(a.read('db.bookings'),bookings);assert.deepEqual(a.read('db.classes'),classes);
  a.click({editSchedule:id});a.submit('schedule-editor',scheduleValues({course:'story',time:'10:00',duration:'60',endMode:'count',count:'4'}),{dataset:{id}});assert.match(a.nodes['#app'].innerHTML,/10:00–11:00/);assert.equal(a.read('db.schedules.length'),1);
- a.change('','timetable',{id:'course-detail-view'});assert.equal(a.read('location.pathname'),'/account');assert.equal(a.read('tab'),'overview');assert.equal(a.read('timetableSearch'),'Course 2');assert.match(a.nodes['#app'].innerHTML,new RegExp(`data-open-lesson="${id}"`));
+ a.change('','timetable',{id:'course-detail-view'});assert.equal(a.read('location.pathname'),'/account');assert.equal(a.read('tab'),'overview');assert.equal(a.read('timetableSearch'),'');assert.match(a.nodes['#app'].innerHTML,/Course: Course 2/);assert.match(a.nodes['#app'].innerHTML,new RegExp(`data-open-lesson="${id}"`));
 });
 test('course detail supports direct links and rejects student access or unknown courses',()=>{
  const a=app();a.set("role='teacher';lang='en';location.pathname='/account/courses/art';render()");assert.match(a.nodes['#app'].innerHTML,/course-detail-layout/);assert.match(a.nodes['#app'].innerHTML,/data-tab="catalog" class="active"/);
@@ -328,6 +397,28 @@ test('short adjacent slot summaries use separate lanes without changing actual d
  const a=lessonApp();a.set("db.schedules=[{id:'SHORT1',course:'art',startDate:'2026-10-08',weekdays:[4],endMode:'forever',time:'09:00',duration:15,color:'#27777b'},{id:'SHORT2',course:'art',startDate:'2026-10-08',weekdays:[4],endMode:'forever',time:'09:15',duration:15,color:'#27777b'},{id:'LATE',course:'art',startDate:'2026-10-08',weekdays:[4],endMode:'forever',time:'19:45',duration:15,color:'#27777b'}];render()");
  const layout=a.read("timetableDayLayout(timetableDateObject('2026-10-08'))"),first=layout.find(c=>c.id==='SHORT1'),second=layout.find(c=>c.id==='SHORT2');assert.notEqual(first.lane,second.lane);assert.equal(first.duration,15);assert.equal(second.time,'09:15');assert.equal(a.read("db.schedules[2].duration"),15);
  const html=a.nodes['#app'].innerHTML;assert.match(html,/09:00 – 09:15/);assert.match(html,/19:45 – 20:00/);assert.match(html,/>19:45<\/div>/);assert.doesNotMatch(html,/>20:00<\/div>|>20:15<\/div>/);
+});
+
+test('timetable date columns keep the same baseline across empty and crowded weeks and both fourteen-day rows',()=>{
+ const a=lessonApp();a.set("db.classes=[];db.schedules=[0,1,2].map(i=>({id:'OVERLAP'+i,course:'art',startDate:'2026-10-15',weekdays:[4],endMode:'forever',time:'10:00',duration:60,color:'#27777b'}));render()");
+ const minimums=()=>[...a.nodes['#app'].innerHTML.matchAll(/--tt-grid-min:(\d+)px/g)].map(match=>Number(match[1]));
+ const empty=minimums();assert.deepEqual(empty,[1456]);a.click({action:'tt-next'});assert.equal(a.read("Math.max(...timetableDayLayout(timetableDateObject('2026-10-15')).map(row=>row.lanes))"),3);assert.deepEqual(minimums(),empty);
+ assert.equal((a.nodes['#app'].innerHTML.match(/data-open-lesson="OVERLAP/g)||[]).length,3,'All overlapping lessons must remain separate clickable cards');
+ a.set("timetableView='range';timetableViewSettings.rangeDays=14;selectTimetableDate('2026-10-08');render()");assert.deepEqual(minimums(),[1456,1456]);
+});
+
+test('an empty timetable quarter-hour opens the existing editor with its date time and weekday without saving on cancel',async()=>{
+ const a=lessonApp(),before=a.read('db');assert.match(a.nodes['#app'].innerHTML,/data-action="tt-add-cell"[^>]*data-date="2026-10-05"[^>]*data-time="09:15"/);
+ await a.click({action:'tt-add-cell',date:'2026-10-05',time:'09:15'});assert.equal(a.read('scheduleDraft.startDate'),'2026-10-05');assert.equal(a.read('scheduleDraft.time'),'09:15');assert.deepEqual(a.read('scheduleDraft.weekdays'),[1]);assert.match(a.nodes['#modal-root'].innerHTML,/<option value="09:15" selected>/);assert.match(a.nodes['#modal-root'].innerHTML,/id="schedule-duration"[^>]*required(?! disabled)/);
+ a.keydown('Escape');assert.equal(a.read('modal'),'');assert.deepEqual(a.read('db'),before);assert.equal(a.read('timetableDate'),'2026-10-08');
+ for(const fields of [{date:'2026-10-05',time:'09:20'},{date:'2026-02-30',time:'09:15'},{date:'2030-01-01',time:'09:15'},{date:'2026-10-05',time:'24:00'}]){await a.click({action:'tt-add-cell',...fields});assert.equal(a.read('modal'),'');}
+});
+
+test('timetable create cells follow real quarter hours under twenty-minute display rows and stay absent for read-only roles',async()=>{
+ const a=lessonApp();a.set("timetableViewSettings.intervalDuration=20;render()");const html=a.nodes['#app'].innerHTML;assert.match(html,/data-time="09:15"/);assert.doesNotMatch(html,/data-time="09:20"/);
+ await a.click({action:'tt-add-cell',date:'2026-10-05',time:'09:15'});assert.equal(a.read('scheduleDraft.time'),'09:15');a.keydown('Escape');
+ const user={...copy(sharedTestUser),id:'qa-cell-readonly-teacher',role:'teacher'},b=await sharedScheduleApp({rows:[sharedScheduleRecord()],revision:1},{session:async()=>({user}),schedules:async()=>teacherScheduleFixture(sharedScheduleRecord())});
+ assert.doesNotMatch(b.nodes['#app'].innerHTML,/data-action="tt-add-cell"/);await b.click({action:'tt-add-cell',date:'2026-10-05',time:'09:15'});assert.equal(b.read('modal'),'');assert.equal(b.read('scheduleDraft'),null);
 });
 
 
@@ -629,6 +720,48 @@ function sharedForm(id,{recordId='',version='',courseIds=['qa-course']}={}){
  };
 }
 const sharedFeeInput=()=>({feeName:'Shared lesson fee',category:'Tuition',pricingModel:'monthly-lessons',lessonPrice:'300',lessonMonths:'24',duration:'60',onlineStore:'on'});
+
+async function feePricingApp(){
+ const a=await sharedApp();a.set("tab='fees';location.pathname='/account/fees';openFeeEditor('qa-fee')");
+ const root=a.nodes['#modal-root'],parentHtml=root.innerHTML,attributes={},focus=[];
+ const parent={inert:false,isConnected:true,draft:{feeName:'Unsent name',lessonPrice:'0',courseIds:['qa-course','other-course'],operationKey:'original-key',error:'Existing field error'},scrollTop:213,setAttribute:(key,value)=>attributes[key]=value,removeAttribute:key=>delete attributes[key]};
+ const opener={dataset:{action:'fee-pricing-open'},focus:options=>focus.push(options)};
+ a.ctx.document.activeElement=opener;
+ a.nodes['#fee-editor']={dataset:{id:'qa-fee',version:'1',operationKey:'original-key'},closest:()=>parent};
+ root.insertAdjacentHTML=(position,html)=>{assert.equal(position,'beforeend');root.innerHTML+=html;};
+ const child={remove(){root.innerHTML=parentHtml;}};
+ a.nodes['.fee-pricing-dialog']={closest:()=>child};
+ return {...a,parent,attributes,focus,opener,parentHtml};
+}
+test('fee pricing child returns the same unsaved editor node and scroll on Close or Escape without saving',async()=>{
+ for(const close of ['button','escape']){
+  const a=await feePricingApp(),before=copy(a.parent.draft);a.set('openFeePricing()');
+  assert.equal(a.parent.inert,true);assert.equal(a.attributes['aria-hidden'],'true');
+  assert.match(a.nodes['#modal-root'].innerHTML,/id="fee-pricing-editor"/);assert.match(a.nodes['#modal-root'].innerHTML,/HK\$300.00/);
+  await a.submit('fee-pricing-editor',{futurePrice:'999',effectiveDate:'2026-11-01'});
+  assert.equal(a.calls.filter(row=>row.operation==='saveFee').length,0);
+  if(close==='escape')a.keydown('Escape');else await a.click({action:'fee-pricing-close'});
+  assert.equal(a.parent.inert,false);assert.equal(a.attributes['aria-hidden'],undefined);
+  assert.equal(a.nodes['#modal-root'].innerHTML,a.parentHtml);assert.deepEqual(a.parent.draft,before);assert.equal(a.parent.scrollTop,213);
+  assert.equal(a.focus.length,1);assert.equal(a.focus[0].preventScroll,true);
+  assert.match(a.read('modal'),/id="fee-editor"/);assert.equal(a.read('feePricingReturn'),null);
+ }
+});
+test('fee pricing entry requires an existing saved fee and admin identity and cannot run while saving',async()=>{
+ const a=await feePricingApp();a.set('openFeeEditor()');a.nodes['#fee-editor'].dataset.id='';
+ assert.doesNotMatch(a.read('modal'),/data-action="fee-pricing-open"/);a.set('openFeePricing()');assert.equal(a.read('feePricingReturn'),null);
+ a.set("openFeeEditor('qa-fee')");a.nodes['#fee-editor'].dataset.id='missing-fee';a.set('openFeePricing()');assert.equal(a.read('feePricingReturn'),null);
+ a.nodes['#fee-editor'].dataset.id='qa-fee';a.set('courseSaving=true;openFeePricing()');assert.equal(a.read('feePricingReturn'),null);
+ a.set("courseSaving=false;authUser={...authUser,role:'teacher'};openFeePricing()");assert.equal(a.read('feePricingReturn'),null);
+ assert.equal(a.calls.filter(row=>row.operation==='saveFee').length,0);
+});
+test('fee pricing child is discarded on route or identity changes and cannot resurrect the old fee editor',async()=>{
+ for(const leave of ["go('/account')","applySharedUser({id:'different-admin',role:'admin',accessRevision:'next'})"]){
+  const a=await feePricingApp();a.set('openFeePricing()');assert.ok(a.read('feePricingReturn.feeId'));
+  a.set(leave);assert.equal(a.read('feePricingReturn'),null);a.set('closeFeePricing()');assert.equal(a.read('modal'),'');
+  assert.equal(a.calls.filter(row=>row.operation==='saveFee').length,0);assert.equal(a.focus.length,0);
+ }
+});
 
 test('shared fee editor submits the opened version even when a background refresh has newer values',async()=>{
  const a=await sharedApp();a.set("openFeeEditor('qa-fee')");
@@ -1240,6 +1373,11 @@ function observeAppWrites(a){
  Object.defineProperty(node,'innerHTML',{configurable:true,get:()=>descriptor?.get?descriptor.get.call(node):html,set:value=>{writes++;if(descriptor?.set)descriptor.set.call(node,value);else html=value}});
  return ()=>writes;
 }
+function publicAccountLinkFixture(a,{signedIn=true}={}){
+ const classes=new Set([signedIn?'account-avatar':'login-icon']),attributes={href:signedIn?'/account':'/login'},link={dataset:{go:attributes.href},classList:{toggle:(key,on)=>on?classes.add(key):classes.delete(key),contains:key=>classes.has(key)},setAttribute:(key,value)=>attributes[key]=String(value)},query=a.ctx.document.querySelector;
+ a.ctx.document.querySelector=selector=>selector==='.site-header .login-icon'?(classes.has('login-icon')?link:null):selector==='.site-header .account-avatar'?(classes.has('account-avatar')?link:null):query(selector);
+ return {classes,attributes,link};
+}
 function switchSharedIdentity(a){
  a.ctx.nextIdentityUser={id:'next-auth-admin',role:'admin',displayName:'Next authenticated manager',email:'next-auth@example.test'};
  a.ctx.nextIdentityCourse={...copy(sharedTestCourse),id:'next-auth-course',courseName:'New account preserved course',feeIds:[],fees:[],feeName:''};
@@ -1251,6 +1389,53 @@ test('a current shared permission failure invalidates the SDK session before ret
  const a=await sharedApp({invalidateSession(){invalidations++;token=''}});a.set("openFeeEditor('qa-fee')");
  a.client.courses=async()=>{throw serviceError(401,'AUTH_REQUIRED')};await a.set('refreshSharedCourses()');
  assert.equal(invalidations,1);assert.equal(token,'');assert.equal(a.read('authUser'),null);assert.equal(a.read('modal'),'');assert.equal(a.read('location.pathname'),'/login');
+});
+
+test('a slow successful login retains its valid session without overriding a newer FAQ navigation',async()=>{
+ for(const navigation of ['link','back']){
+  const a=await sharedApp();await a.click({action:'logout'});if(navigation==='back')a.set("history.replaceState({},'','/faq');go('/login')");const wait=deferred();let calls=0;a.client.login=()=>{calls++;return wait.promise};const form=sharedForm('login');form.values={username:sharedTestUser.email,password:'fictional-password'};const pending=a.submit('login',form.values,form);
+  if(navigation==='link')await a.click({go:'/faq'});else a.set('history.back()');assert.equal(a.read('location.pathname'),'/faq');form.isConnected=false;wait.resolve({user:copy(sharedTestUser)});await pending;
+  assert.equal(a.read('location.pathname'),'/faq','A completed old login must not replace the page the user chose');assert.equal(a.read('authUser.id'),sharedTestUser.id,'The current successful service session remains valid');assert.equal(a.read('loginPending'),false);assert.equal(calls,1);assert.match(a.nodes['#app'].innerHTML,/FAQ/);
+ }
+});
+
+test('a successful login after leaving updates the existing account link without remounting the chosen page or losing focus and scroll',async()=>{
+ for(const focusedOn of ['main','account-link']){
+  const a=await sharedApp();await a.click({action:'logout'});const wait=deferred(),form=sharedForm('login');a.client.login=()=>wait.promise;form.values={username:sharedTestUser.email,password:'fictional-password'};const pending=a.submit('login',form.values,form);await a.click({go:'/faq'});form.isConnected=false;
+  const classes=new Set(['login-icon']),attributes={href:'/login','aria-label':'Login',title:'Login'},accountLink={dataset:{go:'/login'},classList:{toggle:(key,on)=>on?classes.add(key):classes.delete(key),contains:key=>classes.has(key)},setAttribute:(key,value)=>attributes[key]=String(value)},main={scrollTop:183},field={value:'Unsubmitted text'},faq={open:true};a.nodes['.site-header .login-icon']=accountLink;a.nodes['main']=main;a.ctx.document.activeElement=focusedOn==='main'?field:accountLink;a.ctx.window.scrollY=427;let mainWrites=0,html=a.nodes['#app'].innerHTML;Object.defineProperty(a.nodes['#app'],'innerHTML',{configurable:true,get:()=>html,set(value){mainWrites++;html=value;main.scrollTop=0;field.value='';faq.open=false;a.ctx.document.activeElement=a.ctx.document.body;}});
+  wait.resolve({user:copy(sharedTestUser)});await pending;assert.equal(a.read('location.pathname'),'/faq');assert.equal(a.read('authUser.id'),sharedTestUser.id);assert.equal(classes.has('account-avatar'),true,'The visible existing header must show the signed-in account');assert.equal(classes.has('login-icon'),false);assert.equal(accountLink.dataset.go,'/account');assert.equal(attributes.href,'/account');assert.equal(attributes['aria-label'],'My account');assert.equal(attributes.title,'My account');assert.equal(mainWrites,0);assert.equal(a.nodes['main'],main);assert.equal(main.scrollTop,183);assert.equal(a.ctx.window.scrollY,427);assert.equal(field.value,'Unsubmitted text');assert.equal(faq.open,true);assert.equal(a.ctx.document.activeElement,focusedOn==='main'?field:accountLink);
+ }
+});
+
+test('an expired catalogue after a delayed FAQ login restores the existing public login link without remounting or moving focus',async()=>{
+ const a=await sharedApp();await a.click({action:'logout'});const login=deferred(),catalogue=deferred(),form=sharedForm('login');let reads=0;a.client.login=()=>login.promise;a.client.courses=()=>{reads++;return catalogue.promise};form.values={username:sharedTestUser.email,password:'fictional-password'};const pending=a.submit('login',form.values,form);await a.click({go:'/faq'});form.isConnected=false;
+ const {classes,attributes,link}=publicAccountLinkFixture(a,{signedIn:false}),field={value:'Keep this FAQ draft'};a.ctx.document.activeElement=field;a.ctx.window.scrollY=427;const writes=observeAppWrites(a);
+ login.resolve({user:copy(sharedTestUser)});await until(()=>reads===1,'The successful session must reach its catalogue read');assert.equal(classes.has('account-avatar'),true);catalogue.reject(serviceError(401,'AUTH_REQUIRED'));await pending;
+ assert.equal(a.read('authUser'),null);assert.equal(a.read('role'),'');assert.equal(a.read('location.pathname'),'/faq');assert.equal(classes.has('login-icon'),true,'The authoritative session expiry must restore the visible login link');assert.equal(classes.has('account-avatar'),false);assert.equal(link.dataset.go,'/login');assert.equal(attributes.href,'/login');assert.equal(attributes['aria-label'],'Login');assert.equal(attributes.title,'Login');assert.equal(writes(),0);assert.equal(a.ctx.document.activeElement,field);assert.equal(a.ctx.window.scrollY,427);assert.equal(field.value,'Keep this FAQ draft');
+});
+
+test('public account labels follow current identity and language while an old catalogue expiry cannot sign out a newer student',async()=>{
+ for(const language of ['en','zh']){
+  const a=await sharedApp();a.set("go('/faq')");const old=deferred();a.client.courses=()=>old.promise;const pending=a.set('refreshSharedCourses({paint:false})'),{classes,attributes,link}=publicAccountLinkFixture(a);a.ctx.document.activeElement=link;a.ctx.window.scrollY=193;const writes=observeAppWrites(a);a.ctx.currentHeaderLanguage=language;
+  a.set("lang=currentHeaderLanguage;applySharedUser({id:'header-teacher',role:'teacher',displayName:'Teacher',email:'teacher@example.test'});applySharedUser({id:'header-student',role:'student',displayName:'Student',email:'student@example.test'})");
+  assert.equal(a.read('role'),'student');assert.equal(attributes['aria-label'],language==='zh'?'我的帳戶':'My account');assert.equal(attributes.title,language==='zh'?'我的帳戶':'My account');assert.equal(link.dataset.go,'/account');old.reject(serviceError(401,'AUTH_REQUIRED'));await assert.rejects(pending,error=>error.status===401);assert.equal(a.read('authUser.id'),'header-student');assert.equal(classes.has('account-avatar'),true);assert.equal(link.dataset.go,'/account');
+  a.set('applySharedUser(null)');assert.equal(classes.has('login-icon'),true);assert.equal(classes.has('account-avatar'),false);assert.equal(link.dataset.go,'/login');assert.equal(attributes.href,'/login');assert.equal(attributes['aria-label'],language==='zh'?'登入':'Login');assert.equal(attributes.title,language==='zh'?'登入':'Login');assert.equal(writes(),0);assert.equal(a.ctx.document.activeElement,link);assert.equal(a.ctx.window.scrollY,193);
+ }
+});
+
+test('logging out during an old login catalogue read permits a new account login and the old finally cannot unlock it',async()=>{
+ const student={id:'qa-student-login',role:'student',displayName:'Test student',email:'student@example.test'},a=await sharedApp({session:async()=>({user:student})});a.set("history.replaceState({},'','/account')");await a.click({action:'logout'});const catalogue=deferred();let catalogueReads=0;a.client.courses=()=>{catalogueReads++;return catalogue.promise};a.client.login=async()=>({user:student});const original=sharedForm('login');original.values={username:student.email,password:'fictional-password'};const pending=a.submit('login',original.values,original);await until(()=>a.read('authUser?.id??null')===student.id&&catalogueReads===1,'Authentication must succeed before the slow catalogue read');assert.equal(a.read('loginPending'),true);
+ a.set('history.back()');assert.equal(a.read('location.pathname'),'/account');await a.click({action:'logout'});assert.equal(a.read('authUser'),null);assert.equal(a.read('location.pathname'),'/login');const next=deferred();let newLoginRequests=0;a.client.login=()=>{newLoginRequests++;return next.promise};const form=sharedForm('login');form.values={username:'next-admin@example.test',password:'fictional-password'};const newer=a.submit('login',form.values,form);assert.equal(newLoginRequests,1,'The new account must really send its login request without waiting for the old catalogue');assert.equal(form.submitButton.disabled,true);assert.equal(a.read('loginPending'),true);
+ catalogue.resolve({courses:[]});await pending;assert.equal(a.read('loginPending'),true,'The detached old finally must not release the new login job');assert.equal(form.submitButton.disabled,true);assert.equal(a.read('authUser'),null);const admin={...copy(sharedTestUser),id:'next-auth-admin',email:'next-admin@example.test'};next.resolve({user:admin});await newer;assert.equal(a.read('authUser.id'),admin.id);assert.equal(a.read('location.pathname'),'/account');assert.equal(a.read('loginPending'),false);assert.equal(form.submitButton.disabled,false);
+});
+
+test('the current login still rejects duplicate submits, presents its error and allows a successful retry',async()=>{
+ const a=await sharedApp();await a.click({action:'logout'});const wait=deferred(),form=sharedForm('login');let calls=0;a.client.login=()=>{calls++;return wait.promise};form.values={username:sharedTestUser.email,password:'fictional-password'};const pending=a.submit('login',form.values,form);await a.submit('login',form.values,form);assert.equal(calls,1);assert.equal(form.submitButton.disabled,true);assert.equal(a.read('loginPending'),true);wait.reject(serviceError(401,'INVALID_CREDENTIALS'));await pending;assert.equal(a.read('loginPending'),false);assert.equal(form.submitButton.disabled,false);assert.ok(a.nodes['#login-error'].textContent);assert.equal(a.read('authUser'),null);assert.equal(a.read('location.pathname'),'/login');
+ a.client.login=async()=>{calls++;return {user:copy(sharedTestUser)}};await a.submit('login',form.values,form);assert.equal(calls,2);assert.equal(a.read('authUser.id'),sharedTestUser.id);assert.equal(a.read('location.pathname'),'/account');assert.equal(a.read('loginPending'),false);
+});
+
+test('a current login whose catalogue reports an expired session releases its job and stays signed out',async()=>{
+ const a=await sharedApp();await a.click({action:'logout'});a.client.login=async()=>({user:copy(sharedTestUser)});a.client.courses=async()=>{throw serviceError(401,'AUTH_REQUIRED')};const form=sharedForm('login');form.values={username:sharedTestUser.email,password:'fictional-password'};await a.submit('login',form.values,form);assert.equal(a.read('authUser'),null);assert.equal(a.read('role'),'');assert.equal(a.read('location.pathname'),'/login');assert.equal(a.read('loginPending'),false);assert.equal(a.read('loginJob'),null);assert.equal(form.submitButton.disabled,false);
 });
 
 test('a superseded login completion cannot publish an old error or repaint another authenticated identity',async()=>{
@@ -1325,6 +1510,77 @@ async function sharedScheduleApp(remote={rows:[],revision:1},overrides={},option
  return {...a,remote,scheduleCalls,polls,focus,windowEvents};
 }
 
+test('course timetable navigation clears conflicting display filters, shows its course and restores the source workspace',async()=>{
+ for(const view of ['day','week','range']){
+  const a=await sharedScheduleApp({rows:[scopedScheduleRecord()],revision:1}),before=a.read('db');a.set("tab='catalog';location.pathname='/account';render()");await a.click({openCourse:'qa-course'});
+  a.set(`courseDetailMonth=new Date(2026,9,1);courseDetailTab='general';timetableView=${JSON.stringify(view)};timetableViewSettings.rangeDays=8;selectTimetableDate('2026-10-01');timetableSearch='unrelated old search';timetableResourceSearch='old room';timetableSelections={rooms:['missing-room'],teachers:['missing-teacher']};timetableClassTypeFilter='old-type';render()`);
+  const prefs=a.read('({timetableDate,timetableView,timetableSearch,timetableResourceSearch,timetableSelections,timetableClassTypeFilter,rangeDays:timetableViewSettings.rangeDays})'),scroll={scrollTop:317,scrollLeft:18},group={dataset:{courseScheduleGroup:'schedule:qa-scoped-series'},open:true};a.nodes['.course-schedule-scroll']=scroll;a.ctx.document.querySelectorAll=selector=>selector==='.course-schedule-group'?[group]:[];
+  a.change('','timetable',{id:'course-detail-view'});assert.equal(a.read('location.pathname'),'/account');assert.equal(a.read('tab'),'overview');assert.equal(a.read('timetableView'),view);assert.equal(a.read('timetableViewSettings.rangeDays'),8);assert.equal(a.read('timetableDate'),'2026-10-14');assert.equal(a.read('timetableSearch'),'');assert.equal(a.read('timetableResourceSearch'),'');assert.equal(a.read('timetableClassTypeFilter'),'');assert.deepEqual(a.read('timetableSelections'),{rooms:[],teachers:[]});assert.match(a.nodes['#app'].innerHTML,/Course: Shared studio/);assert.match(a.nodes['#app'].innerHTML,/data-open-lesson="qa-scoped-series"/);assert.match(a.nodes['#app'].innerHTML,/Back to Shared studio/);
+  scroll.scrollTop=0;scroll.scrollLeft=0;group.open=false;await a.click({action:'tt-back-course'});assert.equal(a.read('location.pathname'),'/account/courses/qa-course');assert.equal(a.read('courseDetailMonth.getMonth()'),9);assert.equal(a.read('courseDetailTab'),'general');assert.equal(scroll.scrollTop,317);assert.equal(scroll.scrollLeft,18);assert.equal(group.open,true);assert.deepEqual(a.read('({timetableDate,timetableView,timetableSearch,timetableResourceSearch,timetableSelections,timetableClassTypeFilter,rangeDays:timetableViewSettings.rangeDays})'),prefs);assert.deepEqual(a.read('db'),before);
+ }
+});
+
+test('course timetable history Back and Forward restore scoped views and discard the old lesson modal',async()=>{
+ const a=await sharedScheduleApp({rows:[scopedScheduleRecord()],revision:1});a.set("tab='catalog';location.pathname='/account';history.replaceState({foreign:{kept:true}},'',location.pathname);render()");await a.click({openCourse:'qa-course'});a.set("courseDetailMonth=new Date(2026,9,1);courseDetailTab='materials';render()");a.change('','timetable',{id:'course-detail-view'});
+ assert.equal(a.read('history.state.foreign.kept'),true);a.set("openTimetableLesson('qa-scoped-series','schedule','2026-10-14',1)");assert.ok(a.read('selectedTimetableLesson'));a.set('history.back()');assert.equal(a.read('location.pathname'),'/account/courses/qa-course');assert.equal(a.read('tab'),'catalog');assert.equal(a.read('courseDetailTab'),'materials');assert.equal(a.read('selectedTimetableLesson'),null);assert.equal(a.read('modal'),'');
+ a.set('history.forward()');assert.equal(a.read('location.pathname'),'/account');assert.equal(a.read('tab'),'overview');assert.deepEqual(a.read('timetableLessonFilter'),{course:'qa-course'});assert.match(a.nodes['#app'].innerHTML,/Course: Shared studio/);assert.equal(a.read('modal'),'');const serialized=JSON.stringify(a.read('history.state'));assert.doesNotMatch(serialized,/"students":\[|"bookings":|"orders":|innerHTML|isConnected/);assert.equal(a.read('history.state.foreign.kept'),true);
+});
+
+test('Fees course links return to the exact fee source and browser history retains Fees rather than Courses',async()=>{
+ const a=await sharedScheduleApp({rows:[scopedScheduleRecord()],revision:1});a.set("sharedFees.push({...sharedFees[0],id:'same-name-fee',courseIds:['qa-course']});feeSearch='Shared';feeFilter='single';tab='fees';location.pathname='/account/fees';history.replaceState({foreign:'keep'},'',location.pathname);render()");const tag=[...a.nodes['#app'].innerHTML.matchAll(/<button\b[^>]*data-open-course="qa-course"[^>]*>/g)].map(row=>row[0]).find(row=>row.includes('data-source-fee-id="qa-fee"'));assert.ok(tag,'A course link must identify its original fee, even when names repeat');
+ const scroll={scrollTop:241,scrollLeft:0};a.nodes['.portal-content']=scroll;await a.click(markupDataset(tag));assert.match(a.nodes['#app'].innerHTML,/Back to fees/);a.set('history.back()');assert.equal(a.read('location.pathname'),'/account/fees');assert.equal(a.read('tab'),'fees');assert.equal(a.read('feeSearch'),'Shared');assert.equal(a.read('feeFilter'),'single');a.set('history.forward()');assert.equal(a.read('accountCourseId()'),'qa-course');assert.match(a.nodes['#app'].innerHTML,/Back to fees/);
+ let target='';a.ctx.document.querySelectorAll=selector=>selector==='[data-open-course]'?[{dataset:{openCourse:'qa-course',sourceFeeId:'same-name-fee'},focus(){target='wrong'}},{dataset:{openCourse:'qa-course',sourceFeeId:'qa-fee'},focus(options){assert.equal(options?.preventScroll,true);target='qa-fee'}}]:[];scroll.scrollTop=0;await a.click({action:'course-back-source'});assert.equal(target,'qa-fee');assert.equal(scroll.scrollTop,241);assert.equal(a.read('location.pathname'),'/account/fees');assert.equal(a.read('history.state.foreign'),'keep');
+});
+
+test('course source return uses a safe fallback for a removed fee and a direct URL falls back to Courses',async()=>{
+ const a=await sharedScheduleApp({rows:[scopedScheduleRecord()],revision:1});a.set("tab='fees';location.pathname='/account/fees';render()");await a.click({openCourse:'qa-course',sourceFeeId:'qa-fee'});a.set("sharedFees=[]");let focused=0;a.nodes['#fee-status']={focus(options){assert.equal(options?.preventScroll,true);focused++}};a.ctx.document.querySelectorAll=()=>[];await a.click({action:'course-back-source'});assert.equal(a.read('location.pathname'),'/account/fees');assert.equal(a.read('tab'),'fees');assert.equal(focused,1);
+ const direct=await sharedScheduleApp();direct.set("location.pathname='/account/courses/qa-course';tab='catalog';render()");await direct.click({action:'course-back-source'});assert.equal(direct.read('location.pathname'),'/account');assert.equal(direct.read('tab'),'catalog');
+});
+
+test('course timetable clear removes only its display constraint while a teacher keeps the authorized occurrence scope',async()=>{
+ const series=scopedScheduleRecord(),user={...copy(sharedTestUser),role:'teacher'},a=await sharedScheduleApp({rows:[],revision:1},{session:async()=>({user}),schedules:async()=>teacherScheduleFixture(series,{sequence:2,date:'2026-10-21'})});a.set("tab='catalog';location.pathname='/account';render()");await a.click({openCourse:'qa-course'});a.set("courseDetailMonth=new Date(2026,9,1);selectTimetableDate('2026-10-01');timetableView='day';render()");a.change('','timetable',{id:'course-detail-view'});await until(()=>a.read('location.pathname')==='/account','The authorized course month must finish loading before opening its timetable');await a.set('refreshSharedSchedules()');assert.equal(a.read('timetableDate'),'2026-10-21');assert.match(a.nodes['#app'].innerHTML,/data-lesson-sequence="2"/);await a.click({action:'tt-clear-lesson'});assert.equal(a.read('timetableLessonFilter'),null);assert.equal(a.read('sharedScheduleOccurrences.length'),1);assert.equal(a.read('db.schedules.length'),0);assert.match(a.nodes['#app'].innerHTML,/Back to Shared studio/);assert.doesNotMatch(a.nodes['#app'].innerHTML,/data-lesson-sequence="1"/);
+});
+
+test('course navigation history is invalidated when account access changes',async()=>{
+ const a=await sharedScheduleApp({rows:[scopedScheduleRecord()],revision:1});a.set("tab='fees';location.pathname='/account/fees';render()");await a.click({openCourse:'qa-course',sourceFeeId:'qa-fee'});a.change('','timetable',{id:'course-detail-view'});a.set(`applySharedUser(${JSON.stringify({...copy(sharedTestUser),accessRevision:'changed-access'})});render();history.back()`);assert.equal(a.read('courseDetailOrigin'),null);assert.equal(a.read('courseTimetableOrigin'),null);assert.doesNotMatch(a.nodes['#app'].innerHTML,/Back to fees|Back to Shared studio/);assert.equal(a.read('modal'),'');
+});
+
+test('course navigation returns to the filtered Courses list and retains an honestly empty month',async()=>{
+ const a=await sharedScheduleApp({rows:[scopedScheduleRecord()],revision:1});a.set("tab='catalog';location.pathname='/account';courseSearch='Shared';courseCategoryFilter='Art';courseLevelFilter='Beginner';courseStatusFilter='active';courseSortKey='courseName';courseSortDirection='desc';render()");const before=a.read('({courseSearch,courseCategoryFilter,courseLevelFilter,courseStatusFilter,courseSortKey,courseSortDirection})');await a.click({openCourse:'qa-course'});a.set("courseDetailMonth=new Date(2027,0,1);timetableView='day';render()");a.change('','timetable',{id:'course-detail-view'});assert.equal(a.read('timetableDate'),'2027-01-01');assert.match(a.nodes['#app'].innerHTML,/Course: Shared studio/);assert.doesNotMatch(a.nodes['#app'].innerHTML,/data-open-lesson="qa-scoped-series"/);await a.click({action:'tt-back-course'});assert.equal(a.read('courseDetailMonth.getFullYear()'),2027);assert.equal(a.read('courseDetailMonth.getMonth()'),0);await a.click({action:'course-back-source'});assert.equal(a.read('tab'),'catalog');assert.deepEqual(a.read('({courseSearch,courseCategoryFilter,courseLevelFilter,courseStatusFilter,courseSortKey,courseSortDirection})'),before);assert.match(a.nodes['#app'].innerHTML,/data-open-course="qa-course"/);
+});
+
+test('course timetable navigation is bilingual and a removed course cannot retain its return control',async()=>{
+ const a=await sharedScheduleApp({rows:[scopedScheduleRecord()],revision:1});a.set("tab='catalog';location.pathname='/account';lang='zh';render()");await a.click({openCourse:'qa-course'});a.set("courseDetailMonth=new Date(2026,9,1)");a.change('','timetable',{id:'course-detail-view'});assert.match(a.nodes['#app'].innerHTML,/課程: Shared studio/);assert.match(a.nodes['#app'].innerHTML,/返回 Shared studio/);a.set("db.courseSettings=[];render()");assert.doesNotMatch(a.nodes['#app'].innerHTML,/data-action="tt-back-course"/);await a.click({action:'tt-back-course'});assert.equal(a.read('location.pathname'),'/account');assert.equal(a.read('tab'),'overview');
+});
+
+test('a delayed authorized course-month read cannot navigate back after the teacher leaves',async()=>{
+ const series=scopedScheduleRecord(),user={...copy(sharedTestUser),role:'teacher'},a=await sharedScheduleApp({rows:[],revision:1},{session:async()=>({user}),schedules:async()=>teacherScheduleFixture(series,{sequence:2,date:'2026-10-21'})});a.set("tab='catalog';location.pathname='/account';render()");await a.click({openCourse:'qa-course'});await a.set('refreshSharedSchedules({paint:false})');const wait=deferred();let reads=0;a.client.schedules=()=>{reads++;return wait.promise};a.change('','timetable',{id:'course-detail-view'});await until(()=>reads===1,'The teacher navigation must use an authorized course-month read');await a.click({tab:'catalog'});const destination=a.read('location.pathname');wait.resolve(teacherScheduleFixture(series,{sequence:2,date:'2026-10-21'}));await until(()=>a.read('scheduleReadPromise')===null,'The old course read must finish');assert.equal(a.read('location.pathname'),destination);assert.equal(a.read('tab'),'catalog');assert.equal(a.read('courseTimetableOrigin'),null);assert.equal(a.read('timetableLessonFilter'),null);
+});
+
+test('an in-flight teacher course read failure leaves the source visible and a successful retry opens its timetable',async()=>{
+ const series=scopedScheduleRecord(),user={...copy(sharedTestUser),role:'teacher'},a=await sharedScheduleApp({rows:[],revision:1},{session:async()=>({user}),schedules:async()=>teacherScheduleFixture(series,{sequence:2,date:'2026-10-21'})});a.set("tab='catalog';location.pathname='/account';render()");await a.click({openCourse:'qa-course'});await a.set('refreshSharedSchedules({paint:false})');
+ const wait=deferred();let reads=0;a.client.schedules=()=>{reads++;return wait.promise};const background=a.set('refreshSharedSchedules()');await until(()=>reads===1,'The background course-month read must start');const navigation=a.set("openCourseTimetable({id:'course-detail-view'})");wait.reject(serviceError(503,'SERVICE_UNAVAILABLE'));await background;await navigation;assert.equal(a.read('location.pathname'),'/account/courses/qa-course');assert.equal(a.read('tab'),'catalog');assert.equal(a.read('timetableLessonFilter'),null);assert.equal(a.read('courseTimetableOrigin'),null);
+ a.client.schedules=async()=>teacherScheduleFixture(series,{sequence:2,date:'2026-10-21'});await a.set("openCourseTimetable({id:'course-detail-view'})");assert.equal(a.read('location.pathname'),'/account');assert.equal(a.read('timetableDate'),'2026-10-21');
+});
+
+test('course timetable Back and Forward preserve every independently scrolling range grid',async()=>{
+ const a=await sharedScheduleApp({rows:[scopedScheduleRecord()],revision:1});a.set("tab='catalog';location.pathname='/account';render()");await a.click({openCourse:'qa-course'});a.set("courseDetailMonth=new Date(2026,9,1);timetableView='range';timetableViewSettings.rangeDays=8;render()");a.change('','timetable',{id:'course-detail-view'});assert.ok((a.nodes['#app'].innerHTML.match(/class="tt-grid-scroll/g)||[]).length>1);
+ const grids=[{scrollLeft:31,scrollTop:101},{scrollLeft:72,scrollTop:202}],before=copy(grids);a.nodes['.tt-grid-scroll']=grids[0];a.ctx.document.querySelectorAll=selector=>selector==='.tt-grid-scroll'?grids:[];a.set('persistCourseUiHistory();history.back()');for(const grid of grids){grid.scrollLeft=0;grid.scrollTop=0;}a.set('history.forward()');assert.deepEqual(grids,before);
+});
+
+test('course history Back dismisses its fee editor and an older save cannot close or unlock a newer editor',async()=>{
+ const a=await sharedScheduleApp({rows:[scopedScheduleRecord()],revision:1});a.set("tab='fees';location.pathname='/account/fees';render()");await a.click({openCourse:'qa-course',sourceFeeId:'qa-fee'});await a.click({action:'fee-edit',feeId:'qa-fee'});assert.match(a.nodes['#modal-root'].innerHTML,/id="fee-editor"/);
+ const old=deferred(),newer=deferred();let writes=0;a.client.saveFee=()=>++writes===1?old.promise:newer.promise;const form=sharedForm('fee-editor',{recordId:'qa-fee',version:'1'});form.values=sharedFeeInput();const pending=a.submit(form.id,form.values,form);assert.equal(a.read('courseSaving'),true);a.set('history.back()');assert.equal(a.read('location.pathname'),'/account/fees');assert.equal(a.read('tab'),'fees');assert.equal(a.read('modal'),'');assert.equal(a.read('courseSaving'),false);
+ await a.click({action:'fee-edit',feeId:'qa-fee'});const current=sharedForm('fee-editor',{recordId:'qa-fee',version:'1'});current.values=sharedFeeInput();const saving=a.submit(current.id,current.values,current),markup=a.read('modal');old.resolve({fee:{...copy(sharedTestFee),version:2},courses:[copy(sharedTestCourse)]});await pending;assert.equal(a.read('modal'),markup);assert.equal(a.read('courseSaving'),true);assert.equal(current.submitButton.disabled,true);newer.resolve({fee:{...copy(sharedTestFee),version:2},courses:[copy(sharedTestCourse)]});await saving;assert.equal(a.read('modal'),'');assert.equal(a.read('courseSaving'),false);
+});
+
+test('a delayed authorized timetable read after Forward preserves the current reading position rather than replaying history',async()=>{
+ const series=scopedScheduleRecord(),user={...copy(sharedTestUser),role:'teacher'},a=await sharedScheduleApp({rows:[],revision:1},{session:async()=>({user}),schedules:async()=>teacherScheduleFixture(series,{sequence:2,date:'2026-10-21'})});a.set("tab='catalog';location.pathname='/account';render()");await a.click({openCourse:'qa-course'});await a.set('refreshSharedSchedules({paint:false})');a.set("timetableView='range';timetableViewSettings.rangeDays=8;render()");await a.set("openCourseTimetable({id:'course-detail-view'})");await a.set('refreshSharedSchedules({paint:false})');
+ const grid={scrollLeft:31,scrollTop:101};a.nodes['.tt-grid-scroll']=grid;a.ctx.document.querySelectorAll=selector=>selector==='.tt-grid-scroll'?[grid]:[];let html=a.nodes['#app'].innerHTML;Object.defineProperty(a.nodes['#app'],'innerHTML',{configurable:true,get:()=>html,set(value){html=value;grid.scrollLeft=0;grid.scrollTop=0;}});a.set('persistCourseUiHistory();history.back()');await a.set('refreshSharedSchedules({paint:false})');
+ const wait=deferred();let reads=0;a.client.schedules=()=>{reads++;return wait.promise};const dateInput={id:'tt-date',value:a.read('timetableDate'),matches:selector=>selector==='input,select,textarea',focus(){a.ctx.document.activeElement=this}};a.nodes['#tt-date']=dateInput;a.set('history.forward()');await until(()=>reads===1,'Forward must load its authorized timetable window');assert.equal(grid.scrollTop,101);dateInput.value=a.read('timetableDate');a.ctx.document.activeElement=dateInput;grid.scrollLeft=44;grid.scrollTop=156;
+ wait.resolve(teacherScheduleFixture(series,{sequence:2,date:'2026-10-21'}));await a.set('refreshSharedSchedules({paint:false})');assert.equal(grid.scrollLeft,44);assert.equal(grid.scrollTop,156);assert.equal(a.ctx.document.activeElement,dateInput);assert.equal(a.read('modal'),'');
+});
+
 test('shared timetable creates and edits one recurring schedule and another admin reads the same course calendar',async()=>{
  const remote={rows:[],revision:1},a=await sharedScheduleApp(remote),ack=deferred(),pricing=a.read("db.courseSettings.map(course=>({id:course.id,price:course.price,fees:course.fees,feeIds:course.feeIds}))");
  a.set("openSchedule('',{course:'qa-course'})");a.set('scheduleDraft.weekdays=[4];scheduleDraft.customWeekdays=true');
@@ -1348,7 +1604,7 @@ test('shared timetable creates and edits one recurring schedule and another admi
  other.set("courseDetailMonth=new Date(2026,9,1);courseDetailTab='general';location.pathname='/account/courses/qa-course';render()");html=other.nodes['#app'].innerHTML;
  assert.match(html,/Shared studio/);assert.match(html,/11:00–12:00/);assert.equal((html.match(/class="course-schedule-columns course-schedule-row"/g)||[]).length,4);
  other.change('','timetable',{id:'course-detail-view'});
- assert.equal(other.read('location.pathname'),'/account');assert.equal(other.read('timetableSearch'),'Shared studio','View in Timetable must use the readable course name rather than exposing an internal course ID');
+ assert.equal(other.read('location.pathname'),'/account');assert.equal(other.read('timetableSearch'),'');assert.match(other.nodes['#app'].innerHTML,/Course: Shared studio/,'View in Timetable must show the readable course name in its explicit filter rather than exposing an internal course ID');
  assert.ok(other.nodes['#app'].innerHTML.includes('data-open-lesson="'+id+'"'),'The public course-to-timetable navigation must show the exact saved schedule instead of an empty filtered calendar');
 });
 
@@ -1669,8 +1925,56 @@ test('shared scoped following edit preserves earlier lessons, remaining sessions
  await a.submit(form.id,form.values,form);chooseScopedSave(a,'following');await confirmScopedSave(a);
  assert.equal(a.occurrenceCalls[0].scope,'following');assert.equal(a.occurrenceCalls[0].sequence,2);assert.equal(a.occurrenceCalls[0].record.count,2);assert.equal(a.occurrenceCalls[0].record.session,2);assert.equal(a.occurrenceCalls[0].current.version,2);
  assertScopedViews(a,[['2026-10-14','12:30'],['2026-10-21','13:00'],['2026-10-28','13:00']]);
- const dateButton=[...a.nodes['#app'].innerHTML.matchAll(/<button\b[^>]*class="course-schedule-date-edit"[^>]*>/g)].map(match=>match[0]).find(tag=>tag.includes('data-activity-date="2026-10-28"'));assert.ok(dateButton);await a.click(markupDataset(dateButton));
+ const dateButton=[...a.nodes['#app'].innerHTML.matchAll(/<button\b[^>]*class="course-schedule-date-edit"[^>]*>/g)].map(match=>match[0]).find(tag=>tag.includes('data-lesson-date="2026-10-28"'));assert.ok(dateButton);await a.click(markupDataset(dateButton));
+ assert.deepEqual(a.read('selectedTimetableLesson'),{id:'qa-scoped-series',kind:'schedule',date:'2026-10-28',sequence:3});assert.equal(a.read('scheduleDraft'),null,'A date opens the selected lesson for viewing before any edit intent');assert.match(a.nodes['#modal-root'].innerHTML,/13:00 – 13:45/);await a.click({action:'lesson-edit'});
  assert.equal(a.read('scheduleDraft.id'),'qa-scoped-series');assert.equal(a.read('scheduleDraft.occurrenceSequence'),3);assert.equal(a.read('scheduleDraft.session'),3);assert.equal(a.read('scheduleDraft.count'),1);assert.equal(a.read('scheduleDraft.startDate'),'2026-10-28');assert.equal(a.read('scheduleDraft.time'),'13:00');
+});
+
+test('course schedule date links show the exact moved lesson and roster for admins and readonly teachers without writes',async()=>{
+ const record=scopedScheduleRecord({exceptions:[{sequence:2,overrides:{date:'2026-10-22',time:'13:15'}},{sequence:3,cancelled:true}]}),occurrence=scheduleOccurrence(record,2);
+ for(const accountRole of ['admin','teacher']){
+  const user={...copy(sharedTestUser),role:accountRole},rosterReads=[],overrides={session:async()=>({user}),lessonStudents:async(id,sequence)=>{rosterReads.push({id,sequence});return {students:[{id:'linked-session',studentId:'linked-student',displayName:'Linked student',orderId:'linked-order'}]}}};
+  if(accountRole==='teacher')overrides.schedules=async()=>({revision:'authorized-moved-lesson',readScope:'occurrences',occurrences:[{...copy(occurrence),item:{...copy(occurrence.item),occurrenceSequence:2}}]});
+  const a=await scopedScheduleApp([record],overrides);a.set("courseDetailMonth=new Date(2026,9,1);courseDetailTab='general';location.pathname='/account/courses/qa-course';render()");await a.set('refreshSharedSchedules()');
+  const html=a.nodes['#app'].innerHTML,tag=[...html.matchAll(/<button\b[^>]*class="course-schedule-date-edit"[^>]*>/g)].map(match=>match[0]).find(value=>value.includes('data-lesson-date="2026-10-22"'));
+  assert.ok(tag,'Every authorized course lesson needs a date link even when editing is forbidden');assert.doesNotMatch(tag,/data-edit-activity|\bdisabled\b/);assert.match(tag,/data-lesson-sequence="2"/);assert.match(tag,/View lesson details/);
+  const before=a.read('db');await a.click(markupDataset(tag));await a.set('refreshLessonStudents()');
+  assert.deepEqual(a.read('selectedTimetableLesson'),{id:record.id,kind:'schedule',date:'2026-10-22',sequence:2});assert.equal(a.read('scheduleDraft'),null);assert.equal(a.read('lessonDetailTab'),'students');assert.match(a.nodes['#modal-root'].innerHTML,/13:15 – 14:00/);assert.match(a.nodes['#modal-root'].innerHTML,/Linked student/);assert.deepEqual(rosterReads,[{id:record.id,sequence:2}]);
+  const pencil=a.nodes['#modal-root'].innerHTML.match(/<button\b[^>]*data-action="lesson-edit"[^>]*>/)?.[0];assert.ok(pencil);assert.equal(/\bdisabled\b/.test(pencil),accountRole==='teacher');
+  if(accountRole==='teacher'){const modal=a.read('modal');await a.click({action:'lesson-edit'});assert.equal(a.read('modal'),modal,'A forged edit action must leave a readonly teacher in the usable lesson view');assert.equal(a.read('scheduleDraft'),null);}
+  await a.click({action:'lesson-close'});assert.deepEqual(a.read('db'),before);assert.equal(a.occurrenceCalls.length,0);assert.equal(a.scheduleCalls.filter(call=>call.operation==='save').length,0);
+  for(const reference of [{openLesson:record.id,lessonKind:'schedule',lessonDate:'2026-10-21',lessonSequence:'2'},{openLesson:record.id,lessonKind:'schedule',lessonDate:'2026-10-22',lessonSequence:'1'},{openLesson:record.id,lessonKind:'schedule',lessonDate:'2026-10-28',lessonSequence:'3'},{openLesson:'unknown-lesson',lessonKind:'schedule',lessonDate:'2026-10-22',lessonSequence:'2'}]){
+   await a.click(reference);assert.equal(a.read('selectedTimetableLesson'),null,'Moved, cancelled, wrong-sequence and unknown references cannot open a different lesson');assert.equal(a.read('modal'),'');
+  }
+ }
+});
+
+test('closing a course lesson restores the same date focus, month, expanded groups and scroll after a background repaint',async()=>{
+ const a=await scopedScheduleApp([scopedScheduleRecord(),scopedScheduleRecord({id:'qa-second-series',time:'15:00'})]);a.set("courseDetailMonth=new Date(2026,9,1);courseDetailTab='general';location.pathname='/account/courses/qa-course';render()");
+ const tag=[...a.nodes['#app'].innerHTML.matchAll(/<button\b[^>]*class="course-schedule-date-edit"[^>]*>/g)].map(match=>match[0]).find(value=>value.includes('data-open-lesson="qa-second-series"')&&value.includes('data-lesson-date="2026-10-21"'));assert.ok(tag);
+ const dataset=markupDataset(tag),groupKeys=['schedule:qa-scoped-series','schedule:qa-second-series'],makeGroups=()=>groupKeys.map((key,index)=>({dataset:{courseScheduleGroup:key},open:index===0}));let groups=makeGroups(),focused=0;
+ const makeOpener=()=>({dataset,isConnected:true,focus(options){focused++;assert.equal(options?.preventScroll,true)}});let opener=makeOpener();groups[0].open=false;groups[1].open=true;
+ const scroll={scrollLeft:310,scrollTop:48};a.nodes['.course-schedule-scroll']=scroll;a.ctx.document.querySelectorAll=selector=>selector==='.course-schedule-group'?groups:selector==='[data-open-lesson]'?[opener]:[];
+ a.ctx.window.scrollX=0;a.ctx.window.scrollY=460;a.ctx.window.scrollTo=(x,y)=>{a.ctx.window.scrollX=x;a.ctx.window.scrollY=y};
+ const root=a.nodes['#app'];let html=root.innerHTML;Object.defineProperty(root,'innerHTML',{configurable:true,get:()=>html,set(value){html=value;opener.isConnected=false;opener=makeOpener();groups=makeGroups();scroll.scrollLeft=0;scroll.scrollTop=0;a.ctx.window.scrollY=0;if(a.nodes['#modal-root'])a.nodes['#modal-root'].innerHTML='';}});
+ await a.click(dataset,opener);assert.equal(a.read('selectedTimetableLesson.id'),'qa-second-series');assert.equal(a.read('location.pathname'),'/account/courses/qa-course');
+ a.set('sharedViewDirty=true');a.keydown('Escape');
+ assert.equal(a.read('modal'),'');assert.equal(a.read('selectedTimetableLesson'),null);assert.equal(a.read('courseDetailMonth.getMonth()'),9);assert.equal(a.read('courseDetailTab'),'general');assert.deepEqual(groups.map(group=>group.open),[false,true]);assert.deepEqual([scroll.scrollLeft,scroll.scrollTop],[310,48]);assert.equal(a.ctx.window.scrollY,460);assert.equal(focused,1);assert.equal(a.occurrenceCalls.length,0);
+});
+
+test('a course lesson that is moved or cancelled during viewing closes safely instead of leaving an unusable stale dialog',async()=>{
+ for(const overrides of [{date:'2026-10-22'},{cancelled:true}]){
+  const a=await scopedScheduleApp();a.set("courseDetailMonth=new Date(2026,9,1);courseDetailTab='general';location.pathname='/account/courses/qa-course';render()");await a.click({openLesson:'qa-scoped-series',lessonKind:'schedule',lessonDate:'2026-10-21',lessonSequence:'2'});
+  a.remote.rows=[scopedScheduleRecord({version:2,exceptions:[{sequence:2,...(overrides.cancelled?overrides:{overrides})}]})];a.remote.revision++;await a.set('refreshSharedSchedules()');
+  assert.equal(a.read('selectedTimetableLesson'),null);assert.equal(a.read('modal'),'');assert.equal(a.read('location.pathname'),'/account/courses/qa-course');assert.equal(a.read('courseDetailMonth.getMonth()'),9);assert.equal(a.occurrenceCalls.length,0);assert.equal(a.scheduleCalls.filter(call=>call.operation==='save').length,0);
+ }
+});
+test('browser Back leaves a course lesson without retaining its modal, return context or late roster reply',async()=>{
+ const wait=deferred(),a=await scopedScheduleApp(undefined,{lessonStudents:()=>wait.promise});a.set("courseDetailMonth=new Date(2026,9,1);courseDetailTab='general';location.pathname='/account/courses/qa-course';render()");await a.click({openLesson:'qa-scoped-series',lessonKind:'schedule',lessonDate:'2026-10-21',lessonSequence:'2'});const read=a.set('refreshLessonStudents()');
+ assert.ok(a.read('selectedTimetableLesson'));assert.ok(a.read('courseLessonReturn'));
+ a.set("location.pathname='/account'");for(const handler of a.windowEvents.popstate||[])await handler();
+ assert.equal(a.read('selectedTimetableLesson'),null);assert.equal(a.read('courseLessonReturn'),null);assert.equal(a.read('modal'),'');
+ wait.resolve({students:[{id:'late-session',displayName:'Late roster student'}]});await read;assert.equal(a.read('modal'),'');assert.doesNotMatch(a.nodes['#modal-root'].innerHTML,/Late roster student/);
 });
 
 test('shared scoped confirmation cancel preserves the mounted typed editor and readonly teacher duplicate preserves lesson details',async()=>{
@@ -1892,14 +2196,14 @@ test('teacher occurrence-scoped calendars clear a revoked open lesson and materi
 });
 
 const accessAccount=(id,displayName,role='teacher')=>({id,displayName,role});
-async function accessUiApp(remote={},overrides={}){
+async function accessUiApp(remote={},overrides={},options={}){
  remote.accounts??=[accessAccount('access-artist-A','Artist A'),accessAccount('access-artist-B','Artist B'),accessAccount(sharedTestUser.id,'Administrator','admin')];remote.teacherLinks??=[];remote.grants??=[];remote.revision??=1;
  const resource=schedulingResource('access-teacher-resource','teacher','Teaching artist'),resources=[resource,schedulingResource('access-room-resource','room','Studio')],calls=[],reads=[];
  const a=await resourceUiApp({resources,revision:1},{schedules:async()=>({revision:'access-editor-schedules',schedules:[sharedScheduleRecord()]}),
   async accessControl(since){reads.push(since);return {...copy(remote),revision:'access-'+remote.revision}},
   async saveTeacherLink(resourceId,userId,version,key){calls.push({operation:'link',resourceId,userId,version,key});const current=remote.teacherLinks.find(link=>link.teacherResourceId===resourceId);if((current?.version||0)!==version)throw serviceError(409,'VERSION_CONFLICT');const teacherLink={teacherResourceId:resourceId,userId,version:version+1};remote.teacherLinks=remote.teacherLinks.filter(link=>link.teacherResourceId!==resourceId);remote.teacherLinks.push(teacherLink);remote.revision++;return {teacherLink:copy(teacherLink),revision:'access-'+remote.revision}},
   async createScopeGrant(grant,key){calls.push({operation:'grant',grant:copy(grant),key});const value={...copy(grant),id:'access-grant-'+(remote.grants.length+1),active:true,version:1};remote.grants.push(value);remote.revision++;return {grant:copy(value),revision:'access-'+remote.revision}},
-  async setScopeGrantActive(grant,active,key){calls.push({operation:'toggle',grant:copy(grant),active,key});const current=remote.grants.find(row=>row.id===grant.id);if(current?.version!==grant.version)throw serviceError(409,'VERSION_CONFLICT');const value={...current,active,version:current.version+1};remote.grants=remote.grants.map(row=>row.id===grant.id?value:row);remote.revision++;return {grant:copy(value),revision:'access-'+remote.revision}},...overrides});
+  async setScopeGrantActive(grant,active,key){calls.push({operation:'toggle',grant:copy(grant),active,key});const current=remote.grants.find(row=>row.id===grant.id);if(current?.version!==grant.version)throw serviceError(409,'VERSION_CONFLICT');const value={...current,active,version:current.version+1};remote.grants=remote.grants.map(row=>row.id===grant.id?value:row);remote.revision++;return {grant:copy(value),revision:'access-'+remote.revision}},...overrides},options);
  const original=a.ctx.document.querySelectorAll;a.ctx.document.querySelectorAll=selector=>selector==='[data-access-grant-fields]'?a.accessForm?.fieldsets||[]:selector.includes('.access-dialog')?(a.accessForm?.allControls||a.accessManagerControls||[]).filter(control=>!selector.includes(':not(:disabled)')||!control.disabled):original(selector);
  return Object.assign(a,{accessRemote:remote,accessCalls:calls,accessReads:reads,accessResource:resource});
 }
@@ -1977,6 +2281,13 @@ test('access manager public opening focuses inside its dialog and recaptures Tab
 });
 
 const formalPerson = (fields={}) => ({id:'qa-applicant',kind:'applicant',displayName:'Fictional applicant',dateOfBirth:null,parentName:'',whatsApp:'',email:'',school:'',referrer:'',localName:'',firstName:'',lastName:'',phone:'',address:'',level:'',remark:'',citizenId:'',fullName:'',gender:'',mobile:'',district:'',contact1Name:'',contact1Phone:'',contact1Email:'',contact2Name:'',contact2Phone:'',contact2Email:'',occupation:'',detail:'',billName:'',enrollmentDate:null,quitDate:null,promotion:null,version:1,createdAt:'2026-10-15T00:00:00Z',updatedAt:'2026-10-15T00:00:00Z',convertedAt:null,convertedBy:null,...fields});
+function mountPeopleModalRoot(a){
+ // Main renders replace their modal child in a browser. Keep the host harness
+ // from mistaking its detached old modal object for the currently visible one.
+ const root=a.nodes['#app'];let html=root.innerHTML;
+ const replace=value=>{const previous=a.ctx.document.querySelector('#modal-root');previous.isConnected=false;a.nodes['#modal-root']={...previous,isConnected:true,innerHTML:String(value).match(/<div id="modal-root">([\s\S]*)<\/div>$/)?.[1]||''};};
+ Object.defineProperty(root,'innerHTML',{configurable:true,get:()=>html,set:value=>{html=value;replace(value)}});replace(html);
+}
 async function peopleUiApp(remote={people:[],revision:1},overrides={},options={}){
  const peopleReads=[],peopleWrites=[];
  const a=await sharedApp({
@@ -1988,6 +2299,7 @@ async function peopleUiApp(remote={people:[],revision:1},overrides={},options={}
  },{},options);
  const queryAll=a.ctx.document.querySelectorAll;
  a.ctx.document.querySelectorAll=selector=>selector.includes('.people-editor-dialog')?(a.peopleForm?.controls||[]).filter(control=>!selector.includes(':not(:disabled)')||!control.disabled):queryAll?.(selector)||[];
+ if(options.mountModalRoot)mountPeopleModalRoot(a);
  return Object.assign(a,{peopleRemote:remote,peopleReads,peopleWrites});
 }
 async function openPeopleDirectory(a,kind='applicant'){
@@ -2369,7 +2681,7 @@ async function classTypeUiApp(remote={},overrides={}){
  return Object.assign(a,{typeRemote:remote,typeReads,typeWrites,typeCourseWrites,typeScheduleWrites});
 }
 async function openClassTypesManager(a){
- assert.match(a.nodes['#app'].innerHTML,/data-action="class-types-open"/,'An administrator must enter formal Class Type Settings from the timetable');await a.click({action:'class-types-open'});assert.match(a.nodes['#modal-root'].innerHTML,/id="class-types-manager"/,'The public action must open the actual type catalogue');
+ if(!a.nodes['#app'].innerHTML.includes('data-action="class-types-open"'))a.set("tab='catalog';render()");assert.match(a.nodes['#app'].innerHTML,/data-action="class-types-open"/,'An administrator must enter Class Type Settings from Courses');await a.click({action:'class-types-open'});assert.match(a.nodes['#modal-root'].innerHTML,/id="class-types-manager"/,'The public action must open the actual type catalogue');
 }
 function classTypeEditorForm(a,values={}){
  const markup=a.nodes['#modal-root'].innerHTML,tag=markup.match(/<form\b[^>]*id="class-type-editor"[^>]*>/)?.[0];assert.ok(tag,'A real type editor must exist before creating test DOM nodes');const mounted=()=>a.nodes['#modal-root'].innerHTML.includes('id="class-type-editor"'),attributes={},current=a.read('classTypeDraft.current??null'),form={id:'class-type-editor',dataset:markupDataset(tag),values:{name:current?.name||'',studentReschedulingAllowed:current?.studentReschedulingAllowed===true?'yes':current?.studentReschedulingAllowed===false?'no':'',...(current?.active===false?{}:{active:'on'}),...values},get isConnected(){return mounted()},setAttribute:(name,value)=>attributes[name]=String(value),removeAttribute:name=>delete attributes[name]},fields=Object.fromEntries(Object.entries(form.values).map(([name,value])=>[name,{name,value,disabled:false,focus(){a.ctx.document.activeElement=this},get isConnected(){return mounted()}}])),submit={disabled:false,textContent:'Save',focus(){a.ctx.document.activeElement=this}},cancel={disabled:false,dataset:{action:'class-type-cancel'},focus(){a.ctx.document.activeElement=this}},controls=[...Object.values(fields),cancel,submit],dialog={contains:node=>node===dialog||controls.includes(node),focus(){a.ctx.document.activeElement=this},querySelectorAll:selector=>selector.includes(':not(:disabled)')?controls.filter(row=>!row.disabled):controls},error={textContent:'',get isConnected(){return mounted()}};
@@ -2435,13 +2747,127 @@ test('formal class type opened choices freeze rule and course versions through c
 const orderUiRecord=(extra={})=>({id:'qa-order',studentId:'qa-child',studentName:'QA Child',source:'teacher',items:[{courseId:'qa-course',courseName:'Shared studio',feeId:'qa-fee',feeName:'Shared lesson fee',lessons:[{scheduleId:'qa-schedule',sequence:1,sourceVersion:1,date:'2026-10-08',time:'10:00',duration:45}]}],amountCents:30000,orderStatus:'draft',paymentStatus:'draft',version:1,...extra});
 function orderUiClient(remote={orders:[],students:[{id:'qa-child',displayName:'QA Child'}],links:[]}){const writes=[];return {remote,writes,client:{orders:async()=>({orders:copy(remote.orders),revision:'orders-'+remote.orders.length}),order:async id=>({order:copy(remote.orders.find(row=>row.id===id))}),studentAccountLinks:async()=>({students:copy(remote.students),accounts:[{id:'qa-parent',displayName:'QA Parent',email:'parent@example.test'}],links:copy(remote.links),revision:'links'}),async createOrder(payload,key){writes.push({action:'create',payload:copy(payload),key});const order=orderUiRecord({...payload,id:'qa-order',studentName:'QA Child',items:[{...payload.items[0],courseName:'Shared studio',feeName:'Shared lesson fee',lessons:payload.items[0].lessons.map(row=>({...row,date:'2026-10-08',time:'10:00',duration:45}))}]});remote.orders.push(order);return {order:copy(order)};},async sendOrder(current,key){writes.push({action:'send',version:current.version,key});const order=remote.orders.find(row=>row.id===current.id);Object.assign(order,{orderStatus:'sent',paymentStatus:'awaiting-confirmation',version:order.version+1});return {order:copy(order)};},async respondOrder(current,action,reason,key){writes.push({action:'respond',response:action,version:current.version,key});const order=remote.orders.find(row=>row.id===current.id);Object.assign(order,{orderStatus:action==='confirm'?'parent-confirmed':action==='reject'?'rejected':'changes-requested',paymentStatus:action==='confirm'?'awaiting-payment':'awaiting-confirmation',version:order.version+1});return {order:copy(order)};},async confirmOrderPayment(current,key){writes.push({action:'paid',version:current.version,key});const order=remote.orders.find(row=>row.id===current.id);Object.assign(order,{paymentStatus:'paid',version:order.version+1});return {order:copy(order)};},lessonStudents:async()=>({students:[],occupied:0,capacity:8})}};}
 
+async function courseRosterOrderApp(accountRole='admin',options={}){
+ const series=scopedScheduleRecord(),selection={id:series.id,kind:'schedule',date:'2026-10-21',sequence:2},order=orderUiRecord({paymentStatus:'paid',orderStatus:'parent-confirmed',items:[{...orderUiRecord().items[0],lessons:[{scheduleId:series.id,sequence:2,sourceVersion:1,date:selection.date,time:series.time,duration:45}]}]}),orders=orderUiClient({orders:[order],students:[{id:'qa-child',displayName:'QA Child'}],links:[]}),roster={students:[{id:'qa-session',studentId:'qa-child',displayName:'QA Child',orderId:order.id,paymentStatus:'paid',attendance:'unmarked',remark:''}],occupied:1,capacity:8};
+ const client={...orders.client,session:async()=>({user:{...copy(sharedTestUser),role:accountRole}}),lessonStudents:async()=>copy(roster)};
+ if(accountRole==='teacher')client.schedules=async()=>teacherScheduleFixture(series,{sequence:2,date:selection.date});
+ const a=await sharedScheduleApp({rows:[series],revision:1},client,options);a.set("courseDetailMonth=new Date(2026,9,1);courseDetailTab='general';location.pathname='/account/courses/qa-course';render()");await a.set('refreshSharedSchedules()');
+ const tag=[...a.nodes['#app'].innerHTML.matchAll(/<button\b[^>]*data-open-lesson="qa-scoped-series"[^>]*>/g)].map(row=>row[0]).find(row=>row.includes('data-lesson-date="2026-10-21"'));assert.ok(tag);await a.click(markupDataset(tag));await a.set('refreshLessonStudents()');return {...a,orders,roster,selection};
+}
+
+test('course roster order details and enrollment cancellation return to the exact lesson with its tab, scroll and opener',async()=>{
+ for(const accountRole of ['admin','teacher'])for(const action of accountRole==='admin'?['orders-open','orders-enroll']:['orders-open'])for(const escape of [false,true]){
+  const a=await courseRosterOrderApp(accountRole),dataset={action,...(action==='orders-open'?{orderId:'qa-order'}:{})},opener={dataset,isConnected:true,closest:selector=>selector==='.lesson-dialog'?{}:null};
+  const scroll={scrollTop:228,scrollLeft:0};a.nodes['.lesson-dialog-scroll']=scroll;await a.click(dataset,opener);assert.equal(a.read('selectedTimetableLesson'),null);assert.equal(a.read('enrollmentOverlay.kind'),action==='orders-open'?'details':'editor');
+  opener.isConnected=false;let focused=0;const returned={dataset,isConnected:true,focus(options){focused++;assert.equal(options?.preventScroll,true)}};a.ctx.document.querySelectorAll=selector=>selector==='.lesson-dialog button'?[returned]:[];scroll.scrollTop=0;
+  if(escape)a.keydown('Escape');else await a.click({action:'orders-close'});
+  assert.equal(a.read('enrollmentOverlay'),null);assert.deepEqual(a.read('selectedTimetableLesson'),a.selection);assert.equal(a.read('lessonDetailTab'),'students');assert.ok(a.read('courseLessonReturn'));assert.equal(a.read('location.pathname'),'/account/courses/qa-course');assert.equal(a.read('courseDetailMonth.getMonth()'),9);assert.match(a.nodes['#modal-root'].innerHTML,/lesson-dialog/);assert.match(a.nodes['#modal-root'].innerHTML,/QA Child/);assert.equal(scroll.scrollTop,228);assert.equal(focused,1);assert.deepEqual(a.orders.writes,[]);
+ }
+});
+
+test('unchanged roster polling keeps the mounted lesson while changed data preserves its scroll and focused control',async()=>{
+ const a=await courseRosterOrderApp(),root=a.nodes['#modal-root'],dataset={action:'orders-open',orderId:'qa-order'};let paints=0,html=root.innerHTML,focused=0;
+ let control={dataset,isConnected:true,closest:selector=>selector==='.lesson-dialog'?{}:null,focus(options){focused++;assert.equal(options?.preventScroll,true)}};a.ctx.document.activeElement=control;
+ const scroll={scrollTop:184,scrollLeft:0};a.nodes['.lesson-dialog-scroll']=scroll;a.ctx.document.querySelectorAll=selector=>selector==='.lesson-dialog button'?[control]:[];
+ Object.defineProperty(root,'innerHTML',{configurable:true,get:()=>html,set(value){paints++;html=value;control.isConnected=false;control={...control,isConnected:true};scroll.scrollTop=0;}});
+ await a.set('refreshLessonStudents()');assert.equal(paints,0,'An unchanged five-second response must not replace the dialog');assert.equal(scroll.scrollTop,184);
+ a.roster.students[0].displayName='Updated Child';await a.set('refreshLessonStudents()');assert.equal(paints,1);assert.match(root.innerHTML,/Updated Child/);assert.equal(scroll.scrollTop,184);assert.equal(focused,1);assert.deepEqual(a.read('selectedTimetableLesson'),a.selection);
+});
+
+test('unchanged roster polling refreshes changed lesson metadata and resource labels without losing the reading position',async()=>{
+ const a=await courseRosterOrderApp(),root=a.nodes['#modal-root'],dataset={action:'orders-open',orderId:'qa-order'};let paints=0,html=root.innerHTML,focused=0;
+ let control={dataset,isConnected:true,closest:selector=>selector==='.lesson-dialog'?{}:null,focus(options){focused++;assert.equal(options?.preventScroll,true)}};a.ctx.document.activeElement=control;
+ const scroll={scrollTop:164,scrollLeft:0};a.nodes['.lesson-dialog-scroll']=scroll;a.ctx.document.querySelectorAll=selector=>selector==='.lesson-dialog button'?[control]:[];
+ Object.defineProperty(root,'innerHTML',{configurable:true,get:()=>html,set(value){paints++;html=value;control.isConnected=false;control={...control,isConnected:true};scroll.scrollTop=0;}});
+ a.set(`sharedSchedulingResources=${JSON.stringify([schedulingResource('metadata-teacher','teacher','Updated teaching artist',{representativeColor:'#123456'}),schedulingResource('metadata-room','room','Updated studio')])}`);
+ a.remote.rows=[scopedScheduleRecord({version:2,time:'15:00',duration:60,teacherIds:['metadata-teacher'],roomIds:['metadata-room'],remark:'Updated lesson remark',detail:'Updated preparation',moreInfo:'Updated supplies'})];a.remote.revision++;await a.set('refreshSharedSchedules()');await a.set('refreshLessonStudents()');
+ assert.equal(paints,1);for(const text of ['15:00','16:00','Updated teaching artist','Updated studio','Updated lesson remark','Updated preparation','Updated supplies'])assert.ok(root.innerHTML.includes(text),text);assert.equal(scroll.scrollTop,164);assert.equal(focused,1);assert.deepEqual(a.read('selectedTimetableLesson'),a.selection);
+ a.set("sharedSchedulingResources[0].displayName='Renamed teaching artist';sharedSchedulingResources[0].representativeColor='#abcdef';sharedSchedulingResources[1].displayName='Renamed studio'");await a.set('refreshLessonStudents()');
+ assert.equal(paints,2);assert.match(root.innerHTML,/Renamed teaching artist/);assert.match(root.innerHTML,/Renamed studio/);assert.match(root.innerHTML,/#abcdef/);assert.equal(scroll.scrollTop,164);assert.equal(focused,2);
+ await a.set('refreshLessonStudents()');assert.equal(paints,2,'An unchanged lesson and roster must leave the mounted dialog intact');assert.deepEqual(a.orders.writes,[]);
+});
+
+test('a removed focused roster row falls back to the lesson close control without scrolling',async()=>{
+ const a=await courseRosterOrderApp(),root=a.nodes['#modal-root'],dataset={action:'orders-open',orderId:'qa-order'},focusOptions=[];
+ const oldControl={dataset,isConnected:true,closest:selector=>selector==='.lesson-dialog'?{}:null};a.ctx.document.activeElement=oldControl;
+ const close={dataset:{action:'lesson-close'},isConnected:true,focus(options){focusOptions.push(options);a.ctx.document.activeElement=this}};a.nodes['[data-action="lesson-close"]']=close;a.ctx.document.querySelectorAll=selector=>selector==='.lesson-dialog button'?[close]:[];
+ const scroll={scrollTop:177,scrollLeft:0};a.nodes['.lesson-dialog-scroll']=scroll;let html=root.innerHTML;Object.defineProperty(root,'innerHTML',{configurable:true,get:()=>html,set(value){html=value;oldControl.isConnected=false;a.ctx.document.activeElement=a.ctx.document.body;scroll.scrollTop=0;}});
+ a.roster.students=[];a.roster.occupied=0;await a.set('refreshLessonStudents()');assert.equal(a.ctx.document.activeElement,close);assert.equal(focusOptions.length,1);assert.equal(focusOptions[0]?.preventScroll,true);assert.equal(scroll.scrollTop,177);assert.match(root.innerHTML,/No paid students yet/);
+});
+
+test('a changed roster does not steal focus from an unrelated external control',async()=>{
+ const a=await courseRosterOrderApp(),external={dataset:{action:'unrelated-control'},isConnected:true,closest:()=>null};a.ctx.document.activeElement=external;
+ let closeFocus=0;a.nodes['[data-action="lesson-close"]']={focus(){closeFocus++}};a.roster.students=[];a.roster.occupied=0;await a.set('refreshLessonStudents()');assert.equal(a.ctx.document.activeElement,external);assert.equal(closeFocus,0);assert.match(a.nodes['#modal-root'].innerHTML,/No paid students yet/);
+});
+
+test('a roster enrollment editor receives its raw course name and escapes it once for display',async()=>{
+ const a=await courseRosterOrderApp(),courseName='Studio <spring> & "friends"';a.set(`db.courseSettings.find(row=>row.id==='qa-course').courseName=${JSON.stringify(courseName)}`);await a.click({action:'orders-enroll'});
+ assert.equal(a.read('enrollmentOverlay.draft.courseName'),courseName);assert.match(a.nodes['#modal-root'].innerHTML,/Studio &lt;spring&gt; &amp; &quot;friends&quot;/);assert.doesNotMatch(a.nodes['#modal-root'].innerHTML,/Studio <spring>|&amp;lt;spring/);assert.deepEqual(a.orders.writes,[]);
+});
+
+test('changing enrollment fee, lesson scope or end date preserves the focused control and scrolled form body',async()=>{
+ for(const field of ['feeId','lessonScope','lessonTo']){
+  const a=await courseRosterOrderApp();await a.click({action:'orders-enroll'});if(field==='lessonTo')a.set("enrollmentOverlay.draft.source.endMode='forever'");const form=sharedForm('enrollment-order-editor');form.values={studentId:'qa-child',feeId:'qa-fee',lessonScope:'all',lessonTo:field==='lessonTo'?'2026-11-04':''};const value=form.values[field],original={name:field,value,form,isConnected:true,closest:selector=>['form','#enrollment-order-editor'].includes(selector)?form:null};a.ctx.document.activeElement=original;
+  let body={scrollTop:219,scrollLeft:7},returned=null,focusCount=0,html=a.nodes['#modal-root'].innerHTML;a.nodes['#enrollment-order-editor .enrollment-order-body']=body;Object.defineProperty(a.nodes['#modal-root'],'innerHTML',{configurable:true,get:()=>html,set(markup){html=markup;original.isConnected=false;a.ctx.document.activeElement=a.ctx.document.body;body={scrollTop:0,scrollLeft:0};a.nodes['#enrollment-order-editor .enrollment-order-body']=body;returned={name:field,form,isConnected:true,focus(options){focusCount++;assert.equal(options?.preventScroll,true);a.ctx.document.activeElement=this}};a.nodes['#enrollment-order-editor [name='+field+']']=returned;}});
+  a.change(field,value,original);assert.equal(a.ctx.document.activeElement,returned,field+' must retain keyboard position');assert.equal(focusCount,1);assert.equal(body.scrollTop,219);assert.equal(body.scrollLeft,7);assert.equal(a.read('enrollmentOverlay.draft.studentId'),'qa-child');assert.equal(a.read('enrollmentOverlay.draft.feeId'),'qa-fee');assert.equal(a.read('enrollmentOverlay.draft.scope'),'all');assert.ok(a.read('enrollmentOverlay.draft.occurrences.length')>=2);if(field==='lessonTo'){assert.equal(a.read('enrollmentOverlay.draft.to'),'2026-11-04');assert.equal(a.read('enrollmentOverlay.draft.needsEnd'),true);}assert.deepEqual(a.orders.writes,[]);
+ }
+});
+
+test('a programmatic enrollment change preserves body scrolling without stealing an external focus',async()=>{
+ const a=await courseRosterOrderApp();await a.click({action:'orders-enroll'});const form=sharedForm('enrollment-order-editor');form.values={studentId:'qa-child',feeId:'qa-fee',lessonScope:'all'};const external={name:'outside',closest:()=>null};a.ctx.document.activeElement=external;let body={scrollTop:183,scrollLeft:0},html=a.nodes['#modal-root'].innerHTML,focused=0;a.nodes['#enrollment-order-editor .enrollment-order-body']=body;a.nodes['#enrollment-order-editor [name=lessonScope]']={focus(){focused++}};Object.defineProperty(a.nodes['#modal-root'],'innerHTML',{configurable:true,get:()=>html,set(markup){html=markup;body={scrollTop:0,scrollLeft:0};a.nodes['#enrollment-order-editor .enrollment-order-body']=body;}});
+ a.change('lessonScope','all',{form,closest:selector=>['form','#enrollment-order-editor'].includes(selector)?form:null});assert.equal(a.ctx.document.activeElement,external);assert.equal(focused,0);assert.equal(body.scrollTop,183);assert.deepEqual(a.orders.writes,[]);
+});
+
+test('late roster order and editor openings cannot replace a closed, different or revisited source lesson',async()=>{
+ for(const action of ['orders-open','orders-enroll'])for(const leaving of ['close','other-lesson','back-and-return']){
+  const a=await courseRosterOrderApp(),wait=deferred();if(action==='orders-open')a.client.order=()=>wait.promise;else a.client.orders=()=>wait.promise;
+  const pending=a.click({action,orderId:'qa-order'});
+  if(leaving==='close')await a.click({action:'lesson-close'});
+  else if(leaving==='other-lesson')await a.click({openLesson:'qa-scoped-series',lessonKind:'schedule',lessonDate:'2026-10-28',lessonSequence:'3'});
+  else{a.set("location.pathname='/account'");for(const handler of a.windowEvents.popstate||[])await handler();a.set("location.pathname='/account/courses/qa-course';render()");}
+  const selection=a.read('selectedTimetableLesson'),modal=a.read('modal');wait.resolve(action==='orders-open'?{order:a.orders.remote.orders[0]}:{orders:copy(a.orders.remote.orders),revision:'late-preflight'});await pending;
+  assert.equal(a.read('enrollmentOverlay'),null);assert.deepEqual(a.read('selectedTimetableLesson'),selection);assert.equal(a.read('modal'),modal,'A late opening cannot restore or replace a newer source dialog');assert.deepEqual(a.orders.writes,[]);
+ }
+});
+
+test('saved enrollment retains its lesson return while busy close is guarded and changed source invalidates detached replies',async()=>{
+ for(const invalidated of [false,true]){
+  const a=await courseRosterOrderApp(),wait=deferred();await a.click({action:'orders-enroll'});a.client.createOrder=()=>wait.promise;
+  const form=sharedForm('enrollment-order-editor');form.values={studentId:'qa-child',feeId:'qa-fee',lessonScope:'single',lesson:['qa-scoped-series:2'],amount:'300.00'};const pending=a.submit(form.id,form.values,form);assert.equal(a.read('enrollmentBusy'),true);await a.click({action:'orders-close'});a.keydown('Escape');assert.equal(a.read('enrollmentOverlay.kind'),'editor');
+  if(invalidated){a.remote.rows=[scopedScheduleRecord({version:2,exceptions:[{sequence:2,cancelled:true}]})];a.remote.revision++;await a.set('refreshSharedSchedules()');assert.equal(a.read('enrollmentOverlay'),null);}
+  wait.resolve({order:orderUiRecord({id:'created-enrollment'})});await pending;
+  if(invalidated){assert.equal(a.read('enrollmentOverlay'),null);assert.equal(a.read('selectedTimetableLesson'),null);assert.equal(a.read('modal'),'');}
+  else{assert.equal(a.read('enrollmentOverlay.kind'),'details');await a.click({action:'orders-close'});assert.deepEqual(a.read('selectedTimetableLesson'),a.selection);assert.ok(a.read('courseLessonReturn'));}
+ }
+});
+test('a roster PDF preview returns through its order and a revoked teacher source cannot restore the old roster',async()=>{
+ const a=await courseRosterOrderApp('admin',{preview:true,initialQuerySelectorAll:()=>[]});await a.click({action:'orders-open',orderId:'qa-order'});await a.click({action:'ui-order-document'});assert.match(a.nodes['#modal-root'].innerHTML,/Order document layout preview/);
+ await a.click({action:'ui-operations',uiCommand:'close'});assert.equal(a.read('enrollmentOverlay.kind'),'details');assert.match(a.nodes['#modal-root'].innerHTML,/Order details/);await a.click({action:'orders-close'});assert.deepEqual(a.read('selectedTimetableLesson'),a.selection);assert.deepEqual(a.orders.writes,[]);
+ const teacher=await courseRosterOrderApp('teacher');await teacher.click({action:'orders-open',orderId:'qa-order'});teacher.client.schedules=async()=>({revision:'revoked-course-source',readScope:'occurrences',occurrences:[]});await teacher.set('refreshSharedSchedules()');assert.equal(teacher.read('enrollmentOverlay'),null);assert.equal(teacher.read('courseLessonReturn'),null);assert.equal(teacher.read('selectedTimetableLesson'),null);assert.equal(teacher.read('modal'),'');
+});
+test('returning after a saved enrollment starts a fresh roster read and ignores an older failed poll',async()=>{
+ const a=await courseRosterOrderApp(),old=deferred();a.client.lessonStudents=()=>old.promise;const pending=a.set('refreshLessonStudents()');await a.click({action:'orders-enroll'});a.client.createOrder=async()=>({order:orderUiRecord({id:'new-draft'})});
+ const form=sharedForm('enrollment-order-editor');form.values={studentId:'qa-child',feeId:'qa-fee',lessonScope:'single',lesson:['qa-scoped-series:2'],amount:'300.00'};await a.submit(form.id,form.values,form);
+ let freshReads=0;a.client.lessonStudents=async()=>{freshReads++;return {...copy(a.roster),students:[{...copy(a.roster.students[0]),displayName:'Fresh roster child'}]}};await a.click({action:'orders-close'});for(let turn=0;turn<20;turn++)await Promise.resolve();
+ try{assert.equal(freshReads,1,'A stale in-flight roster read must not block the post-save source refresh');assert.match(a.nodes['#modal-root'].innerHTML,/Fresh roster child/);}
+ finally{old.reject(serviceError(503,'SERVICE_UNAVAILABLE'));await pending;}
+ assert.match(a.nodes['#modal-root'].innerHTML,/Fresh roster child/);assert.equal(a.read("lessonStudentCaches.get('qa-scoped-series:2').error"),'');assert.deepEqual(a.read('selectedTimetableLesson'),a.selection);
+});
+
 test('shared enrollment UI saves a draft then explicitly sends, receives parent confirmation and separately verifies payment',async()=>{const remote=orderUiClient(),a=await sharedScheduleApp({rows:[sharedScheduleRecord()],revision:1},remote.client);a.set("openTimetableLesson('qa-schedule','schedule','2026-10-08',1)");await a.click({action:'orders-enroll'});assert.match(a.nodes['#modal-root'].innerHTML,/Enroll student · New order/);assert.equal(a.read('enrollmentOverlay.draft.occurrences.length'),1);const form=sharedForm('enrollment-order-editor');form.values={studentId:'qa-child',feeId:'qa-fee',lessonScope:'single',lesson:['qa-schedule:1'],amount:'280.00'};await a.submit(form.id,form.values,form);assert.equal(remote.writes.length,1);assert.equal(remote.writes[0].action,'create');assert.equal(remote.writes[0].payload.amountCents,28000);assert.equal(remote.remote.orders[0].paymentStatus,'draft');assert.match(a.nodes['#modal-root'].innerHTML,/Send to parent/);assert.doesNotMatch(a.nodes['#modal-root'].innerHTML,/Confirm verified payment/);await a.click({action:'orders-send'});assert.deepEqual(remote.writes.map(row=>row.action),['create','send']);assert.equal(remote.remote.orders[0].paymentStatus,'awaiting-confirmation');await a.click({action:'orders-close'});a.set("applySharedUser({id:'qa-parent',role:'student',displayName:'QA Parent'});tab='payments';render()");await a.click({action:'orders-open',orderId:'qa-order'});await a.click({action:'orders-respond',response:'confirm'});assert.equal(remote.remote.orders[0].paymentStatus,'awaiting-payment');assert.doesNotMatch(a.nodes['#modal-root'].innerHTML,/Confirm verified payment/);await a.click({action:'orders-close'});a.set("applySharedUser({id:'qa-admin-again',role:'admin',displayName:'QA Admin'});tab='new-enrolments';render()");await a.click({action:'orders-open',orderId:'qa-order'});assert.match(a.nodes['#modal-root'].innerHTML,/Confirm verified payment/);await a.click({action:'orders-confirm-payment'});assert.deepEqual(remote.writes.map(row=>row.action),['create','send','respond','paid']);assert.equal(remote.remote.orders[0].paymentStatus,'paid');assert.equal(remote.writes[3].version,3);});
 
 test('shared own student timetable replaces legacy bookings and updates the same stable occurrence in month and range views',async()=>{let lessons=[{id:'student-session',studentId:'qa-child',studentName:'QA Child',courseName:'Shared studio',scheduleId:'qa-schedule',sequence:2,date:'2026-10-16',time:'14:00',duration:60,teachers:[{displayName:'Teaching artist'}],rooms:[{displayName:'Studio A'}],attendance:'unmarked'}],reads=[];const a=await sharedApp({studentTimetable:async(range,since)=>{reads.push({range:copy(range),since});return {lessons:copy(lessons),students:[{id:'qa-child',displayName:'QA Child'}],revision:'student-'+lessons[0].time}}});a.set("applySharedUser({id:'qa-parent',role:'student',displayName:'QA Parent'});calendarMonth=new Date(2026,9,1);tab='overview';render()");await a.set('refreshStudentTimetable()');assert.match(a.nodes['#app'].innerHTML,/Shared studio/);assert.match(a.nodes['#app'].innerHTML,/14:00/);assert.doesNotMatch(a.nodes['#app'].innerHTML,/David Leung|Ryan Yu/);assert.equal(a.read('db.schedules.length'),0);assert.deepEqual(a.read('studentTimetableCache.lessons.map(row=>[row.scheduleId,row.sequence])'),[['qa-schedule',2]]);lessons[0]={...lessons[0],date:'2026-10-17',time:'15:00'};await a.set('refreshStudentTimetable()');assert.match(a.nodes['#app'].innerHTML,/15:00/);assert.doesNotMatch(a.nodes['#app'].innerHTML,/14:00/);a.set("calendarView='range';calendarStart='2026-10-16';render()");await a.set('refreshStudentTimetable()');assert.match(a.nodes['#app'].innerHTML,/tt-student-range-groups/);assert.match(a.nodes['#app'].innerHTML,/15:00/);assert.ok(reads.every(row=>row.range.from&&row.range.to));assert.equal(a.read('db.bookings.length'),4,'Shared reads must not rewrite legacy demonstration bookings');});
 
-test('a paid shared roster is read from the occurrence endpoint and ordinary teachers only see order details',async()=>{const remote=orderUiClient({orders:[orderUiRecord({paymentStatus:'paid',orderStatus:'parent-confirmed'})],students:[],links:[]}),a=await sharedScheduleApp({rows:[sharedScheduleRecord()],revision:1},{...remote.client,lessonStudents:async(id,sequence)=>{assert.equal(id,'qa-schedule');assert.equal(sequence,1);return {students:[{id:'qa-session',studentId:'qa-child',displayName:'QA Child',orderId:'qa-order',paymentStatus:'paid',attendance:'unmarked',remark:''}],occupied:1,capacity:8}}});a.set("openTimetableLesson('qa-schedule','schedule','2026-10-08',1)");await a.set('refreshLessonStudents()');assert.match(a.nodes['#modal-root'].innerHTML,/<h3>Students \(1\)<\/h3>/);assert.match(a.nodes['#modal-root'].innerHTML,/QA Child/);assert.match(a.nodes['#modal-root'].innerHTML,/data-order-id="qa-order"/);await a.click({action:'orders-open',orderId:'qa-order'});assert.match(a.nodes['#modal-root'].innerHTML,/Shared studio/);assert.doesNotMatch(a.nodes['#modal-root'].innerHTML,/data-action="orders-confirm-payment"/);});
+test('a paid shared roster is read from the occurrence endpoint and ordinary teachers only see order details',async()=>{const remote=orderUiClient({orders:[orderUiRecord({paymentStatus:'paid',orderStatus:'parent-confirmed'})],students:[],links:[]}),a=await sharedScheduleApp({rows:[sharedScheduleRecord()],revision:1},{...remote.client,lessonStudents:async(id,sequence)=>{assert.equal(id,'qa-schedule');assert.equal(sequence,1);return {students:[{id:'qa-session',studentId:'qa-child',displayName:'QA Child',orderId:'qa-order',paymentStatus:'paid',attendance:'unmarked',remark:''}],occupied:1,capacity:8}}},{preview:true,initialQuerySelectorAll:()=>[]});a.set("openTimetableLesson('qa-schedule','schedule','2026-10-08',1)");await a.set('refreshLessonStudents()');assert.match(a.nodes['#modal-root'].innerHTML,/<h3>Students \(1\)<\/h3>/);assert.match(a.nodes['#modal-root'].innerHTML,/QA Child/);assert.match(a.nodes['#modal-root'].innerHTML,/data-order-id="qa-order"/);for(const view of ['attendance','arrange']){const entry=a.nodes['#modal-root'].innerHTML.match(new RegExp('<button[^>]*data-ui-view="'+view+'"[^>]*>'))?.[0];assert.ok(entry,'The roster keeps the '+view+' entry visible');assert.match(entry,/\bdisabled\b/,'Unwired shared roster actions must not launch fixture students');}await a.click({action:'orders-open',orderId:'qa-order'});assert.match(a.nodes['#modal-root'].innerHTML,/Shared studio/);assert.doesNotMatch(a.nodes['#modal-root'].innerHTML,/data-action="orders-confirm-payment"/);});
 
 test('duplicate payment clicks stay one request and a timed out retry keeps its immutable operation key and opened version',async()=>{const remote=orderUiClient({orders:[orderUiRecord({orderStatus:'parent-confirmed',paymentStatus:'awaiting-payment',version:5})],students:[],links:[]}),wait=deferred(),a=await sharedApp(remote.client);let calls=[];a.client.confirmOrderPayment=async(current,key)=>{calls.push({version:current.version,key});return wait.promise};await a.click({action:'orders-open',orderId:'qa-order'});const first=a.click({action:'orders-confirm-payment'});await a.click({action:'orders-confirm-payment'});assert.equal(calls.length,1);assert.equal(a.read('enrollmentBusy'),true);wait.reject(serviceError(0,'connection_failed'));await first;assert.equal(a.read('enrollmentBusy'),false);a.client.confirmOrderPayment=async(current,key)=>{calls.push({version:current.version,key});return {order:orderUiRecord({orderStatus:'parent-confirmed',paymentStatus:'paid',version:6})}};await a.click({action:'orders-confirm-payment'});assert.equal(calls.length,2);assert.equal(calls[1].key,calls[0].key);assert.equal(calls[1].version,5);assert.equal(a.read('enrollmentOverlay.order.paymentStatus'),'paid');});
+
+test('the student request host refreshes on current loading, ready, error and recovery without accepting old window or identity replies',async()=>{
+ const a=await sharedApp(),first=deferred();a.ctx.requestRefreshEvents=[];a.set("applySharedUser({id:'qa-request-parent',role:'student',displayName:'Test family'});tab='payments';calendarMonth=new Date(2026,9,1);interfacePreview={clear(){},refreshSharedStudentRequest(){requestRefreshEvents.push({ready:studentTimetableCache.ready,error:studentTimetableCache.error,key:studentTimetableCache.key,students:studentTimetableCache.students.map(row=>row.id)})}};modal='existing request overlay'");a.client.studentTimetable=()=>first.promise;const initial=a.set('refreshStudentTimetable({paint:false})');assert.deepEqual(a.read('requestRefreshEvents.map(row=>row.ready)'),[false]);first.resolve({lessons:[],students:[{id:'qa-child',displayName:'Current child'}],revision:'current-1'});await initial;assert.equal(a.read('requestRefreshEvents.at(-1).ready'),true);assert.deepEqual(a.read('requestRefreshEvents.at(-1).students'),['qa-child']);
+ a.client.studentTimetable=async()=>{throw serviceError(503,'SERVICE_UNAVAILABLE')};await a.set('refreshStudentTimetable({paint:false})');assert.ok(a.read('requestRefreshEvents.at(-1).error'));a.client.studentTimetable=async()=>({unchanged:true});let count=a.read('requestRefreshEvents.length');await a.set('refreshStudentTimetable({paint:false})');assert.equal(a.read('requestRefreshEvents.length'),count+1);assert.equal(a.read('requestRefreshEvents.at(-1).ready'),true);assert.equal(a.read('requestRefreshEvents.at(-1).error'),'');count=a.read('requestRefreshEvents.length');await a.set('refreshStudentTimetable({paint:false})');assert.equal(a.read('requestRefreshEvents.length'),count+1,'A current unchanged response may re-enable an already open request');
+ const oldWindow=deferred(),currentWindow=deferred();a.client.studentTimetable=()=>oldWindow.promise;a.set('calendarMonth=new Date(2026,10,1)');const oldRead=a.set('refreshStudentTimetable({paint:false})');assert.equal(a.read('requestRefreshEvents.at(-1).ready'),false);a.client.studentTimetable=()=>currentWindow.promise;a.set('calendarMonth=new Date(2026,11,1)');const currentRead=a.set('refreshStudentTimetable({paint:false})');count=a.read('requestRefreshEvents.length');oldWindow.resolve({lessons:[],students:[{id:'old-window-child'}],revision:'old-window'});await oldRead;assert.equal(a.read('requestRefreshEvents.length'),count);currentWindow.resolve({lessons:[],students:[{id:'current-window-child'}],revision:'current-window'});await currentRead;assert.deepEqual(a.read('requestRefreshEvents.at(-1).students'),['current-window-child']);
+ const oldIdentity=deferred();a.client.studentTimetable=()=>oldIdentity.promise;const identityRead=a.set('refreshStudentTimetable({paint:false})');a.set("applySharedUser({id:'other-parent',role:'student',displayName:'Other family'})");count=a.read('requestRefreshEvents.length');oldIdentity.reject(serviceError(503,'SERVICE_UNAVAILABLE'));await identityRead;assert.equal(a.read('requestRefreshEvents.length'),count);assert.equal(a.read('studentTimetableCache.error'),'');assert.deepEqual(a.read('studentTimetableCache.students'),[]);
+});
 
 test('old identity order replies and student timetable reads cannot populate a newly signed in account',async()=>{const old=deferred(),remote=orderUiClient({orders:[orderUiRecord()],students:[],links:[]}),a=await sharedApp({...remote.client,order:()=>old.promise});const pending=a.click({action:'orders-open',orderId:'qa-order'});a.set("applySharedUser({id:'new-student',role:'student',displayName:'New family'});tab='payments';render()");const before=a.nodes['#modal-root']?.innerHTML||'';old.resolve({order:orderUiRecord({studentName:'Old private family'})});await pending;assert.equal(a.nodes['#modal-root']?.innerHTML||'',before);assert.equal(a.read('enrollmentOverlay'),null);const read=deferred();a.client.studentTimetable=()=>read.promise;a.set("tab='overview';calendarMonth=new Date(2026,9,1)");const timetable=a.set('refreshStudentTimetable()');a.set("applySharedUser({id:'another-student',role:'student',displayName:'Another family'});tab='payments';render()");read.resolve({revision:'old',lessons:[{id:'old',studentName:'Old private family',courseName:'Private course'}]});await timetable;assert.deepEqual(a.read('studentTimetableCache.lessons'),[]);assert.doesNotMatch(a.nodes['#app'].innerHTML,/Old private family|Private course/);});
 
@@ -2455,9 +2881,9 @@ test('open parent order details adopts a newer verified payment on polling while
 
 
 test('interface-first pages replace blank product accounting and staff views with complete preview screens',async()=>{
- const a=app({},undefined,false,null,{preview:true,initialQuerySelectorAll:()=>[]});a.set("role='teacher';lang='en';location.pathname='/account';tab='products';render()");assert.match(a.nodes['#app'].innerHTML,/Create product/);assert.match(a.nodes['#app'].innerHTML,/Interface preview/);
+ const a=app({},undefined,false,null,{preview:true,initialQuerySelectorAll:()=>[]});a.set("role='teacher';lang='en';location.pathname='/account';tab='products';render()");assert.match(a.nodes['#app'].innerHTML,/Create product/);assert.doesNotMatch(a.nodes['#app'].innerHTML,/ops-preview-note|Interface preview/);
  await a.click({action:'ui-operations',uiCommand:'create-product',uiSection:'products'});assert.match(a.nodes['#modal-root'].innerHTML,/ui-operations-form/);await a.click({action:'ui-operations',uiCommand:'close'});assert.equal(a.nodes['#modal-root'].innerHTML,'');
- a.set("tab='accounting';render()");assert.match(a.nodes['#app'].innerHTML,/Invoices/);a.set("tab='management';render()");assert.match(a.nodes['#app'].innerHTML,/Maya Lam/);assert.match(a.nodes['#app'].innerHTML,/Work permissions|Permissions/);
+ a.set("tab='accounting';render()");assert.match(a.nodes['#app'].innerHTML,/Invoices/);a.set("tab='management';render()");assert.match(a.nodes['#app'].innerHTML,/Maya Lam/);assert.match(a.nodes['#app'].innerHTML,/View profile/);await a.click({action:'ui-staff',uiCommand:'open-detail',uiId:'leo'});assert.match(a.nodes['#modal-root'].innerHTML,/Permissions/);await a.click({action:'ui-staff',uiCommand:'close-dialog'});
  a.set("tab='settings';render()");assert.match(a.nodes['#app'].innerHTML,/News management/);a.set("tab='teacher-home';render()");assert.match(a.nodes['#app'].innerHTML,/My workspace/);assert.match(a.nodes['#app'].innerHTML,/To-do/);
 });
 test('interface-first family and course file tools open previews without creating business records',async()=>{
@@ -2504,4 +2930,329 @@ test('student sidebar clicks reach each new profile request notification and inf
   await a.click({tab});assert.equal(a.read('tab'),tab);assert.match(a.nodes['#app'].innerHTML,new RegExp(`data-student-section="${section}"`));
  }
  await a.click({tab:'management'});assert.equal(a.read('tab'),'student-information','Private staff sections remain outside student navigation');
+});
+
+
+test('daily timetable excludes setup and demonstration shortcuts while Settings retains the real setup flows',async()=>{
+ const a=await sharedApp({schedulingResources:async()=>({resources:[],revision:'rooms-v1'}),classTypes:async()=>({types:[],revision:'types-v1'}),createClassType:async()=>{},updateClassType:async()=>{}},{},{preview:true,initialQuerySelectorAll:()=>[]});
+ for(const language of ['zh','en']){a.set(`lang='${language}';tab='overview';render()`);const html=a.nodes['#app'].innerHTML;assert.match(html,/data-action="tt-add-schedule"/);assert.doesNotMatch(html,/data-action="(?:resource-open|access-open|class-types-open)"|interface-preview-tools|Interface preview|介面預覽/);}
+ a.set("tab='settings';render()");assert.match(a.nodes['#app'].innerHTML,/Scheduling settings/);assert.match(a.nodes['#app'].innerHTML,/data-action="resource-open"/);assert.match(a.nodes['#app'].innerHTML,/data-action="class-types-open"/);
+ await a.click({action:'resource-open'});assert.match(a.nodes['#modal-root'].innerHTML,/scheduling-resource-search/);await a.click({action:'resource-close'});
+ await a.click({action:'class-types-open'});assert.match(a.nodes['#modal-root'].innerHTML,/id="class-types-manager"/);
+});
+
+
+test('administrator login account setup remains reachable in Staff after removing timetable setup actions',async()=>{
+ const a=await sharedApp({schedulingResources:async()=>({resources:[],revision:'rooms-v1'}),accessControl:async()=>({accounts:[],teacherLinks:[],grants:[],revision:'access-v1'})},{},{preview:true,initialQuerySelectorAll:()=>[]});
+ a.set("lang='en';tab='management';render()");assert.match(a.nodes['#app'].innerHTML,/Login account settings/);
+ await a.click({action:'access-open'});assert.match(a.nodes['#modal-root'].innerHTML,/id="access-control-title"/);for(let turn=0;turn<20&&!a.read('teacherAccessReady');turn++)await Promise.resolve();assert.equal(a.read('teacherAccessReady'),true);await a.click({action:'access-close'});
+ a.set("applySharedUser({id:'scoped-teacher',role:'teacher',displayName:'Teacher'});tab='management';render()");assert.doesNotMatch(a.nodes['#app'].innerHTML,/data-action="access-open"/);
+});
+
+test('the shared staff projection uses current resource and authorized occurrence identities',()=>{
+ const a=app({},'2026-10-15T12:00:00',false,null,{preview:true});
+ assert.equal(a.read('sharedStaffSnapshot()'),null);
+ a.set("sharedMode=true;authUser={id:'leo-login',role:'teacher',displayName:'Current Leo'};sharedCatalogRevision='catalog';resourceRevision='resources';resourceReady=true;sharedSchedulesRevision='schedules';sharedSchedulingResources=[{id:'leo-resource',kind:'teacher',displayName:'Current Leo',active:true}];db.courseSettings=[{id:'live-course',courseName:'Current painting'}];sharedScheduleOccurrences=[{sequence:2,date:'2026-10-16',item:{id:'live-schedule',course:'live-course',time:'10:00',duration:60,teacherIds:['leo-resource'],roomIds:[],capacity:8}}];db.schedules=[{id:'private-unassigned-series'}]");
+ assert.deepEqual(a.read('sharedStaffSnapshot().occurrences.map(row=>[row.item.id,row.sequence])'),[['live-schedule',2]]);
+ assert.equal(a.read('sharedStaffSnapshot().user.id'),'leo-login');
+ assert.equal(a.read('sharedStaffSnapshot().ready'),true);
+ a.set("sharedScheduleOccurrences[0].item.time='11:00'");
+ assert.equal(a.read('sharedStaffSnapshot().occurrences[0].item.time'),'11:00');
+ a.set("applySharedUser({id:'other-login',role:'teacher',displayName:'Other teacher',accessRevision:'new'})");
+ assert.deepEqual(a.read('sharedStaffSnapshot().occurrences'),[]);
+ assert.equal(a.read('sharedStaffSnapshot().ready'),false);
+});
+
+test('profile-only shared student changes redraw the family page without changing lessons',async()=>{
+ let displayName='Original child';
+ const a=await sharedApp({studentTimetable:async()=>({lessons:[],students:[{id:'same-person',displayName,email:'same@example.test'}],revision:displayName})},{},{preview:true,initialQuerySelectorAll:()=>[]});
+ a.set("applySharedUser({id:'same-login',role:'student',displayName:'Family login'});tab='student-profile';location.pathname='/account';lang='en';render()");
+ await a.set('refreshStudentTimetable()');
+ assert.match(a.nodes['#app'].innerHTML,/Original child/);
+ displayName='Updated child';await a.set('refreshStudentTimetable()');
+ assert.match(a.nodes['#app'].innerHTML,/Updated child/);
+ assert.doesNotMatch(a.nodes['#app'].innerHTML,/Original child|Ethan Ho|Creative drawing/);
+});
+
+test('editing a shared staff profile opens the actual resource editor and updates the common directory',async()=>{
+ const teacher=schedulingResource('actual-teacher','teacher','Original teacher'),remote={resources:[teacher],revision:1};
+ const a=await resourceUiApp(remote,{accessControl:async()=>({accounts:[],teacherLinks:[],grants:[],revision:'actual-links'})},{preview:true});
+ a.set("tab='management';sharedCatalogRevision='actual-catalog';render()");await a.set('refreshTeacherAccess({paint:false})');a.set('render()');
+ await a.click({action:'ui-staff',uiCommand:'open-edit',uiId:'actual-teacher'});
+ assert.match(a.nodes['#modal-root'].innerHTML,/id="scheduling-resource-editor"/);
+ assert.equal(a.read('resourceDraft.current.id'),'actual-teacher');
+ const form=resourceEditorForm(a,{displayName:'Updated teacher'});await a.submit(form.id,form.values,form);
+ assert.equal(remote.resources[0].id,'actual-teacher');assert.equal(remote.resources[0].displayName,'Updated teacher');
+ assert.equal(a.read('resourceManager'),null);assert.equal(a.read('modal'),'');
+ a.set('render()');assert.match(a.nodes['#app'].innerHTML,/Updated teacher/);assert.doesNotMatch(a.nodes['#app'].innerHTML,/Original teacher|Maya Lam|Leo Chan/);
+});
+
+test('staff source failures show a real retry which refetches the catalog, schedules and access',async()=>{
+ for(const source of ['catalog','schedules','resources','access']){
+  const a=await resourceUiApp({resources:[schedulingResource('staff-read','teacher','Actual staff')],revision:1},{accessControl:async()=>({accounts:[],teacherLinks:[],grants:[],revision:'links'})},{preview:true});
+  a.set("tab='management';lang='en';sharedCatalogRevision='catalog';teacherAccessReady=true;render()");
+  const fail=async()=>{throw new Error('Private upstream error')};
+  if(source==='catalog'){a.client.catalog=fail;a.set("sharedCatalogRevision=''");await a.set('refreshSharedCourses()');}
+  if(source==='schedules'){a.client.schedules=fail;a.set("sharedSchedulesRevision=''");await a.set('refreshSharedSchedules()');}
+  if(source==='resources'){a.client.schedulingResources=fail;a.set('resourceReady=false');await a.set('refreshSharedResources()');}
+  if(source==='access'){a.client.accessControl=fail;a.set('teacherAccessReady=false');await a.set('refreshTeacherAccess()');}
+  a.set('render()');const snapshot=a.read('sharedStaffSnapshot()'),html=a.nodes['#app'].innerHTML;
+  assert.ok(snapshot.error,source);assert.equal(snapshot.loading,false,source);assert.match(html,/Retry/);assert.doesNotMatch(html,/Private upstream error|Loading staff|No staff yet/);
+  const reads=[];a.client.catalog=async()=>{reads.push('catalog');return {courses:[],fees:[],revision:'retry-catalog'}};
+  a.client.schedulingResources=async()=>{reads.push('resources');return {resources:[schedulingResource('staff-read','teacher','Actual staff')],revision:'retry-resources'}};
+  a.client.schedules=async()=>{reads.push('schedules');return {schedules:[],revision:'retry-schedules'}};
+  a.client.accessControl=async()=>{reads.push('access');return {accounts:[],teacherLinks:[],grants:[],revision:'retry-access'}};
+  await a.click({action:'ui-staff',uiCommand:'retry'});
+  for(let turn=0;turn<30&&a.read('!!sharedStaffRetry');turn++)await Promise.resolve();
+  assert.deepEqual([...reads].sort(),['access','catalog','resources','schedules']);
+  assert.equal(a.read('sharedStaffSnapshot().error'),'');assert.equal(a.read('sharedStaffSnapshot().loading'),false);assert.equal(a.read('sharedStaffSnapshot().ready'),true);
+ }
+});
+
+test('shared staff cancel and saved acknowledgement return to the exact second teacher teaching tab',async()=>{
+ for(const save of [false,true]){
+  const remote={resources:[schedulingResource('first-staff','teacher','First teacher'),schedulingResource('second-staff','teacher','Second teacher')],revision:1};
+  const a=await resourceUiApp(remote,{accessControl:async()=>({accounts:[],teacherLinks:[],grants:[],revision:'links'})},{preview:true});
+  a.set("tab='management';sharedCatalogRevision='catalog';teacherAccessReady=true;render()");
+  await a.click({action:'ui-staff',uiCommand:'open-detail',uiId:'second-staff'});
+  await a.click({action:'ui-staff',uiCommand:'detail-tab',uiId:'second-staff',uiTab:'teaching'});
+  await a.click({action:'ui-staff',uiCommand:'open-edit',uiId:'second-staff'});
+  assert.equal(a.read('resourceDraft.current.id'),'second-staff');
+  if(save){const form=resourceEditorForm(a,{displayName:'Second teacher saved'});a.client.schedulingResources=async()=>{throw new Error('Offline after accepted save')};await a.submit(form.id,form.values,form);for(let turn=0;turn<10;turn++)await Promise.resolve();}
+  else await a.click({action:'resource-editor-cancel'});
+  const html=a.read('modal');assert.match(html,save?/Second teacher saved/:/Second teacher/);assert.match(html,/data-ui-tab="teaching" aria-current="page"/);assert.doesNotMatch(html,/First teacher|scheduling-resource-editor/);
+  assert.equal(a.read('resourceDraft'),null);assert.equal(a.resourceCalls.length,save?1:0);
+ }
+});
+
+test('individual staff access opens the exact linked teacher and returns to that person without permission writes',async()=>{
+ const remote={teacherLinks:[{teacherResourceId:'access-teacher-resource',userId:'access-artist-B',version:4}]};
+ const a=await accessUiApp(remote,{}, {preview:true});a.set("tab='management';sharedCatalogRevision='catalog';render()");
+ await a.set("openSharedStaffAccess({resourceId:'access-teacher-resource'})");
+ assert.equal(a.read('teacherAccessManager.lockedUserId'),'access-artist-B');
+ assert.equal(a.read('teacherAccessManager.tab'),'grants');
+ assert.match(a.nodes['#modal-root'].innerHTML,/Teaching artist/);
+ await a.click({action:'access-grant-add'});
+ assert.match(a.nodes['#modal-root'].innerHTML,/value="access-artist-B"/);
+ assert.doesNotMatch(a.nodes['#modal-root'].innerHTML,/value="access-artist-A"/);
+ const form=accessEditorForm(a,'access-grant-editor',{userId:'access-artist-A',kind:'course',courseId:'qa-course'});
+ await a.submit(form.id,form.values,form);assert.equal(a.accessCalls.length,0);
+ assert.match(a.nodes['#access-editor-error'].textContent,/teacher|老師/i);
+ await a.click({action:'access-editor-cancel'});await a.click({action:'access-close'});
+ assert.equal(a.read('teacherAccessManager'),null);assert.match(a.nodes['#modal-root'].innerHTML,/Teaching artist/);
+ assert.match(a.nodes['#modal-root'].innerHTML,/Login and data access/);assert.equal(a.accessCalls.length,0);
+});
+
+test('unlinked staff access opens that resource without choosing another teacher and cancellation returns to its profile',async()=>{
+ const a=await accessUiApp({}, {}, {preview:true});a.set("tab='management';sharedCatalogRevision='catalog';render()");
+ await a.set("openSharedStaffAccess({resourceId:'access-teacher-resource'})");
+ assert.equal(a.read('teacherAccessDraft.resourceId'),'access-teacher-resource');assert.equal(a.read('teacherAccessDraft.current'),null);
+ assert.match(a.nodes['#modal-root'].innerHTML,/<option value="">/);
+ await a.click({action:'access-editor-cancel'});
+ assert.equal(a.read('teacherAccessManager'),null);assert.match(a.nodes['#modal-root'].innerHTML,/Teaching artist/);
+ assert.match(a.nodes['#modal-root'].innerHTML,/No linked login account/);assert.equal(a.accessCalls.length,0);
+});
+
+test('closing an individual staff access read prevents its late reply from reopening any dialog',async()=>{
+ const a=await accessUiApp({}, {}, {preview:true}),wait=deferred();a.client.accessControl=()=>wait.promise;
+ a.set("tab='management';sharedCatalogRevision='catalog'");const pending=a.set("openSharedStaffAccess({resourceId:'access-teacher-resource'})");
+ await until(()=>!!a.read('teacherAccessManager'),'The individual settings manager must be open');
+ await a.click({action:'access-close'});const afterClose=a.read('modal');
+ wait.resolve({...copy(a.accessRemote),revision:'late-links'});await pending;
+ assert.equal(a.read('teacherAccessManager'),null);assert.equal(a.read('modal'),afterClose);assert.equal(a.accessCalls.length,0);
+});
+
+test('a changed staff account link cannot receive grants through an already opened individual settings panel',async()=>{
+ const remote={teacherLinks:[{teacherResourceId:'access-teacher-resource',userId:'access-artist-B',version:4}]};
+ const a=await accessUiApp(remote,{}, {preview:true});a.set("tab='management';sharedCatalogRevision='catalog';render()");
+ await a.set("openSharedStaffAccess({resourceId:'access-teacher-resource'})");await a.click({action:'access-grant-add'});
+ const form=accessEditorForm(a,'access-grant-editor',{userId:'access-artist-B',kind:'course',courseId:'qa-course'});
+ remote.teacherLinks=[{teacherResourceId:'access-teacher-resource',userId:'access-artist-A',version:5}];remote.revision++;
+ await a.set('refreshTeacherAccess({paint:false})');await a.submit(form.id,form.values,form);
+ assert.equal(a.accessCalls.length,0);assert.match(a.nodes['#access-editor-error'].textContent,/changed/);
+});
+
+test('an administrator teaching profile uses account links without offering teacher-only grants',async()=>{
+ const a=await accessUiApp({teacherLinks:[{teacherResourceId:'access-teacher-resource',userId:sharedTestUser.id,version:1}]},{},{preview:true});
+ a.set("tab='management';sharedCatalogRevision='catalog';render()");await a.set("openSharedStaffAccess({resourceId:'access-teacher-resource'})");
+ assert.equal(a.read('teacherAccessManager.lockedUserId'),'');assert.equal(a.read('teacherAccessManager.tab'),'links');
+ await a.click({action:'access-grant-add'});assert.equal(a.read('teacherAccessDraft'),null);assert.equal(a.accessCalls.length,0);
+});
+
+function mountedPortalProfile(a,{open=true}={}){
+ let html=a.nodes['#app'].innerHTML,writes=0,profile,summary;
+ const mount=value=>{
+  if(profile)profile.isConnected=false;if(summary)summary.isConnected=false;
+  if(!value.includes('class="portal-profile"')){profile=null;summary=null;return;}
+  profile={open:/<details class="portal-profile"[^>]*\sopen(?:\s|>)/.test(value),isConnected:true,matches:selector=>selector==='.portal-profile',contains:node=>node===summary};
+  summary={isConnected:true,matches:()=>false,closest:selector=>selector==='.portal-profile'?profile:null,focus(){a.ctx.document.activeElement=this;}};
+ };
+ mount(html);profile.open=open;
+ Object.defineProperty(a.nodes['#app'],'innerHTML',{configurable:true,get:()=>html,set(value){writes++;html=value;mount(value);a.ctx.document.activeElement=a.ctx.document.body;}});
+ const query=a.ctx.document.querySelector;
+ a.ctx.document.querySelector=selector=>selector==='.portal-profile'?profile:selector==='.portal-profile > summary'?summary:query(selector);
+ return {get profile(){return profile;},get summary(){return summary;},get writes(){return writes;},close(){const target=profile;target.open=false;a.ctx.profileToggleEvent={target};a.set('handlePortalProfileToggle(profileToggleEvent)');}};
+}
+async function teacherProfilePollingApp(){
+ const user={id:'profile-teacher',role:'teacher',displayName:'Profile teacher',email:'teacher@example.test',accessRevision:'profile-access-1'},remote={version:1,time:'10:00'};
+ const a=await sharedScheduleApp({rows:[],revision:1},{session:async()=>({user:copy(user)}),catalog:async since=>since==='profile-catalog'?{revision:since,unchanged:true}:{revision:'profile-catalog',courses:[copy(sharedTestCourse)],fees:[copy(sharedTestFee)]},schedulingResources:async since=>since==='profile-resources'?{revision:since,unchanged:true}:{revision:'profile-resources',resources:[{id:'profile-teacher-resource',kind:'teacher',displayName:user.displayName,active:true,version:1}]},schedules:async since=>since==='profile-schedule-'+remote.version?{revision:since,unchanged:true}:teacherScheduleFixture(sharedScheduleRecord({teacherIds:['profile-teacher-resource'],time:remote.time}),{date:'2026-10-15',revision:'profile-schedule-'+remote.version})},{preview:true});
+ a.set("tab='teacher-home';render()");for(let turn=0;turn<60;turn++)await Promise.resolve();
+ return {a,user,remote,view:mountedPortalProfile(a)};
+}
+
+test('changed teacher polling keeps the open account menu mounted while loading the latest records and closing flushes the view',async()=>{
+ const {a,remote,view}=await teacherProfilePollingApp(),profile=view.profile,summary=view.summary;a.ctx.document.activeElement=summary;
+ await a.polls[0].handler();assert.equal(view.writes,0,'An unchanged poll must not reconstruct the account menu');
+ remote.version++;remote.time='11:30';await a.polls[0].handler();assert.equal(a.read('sharedScheduleOccurrences[0].item.time'),'11:30','The open menu must not prevent current data being loaded');
+ assert.equal(view.writes,0,'Background painting must wait while the menu is open');assert.equal(view.profile,profile);assert.equal(profile.open,true);assert.equal(a.ctx.document.activeElement,summary);assert.equal(a.read('sharedViewDirty'),true);
+ await a.polls[0].handler();assert.equal(view.writes,0,'An unchanged reply must not flush deferred data through an open menu');
+ view.close();assert.equal(view.writes,1);assert.equal(view.profile.open,false);assert.equal(a.read('sharedViewDirty'),false);assert.equal(a.ctx.document.activeElement,view.summary,'Closing and flushing retains the account-menu focus');assert.match(a.nodes['#app'].innerHTML,/11:30/);
+});
+
+test('the delayed teacher-home window read after login does not dismiss the newly opened account menu',async()=>{
+ const a=await sharedScheduleApp({rows:[sharedScheduleRecord()],revision:1},{},{preview:true});await a.click({action:'logout'});
+ const user={id:'profile-leo-after-admin',role:'teacher',displayName:'Leo',email:'teacher@example.test',accessRevision:'leo-access'},late=deferred();let reads=0;
+ a.client.login=async()=>({user});a.client.catalog=async()=>({revision:'teacher-catalogue',courses:[copy(sharedTestCourse)],fees:[copy(sharedTestFee)]});a.client.schedulingResources=async()=>({revision:'teacher-resources',resources:[{id:'leo-resource',kind:'teacher',displayName:'Leo',active:true,version:1}]});
+ a.client.schedules=async()=>++reads===1?teacherScheduleFixture(sharedScheduleRecord({teacherIds:['leo-resource']}),{date:'2026-10-15',revision:'teacher-month'}):late.promise;
+ const form=sharedForm('login');form.values={username:user.email,password:'fictional-password'};await a.submit('login',form.values,form);await until(()=>reads===2,'The teacher workspace requests its own range after the initial month read');assert.equal(a.read('tab'),'teacher-home');
+ const view=mountedPortalProfile(a);a.ctx.document.activeElement=view.summary;late.resolve(teacherScheduleFixture(sharedScheduleRecord({teacherIds:['leo-resource'],time:'12:30'}),{date:'2026-10-15',revision:'teacher-workspace'}));await until(()=>a.read('sharedSchedulesRevision')==='teacher-workspace','The late teacher-home read must genuinely complete');for(let turn=0;turn<10;turn++)await Promise.resolve();
+ assert.equal(view.writes,0);assert.equal(view.profile.open,true);assert.equal(a.read('sharedScheduleOccurrences[0].item.time'),'12:30');view.close();assert.equal(view.writes,1);assert.match(a.nodes['#app'].innerHTML,/12:30/);
+});
+
+test('an open account menu never postpones authoritative sign-out, revocation or a different role',async()=>{
+ for(const change of ['logout','expired','signed-out','revoked','student']){
+  const {a,user,remote,view}=await teacherProfilePollingApp();remote.version++;remote.time='11:30';await a.polls[0].handler();
+  a.set("materialCaches.set('private',{items:[{name:'Old private material'}]});materialAttachmentDraft=[{name:'Old queued file'}]");
+  a.client.catalog=async()=>({revision:'next-catalog',courses:[],fees:[]});a.client.schedules=async()=>({revision:'next-scope',readScope:'occurrences',occurrences:[]});a.client.session=async()=>{if(change==='expired')throw serviceError(401,'AUTH_REQUIRED');return {user:change==='signed-out'?null:{...user,...(change==='student'?{id:'next-student',role:'student'}:{accessRevision:'revoked-access'})}};};
+  const old=view.profile;if(change==='logout')await a.click({action:'logout'});else await a.set('refreshSharedSession()');assert.equal(old.isConnected,false,change);assert.equal(view.profile?.open||false,false,change);assert.equal(a.read('materialCaches.size'),0,change);assert.equal(a.read('materialAttachmentDraft.length'),0,change);assert.ok(view.writes>0,change);
+  if(['logout','expired','signed-out'].includes(change)){assert.equal(a.read('authUser'),null);assert.equal(a.read('location.pathname'),'/login');}else assert.equal(a.read('authUser.role'),change==='student'?'student':'teacher');
+  const writes=view.writes,focus=a.ctx.document.activeElement;old.open=false;a.ctx.profileToggleEvent={target:old};a.set('handlePortalProfileToggle(profileToggleEvent)');assert.equal(view.writes,writes,'A detached old menu toggle must not paint the new identity');assert.equal(a.ctx.document.activeElement,focus);
+ }
+});
+
+function capturePeopleRelatedLaunches(a){
+ a.ctx.peopleRelatedLaunches=[];
+ a.set("interfacePreview={...interfacePreview,openLesson:(view,facts)=>peopleRelatedLaunches.push({channel:'lesson',view,facts}),openAccount:(view,facts)=>peopleRelatedLaunches.push({channel:'account',view,facts})}");
+ return ()=>a.read('peopleRelatedLaunches');
+}
+async function openReadyPeopleProfile(a,id){
+ await a.click({action:'people-open',personId:id});await until(()=>a.read('peopleDetails.get('+JSON.stringify(id)+')?.ready')&&!a.read('peopleReads.size'),'The exact profile must be loaded before related actions are available');
+}
+
+test('People related actions live only in the exact loaded profile and pass the second same-name person without fixture facts',async()=>{
+ let context;const first=formalPerson({id:'people-first',displayName:'Same display name',email:'first@example.test'}),second=formalPerson({id:'people-second',displayName:'Same display name',email:'second@example.test'}),a=await peopleUiApp({people:[first,second],revision:1},{},{preview:true,onPreviewContext:value=>context=value}),launches=capturePeopleRelatedLaunches(a);
+ await openPeopleDirectory(a);assert.doesNotMatch(a.nodes['#app'].innerHTML,/class="interface-preview-tools"|people-profile-related/);assert.deepEqual(copy(context().peopleContext),{personId:null,person:null,ready:false,allowed:true});
+ for(const person of [first,second]){
+  await openReadyPeopleProfile(a,person.id);const html=a.nodes['#app'].innerHTML;assert.doesNotMatch(html,/class="interface-preview-tools"/);assert.match(html,/people-profile-related/);
+  const buttons=[...html.matchAll(/<button\b[^>]*data-ui-command="launch"[^>]*>/g)].map(match=>markupDataset(match[0]));assert.equal(buttons.length,4);assert.ok(buttons.every(button=>button.personId===person.id));
+  const before=launches().length;for(const button of buttons)await a.click(button);const opened=launches().slice(before);assert.equal(opened.length,4);assert.equal(context().peopleContext.person.id,person.id);
+  for(const {channel,facts}of opened){assert.equal(facts.shared,true);assert.equal(facts.sharedPerson,true);assert.equal(facts.personId,person.id);assert.equal(facts.student.id,person.id);assert.equal(facts.student.email,person.email);assert.deepEqual(facts.data.slots,[]);assert.equal(Object.hasOwn(facts,'accountLink'),false);if(channel==='lesson'){assert.deepEqual(facts.lesson,{});assert.deepEqual(facts.data.students.map(row=>row.id),[person.id]);assert.deepEqual(facts.data.trialHistory,[]);}else{assert.equal(facts.data.student.id,person.id);assert.deepEqual(facts.data.courses,[]);}}
+  assert.doesNotMatch(JSON.stringify(opened),/example-child|child-1|Creative Drawing|2026-10-16/);
+ }
+ const before=launches().length;for(const personId of [undefined,first.id,'missing-person'])for(const action of ['ui-lesson','ui-account-actions'])await a.click({action,uiCommand:'launch',uiView:action==='ui-lesson'?'family':'activation',...(personId?{personId}:{})});assert.equal(launches().length,before,'The previous same-name profile and missing IDs cannot be substituted for the route');
+});
+
+test('People loaded Students cannot convert and profile launches require the current authorized role',async()=>{
+ let context;const person=formalPerson({id:'people-student',kind:'student',displayName:'Existing student'}),a=await peopleUiApp({people:[person],revision:1},{},{preview:true,onPreviewContext:value=>context=value}),launches=capturePeopleRelatedLaunches(a);await openReadyPeopleProfile(a,person.id);
+ assert.match(a.nodes['#app'].innerHTML,/people-profile-related/);assert.doesNotMatch(a.nodes['#app'].innerHTML,/data-ui-view="convert"/);await a.click({action:'ui-lesson',uiCommand:'launch',uiView:'convert',personId:person.id});assert.equal(launches().length,0);
+ await a.click({action:'ui-lesson',uiCommand:'launch',uiView:'family',personId:person.id});assert.equal(launches().length,1);
+ a.set("applySharedUser({id:'people-readonly-teacher',role:'teacher',displayName:'Teacher'});render()");assert.equal(context().peopleContext.allowed,false);assert.equal(context().peopleContext.person,null);for(const action of ['ui-lesson','ui-account-actions'])await a.click({action,uiCommand:'launch',uiView:action==='ui-lesson'?'family':'activation',personId:person.id});assert.equal(launches().length,1);
+});
+
+test('People directory, loading, forbidden and missing profiles expose no related actions or borrowed identity',async()=>{
+ for(const scenario of ['directory','loading','forbidden','missing','wrong-record']){
+  let context;const gate=deferred(),person=formalPerson({id:'people-guarded',displayName:'Guarded profile'}),a=await peopleUiApp({people:[person],revision:1},{},{preview:true,onPreviewContext:value=>context=value}),launches=capturePeopleRelatedLaunches(a);
+  if(scenario==='directory')await openPeopleDirectory(a);
+  else{a.client.person=()=>scenario==='loading'?gate.promise:scenario==='wrong-record'?Promise.resolve({person:{...person,id:'different-id'}}):Promise.reject(serviceError(scenario==='forbidden'?403:404,scenario==='forbidden'?'FORBIDDEN':'PERSON_NOT_FOUND'));await a.click({action:'people-open',personId:person.id});if(scenario!=='loading')await until(()=>!a.read('peopleReads.size'),'A failed profile read must settle before its actions are tested');}
+  const html=a.nodes['#app'].innerHTML;assert.doesNotMatch(html,/class="interface-preview-tools"|people-profile-related/,scenario);assert.equal(context().peopleContext.person,null,scenario);assert.equal(context().peopleContext.ready,false,scenario);
+  for(const personId of [undefined,person.id])for(const [action,uiView]of [['ui-lesson','applicant'],['ui-lesson','convert'],['ui-lesson','family'],['ui-account-actions','activation']])await a.click({action,uiCommand:'launch',uiView,...(personId?{personId}:{})});assert.equal(launches().length,0,scenario);
+  if(scenario==='loading'){gate.resolve({person});await until(()=>!a.read('peopleReads.size'),'The delayed authorized profile read must finish');assert.equal(context().peopleContext.person.id,person.id);assert.match(a.nodes['#app'].innerHTML,/people-profile-related/);}
+ }
+});
+
+test('People real related surfaces show only the selected profile and unavailable actions cannot complete or write records',async()=>{
+ const first=formalPerson({id:'real-people-first',displayName:'Same person name',email:'first-only@example.test'}),second=formalPerson({id:'real-people-second',displayName:'Same person name',email:'second-only@example.test'}),a=await peopleUiApp({people:[first,second],revision:1},{},{preview:true,mountModalRoot:true,initialQuerySelectorAll:()=>[]}),before=a.read('db.bookings');
+ for(const person of [first,second]){
+  await openReadyPeopleProfile(a,person.id);
+  const buttons=[...a.nodes['#app'].innerHTML.matchAll(/<button\b[^>]*data-ui-command="launch"[^>]*>/g)].map(match=>markupDataset(match[0]));assert.equal(buttons.length,4);
+  for(const button of buttons){
+   await a.click(button);let html=a.nodes['#modal-root'].innerHTML;assert.equal(a.read('interfacePreview.isOpen'),true);assert.match(html,new RegExp(person.email.replace(/\./g,'\\.')));assert.doesNotMatch(html,new RegExp((person.id===first.id?second:first).email.replace(/\./g,'\\.')));assert.doesNotMatch(html,/Alex Chan|child-1|Creative Drawing|2026-10-16|interface-preview-banner/);
+   if(button.action==='ui-account-actions'){assert.match(html,/Account status could not be confirmed/);assert.match(html,/<button\b[^>]*disabled[^>]*>Activate Account<\/button>/);assert.match(html,/<button\b[^>]*disabled[^>]*>Reset Password<\/button>/);}
+   else{assert.match(html,/not available yet|not connected yet/);assert.match(html,/<button\b[^>]*disabled[^>]*>/);}
+   for(const uiCommand of ['review','confirm-preview','save-preview','complete'])await a.click({...button,uiCommand});
+   html=a.nodes['#modal-root'].innerHTML;assert.match(html,new RegExp(person.email.replace(/\./g,'\\.')));assert.doesNotMatch(html,/Request received|Saved successfully|Completed|已完成|已儲存/);
+   await a.click({action:button.action,uiCommand:'close'});assert.equal(a.read('interfacePreview.isOpen'),false);assert.equal(a.nodes['#modal-root'].innerHTML,'');assert.equal(a.read('location.pathname'),'/account/people/'+person.id);
+  }
+ }
+ assert.deepEqual(a.read('db.bookings'),before);assert.deepEqual(a.peopleWrites,[]);assert.deepEqual(a.calls,[]);
+});
+
+test('People real overlays close immediately when a profile refresh removes or denies the selected record',async()=>{
+ for(const failure of [404,403,503,'wrong-record']){
+  const person=formalPerson({id:'people-expiring',displayName:'Private selected profile',email:'private-record@example.test'}),a=await peopleUiApp({people:[person],revision:1},{},{preview:true,mountModalRoot:true,initialQuerySelectorAll:()=>[]});await openReadyPeopleProfile(a,person.id);
+  await a.click({action:'ui-lesson',uiCommand:'launch',uiView:'family',personId:person.id});assert.match(a.nodes['#modal-root'].innerHTML,/private-record@example.test/);assert.equal(a.read('interfacePreview.isOpen'),true);
+  a.client.person=async()=>{if(failure==='wrong-record')return {person:{...person,id:'another-person'}};throw serviceError(failure,failure===404?'PERSON_NOT_FOUND':failure===403?'FORBIDDEN':'SERVICE_UNAVAILABLE')};
+  await a.set("refreshPersonProfile('people-expiring')");assert.equal(a.read('interfacePreview.isOpen'),false,String(failure));assert.equal(a.read('modal'),'',String(failure));assert.equal(a.nodes['#modal-root'].innerHTML,'',String(failure));
+  await a.click({action:'ui-lesson',uiCommand:'launch',uiView:'family',personId:person.id});assert.equal(a.read('interfacePreview.isOpen'),false,String(failure));assert.deepEqual(a.peopleWrites,[]);
+ }
+});
+
+test('People real overlay navigation and browser Back discard the prior profile without reviving stale commands',async()=>{
+ const first=formalPerson({id:'people-route-first',displayName:'Same route name',email:'route-first@example.test'}),second=formalPerson({id:'people-route-second',displayName:'Same route name',email:'route-second@example.test'}),a=await peopleUiApp({people:[first,second],revision:1},{},{preview:true,mountModalRoot:true,initialQuerySelectorAll:()=>[]});
+ await openReadyPeopleProfile(a,first.id);await a.click({action:'ui-lesson',uiCommand:'launch',uiView:'family',personId:first.id});assert.equal(a.read('interfacePreview.isOpen'),true);
+ await openReadyPeopleProfile(a,second.id);assert.equal(a.read('interfacePreview.isOpen'),false);assert.equal(a.nodes['#modal-root'].innerHTML,'');await a.click({action:'ui-account-actions',uiCommand:'launch',uiView:'activation',personId:second.id});assert.match(a.nodes['#modal-root'].innerHTML,/route-second@example.test/);
+ a.set('history.back()');assert.equal(a.read('location.pathname'),'/account/people/'+first.id);assert.equal(a.read('interfacePreview.isOpen'),false);assert.equal(a.read('modal'),'');assert.doesNotMatch(a.nodes['#app'].innerHTML,/route-second@example.test/);await a.click({action:'ui-lesson',uiCommand:'launch',uiView:'family',personId:second.id});assert.equal(a.read('interfacePreview.isOpen'),false);assert.deepEqual(a.peopleWrites,[]);
+});
+
+test('People real conversion closes after the selected Applicant changes kind and background identity loss clears an open profile surface',async()=>{
+ const person=formalPerson({id:'people-conversion-source',displayName:'Conversion source',email:'conversion-only@example.test'}),a=await peopleUiApp({people:[person],revision:1},{},{preview:true,mountModalRoot:true,initialQuerySelectorAll:()=>[]});await openReadyPeopleProfile(a,person.id);
+ await a.click({action:'ui-lesson',uiCommand:'launch',uiView:'convert',personId:person.id});assert.match(a.nodes['#modal-root'].innerHTML,/Confirm conversion/);a.peopleRemote.people[0]={...person,kind:'student',version:2};await a.set("refreshPersonProfile('people-conversion-source')");assert.equal(a.read('interfacePreview.isOpen'),false,'The related conversion view must not survive a confirmed Student classification');assert.equal(a.nodes['#modal-root'].innerHTML,'');
+ await a.click({action:'ui-lesson',uiCommand:'launch',uiView:'family',personId:person.id});assert.match(a.nodes['#modal-root'].innerHTML,/conversion-only@example.test/);const gate=deferred();a.client.person=()=>gate.promise;const pending=a.set("refreshPersonProfile('people-conversion-source')");a.set("applySharedUser({id:'different-readonly-teacher',role:'teacher',displayName:'Another teacher'});render()");assert.equal(a.read('interfacePreview.isOpen'),false);assert.equal(a.read('modal'),'');gate.resolve({person:{...person,displayName:'Late private identity'}});await pending;assert.equal(a.read('peopleDetails.size'),0);assert.doesNotMatch(a.nodes['#app'].innerHTML,/Late private identity|conversion-only@example.test/);assert.deepEqual(a.peopleWrites,[]);
+});
+
+test('People real overlay refresh updates the authorized contact while unchanged profile polling leaves the modal intact',async()=>{
+ const person=formalPerson({id:'people-contact-update',displayName:'Contact update',email:'before-contact@example.test'}),a=await peopleUiApp({people:[person],revision:1},{},{preview:true,mountModalRoot:true,initialQuerySelectorAll:()=>[]});await openReadyPeopleProfile(a,person.id);await a.click({action:'ui-lesson',uiCommand:'launch',uiView:'family',personId:person.id});
+ const node=a.nodes['#modal-root'];let html=node.innerHTML,writes=0;Object.defineProperty(node,'innerHTML',{get:()=>html,set:value=>{html=value;writes++}});await a.set("refreshPersonProfile('people-contact-update')");assert.equal(writes,0,'Unchanged profile reads must not remount a modal the user is reading');
+ a.peopleRemote.people[0]={...person,email:'after-contact@example.test',version:2};await a.set("refreshPersonProfile('people-contact-update')");assert.equal(a.read('interfacePreview.isOpen'),true);assert.match(node.innerHTML,/after-contact@example.test/);assert.doesNotMatch(node.innerHTML,/before-contact@example.test/);assert.deepEqual(a.peopleWrites,[]);
+});
+
+test('shared Leads directory has no unscoped trial or conversion launcher that can borrow a fixture person',async()=>{
+ const a=await peopleUiApp({people:[],revision:1},{},{preview:true,initialQuerySelectorAll:()=>[]});await a.click({tab:'leads'});const html=a.nodes['#app'].innerHTML;assert.equal(a.read('tab'),'leads');assert.match(html,/Leads/);assert.doesNotMatch(html,/class="interface-preview-tools"|data-ui-view="(?:applicant|convert)"/);assert.match(html,/data-action="lead-create"/);assert.match(html,/data-action="lead-columns"/);assert.deepEqual(a.peopleWrites,[]);
+});
+
+test('a restored student session opens all authorized My classes without an extra click while requests keep their calendar month',async()=>{
+ const user={id:'restored-parent',role:'student',displayName:'Restored parent',email:'student@example.test',accessRevision:'restored-scope'},student={id:'restored-child',displayName:'Authorized child'},dates=['2026-10-16','2026-10-17','2026-10-23','2026-10-24','2026-10-30','2026-10-31','2026-11-07'],reads=[];
+ const lessons=dates.map((date,index)=>({id:'restored-lesson-'+index,studentId:student.id,studentName:student.displayName,scheduleId:'restored-series',sequence:index+1,date,time:'13:30',duration:60,courseName:'Authorized course',teachers:[],rooms:[],attendance:'unmarked'})),foreign={...lessons[0],id:'foreign-private-lesson',studentId:'different-family-child',studentName:'Private other family',courseName:'Private other course'};
+ const client={health:async()=>({mode:'shared-test'}),session:async()=>({user}),catalog:async()=>({revision:'restored-catalog',courses:[],fees:[]}),async studentTimetable(range,since){reads.push({range:copy(range),since});const revision='restored-'+range.key;if(since===revision)return {revision,unchanged:true};return {revision,students:[student],lessons:[...lessons,foreign].filter(row=>row.date>=range.from&&row.date<=range.to)};}};
+ const a=app({'beamal-language':'en'},'2026-10-15T12:00:00',false,client,{pathname:'/account',preview:true,initialQuerySelectorAll:()=>[]});await until(()=>a.read('sharedReady')&&a.read('studentTimetableCache.ready')&&!a.read('studentTimetableRead'),'The restored session and its first visible lesson window must fully settle');
+ assert.equal(a.read('authUser.id'),user.id);assert.equal(a.read('authUser.role'),'student');assert.equal(a.read('tab'),'catalog','The existing restored-session default is preserved');assert.equal(a.read('portalActiveTab()'),'courses');assert.equal(a.read('studentTimetableCache.key'),'classes|2026-10-15');assert.equal(a.read('studentTimetableCache.lessons.length'),7);assert.equal((a.nodes['#app'].innerHTML.match(/class="shared-student-lesson panel"/g)||[]).length,7);assert.match(a.nodes['#app'].innerHTML,/2026-11-07/);assert.doesNotMatch(a.nodes['#app'].innerHTML,/Private other family|Private other course/);assert.deepEqual(reads.map(row=>[row.range.from,row.range.to]),[['2026-10-15','2027-10-15']]);
+ await a.set('refreshStudentTimetable()');assert.equal(a.read('studentTimetableCache.lessons.length'),7);assert.equal(a.read('studentTimetableCache.key'),'classes|2026-10-15');
+ await a.click({tab:'student-requests'});await until(()=>a.read('studentTimetableCache.ready')&&!a.read('studentTimetableRead'),'Requests must load the calendar window after leaving My classes');assert.equal(a.read('studentTimetableCache.key'),'2026-10-01|2026-10-31');assert.equal(a.read('studentTimetableCache.lessons.length'),6);assert.equal(reads.at(-1).range.to,'2026-10-31');
+ await a.click({tab:'courses'});await until(()=>a.read('studentTimetableCache.ready')&&!a.read('studentTimetableRead'),'The explicit My classes entry must load the same range as its restored-session alias');assert.equal(a.read('studentTimetableCache.key'),'classes|2026-10-15');assert.equal(a.read('studentTimetableCache.lessons.length'),7);assert.match(a.nodes['#app'].innerHTML,/2026-11-07/);assert.doesNotMatch(a.nodes['#app'].innerHTML,/Private other family|Private other course/);assert.deepEqual(a.read('studentTimetableCache.students.map(person=>person.id)'),[student.id]);assert.equal(a.read('db.bookings.length'),4,'Restoring a session must not rebuild or overwrite the existing local records');
+});
+
+async function studentWindowRaceApp(){
+ const user={id:'window-parent',role:'student',displayName:'Window parent',accessRevision:'window-family-scope'},child={id:'window-child',displayName:'Window child'},dates=['2026-10-16','2026-10-17','2026-10-23','2026-10-24','2026-10-30','2026-10-31','2026-11-07'],reads=[];
+ const lessons=dates.map((date,index)=>({id:'window-lesson-'+index,studentId:child.id,studentName:child.displayName,scheduleId:'window-series',sequence:index+1,date,time:'13:30',duration:60,courseName:'Window course',teachers:[],rooms:[],attendance:'unmarked'}));
+ const reply=(range,revision='window-'+range.key)=>({revision,students:[child],lessons:lessons.filter(row=>row.date>=range.from&&row.date<=range.to)}),client={health:async()=>({mode:'shared-test'}),session:async()=>({user}),catalog:async()=>({revision:'window-catalog',courses:[],fees:[]}),async studentTimetable(range,since){reads.push({range:copy(range),since});return reply(range)}};
+ const a=app({'beamal-language':'en'},'2026-10-15T12:00:00',false,client,{pathname:'/account',preview:true,initialQuerySelectorAll:()=>[]});await until(()=>a.read('sharedReady')&&a.read('studentTimetableCache.ready')&&!a.read('studentTimetableRead'),'The initial seven authorized classes must finish loading');assert.equal(a.read('studentTimetableCache.lessons.length'),7);return Object.assign(a,{client,child,lessons,reads,reply});
+}
+
+test('student window changes start the current read while an old month is pending and deduplicate only the same window',async()=>{
+ for(const order of ['year-first','month-first']){
+  const a=await studentWindowRaceApp(),month=deferred(),year=deferred();a.client.studentTimetable=(range,since)=>{a.reads.push({range:copy(range),since});return range.key.startsWith('classes|')?year.promise:month.promise;};
+  await a.click({tab:'student-requests'});assert.equal(a.reads.at(-1).range.key,'2026-10-01|2026-10-31');const oldRead=a.set('studentTimetableRead');await a.click({tab:'courses'});
+  assert.equal(a.reads.length,3,'The new My classes range must dispatch immediately without waiting for the previous month');assert.equal(a.reads.at(-1).range.key,'classes|2026-10-15');assert.equal(a.read('studentTimetableCache.key'),'classes|2026-10-15');assert.equal(a.read('studentTimetableCache.ready'),false);assert.match(a.nodes['#app'].innerHTML,/Loading lessons/);assert.doesNotMatch(a.nodes['#app'].innerHTML,/class="shared-student-lesson panel"/);
+  const currentRead=a.set('studentTimetableRead'),duplicate=a.set('refreshStudentTimetable()');a.set('render();render()');assert.equal(a.reads.length,3,'Re-rendering and refreshing the same pending window must reuse its request');
+  const oldReply={revision:'old-month-six',students:[a.child],lessons:a.lessons.filter(row=>row.date<'2026-11-01')},newReply={revision:'current-year-seven',students:[a.child],lessons:a.lessons};
+  if(order==='month-first'){month.resolve(oldReply);await oldRead;assert.equal(a.read('studentTimetableCache.ready'),false);assert.equal(a.read('studentTimetableCache.key'),'classes|2026-10-15');assert.ok(a.read('!!studentTimetableRead'),'An old finally must not unlock the current pending window');assert.doesNotMatch(a.nodes['#app'].innerHTML,/class="shared-student-lesson panel"/);year.resolve(newReply);await currentRead;}
+  else{year.resolve(newReply);await currentRead;month.resolve(oldReply);await oldRead;}
+  await duplicate;assert.equal(a.read('studentTimetableCache.key'),'classes|2026-10-15');assert.equal(a.read('studentTimetableCache.lessons.length'),7);assert.equal(a.read('studentTimetableRead'),null);assert.equal((a.nodes['#app'].innerHTML.match(/class="shared-student-lesson panel"/g)||[]).length,7);assert.match(a.nodes['#app'].innerHTML,/2026-11-07/);
+ }
+});
+
+test('student My classes shows loading instead of a completed six-lesson month while the future window is pending',async()=>{
+ const a=await studentWindowRaceApp();await a.click({tab:'student-requests'});await until(()=>a.read('studentTimetableCache.ready')&&!a.read('studentTimetableRead'),'The shorter calendar month must first be fully loaded');assert.equal(a.read('studentTimetableCache.lessons.length'),6);
+ const future=deferred();a.client.studentTimetable=(range,since)=>{a.reads.push({range:copy(range),since});return future.promise;};await a.click({tab:'courses'});const currentRead=a.set('studentTimetableRead');assert.equal(a.read('studentTimetableCache.key'),'classes|2026-10-15');assert.equal(a.read('studentTimetableCache.ready'),false);assert.match(a.nodes['#app'].innerHTML,/Loading lessons/);assert.doesNotMatch(a.nodes['#app'].innerHTML,/class="shared-student-lesson panel"/,'A completed old monthly result must not look like the full My classes list');
+ future.resolve({revision:'loaded-future-seven',students:[a.child],lessons:a.lessons});await currentRead;assert.equal(a.read('studentTimetableCache.lessons.length'),7);assert.match(a.nodes['#app'].innerHTML,/2026-11-07/);
 });

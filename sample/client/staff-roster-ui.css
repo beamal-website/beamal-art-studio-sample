@@ -1,0 +1,60 @@
+.staff-roster-page,.staff-roster-dialog{--roster-ink:var(--staff-ink,#284940);--roster-muted:var(--staff-muted,#67786d);--roster-teal:var(--staff-teal,#1d7476);--roster-line:var(--staff-line,#d6ddd1);--roster-paper:var(--staff-paper,#fffef8);color:var(--roster-ink);min-width:0}
+.staff-roster-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:24px 28px;border-bottom:1px solid var(--roster-line)}
+.staff-roster-heading h1,.staff-roster-heading h2{margin:0;font-size:28px;line-height:1.4}
+.staff-roster-body{padding:24px 28px;min-width:0}
+.staff-roster-embedded .staff-roster-heading{padding:0 0 20px;margin-bottom:20px}
+.staff-roster-embedded .staff-roster-heading h2{font-size:20px}
+.staff-roster-embedded .staff-roster-body{padding:0}
+.staff-roster-button{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;max-width:100%;padding:10px 16px;border:1px solid var(--roster-teal);border-radius:6px;background:var(--roster-teal);color:white;font:inherit;font-size:14px;line-height:1.5;cursor:pointer;overflow-wrap:anywhere}
+.staff-roster-secondary{background:var(--roster-paper);color:var(--roster-teal);border-color:#bacdc3}
+.staff-roster-button:hover{filter:brightness(.95)}
+.staff-roster-button:disabled,.staff-roster-button:disabled:hover{background:#eef0e9;color:var(--roster-muted);border-color:var(--roster-line);filter:none;cursor:not-allowed}
+.staff-roster-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:16px;margin:0 0 24px;align-items:end}
+.staff-roster-month-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.staff-roster-field{display:grid;gap:8px;min-width:0;font-size:13px;margin:0}
+.staff-roster-field>span{color:var(--roster-muted);line-height:1.6}
+.staff-roster-field input,.staff-roster-field select,.staff-roster-field textarea{display:block;width:100%;min-width:0;min-height:44px;padding:10px 12px;border:1px solid #b8c9bd;border-radius:6px;background:white;color:var(--roster-ink);font:inherit;font-size:14px}
+.staff-roster-field textarea{resize:vertical;line-height:1.8}
+.staff-roster-button:focus-visible,.staff-roster-field input:focus-visible,.staff-roster-field select:focus-visible,.staff-roster-field textarea:focus-visible,.staff-roster-calendar-wrap:focus-visible,.staff-roster-day:focus-visible{outline:3px solid #b79b45;outline-offset:3px}
+.staff-roster-read,.staff-roster-error{padding:16px;margin:0 0 20px;border:1px solid var(--roster-line);border-radius:7px;background:#edf2e8;font-size:14px;line-height:1.8;overflow-wrap:anywhere}
+.staff-roster-error{background:#fbebe3;color:#963e30;border-color:#e7c7b4}
+.staff-roster-person{font-size:18px;font-weight:600;line-height:1.7;margin:0 0 16px;overflow-wrap:anywhere}
+.staff-roster-group{display:flex;gap:8px 16px;flex-wrap:wrap;font-size:13px;line-height:1.8;margin:0 0 24px;color:var(--roster-muted)}
+.staff-roster-group strong{color:var(--roster-ink);font-weight:500;overflow-wrap:anywhere}
+.staff-roster-calendar-wrap{width:100%;max-width:100%;overflow-x:auto;border:1px solid var(--roster-line);border-radius:8px;background:var(--roster-paper);scrollbar-width:thin;padding:3px}
+.staff-roster-calendar{width:100%;min-width:700px;table-layout:fixed;border-collapse:collapse}
+.staff-roster-calendar th{font-size:12px;font-weight:600;line-height:1.7;padding:12px;background:#eef2e8;color:var(--roster-muted);text-align:center}
+.staff-roster-calendar td{vertical-align:top;border:1px solid var(--roster-line);padding:0}
+.staff-roster-calendar .staff-roster-day{display:flex;flex-direction:column;gap:8px;align-items:flex-start;justify-content:flex-start;width:100%;min-width:44px;min-height:116px;height:100%;padding:12px;border:0;border-radius:0;background:var(--roster-paper);color:var(--roster-ink);font:inherit;text-align:left;cursor:pointer}
+.staff-roster-calendar .staff-roster-day:hover{background:#edf2e8}
+.staff-roster-day time{display:inline-flex;align-items:center;justify-content:center;min-width:28px;height:28px;font-size:15px;font-weight:600;line-height:1.4}
+.staff-roster-day>span{font-size:11px;line-height:1.6;color:var(--roster-muted);white-space:pre-line;overflow-wrap:anywhere}
+.staff-roster-today .staff-roster-day time{background:var(--roster-teal);color:white;border-radius:50%}
+.staff-roster-calendar td.staff-roster-outside{background:#f2f4ed}
+.staff-roster-mobile-hint{display:none;font-size:12px;line-height:1.8;color:var(--roster-muted);margin:12px 0 0}
+.staff-roster-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px;margin:0}
+.staff-roster-facts>div{min-width:0;padding:16px 0;border-bottom:1px solid var(--roster-line)}
+.staff-roster-facts dt{font-size:12px;line-height:1.7;color:var(--roster-muted);margin-bottom:8px}
+.staff-roster-facts dd{margin:0;font-size:14px;line-height:1.8;white-space:pre-wrap;overflow-wrap:anywhere}
+.staff-roster-source-record{margin:16px 0 20px;padding:0 16px 16px;border:1px solid var(--roster-line);border-radius:8px;background:#f5f7ef}
+.staff-roster-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;margin:20px 0}
+.staff-roster-segments{display:grid;gap:16px;margin:24px 0}
+.staff-roster-segments fieldset{min-width:0;border:1px solid var(--roster-line);border-radius:8px;padding:0 16px;margin:0}
+.staff-roster-segments legend{padding:0 8px;color:var(--roster-muted);font-size:13px;line-height:1.7}
+.staff-roster-note{font-size:13px;line-height:1.8;color:var(--roster-muted);margin:20px 0;overflow-wrap:anywhere}
+.staff-roster-dialog{display:flex;flex-direction:column;width:min(900px,100%);max-height:calc(100dvh - 48px);min-height:0;min-width:0;margin:auto;padding:0;overflow:hidden;background:var(--roster-paper);border-radius:10px;box-shadow:0 24px 80px #14282433}
+.staff-roster-dialog>header{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:24px;border-bottom:1px solid var(--roster-line);flex:0 0 auto}
+.staff-roster-dialog>header h2{font-size:22px;line-height:1.5;margin:0}
+.staff-roster-dialog>header>button{font-size:24px;padding:8px;border:0;flex-shrink:0}
+.staff-roster-dialog>form{display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.staff-roster-dialog .ui-staff-dialog-body{padding:24px;min-height:0;overflow:auto;overscroll-behavior:contain;flex:1}
+.staff-roster-dialog footer{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:10px;padding:16px 24px;flex:0 0 auto;border-top:1px solid var(--roster-line);background:var(--roster-paper)}
+@media(max-width:768px){.staff-roster-mobile-hint{display:block}}
+@media(max-width:680px){
+ .staff-roster-heading{padding:20px 16px;align-items:flex-start;flex-wrap:wrap}.staff-roster-heading h1{font-size:25px}.staff-roster-body{padding:20px 16px}
+ .staff-roster-filters,.staff-roster-facts,.staff-roster-form-grid{grid-template-columns:minmax(0,1fr)}
+ .staff-roster-month-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.staff-roster-month-actions button{padding:10px 8px}
+ .staff-roster-dialog{max-height:calc(100dvh - 24px);border-radius:8px}.staff-roster-dialog>header{padding:20px 16px}.staff-roster-dialog>header h2{font-size:20px}
+ .staff-roster-dialog .ui-staff-dialog-body{padding:20px 16px}.staff-roster-dialog footer{padding:16px}.staff-roster-dialog footer>button{flex:1}
+ .staff-roster-read{padding:12px}.staff-roster-source-record{padding:0 12px 12px}.staff-roster-segments fieldset{padding:0 12px}
+}

@@ -89,7 +89,7 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
   const insideStatic = path => staticRoot && (path === staticRoot || path.startsWith(`${staticRoot}${sep}`));
   if (storagePath && insideStatic(await physicalPath(storagePath))) throw new Error('Attachment storage must be outside the public static directory.');
   const store = await createStore({ databasePath, seedUsers, seedCourses, attachmentsDir });
-  const authUser = user => user ? { ...user, accessRevision: store.accessControl.revisionFor(user) } : null;
+  const authUser = user => user ? { ...user, accessRevision: store.accessControl.revisionFor(user), teacherResourceIds: store.accessControl.ownTeacherResourceIds(user) } : null;
   const materials = store.materials;
   const attachments = store.attachments;
   try {

@@ -1,0 +1,17 @@
+/* Quarter-hour creation controls sit below existing lesson buttons. */
+.portal-content .tt-cell-add,.tt-cell-add{
+  position:absolute;top:calc(var(--tt-cell-top) * var(--tt-row-height));height:calc(var(--tt-cell-height) * var(--tt-row-height));left:0;width:100%;z-index:0;
+  display:flex;align-items:center;justify-content:center;min-width:0;min-height:0;margin:0;padding:0;border:0;border-radius:0;background:transparent;color:var(--teal,#1d7476);box-shadow:none;cursor:pointer;pointer-events:auto;
+}
+.tt-cell-add-hint{display:block;max-width:100%;padding:2px 6px;border-radius:3px;background:#edf5ed;color:#286664;font-size:11px;line-height:1.4;white-space:nowrap;opacity:0;pointer-events:none}
+.portal-content .tt-cell-add:hover,.tt-cell-add:hover{background:#dcece380;box-shadow:inset 0 0 0 1px #8bb5a580}
+.tt-cell-add:hover .tt-cell-add-hint,.tt-cell-add:focus-visible .tt-cell-add-hint{opacity:1}
+.portal-content .tt-cell-add:focus-visible,.tt-cell-add:focus-visible{outline:2px solid #a1842f;outline-offset:-2px;background:#e2efe6;box-shadow:none}
+.tt-empty{pointer-events:none}
+.tt-empty button{pointer-events:auto}
+@media(hover:none){
+  /* Advertise the current keyboard/touch entry once per day, not every cell. */
+  .tt-cell-add[tabindex="0"] .tt-cell-add-hint{opacity:.55}
+  .tt-cell-add:active .tt-cell-add-hint,.tt-cell-add:focus-visible .tt-cell-add-hint{opacity:1}
+}
+@media print{.tt-cell-add,.tt-empty button{display:none!important}}

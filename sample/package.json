@@ -3,7 +3,9 @@
   "type": "module",
   "private": true,
   "version": "1.0.0",
+  "engines": {"node": ">=22.13.0"},
   "scripts": {
+    "start": "node ../scripts/start-local.mjs --open",
     "dev": "vite --host 0.0.0.0",
     "api": "node server/cli.mjs",
     "build": "vite build",

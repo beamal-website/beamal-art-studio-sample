@@ -56,3 +56,56 @@ test('student request tabs switch request type while preserving the same student
  const html=lessonWorkflowMarkup(sick,en);assert.match(html,/data-ui-command="request-type" data-ui-id="reschedule"/);assert.match(html,/data-ui-command="request-type" data-ui-id="sick"/);assert.match(html,/aria-pressed="true"/);
  assert.equal(getLessonWorkflowData().students[0].dateOfBirth,'2017-04-18');
 });
+
+test('shared student requests cannot claim completion through direct commands or switch into another workflow',()=>{
+ const state={...base(),shared:true,requestCapabilities:{submit:false,upload:false},view:'student-request',step:'review',draft:{requestType:'reschedule',reason:'Please arrange another lesson',preferredDate:'2026-11-14'}};
+ const before=JSON.stringify(state);
+ for(const command of ['confirm-preview','save-preview','submit','submit-request']){
+  const next=advanceLessonWorkflow(state,command);
+  assert.equal(next.step,'review',command);assert.equal(next.error,'request-unavailable');
+  assert.deepEqual(next.draft,state.draft);assert.equal(next.student.id,'student-a');assert.equal(next.lesson.id,'lesson-a');
+  assert.doesNotMatch(lessonWorkflowMarkup(next,en),/Preview complete|This preview has been updated|✓/);
+ }
+ for(const command of ['convert','add-family','select-member']){
+  const next=advanceLessonWorkflow(state,command,{id:'ui-child-2'});
+  assert.equal(next.view,'student-request');assert.equal(next.student.id,'student-a');assert.equal(next.step,'review');
+ }
+ assert.equal(JSON.stringify(state),before);
+});
+
+test('shared request forms use task language and disclose unavailable submission and supporting documents',()=>{
+ const state={...base(),shared:true,requestCapabilities:{submit:false,upload:false},view:'student-request',step:'review',draft:{requestType:'reschedule',reason:'Please contact me',preferredDate:'2026-11-14'}};
+ for(const context of [en,{t:zh=>zh}]){
+  const html=lessonWorkflowMarkup(state,context);
+  assert.doesNotMatch(html,/Interface preview|Changes appear in this preview only|介面預覽|變更只在本次預覽|Student lesson request|學生課務申請/);
+  assert.match(html,/data-ui-command="submit-request"[^>]*disabled[^>]*>/);
+  assert.match(html,/id="lw-request-unavailable"/);assert.match(html,/Please contact me/);assert.match(html,/2026-11-14/);
+  assert.match(html,/Back to edit|返回修改/);assert.match(html,/Submit request|提交申請/);
+ }
+ const sick={...state,step:'edit',draft:{...state.draft,requestType:'sick'}};
+ assert.match(lessonWorkflowMarkup(sick,en),/name="supportingDocument"[^>]*disabled/);
+ assert.match(lessonWorkflowMarkup(sick,{t:zh=>zh}),/申請病假/);
+ assert.doesNotMatch(lessonWorkflowMarkup({...sick,step:'review'},en),/Preferred date|2026-11-14/);
+ assert.doesNotMatch(lessonWorkflowMarkup({...state,step:'complete'},en),/Preview complete|This preview has been updated|✓/);
+});
+
+test('shared request editing review and type changes retain the same reason and preferred date',()=>{
+ const state={...base(),shared:true,requestCapabilities:{submit:false,upload:false},view:'student-request',step:'edit',draft:{requestType:'reschedule'}};
+ const sick=advanceLessonWorkflow(state,'request-type',{id:'sick',requestType:'reschedule',reason:'A reason typed before switching',preferredDate:'2026-11-14'});
+ assert.equal(sick.draft.requestType,'sick');
+ const review=advanceLessonWorkflow(sick,'review',{requestType:'sick'}),back=advanceLessonWorkflow(review,'back');
+ const reschedule=advanceLessonWorkflow(back,'request-type',{id:'reschedule',requestType:'sick'});
+ assert.equal(reschedule.draft.reason,'A reason typed before switching');assert.equal(reschedule.draft.preferredDate,'2026-11-14');
+ assert.equal(reschedule.student.id,'student-a');assert.equal(reschedule.lesson.id,'lesson-a');
+ const html=lessonWorkflowMarkup(reschedule,en);assert.match(html,/value="2026-11-14"/);assert.match(html,/A reason typed before switching/);
+});
+
+test('a shared request waiting for lesson refresh cannot advance even through direct reducer commands',()=>{
+ const state={...base(),shared:true,view:'student-request',requestLoading:true,step:'edit',draft:{requestType:'reschedule',reason:'Keep this draft',preferredDate:'2026-11-14'}};
+ for(const command of ['review','request-type','confirm-preview','save-preview','submit','submit-request']){
+  const next=advanceLessonWorkflow(state,command,{id:'sick',requestType:'sick',reason:'Forged replacement'});
+  assert.equal(next.step,'edit');assert.deepEqual(next.draft,state.draft);assert.equal(next.student.id,state.student.id);assert.equal(next.lesson.id,state.lesson.id);
+ }
+ const html=lessonWorkflowMarkup(state,en);assert.match(html,/Updating lesson details/);assert.match(html,/<fieldset[^>]*disabled/);assert.match(html,/class="lw-button lw-primary" disabled>Next: review/);
+ assert.match(html,/data-ui-command="close" aria-label="Close">/);
+});

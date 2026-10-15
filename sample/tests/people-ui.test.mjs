@@ -119,6 +119,32 @@ test('conversion action requires an applicant and the explicit capability', () =
   assert.doesNotMatch(peopleProfileMarkup({ person: { ...person, kind: 'student' }, canConvert: true }, ui('en')), /data-action="people-convert"/);
 });
 
+test('related profile actions retain the exact selected person and offer conversion only for an applicant', () => {
+  for (const language of ['zh', 'en']) for (const kind of ['applicant', 'student']) {
+    const selected = { ...person, id: 'person-second', kind, displayName: 'Avery Chan' };
+    const html = peopleProfileMarkup({ person: selected, relatedActions: true }, ui(language));
+    const actions = [...html.matchAll(/<button[^>]+data-action="ui-(?:lesson|account-actions)"[^>]*>/g)].map(match => match[0]);
+    assert.equal(actions.length, kind === 'applicant' ? 4 : 3);
+    for (const tag of actions) {
+      assert.match(tag, /data-person-id="person-second"/);
+      assert.match(tag, /data-ui-command="launch"/);
+      assert.doesNotMatch(tag, /person-a/);
+    }
+    for (const view of ['applicant', 'family', 'activation']) assert.ok(actions.some(tag => tag.includes(`data-ui-view="${view}"`)));
+    assert.equal(actions.some(tag => tag.includes('data-ui-view="convert"')), kind === 'applicant');
+    assert.match(html, language === 'en' ? /Related actions/ : /相關操作/);
+  }
+});
+
+test('related actions are explicitly enabled only on a valid loaded profile, never the directory or a failed record', () => {
+  const unavailable = [{ person }, { person, relatedActions: false }, { person, relatedActions: true, loading: true }, { person, relatedActions: true, error: 'Access changed' }, { relatedActions: true, loading: true }, { relatedActions: true, error: 'Not found' }, { person: { ...person, id: '' }, relatedActions: true }, { person: { ...person, kind: 'unknown' }, relatedActions: true }];
+  for (const state of unavailable) assert.doesNotMatch(peopleProfileMarkup(state, ui('en')), /data-action="ui-(?:lesson|account-actions)"/);
+  assert.doesNotMatch(peopleDirectoryMarkup({ people: [person], relatedActions: true }, ui('en')), /data-action="ui-(?:lesson|account-actions)"/);
+  const unsafe = peopleProfileMarkup({ person: { ...person, id: '\" data-go=\"/other' }, relatedActions: true }, ui('en'));
+  assert.match(unsafe, /data-person-id="&quot; data-go=&quot;\/other"/);
+  assert.doesNotMatch(unsafe, /data-go="\/other/);
+});
+
 test('profile loading and errors never offer an edit on a missing record', () => {
   const loading = peopleProfileMarkup({ loading: true }, ui('en'));
   assert.match(loading, /Loading record/);

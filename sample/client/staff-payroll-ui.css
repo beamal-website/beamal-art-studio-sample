@@ -1,0 +1,54 @@
+.staff-payroll-page,.staff-payroll-dialog,.staff-payroll-profile{--payroll-ink:var(--staff-ink,#284940);--payroll-muted:var(--staff-muted,#67786d);--payroll-teal:var(--staff-teal,#1d7476);--payroll-line:var(--staff-line,#d6ddd1);--payroll-paper:var(--staff-paper,#fffef8);color:var(--payroll-ink);min-width:0}
+.staff-payroll-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:24px 28px;border-bottom:1px solid var(--payroll-line)}
+.staff-payroll-heading h1,.staff-payroll-heading h2{margin:0;font-size:28px;line-height:1.4}
+.staff-payroll-body{padding:24px 28px;min-width:0}
+.staff-payroll-embedded .staff-payroll-heading{padding:0 0 20px;margin-bottom:20px}
+.staff-payroll-embedded .staff-payroll-heading h2{font-size:20px}
+.staff-payroll-embedded .staff-payroll-body{padding:0}
+.staff-payroll-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:16px;margin:0 0 24px;align-items:end}
+.staff-payroll-field{display:grid;gap:8px;min-width:0;font-size:13px;margin:0}
+.staff-payroll-field>span{color:var(--payroll-muted);line-height:1.6}
+.staff-payroll-field input,.staff-payroll-field select,.staff-payroll-field textarea{display:block;width:100%;min-width:0;min-height:44px;padding:10px 12px;border:1px solid #b8c9bd;border-radius:6px;background:#fff;color:var(--payroll-ink);font:inherit;font-size:14px}
+.staff-payroll-field textarea{resize:vertical;line-height:1.8}
+.staff-payroll-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;min-width:44px;padding:10px 16px;border:1px solid var(--payroll-teal);border-radius:6px;background:var(--payroll-teal);color:#fff;font:inherit;font-size:14px;line-height:1.5;cursor:pointer;max-width:100%;overflow-wrap:anywhere}
+.staff-payroll-secondary{background:var(--payroll-paper);color:var(--payroll-teal);border-color:#bacdc3}
+.staff-payroll-button:hover{filter:brightness(.95)}
+.staff-payroll-button:disabled,.staff-payroll-button:disabled:hover{background:#eef0e9;color:var(--payroll-muted);border-color:var(--payroll-line);cursor:not-allowed;filter:none}
+.staff-payroll-button:focus-visible,.staff-payroll-field input:focus-visible,.staff-payroll-field select:focus-visible,.staff-payroll-field textarea:focus-visible,.staff-payroll-table-wrap:focus-visible{outline:3px solid #b79b45;outline-offset:3px}
+.staff-payroll-source,.staff-payroll-feedback{padding:16px;margin:0 0 20px;border:1px solid var(--payroll-line);border-radius:7px;background:#edf2e8;font-size:14px;line-height:1.8;overflow-wrap:anywhere}
+.staff-payroll-error{background:#fbebe3;color:#963e30;border-color:#e7c7b4}
+.staff-payroll-table-wrap{width:100%;max-width:100%;overflow-x:auto;border:1px solid var(--payroll-line);border-radius:8px;background:var(--payroll-paper);scrollbar-width:thin}
+.staff-payroll-table{width:100%;min-width:1060px;border-collapse:collapse;text-align:left}
+.staff-payroll-table th,.staff-payroll-table td{padding:14px 16px;vertical-align:top;border-bottom:1px solid var(--payroll-line);font-size:13px;line-height:1.7}
+.staff-payroll-table th{font-size:12px;font-weight:600;background:#eef2e8;color:var(--payroll-muted);white-space:nowrap}
+.staff-payroll-table td:not(:first-child){white-space:nowrap}
+.staff-payroll-table tr:last-child td{border-bottom:0}
+.staff-payroll-table td:first-child{min-width:180px}
+.staff-payroll-table td:first-child button{padding:0;min-height:44px;background:transparent;border:0;color:var(--payroll-teal);text-align:left;justify-content:flex-start}
+.staff-payroll-table td.staff-payroll-empty{padding:32px 20px;white-space:normal;color:var(--payroll-muted);text-align:center}
+.staff-payroll-empty>.staff-payroll-source{margin:0;text-align:left}
+.staff-payroll-status{display:inline-block;padding:3px 8px;border-radius:4px;background:#e7eee5;color:#2f635b;font-size:12px;white-space:nowrap}
+.staff-payroll-section-heading{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:0 0 20px}
+.staff-payroll-section-heading h3{font-size:18px;margin:0;line-height:1.5}
+.staff-payroll-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px;margin:0}
+.staff-payroll-facts>div{min-width:0;padding:16px 0;border-bottom:1px solid var(--payroll-line)}
+.staff-payroll-facts dt{font-size:12px;line-height:1.7;color:var(--payroll-muted);margin-bottom:8px}
+.staff-payroll-facts dd{margin:0;font-size:14px;line-height:1.8;white-space:pre-wrap;overflow-wrap:anywhere}
+.staff-payroll-person{font-size:18px;font-weight:600;line-height:1.7;margin:0 0 24px;overflow-wrap:anywhere}
+.staff-payroll-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;margin-bottom:20px}
+.staff-payroll-note{font-size:13px;line-height:1.8;color:var(--payroll-muted);margin:20px 0;overflow-wrap:anywhere}
+.staff-payroll-dialog{display:flex;flex-direction:column;width:min(900px,100%);max-height:calc(100dvh - 48px);min-height:0;min-width:0;margin:auto;padding:0;overflow:hidden;background:var(--payroll-paper);border-radius:10px;box-shadow:0 24px 80px #14282433}
+.staff-payroll-dialog>header{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:24px;border-bottom:1px solid var(--payroll-line);flex:0 0 auto}
+.staff-payroll-dialog>header h2{font-size:22px;line-height:1.5;margin:0}
+.staff-payroll-dialog>header>button{font-size:24px;padding:8px;border:0;flex-shrink:0}
+.staff-payroll-dialog>form{display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.staff-payroll-dialog .ui-staff-dialog-body{padding:24px;min-height:0;overflow:auto;overscroll-behavior:contain;flex:1}
+.staff-payroll-dialog footer{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:10px;padding:16px 24px;flex:0 0 auto;border-top:1px solid var(--payroll-line);background:var(--payroll-paper)}
+@media(max-width:680px){
+  .staff-payroll-heading{padding:20px 16px}.staff-payroll-heading h1{font-size:25px}.staff-payroll-body{padding:20px 16px}
+  .staff-payroll-filters{grid-template-columns:minmax(0,1fr);gap:16px}.staff-payroll-facts,.staff-payroll-form-grid{grid-template-columns:minmax(0,1fr)}
+  .staff-payroll-dialog{max-height:calc(100dvh - 24px);border-radius:8px}.staff-payroll-dialog>header{padding:20px 16px}.staff-payroll-dialog>header h2{font-size:20px}
+  .staff-payroll-dialog .ui-staff-dialog-body{padding:20px 16px}.staff-payroll-dialog footer{padding:16px}.staff-payroll-dialog footer>button{flex:1}
+  .staff-payroll-section-heading{align-items:flex-start;flex-wrap:wrap}.staff-payroll-source{padding:12px}.staff-payroll-table td.staff-payroll-empty{padding:20px 16px}
+}
+.staff-payroll-facts+.staff-payroll-form-grid,.staff-payroll-facts+.staff-payroll-section-heading{margin-top:24px}

@@ -20,6 +20,36 @@ test('activation and reset need confirmation and never change the supplied accou
  assert.equal(JSON.stringify(initial),before);assert.equal(student.activationStatus,'not-activated');
 });
 
+test('a shared profile with unknown account linkage never invents activation status or advances an unavailable account operation',()=>{
+ const person={id:'actual-second-person',displayName:'Actual <selected> person',email:'contact@example.test',status:'active',activationStatus:'activated'};
+ const initial=advanceAccountActions({},'launch',{view:'activation',shared:true,student:person,data:{student:person,courses:[],slots:[]}}),before=JSON.stringify(initial);
+ for(const context of [en,zh]){
+  const html=accountActionsMarkup(initial,context);
+  assert.match(html,context===en?/Account status could not be confirmed/:/帳戶狀態未能確認/);
+  assert.match(html,/Actual &lt;selected&gt; person/);assert.doesNotMatch(html,/Not Activated|<dd>Activated<\/dd>|<dd>已啟用<\/dd>|Chloe|example-child|type="password"|Interface preview|Review the screen and flow only/);
+  for(const operation of ['activate','reset-password'])assert.match(html,new RegExp(`<button[^>]+data-ui-value="${operation}"[^>]*disabled`));
+ }
+ for(const command of ['next','submit','complete']){
+  const next=advanceAccountActions(initial,command,{value:'activate',operation:'reset-password'});assert.equal(next.step,'details');assert.equal(next.data.student.id,person.id);assert.doesNotMatch(accountActionsMarkup(next,en),/This preview is complete|Confirm password reset preview|Confirm account activation preview/);
+ }
+ assert.equal(JSON.stringify(initial),before);assert.equal(person.activationStatus,'activated');
+ assert.doesNotMatch(accountActionsMarkup({...initial,step:'complete'},en),/This preview is complete/,'A stale presentation step cannot falsely complete a shared account operation');
+});
+
+test('shared account linkage belongs to the exact person and means linked rather than activated',()=>{
+ const student={id:'person-b',displayName:'Same name'},launchLink=accountLink=>advanceAccountActions({},'launch',{view:'activation',shared:true,student,accountLink});
+ const linked=launchLink({studentId:'person-b',userId:'account-b'}),unlinked=launchLink({studentId:'person-b',userId:null}),foreign=launchLink({studentId:'person-a',userId:'account-a'});
+ assert.match(accountActionsMarkup(linked,en),/Login account linked/);assert.match(accountActionsMarkup(unlinked,en),/No login account linked/);assert.match(accountActionsMarkup(foreign,en),/Account status could not be confirmed/);
+ for(const state of [linked,unlinked,foreign]){assert.doesNotMatch(accountActionsMarkup(state,en),/<dd>Activated<\/dd>|Not Activated|Chloe/);assert.equal(advanceAccountActions(state,'next',{value:'reset-password'}).step,'details');}
+});
+
+test('shared account flows without supplied related data keep the actual profile and never borrow sample courses or availability',()=>{
+ const student={id:'person-b',displayName:'Actual selected person'},state=advanceAccountActions({},'launch',{view:'trial-application',shared:true,student}),html=accountActionsMarkup(state,en);
+ assert.equal(state.data.student.id,student.id);assert.deepEqual(state.data.courses,[]);assert.deepEqual(state.data.slots,[]);assert.equal(state.data.fictional,false);
+ assert.match(html,/Course details are not connected yet/);assert.doesNotMatch(html,/Creative Drawing|Clay workshop|example-slot|Fictional example|No courses are available/);
+ assert.equal(advanceAccountActions(state,'select-course',{id:'example-drawing'}).draft.courseId,undefined);
+});
+
 test('authorized course facts stay bounded instead of borrowing fictional availability',()=>{
  const source={courses:[{id:'real-course',courseName:'Known course'}],slots:[],student:{displayName:'Known child'}};
  const state=advanceAccountActions({},'launch',{view:'trial-application',...source});

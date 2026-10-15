@@ -127,3 +127,51 @@ test('an otherwise unlinked and ungranted teacher receives exactly one explicitl
  const read=await app.a.request(calendar);assert.equal(read.status,200,read.text);assert.equal(read.body.occurrences.length,1);const row=read.body.occurrences[0];assert.equal(row.sequence,2);assert.equal(row.date,'2026-10-21');for(const key of['id','course','version','createdAt','updatedAt']){assert.ok(Object.hasOwn(row.item,key),`Grant-only HTTP occurrence is missing parent ${key}`);assert.equal(row.item[key],first[key]);}assert.ok(!read.text.includes(other.id));assert.equal(row.item.startDate,row.date);assert.deepEqual((await app.b.request(calendar)).body.occurrences,[]);
  const catalog=(await app.a.request('/api/catalog')).body;assert.deepEqual(catalog.courses.map(row=>row.id),['private-course']);assert.deepEqual((await app.a.request(calendar+'&since='+read.body.revision)).body,{revision:read.body.revision,readScope:'occurrences',unchanged:true});
 });
+
+test('authentication DTOs expose only self teacher resource IDs despite grants and without any recent lessons',async t=>{
+ const app=await setup(t),own=await resource(app,'teacher','Self profile without lessons'),other=await resource(app,'teacher','Another linked teacher'),room=await resource(app,'room','Granted room only');
+ await link(app,own.id,app.teacherAUser.id);await link(app,other.id,app.teacherBUser.id);
+ await grant(app,app.teacherAUser.id,'resource',{resourceId:other.id});await grant(app,app.teacherAUser.id,'resource',{resourceId:room.id});
+ const before=(await app.admin.request('/api/access-control')).body;
+ const session=await app.a.request('/api/auth/session');assert.equal(session.status,200,session.text);assert.deepEqual(session.body.user.teacherResourceIds,[own.id]);
+ assert.deepEqual((await app.a.request(calendar)).body.occurrences,[],'A self identity must not require an upcoming lesson.');
+ for(const key of ['teacherLinks','grants','accounts'])assert.equal(Object.hasOwn(session.body.user,key),false);
+ assert.ok(!session.text.includes(other.id));assert.ok(!session.text.includes(room.id));
+ const login=await send(app.a,'/api/auth/login','POST',{email:users[2].email,password:users[2].password});assert.equal(login.status,200,login.text);assert.deepEqual(login.body.user.teacherResourceIds,[own.id]);
+ assert.deepEqual((await app.admin.request('/api/access-control')).body,before,'Self lookup must not create or modify account links or grants.');
+ error(await app.a.request('/api/access-control'),403);assert.equal((await app.admin.request('/api/access-control')).status,200);
+});
+
+test('grant-only teachers never acquire self identity from visible resources and multiple self links remain stable',async t=>{
+ const app=await setup(t),first=await resource(app,'teacher','Own linked first'),second=await resource(app,'teacher','Own linked second'),visible=await resource(app,'teacher','Grant-visible without own link');
+ await link(app,first.id,app.teacherAUser.id);await link(app,second.id,app.teacherAUser.id);await grant(app,app.teacherBUser.id,'resource',{resourceId:visible.id});
+ const ownIds=[first.id,second.id].sort();assert.deepEqual((await app.a.request('/api/auth/session')).body.user.teacherResourceIds,ownIds);
+ assert.deepEqual((await app.b.request('/api/auth/session')).body.user.teacherResourceIds,[]);
+ assert.ok((await app.b.request('/api/scheduling-resources')).body.resources.some(row=>row.id===visible.id),'The grant is effective, but it must not become an own profile link.');
+ const relogin=await send(app.b,'/api/auth/login','POST',{email:teacherB.email,password:teacherB.password});assert.deepEqual(relogin.body.user.teacherResourceIds,[]);
+});
+
+test('self teacher identity follows account switches and link reassignment or removal with the existing teacher revision',async t=>{
+ const app=await setup(t),first=await resource(app,'teacher','Account A profile'),second=await resource(app,'teacher','Account B profile');
+ await link(app,first.id,app.teacherAUser.id);await link(app,second.id,app.teacherBUser.id);
+ const initial=(await app.a.request('/api/auth/session')).body.user;assert.deepEqual(initial.teacherResourceIds,[first.id]);
+ const switched=await send(app.a,'/api/auth/login','POST',{email:teacherB.email,password:teacherB.password});assert.equal(switched.status,200,switched.text);assert.equal(switched.body.user.id,app.teacherBUser.id);assert.deepEqual(switched.body.user.teacherResourceIds,[second.id]);
+ await link(app,first.id,app.teacherBUser.id,1);
+ const changed=(await app.b.request('/api/auth/session')).body.user;assert.deepEqual(changed.teacherResourceIds,[first.id,second.id].sort());assert.notEqual(changed.accessRevision,switched.body.user.accessRevision);
+ const teacherA=app.client();await teacherA.login(2);const removed=(await teacherA.request('/api/auth/session')).body.user;assert.deepEqual(removed.teacherResourceIds,[]);assert.notEqual(removed.accessRevision,initial.accessRevision);
+ await link(app,second.id,null,1);const unlinked=(await app.b.request('/api/auth/session')).body.user;assert.deepEqual(unlinked.teacherResourceIds,[first.id]);assert.notEqual(unlinked.accessRevision,changed.accessRevision);
+});
+
+test('self mapping is role-checked against stored identity and does not disclose other accounts or student links',async t=>{
+ const app=await setup(t),manager=app.store.listUsers().find(user=>user.email===users[0].email),studentUser=app.store.listUsers().find(user=>user.email===users[3].email),ownAdmin=await resource(app,'teacher','Teaching manager profile'),ownTeacher=await resource(app,'teacher','Teacher private link');
+ await link(app,ownAdmin.id,manager.id);await link(app,ownTeacher.id,app.teacherAUser.id);
+ assert.equal(typeof app.store.accessControl.ownTeacherResourceIds,'function');
+ assert.deepEqual(app.store.accessControl.ownTeacherResourceIds(manager),[ownAdmin.id]);
+ assert.deepEqual(app.store.accessControl.ownTeacherResourceIds(app.teacherAUser),[ownTeacher.id]);
+ for(const user of [studentUser,{...studentUser,role:'admin'},null,{}, {id:'missing',role:'admin'}])assert.deepEqual(app.store.accessControl.ownTeacherResourceIds(user),[]);
+ const student=app.client();await student.login(3);assert.deepEqual((await student.request('/api/auth/session')).body.user.teacherResourceIds,[]);
+ const studentLogin=await send(student,'/api/auth/login','POST',{email:users[3].email,password:users[3].password});assert.equal(studentLogin.status,200,studentLogin.text);assert.deepEqual(studentLogin.body.user.teacherResourceIds,[]);
+ assert.ok(!studentLogin.text.includes(ownTeacher.id));assert.ok(!studentLogin.text.includes(ownAdmin.id));
+ assert.deepEqual((await app.admin.request('/api/auth/session')).body.user.teacherResourceIds,[ownAdmin.id]);
+ error(await student.request('/api/access-control'),403);error(await app.b.request('/api/access-control'),403);assert.equal((await app.admin.request('/api/access-control')).status,200);
+});

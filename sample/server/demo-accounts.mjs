@@ -43,16 +43,16 @@ function verifyCheckpoint(database,saved) {
   for(const teacher of Object.values(checkpointIds.teachers))if(!database.prepare('SELECT teacher_resource_id FROM teacher_account_links WHERE teacher_resource_id=?').get(teacher))incomplete();
 }
 function insertCheckpoint(database,{startDate,passwordHashes,now}) {
-  const courseName='三角色中期檢查課程（虛構）',roomName='中期檢查課室（虛構）';
+  const courseName='創意繪畫',roomName='畫室 A';
   const resources=[
-    {id:checkpointIds.teachers.maya,kind:'teacher',displayName:'林雅晴 Maya Lam（測試）',metadata:{representativeColor:'#b9772f'}},
-    {id:checkpointIds.teachers.leo,kind:'teacher',displayName:'陳子朗 Leo Chan（測試）',metadata:{representativeColor:'#426ea8'}},
+    {id:checkpointIds.teachers.maya,kind:'teacher',displayName:'林雅晴 Maya Lam',metadata:{representativeColor:'#b9772f'}},
+    {id:checkpointIds.teachers.leo,kind:'teacher',displayName:'陳子朗 Leo Chan',metadata:{representativeColor:'#426ea8'}},
     {id:checkpointIds.room,kind:'room',displayName:roomName,metadata:{capacity:8,detail:'',remark:'',externalLocation:false}},
   ];
-  const primary=validateCourse({courseName,feeName:'每堂60分鐘（虛構）',category:'Art',level:'Beginner',pricingModel:'monthly-lessons',price:300,duration:60,months:1,bookingExpiry:null,onlineStore:true});
-  const secondary=validateCourse({courseName,feeName:'固定每月學費（虛構）',category:'Art',level:'Beginner',pricingModel:'fixed-monthly',price:850,months:1,bookingExpiry:null,onlineStore:true});
+  const primary=validateCourse({courseName,feeName:'每堂60分鐘',category:'Art',level:'Beginner',pricingModel:'monthly-lessons',price:300,duration:60,months:1,bookingExpiry:null,onlineStore:true});
+  const secondary=validateCourse({courseName,feeName:'固定月費',category:'Art',level:'Beginner',pricingModel:'fixed-monthly',price:850,months:1,bookingExpiry:null,onlineStore:true});
   const weekday=new Date(startDate+'T00:00:00Z').getUTCDay();
-  const makeRule=(teacher,time,count)=>({...validateSchedule({course:checkpointIds.course,startDate,time,duration:60,weekdays:[weekday],endMode:'count',count,mustAttendAll:true,color:'#27777b',teacherIds:[teacher.id],roomIds:[checkpointIds.room],teacher:teacher.displayName,room:roomName,capacity:8,session:1,remark:'虛構中期檢查排課；沒有建立學生報名、付款或座位使用。',detail:'',moreInfo:''}),classType:null});
+  const makeRule=(teacher,time,count)=>({...validateSchedule({course:checkpointIds.course,startDate,time,duration:60,weekdays:[weekday],endMode:'count',count,mustAttendAll:true,color:'#27777b',teacherIds:[teacher.id],roomIds:[checkpointIds.room],teacher:teacher.displayName,room:roomName,capacity:8,session:1,remark:'請自備圍裙及飲用水。',detail:'',moreInfo:''}),classType:null});
   const rules=[{id:checkpointIds.schedules.leo,data:makeRule(resources[1],'13:00',3)},{id:checkpointIds.schedules.maya,data:makeRule(resources[0],'15:00',1)}];
   for(const account of accounts)if(database.prepare('SELECT id FROM users WHERE id=? OR email=? COLLATE NOCASE').get(account.id,account.email))conflict();
   for(const resource of resources)if(database.prepare('SELECT id FROM scheduling_resources WHERE id=? OR (kind=? AND name_key=?)').get(resource.id,resource.kind,resource.displayName.toLowerCase()))conflict();
@@ -101,7 +101,7 @@ function importExistingStudent(database,now) {
     if(!database.prepare('SELECT id FROM people WHERE id=?').get(saved.personId))incomplete();
     return {...saved,created:false};
   }
-  const profile=validatePerson({displayName:'何詠晴 Chloe Ho',firstName:'Chloe',lastName:'Ho',fullName:'Chloe Ho',localName:'何詠晴',email:'student@gmail.com',dateOfBirth:'2017-04-18',parentName:'何嘉敏 Carmen Ho（虛構）',contact1Name:'何嘉敏 Carmen Ho（虛構）',contact1Email:'chloe.guardian@example.test',level:'Beginner',remark:'虛構既有學生，只供本機三角色操作驗收；不是從申請人轉換，未報名、未付款。',promotion:false});
+  const profile=validatePerson({displayName:'何詠晴 Chloe Ho',firstName:'Chloe',lastName:'Ho',fullName:'Chloe Ho',localName:'何詠晴',email:'student@gmail.com',dateOfBirth:'2017-04-18',parentName:'何嘉敏 Carmen Ho',contact1Name:'何嘉敏 Carmen Ho',contact1Email:'chloe.guardian@example.test',level:'Beginner',remark:'喜歡水彩和拼貼創作。',promotion:false});
   if(database.prepare("SELECT id FROM people WHERE id=? OR display_name=? COLLATE NOCASE OR json_extract(profile,'$.email')=? COLLATE NOCASE").get(DEMO_IDS.studentPerson,profile.displayName,profile.email))conflict();
   const actor=database.prepare('SELECT id,display_name,role FROM users WHERE id=?').get(checkpointIds.users.maya);
   if(actor?.role!=='admin')incomplete();

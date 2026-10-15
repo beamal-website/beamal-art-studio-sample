@@ -15,3 +15,88 @@ test('all untrusted names descriptions messages and form values are escaped',()=
 
 test('teacher and administrator notifications use work records without student family switching or parent payment messages',()=>{for(const role of ['teacher','admin']){const state={data:getStudentPortalData(),role},html=studentPortalPageMarkup('notifications',state,{...en,role});assert.match(html,/System notifications/);assert.match(html,/Messages from teachers/);assert.doesNotMatch(html,/sp-family-bar|Chloe Ho|Ethan Ho|Payment request details confirmed/);assert.match(html,/work|Work|teaching|Teaching|team|Team/);const row=state.data.staffNotifications?.find(row=>row.role===role);assert.ok(row);const opened=advanceStudentPortal(state,'notification',{id:row.id});assert.equal(opened.data.staffNotifications.find(record=>record.id===row.id).read,true);assert.match(studentPortalDialogMarkup(opened,{...en,role}),/Fictional notification example/);}});
 test('controller repeated item selections and slip filename metadata work without file access or payment verification',()=>{let state=advanceStudentPortal({data:getStudentPortalData(),dialog:{type:'payment-request'}},'submit',{formKind:'payment-request',items:['drawing','sketchbook'],quantity_drawing:'1',quantity_sketchbook:'1'});assert.equal(state.paymentDraft.items.length,2);assert.equal(state.paymentDraft.total,1228);state=advanceStudentPortal({data:getStudentPortalData(),dialog:{type:'slip',id:'request-3'}},'submit',{formKind:'slip',recordId:'request-3',filename:'example.pdf'});assert.equal(state.dialog.type,'slip-preview');assert.equal(state.data.requests.find(row=>row.id==='request-3').paid,false);assert.match(studentPortalDialogMarkup({dialog:{type:'slip',id:'request-3'}},en),/name="slip"/);});
+
+const sharedChild={id:'d3000000-0000-4000-8000-000000000601',displayName:'何詠晴 Chloe Ho',kind:'student',version:1,dateOfBirth:'2017-04-18',school:'Beamal Primary',level:'Beginner'};
+const sharedLesson={id:'session-chloe-1',studentId:sharedChild.id,studentName:sharedChild.displayName,scheduleId:'actual-schedule',sequence:1,courseId:'actual-course',courseName:'Creative Art',date:'2026-10-16',time:'13:00',duration:60,teachers:[{id:'teacher-leo',displayName:'陳子朗 Leo Chan'}],rooms:[{id:'room-a',displayName:'Studio A'}],attendance:'unmarked'};
+const sharedContext=overrides=>({...en,role:'student',sharedMode:true,sharedReady:true,students:[sharedChild],student:sharedChild,lessons:[sharedLesson],...overrides});
+test('shared student profile uses only explicitly linked people and current lessons without fixture claims',()=>{
+ const state={data:getStudentPortalData(),selectedStudentId:'child-2'},html=studentPortalPageMarkup('profile',state,sharedContext());
+ assert.match(html,/Chloe Ho/);assert.match(html,new RegExp('data-ui-id="'+sharedChild.id+'"'));assert.match(html,/Creative Art/);assert.match(html,/Beamal Primary/);assert.match(html,/Leo Chan/);assert.match(html,/Studio A/);
+ assert.doesNotMatch(html,/Ethan Ho|child-1|child-2|Drawing foundations|Watercolour discoveries|family@example\.test|PREVIEW20|Example balances|Remaining 5 of 12|Interface preview/);
+});
+test('shared registered profile updates replace stale identity drafts and do not invent unavailable fields',()=>{
+ const state={data:getStudentPortalData(),selectedStudentId:sharedChild.id};state.data.profileOverrides[sharedChild.id]={displayName:'Stale draft',school:'Old school'};
+ const html=studentPortalPageMarkup('profile',state,sharedContext({students:[{...sharedChild,displayName:'Chloe Updated',school:'Updated school',level:'Intermediate',dateOfBirth:null}],student:{displayName:'Login fallback'}}));
+ assert.match(html,/Chloe Updated/);assert.match(html,/Updated school/);assert.match(html,/Intermediate/);assert.doesNotMatch(html,/Stale draft|Old school|Login fallback|2017-04-18|family@example\.test|Mrs Ho/);
+});
+test('shared loading and unlinked states never fall back to independent sample children',()=>{
+ for(const sharedReady of [false,true])for(const section of ['profile','requests','notifications','information']){
+  const html=studentPortalPageMarkup(section,{data:getStudentPortalData()},sharedContext({sharedReady,students:[],student:{displayName:'Unlinked login'},lessons:[]}));
+  assert.doesNotMatch(html,/Chloe Ho|Ethan Ho|Unlinked login|child-1|child-2|Drawing foundations|PREVIEW|Request to Pay/);
+  assert.match(html,sharedReady?/No linked student profile/:/Loading your student details/);
+ }
+});
+test('shared family selection follows stable person ids and filters each child’s lesson actions',()=>{
+ const sibling={...sharedChild,id:'actual-sibling',displayName:'Actual sibling'},lesson={...sharedLesson,id:'session-sibling',studentId:sibling.id,courseName:'Sibling ceramics',scheduleId:'sibling-schedule'},context=sharedContext({students:[sharedChild,sibling],lessons:[sharedLesson,lesson]});
+ const state=advanceStudentPortal({data:getStudentPortalData()},'select-student',{id:sibling.id},context);
+ assert.equal(state.selectedStudentId,sibling.id);const html=studentPortalPageMarkup('requests',state,context);
+ assert.match(html,/Sibling ceramics/);assert.match(html,/data-ui-schedule-id="sibling-schedule"/);assert.doesNotMatch(html,/Creative Art|actual-schedule|PREVIEW-PAY|Pending review/);
+ assert.match(html,/data-ui-student-id="actual-sibling"/);
+});
+test('shared request and notification pages do not display unrelated independent histories or fake payment items',()=>{
+ const context=sharedContext(),state={data:getStudentPortalData(),dialog:{type:'request',id:'request-3'}};
+ const request=studentPortalPageMarkup('requests',state,context),notification=studentPortalPageMarkup('notifications',state,context),detail=studentPortalDialogMarkup(state,context);
+ assert.match(request,/Creative Art/);assert.doesNotMatch(request+notification+detail,/PREVIEW-|Payment request details confirmed|HK\$1,228|pending-approval|paid-state/);
+ const next=advanceStudentPortal(state,'request-payment',{},context);assert.equal(next.dialog,null);assert.ok(next.notice);
+ assert.doesNotMatch(studentPortalPageMarkup('information',state,context),/Little ceramics studio|My little city|Weekend ceramics studio/);
+});
+
+test('shared lesson moves render from the latest projection without changing student identity',()=>{
+ const state={data:getStudentPortalData(),selectedStudentId:sharedChild.id},moved={...sharedLesson,date:'2026-10-18',time:'15:30',teachers:[{id:'teacher-maya',displayName:'Maya Lam'}],rooms:[{id:'room-b',displayName:'Studio B'}]};
+ const before=studentPortalPageMarkup('profile',state,sharedContext()),after=studentPortalPageMarkup('profile',state,sharedContext({lessons:[moved]}));
+ assert.match(before,/2026-10-16/);assert.match(before,/13:00/);assert.match(after,/2026-10-18/);assert.match(after,/15:30/);assert.match(after,/Maya Lam/);assert.match(after,/Studio B/);assert.doesNotMatch(after,/2026-10-16|13:00|Studio A/);assert.match(after,new RegExp('data-ui-id="'+sharedChild.id+'"'));
+});
+
+
+test('a shared initial read failure shows escaped error and a real reload entry without a fictional family',()=>{
+ for(const section of ['profile','requests','notifications','information']){
+  const html=studentPortalPageMarkup(section,{data:getStudentPortalData()},sharedContext({sharedReady:false,students:[],lessons:[],sharedError:'Connection failed <script>bad()</script>'}));
+  assert.match(html,/role="alert"/);assert.match(html,/Connection failed &lt;script&gt;bad\(\)&lt;\/script&gt;/);assert.match(html,/data-action="orders-refresh"/);assert.match(html,/>Retry<\/button>/);
+  assert.doesNotMatch(html,/<script>|Loading your student details|No linked student profile|Chloe Ho|Ethan Ho|child-1|child-2/);
+ }
+});
+test('a shared refresh error preserves last authorized profile and lessons while offering reload',()=>{
+ const html=studentPortalPageMarkup('profile',{data:getStudentPortalData()},sharedContext({sharedError:'Could not refresh. Please retry.'}));
+ assert.match(html,/role="alert"/);assert.match(html,/Could not refresh/);assert.match(html,/data-action="orders-refresh"/);assert.match(html,/Chloe Ho/);assert.match(html,/Creative Art/);assert.match(html,/Beamal Primary/);
+ assert.doesNotMatch(html,/Ethan Ho|Example balances|Drawing foundations|family@example\.test/);
+});
+
+test('lesson request entry points include every loaded authorized lesson beyond the first six in date and time order',()=>{
+ const lessons=Array.from({length:9},(_,index)=>({...sharedLesson,id:'owned-'+index,scheduleId:'owned-schedule-'+index,sequence:index+1,date:'2026-10-'+String(16+Math.floor(index/2)).padStart(2,'0'),time:index%2?'15:00':'10:00',courseName:'Owned lesson '+index}));
+ const sibling={...sharedChild,id:'sibling-id',displayName:'Sibling'},foreign={...sharedLesson,id:'other',studentId:sibling.id,scheduleId:'sibling-only',courseName:'Sibling only lesson'};
+ const source=[...lessons].reverse().concat(foreign),context=sharedContext({students:[sharedChild,sibling],lessons:source}),before=JSON.stringify(source);
+ for(const language of [en,{t:z=>z}]){
+  const html=studentPortalPageMarkup('requests',{selectedStudentId:sharedChild.id},{...context,...language});
+  assert.equal((html.match(/data-ui-request-type="reschedule"/g)||[]).length,9);
+  assert.equal((html.match(/data-ui-request-type="sick"/g)||[]).length,9);
+  for(let index=0;index<9;index++)assert.match(html,new RegExp('data-ui-schedule-id="owned-schedule-'+index+'"'));
+  assert.doesNotMatch(html,/Sibling only lesson|sibling-only/);
+  assert.ok(html.indexOf('Owned lesson 0')<html.indexOf('Owned lesson 1'));
+  assert.ok(html.indexOf('Owned lesson 7')<html.indexOf('Owned lesson 8'));
+ }
+ assert.equal(JSON.stringify(source),before);
+ const siblingHtml=studentPortalPageMarkup('requests',{selectedStudentId:sibling.id},context);
+ assert.match(siblingHtml,/sibling-only/);assert.doesNotMatch(siblingHtml,/owned-schedule-/);
+});
+
+test('shared request lessons label their actual date window and provide the timetable date selection entry',()=>{
+ for(const language of [en,{t:z=>z}]){
+  const html=studentPortalPageMarkup('requests',{},sharedContext({...language,lessonWindow:{from:'2026-11-01',to:'2026-11-30'}}));
+  assert.match(html,/<time datetime="2026-11-01">2026-11-01<\/time>/);
+  assert.match(html,/<time datetime="2026-11-30">2026-11-30<\/time>/);
+  assert.match(html,/data-tab="overview"/);
+ }
+ const unknown=studentPortalPageMarkup('requests',{},sharedContext({lessonWindow:{from:'<script>bad()</script>',to:'2026-11-30'}}));
+ assert.doesNotMatch(unknown,/<script>|datetime="2026-11-30"/);
+ assert.match(unknown,/Choose a specific lesson first/);
+});

@@ -201,3 +201,7 @@ Course新增Admin「公開課表」入口，沿用匿名七日投影；可按確
 公開課程的真 Slot 直接開空白訪客資料表，課程／老師／日期／時長不重選；填寫／核對／返回保草稿與位置。目前頁／範圍／來源及資格守衛、fresh read、遲到回覆／換身份清理、中文組字及 unchanged 不重畫已驗；無選擇 `/join` 回公開課程，不落舊虛構人物。畫面驗收發現 Email 提示被 footer 蓋住後，先 RED 再改成欄旁提示及帶焦點，Review 從摘要頂開始、Edit 回原位置。最後工作區1333/1333、build2.63秒；獨立來源16/16及最後修正3/3，真CUA390／768／1280中英、兩個不同Slot、隔離Admin hide→default後草稿停用／恢復有證據。試課真Submit、佔位、Applicant／Convert及通知未接，最後Submit停用而無假成功；SchoolTracs商店未開／預覽無課，動態Trial對照仍未測。完整界線見[公開試課UI檢查點](public-trial-ui-checkpoint-20261016.md)。Regular／Trial／Full組合、全UI、主要功能及Goal仍進行中。
 
 同輪只讀再核原用戶資料：300指定學生姓名唯一、生日全年且3–18歲，239個1–3孩家庭、四指定成人老師及三mock登入連結一致；保留原有人手修改、舊帳戶／停用老師／申請人，無重設。300 active名冊並非300付費：仍只有Chloe兩筆Paid／七課節。
+
+## 2026-10-16 最新：公開 Class／Trial 分開顯示及篩選
+
+匿名與 Admin 公開預覽同源顯示正式 Class Available／Full／待確認及有效課型名稱，提供 All／Class／Trial／Rescheduling 篩選。修正 Full Trial 隱藏連帶刪去已發布正式班的錯誤；只隱藏其 Trial quota／入口，原班與另行公開調課用途保留，不自動發布內部排課、不改配額／資格。背景名冊初次回覆／輪詢／錯誤亦不再蓋走未儲存班額表單。工作區最後1362／1362、build3.08秒；獨立host22／22、Root真390／768／1280中英及精確Manage返回／焦點有證據。獨立GUI代理存取不到指定IAB，只覆核既有截圖，沒有冒稱親自操作；SchoolTracs本輪頁面讀取前工具阻擋，沒有新動態對照。原用戶服務重開前後42表相同；隔離Full hold已移除，歷史保留。詳見[公開Class顯示檢查點](public-class-visibility-checkpoint-20261016.md)。公開課程色彩圖例、真Trial提交、完整Course／Timetable、全UI及Goal仍未完成；乾淨提交快照與Git結果另行記錄。

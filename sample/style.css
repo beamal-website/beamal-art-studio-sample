@@ -713,6 +713,21 @@
 .availability-public-quota{display:flex;flex-direction:column;gap:4px;min-width:0;max-width:100%;padding:8px 12px;border:1px solid var(--availability-border);border-radius:3px;color:var(--availability-muted);font-size:14px;line-height:1.6}
 .availability-public-quota strong{font-weight:500}
 .availability-public-quota span{overflow-wrap:anywhere}
+.availability-public-class-type{width:fit-content;max-width:100%;margin:0 0 14px;padding:5px 10px;border:1px solid var(--availability-border);border-radius:4px;background:var(--availability-tint);color:var(--availability-muted);font-size:13px;line-height:1.6;overflow-wrap:anywhere}
+.availability-public-class-status[data-public-class-status="available"]{background:#edf4ee;border-color:#bdcfc0}
+.availability-public-class-status[data-public-class-status="full"],.availability-public-quota.availability-quota-full{background:#fbf0e9;border-color:#d9bcb0;color:#874a35}
+.availability-public-class-status[data-public-class-status="unknown"]{background:#f2f1ea;color:var(--availability-note)}
+.availability-public-legend{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px 20px;margin:0 0 20px;padding:14px 16px;border:1px solid var(--availability-border);border-radius:4px;background:var(--availability-surface);color:var(--availability-muted);font-size:13px;line-height:1.7}
+.availability-public-legend ul{display:flex;flex-wrap:wrap;gap:8px 18px;margin:0;padding:0;list-style:none}
+.availability-public-legend li{display:flex;align-items:center;gap:7px}
+.availability-public-legend p{margin:0;overflow-wrap:anywhere}
+.availability-key-dot{display:inline-block;flex:none;width:9px;height:9px;border:1px solid #85968c;border-radius:50%}
+.availability-key-available{background:#4c8062;border-color:#4c8062}
+.availability-key-full{background:#a15c43;border-color:#a15c43}
+.availability-key-unknown{background:transparent}
+.availability-filter-empty{display:grid;justify-items:start;gap:12px;padding:24px;border:1px solid var(--availability-border);border-radius:4px;background:var(--availability-surface);color:var(--availability-muted)}
+.availability-filter-empty p{margin:0;line-height:1.7;overflow-wrap:anywhere}
+.availability-filter-empty button{min-height:44px;max-width:100%;white-space:normal}
 .availability-quota-full{background:#eee9de;color:#615b50}
 .availability-day-empty{margin:0;padding:24px 20px;color:var(--availability-note);font-size:14px;line-height:1.7}
 .availability-empty{margin:24px 0;padding:28px 16px;border:1px dashed var(--availability-field-border);color:var(--availability-note);text-align:center;line-height:1.7;overflow-wrap:anywhere}

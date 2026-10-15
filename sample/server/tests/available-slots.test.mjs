@@ -122,7 +122,7 @@ test('unassigned linked sources remain truthful unavailable records and deleted 
  const shortened=await send(app.admin,`/api/schedules/${schedule.id}`,'PATCH',{version:3,count:1});assert.equal(shortened.status,200,shortened.text);const missing=(await app.admin.request(`/api/available-slots/${slot.id}`)).body.slot;assert.equal(missing.id,slot.id);assert.equal(missing.unavailableReason,'OCCURRENCE_NOT_FOUND');assert.equal(missing.date,'2026-10-29');assert.equal(missing.sourceVersions['schedule:'+schedule.id],4);error(await app.client().request('/api/public/courses/public-course?from=2026-10-23'),404);const retained=await send(app.admin,`/api/available-slots/${slot.id}`,'PATCH',{version:1,remark:'Keep unavailable slot history'});assert.equal(retained.status,200,retained.text);assert.equal(retained.body.slot.sourceAvailable,false);error(await addRaw(app,linked(shortened.body.schedule,{sequence:3})),400);
 });
 
-test('publication separates Trial and Rescheduling groups from independent capacities and hides Full slots while retaining the published course',async t=>{
+test('publication separates Trial and Rescheduling uses and hides full Trial-only slots while retaining the published course',async t=>{
  const databasePath=await disk(t),app=await setup(t,{databasePath}),anonymous=app.client(),hybrid=(await add(app,standalone(app,{totalCapacity:1,trialCapacity:2,reschedulingCapacity:8}))).body.slot;
  const resOnly=(await add(app,standalone(app,{time:'13:00',trialEnabled:false,reschedulingEnabled:true}))).body.slot;
  let read=await detail(anonymous,'public-course');assert.deepEqual(read.body.slots.map(row=>row.id),[hybrid.id]);const visible=read.body.slots[0];assert.equal(visible.totalCapacity,1);assert.equal(visible.trialCapacity,2);assert.equal(visible.reschedulingVisible,false);for(const field of['reschedulingEnabled','reschedulingCapacity','reschedulingReserved','reschedulingRemaining','reschedulingStatus'])assert.equal(Object.hasOwn(visible,field),false,field);
@@ -130,7 +130,7 @@ test('publication separates Trial and Rescheduling groups from independent capac
  const internal=(await app.admin.request(`/api/available-slots/${hybrid.id}`)).body.slot;assert.equal(internal.trialReserved,2);assert.equal(internal.reschedulingReserved,1);assert.equal(internal.totalReserved,null);assert.equal(internal.classOccupied,null);assert.equal(internal.trialStatus,'full');assert.equal(internal.trialRemaining,0);assert.equal(internal.reschedulingRemaining,7);
  read=await detail(anonymous,'public-course');assert.deepEqual(read.body.slots,[]);assert.equal((await anonymous.request('/api/public/courses')).body.courses.length,1,'Full filtering must not unpublish the course.');
  const full=await send(app.admin,'/api/availability-public-settings','PATCH',{version:0,showFullTrialSlots:true,showReschedulingSlots:false},'full-setting');assert.equal(full.status,200,full.text);read=await detail(anonymous,'public-course');assert.deepEqual(read.body.slots.map(row=>row.id),[hybrid.id]);assert.equal(read.body.slots[0].trialStatus,'full');assert.equal(read.body.slots[0].reschedulingVisible,false);
- const resSetting=await send(app.admin,'/api/availability-public-settings','PATCH',{version:1,showFullTrialSlots:false,showReschedulingSlots:true});assert.equal(resSetting.status,200,resSetting.text);read=await detail(anonymous,'public-course');assert.deepEqual(read.body.slots.map(row=>row.id),[resOnly.id]);assert.equal(read.body.slots[0].reschedulingVisible,true);assert.equal(read.body.slots[0].reschedulingRemaining,3);
+ const resSetting=await send(app.admin,'/api/availability-public-settings','PATCH',{version:1,showFullTrialSlots:false,showReschedulingSlots:true});assert.equal(resSetting.status,200,resSetting.text);read=await detail(anonymous,'public-course');assert.deepEqual(read.body.slots.map(row=>row.id),[hybrid.id,resOnly.id]);assert.equal(read.body.slots[0].trialVisible,false);assert.equal(read.body.slots[0].trialStatus,'full');assert.equal(read.body.slots[0].reschedulingVisible,true);assert.equal(read.body.slots[0].reschedulingRemaining,7);assert.equal(read.body.slots[1].trialVisible,false);assert.equal(read.body.slots[1].reschedulingVisible,true);assert.equal(read.body.slots[1].reschedulingRemaining,3);
  const explicit=await send(app.admin,`/api/available-slots/${resOnly.id}`,'PATCH',{version:1,publicVisibility:'show'});assert.equal(explicit.status,200,explicit.text);const defaults=await send(app.admin,'/api/availability-public-settings','PATCH',{version:2,showFullTrialSlots:false,showReschedulingSlots:false});assert.equal(defaults.status,200,defaults.text);read=await detail(anonymous,'public-course');assert.deepEqual(read.body.slots.map(row=>row.id),[resOnly.id]);assert.equal(read.body.slots[0].reschedulingVisible,true);
  assert.deepEqual((await send(app.admin,'/api/availability-public-settings','PATCH',{version:0,showFullTrialSlots:true,showReschedulingSlots:false},'full-setting')).body,full.body);error(await send(app.admin,'/api/availability-public-settings','PATCH',{version:0,showFullTrialSlots:true,showReschedulingSlots:false}),409);
  assert.equal((await app.admin.request(`/api/available-slots/${hybrid.id}`)).body.slot.version,1,'Public display settings must not rewrite slots or release holds.');
@@ -189,4 +189,146 @@ test('private slot teacher colours follow effective ordered assignments without 
  const cleared=await send(app.admin,`/api/scheduling-resources/${app.teacher.id}`,'PATCH',{version:2,representativeColor:null});assert.equal(cleared.status,200,cleared.text);assert.deepEqual((await app.admin.request(`/api/available-slots/${linkedSlot.id}`)).body.slot.teacherColors,[null]);assert.equal((await app.admin.request(`/api/available-slots/${linkedSlot.id}`)).body.slot.sourceAvailable,true);
  const inspectAfter=new DatabaseSync(databasePath);try{assert.deepEqual(inspectAfter.prepare('SELECT id,source_identity FROM available_slots ORDER BY id').all(),sourceIdentity);assert.equal(inspectAfter.prepare("SELECT COUNT(*) AS count FROM availability_reservations WHERE state='held'").get().count,2);assert.equal(inspectAfter.prepare('SELECT COUNT(*) AS count FROM availability_audit_log').get().count,2);}finally{inspectAfter.close();}
  const effective=await send(app.admin,`/api/schedules/${schedule.id}/occurrences/1`,'PATCH',{...scheduleFields(app,{teacherIds:[app.otherTeacher.id]}),version:1,scope:'single'});assert.equal(effective.status,200,effective.text);const swapped=(await app.admin.request(`/api/available-slots/${linkedSlot.id}`)).body.slot;assert.deepEqual(swapped.teacherIds,[app.otherTeacher.id]);assert.deepEqual(swapped.teacherColors,['#001122']);assert.equal(swapped.unavailableReason,'HELD_SOURCE_CHANGED','The assignment change, rather than the colour change, changes held source identity.');assert.equal(swapped.trialReserved,1);
+});
+
+const regularClassTypeId='00000000-0000-4000-8000-000000000001';
+const specialClassTypeId='00000000-0000-4000-8000-000000000002';
+async function setManualClassAvailability(app,schedule,manualStatus,version=0){
+ const reply=await send(app.admin,`/api/schedules/${schedule.id}/occurrences/1/capacity-status`,'PATCH',{version,sourceVersion:schedule.version,manualStatus});assert.equal(reply.status,200,reply.text);return reply.body.status;
+}
+
+test('public class facts retain a published formal class independently from the Trial Full display filter',async t=>{
+ const databasePath=await disk(t),app=await setup(t,{databasePath}),schedule=await series(app,{classTypeId:regularClassTypeId,classTypeVersion:1}),slot=(await add(app,linked(schedule,{trialCapacity:1}))).body.slot;
+ const anonymous=app.client();let published=(await detail(anonymous,'public-course')).body;
+ assert.equal(published.slots[0].classAvailability,'available');assert.deepEqual(published.slots[0].classType,{kind:'regular',name:'Regular Class'});assert.equal(published.slots[0].trialVisible,true);
+ const full=await setManualClassAvailability(app,schedule,'full');published=(await detail(anonymous,'public-course')).body;
+ assert.equal(published.slots[0].classAvailability,'full');assert.equal(published.slots[0].trialStatus,'available');assert.equal(published.slots[0].trialRemaining,1,'Regular Full must not consume an independent Trial place.');
+ const inspection=new DatabaseSync(databasePath);try{hold(inspection,slot.id);}finally{inspection.close();}
+ const trialFull=(await detail(anonymous,'public-course')).body;assert.deepEqual(trialFull.slots.map(row=>row.id),[slot.id],'A published linked formal class remains available to the Class view when Trial is full.');assert.equal(trialFull.slots[0].classAvailability,'full');assert.equal(trialFull.slots[0].trialVisible,false);assert.equal(trialFull.slots[0].trialEnabled,true);assert.equal(trialFull.slots[0].trialStatus,'full');assert.equal(trialFull.slots[0].trialReserved,1);assert.equal(trialFull.slots[0].trialRemaining,0);assert.notEqual(trialFull.revision,published.revision);
+ const show=await send(app.admin,'/api/availability-public-settings','PATCH',{version:0,showFullTrialSlots:true,showReschedulingSlots:false});assert.equal(show.status,200,show.text);
+ await setManualClassAvailability(app,schedule,'available',full.version);published=(await detail(anonymous,'public-course')).body;
+ assert.equal(published.slots[0].classAvailability,'available');assert.equal(published.slots[0].trialVisible,true);assert.equal(published.slots[0].trialStatus,'full');assert.equal(published.slots[0].trialRemaining,0,'Manual class Available must not release a Trial hold.');
+ for(const key of ['classCapacityStatus','classCapacity','classOccupied','manualStatus','automaticStatus','statusSource','scheduleId','sequence','sourceVersions','teacherIds','roomIds','version','remark','excludedStudentIds'])assert.equal(Object.hasOwn(published.slots[0],key),false,key);
+ assert.deepEqual(Object.keys(published.slots[0].classType).sort(),['kind','name']);assert.ok(!JSON.stringify(published).includes(schedule.id));assert.ok(!JSON.stringify(published).includes(regularClassTypeId));
+});
+
+test('public Trial visibility hides a full standalone slot but keeps a published linked class without changing real holds',async t=>{
+ const databasePath=await disk(t),app=await setup(t,{databasePath}),schedule=await series(app,{classTypeId:regularClassTypeId,classTypeVersion:1}),formal=(await add(app,linked(schedule,{trialCapacity:1}))).body.slot,plain=(await add(app,standalone(app,{trialCapacity:1,time:'15:00'}))).body.slot,anonymous=app.client();
+ const inspection=new DatabaseSync(databasePath);let privateBefore;try{hold(inspection,formal.id);hold(inspection,plain.id);privateBefore=inspection.prepare('SELECT * FROM availability_reservations ORDER BY id').all();}finally{inspection.close();}
+ const hidden=(await detail(anonymous,'public-course')).body;assert.deepEqual(hidden.slots.map(row=>row.id),[formal.id]);assert.equal(hidden.slots[0].trialVisible,false);assert.equal(hidden.slots[0].trialEnabled,true);assert.equal(hidden.slots[0].trialStatus,'full');assert.equal(hidden.slots[0].trialRemaining,0);assert.equal(hidden.slots[0].classAvailability,'available');assert.deepEqual(hidden.slots[0].classType,{kind:'regular',name:'Regular Class'});
+ const show=await send(app.admin,'/api/availability-public-settings','PATCH',{version:0,showFullTrialSlots:true,showReschedulingSlots:false});assert.equal(show.status,200,show.text);
+ const shown=(await detail(anonymous,'public-course')).body;assert.deepEqual(shown.slots.map(row=>row.id),[formal.id,plain.id]);assert.notEqual(shown.revision,hidden.revision);for(const slot of shown.slots){assert.equal(slot.trialVisible,true);assert.equal(slot.trialStatus,'full');assert.equal(slot.trialReserved,1);assert.equal(slot.trialRemaining,0);}
+ assert.equal(shown.slots.find(row=>row.id===plain.id).classAvailability,null);assert.equal(shown.slots.find(row=>row.id===plain.id).classType,null);
+ const inspectionAfter=new DatabaseSync(databasePath);try{assert.deepEqual(inspectionAfter.prepare('SELECT * FROM availability_reservations ORDER BY id').all(),privateBefore);}finally{inspectionAfter.close();}
+ for(const id of [formal.id,plain.id]){const privateSlot=(await app.admin.request('/api/available-slots/'+id)).body.slot;assert.equal(privateSlot.trialReserved,1);assert.equal(privateSlot.trialRemaining,0);assert.equal(privateSlot.trialStatus,'full');assert.equal(Object.hasOwn(privateSlot,'trialVisible'),false,'Trial visibility is an anonymous projection, not a saved eligibility mutation.');}
+ const hide=await send(app.admin,'/api/availability-public-settings','PATCH',{version:1,showFullTrialSlots:false,showReschedulingSlots:false});assert.equal(hide.status,200,hide.text);assert.deepEqual((await detail(anonymous,'public-course')).body.slots,hidden.slots);
+});
+
+test('public class retention never publishes an unconfigured hidden inactive cancelled or Trial-disabled default source',async t=>{
+ const databasePath=await disk(t),app=await setup(t,{databasePath}),schedule=await series(app,{classTypeId:regularClassTypeId,classTypeVersion:1}),anonymous=app.client();
+ assert.deepEqual((await anonymous.request('/api/public/courses')).body.courses,[]);error(await anonymous.request('/api/public/courses/public-course?from=2026-10-15&days=30'),404,'An internal formal schedule without an explicitly configured Slot is not public.');
+ const formal=(await add(app,linked(schedule,{trialCapacity:1}))).body.slot,hidden=(await add(app,linked(schedule,{sequence:2,trialCapacity:1,publicVisibility:'hide'}))).body.slot,inactive=(await add(app,linked(schedule,{sequence:3,trialCapacity:1,active:false}))).body.slot;
+ const noTrial=(await add(app,linked(schedule,{sequence:2,trialEnabled:false,reschedulingEnabled:false,publicVisibility:'default'}))).body.slot,explicitClass=(await add(app,linked(schedule,{sequence:3,trialEnabled:false,reschedulingEnabled:false,publicVisibility:'show'}))).body.slot;
+ const inspection=new DatabaseSync(databasePath);try{for(const slot of [formal,hidden,inactive])hold(inspection,slot.id);}finally{inspection.close();}
+ const query='?from=2026-10-15&days=30',before=(await detail(anonymous,'public-course',query)).body;
+ assert.deepEqual(before.slots.map(row=>row.id),[formal.id,explicitClass.id]);assert.equal(before.slots[0].trialVisible,false);assert.equal(before.slots[1].trialVisible,false);assert.equal(before.slots[1].trialEnabled,false);assert.equal(before.slots[1].classAvailability,'available');assert.ok(!JSON.stringify(before).includes(noTrial.id));
+ const cancel=await send(app.admin,`/api/schedules/${schedule.id}/occurrences/1`,'DELETE',{version:1,scope:'single'});assert.equal(cancel.status,200,cancel.text);
+ const after=(await detail(anonymous,'public-course',query)).body;assert.deepEqual(after.slots.map(row=>row.id),[explicitClass.id]);assert.notEqual(after.revision,before.revision);
+ for(const body of [before,after])for(const slot of body.slots)for(const key of ['sourceKind','scheduleId','sequence','teacherIds','roomIds','classCapacity','classOccupied','classCapacityStatus','sourceVersions','manualStatus','statusSource','remark','excludedStudentIds'])assert.equal(Object.hasOwn(slot,key),false,key);
+ const restore=await send(app.admin,`/api/schedules/${schedule.id}/occurrences/1/restore`,'POST',{version:2,scope:'single'});assert.equal(restore.status,200,restore.text);assert.deepEqual((await detail(anonymous,'public-course',query)).body,before);
+});
+
+test('public Trial hiding retains a separately published enabled Rescheduling use without changing either quota',async t=>{
+ const databasePath=await disk(t),app=await setup(t,{databasePath}),slot=(await add(app,standalone(app,{trialCapacity:1}))).body.slot,anonymous=app.client();
+ const inspection=new DatabaseSync(databasePath);try{hold(inspection,slot.id);}finally{inspection.close();}
+ assert.deepEqual((await detail(anonymous,'public-course')).body.slots,[],'A default standalone Full Trial with no other public use stays hidden.');
+ const show=await send(app.admin,'/api/availability-public-settings','PATCH',{version:0,showFullTrialSlots:false,showReschedulingSlots:true});assert.equal(show.status,200,show.text);
+ const visible=(await detail(anonymous,'public-course')).body;assert.deepEqual(visible.slots.map(row=>row.id),[slot.id]);const row=visible.slots[0];assert.equal(row.trialVisible,false);assert.equal(row.trialEnabled,true);assert.equal(row.trialStatus,'full');assert.equal(row.trialReserved,1);assert.equal(row.trialRemaining,0);assert.equal(row.reschedulingVisible,true);assert.equal(row.reschedulingEnabled,true);assert.equal(row.reschedulingStatus,'available');assert.equal(row.reschedulingRemaining,3);assert.equal(row.classAvailability,null);
+ const disabled=await send(app.admin,'/api/available-slots/'+slot.id,'PATCH',{version:1,reschedulingEnabled:false});assert.equal(disabled.status,200,disabled.text);assert.deepEqual((await detail(anonymous,'public-course')).body.slots,[],'A disabled Rescheduling option is not another published use.');
+ const enabled=await send(app.admin,'/api/available-slots/'+slot.id,'PATCH',{version:2,reschedulingEnabled:true});assert.equal(enabled.status,200,enabled.text);
+ const hide=await send(app.admin,'/api/availability-public-settings','PATCH',{version:1,showFullTrialSlots:false,showReschedulingSlots:false});assert.equal(hide.status,200,hide.text);assert.deepEqual((await detail(anonymous,'public-course')).body.slots,[]);
+ const explicit=await send(app.admin,'/api/available-slots/'+slot.id,'PATCH',{version:3,publicVisibility:'show'});assert.equal(explicit.status,200,explicit.text);
+ const explicitPublic=(await detail(anonymous,'public-course')).body;assert.deepEqual(explicitPublic.slots.map(row=>row.id),[slot.id]);assert.equal(explicitPublic.slots[0].trialVisible,false);assert.equal(explicitPublic.slots[0].reschedulingEnabled,true);assert.equal(explicitPublic.slots[0].reschedulingRemaining,3);assert.equal(explicitPublic.slots[0].trialReserved,1);
+ const noOtherUse=await send(app.admin,'/api/available-slots/'+slot.id,'PATCH',{version:4,reschedulingEnabled:false});assert.equal(noOtherUse.status,200,noOtherUse.text);assert.deepEqual((await detail(anonymous,'public-course')).body.slots,[],'Explicit publication alone must not make a hidden Full Trial visible when Rescheduling is disabled.');
+});
+
+test('public class facts preserve unknown and standalone semantics through manual Full and clear without exposing override history',async t=>{
+ const app=await setup(t),schedule=await series(app,{capacity:null}),slot=(await add(app,linked(schedule))).body.slot,plain=(await add(app,standalone(app,{time:'15:00'}))).body.slot,anonymous=app.client();
+ const before=(await detail(anonymous,'public-course')).body,byId=value=>value.slots.find(row=>row.id===slot.id);
+ assert.equal(byId(before).classAvailability,'unknown');assert.equal(byId(before).classType,null);assert.equal(before.slots.find(row=>row.id===plain.id).classAvailability,null);assert.equal(before.slots.find(row=>row.id===plain.id).classType,null);
+ const full=await setManualClassAvailability(app,schedule,'full'),changed=(await detail(anonymous,'public-course')).body;
+ assert.equal(byId(changed).classAvailability,'full');assert.notEqual(changed.revision,before.revision);
+ await setManualClassAvailability(app,schedule,null,full.version);const cleared=(await detail(anonymous,'public-course')).body;
+ assert.deepEqual(cleared,before,'Clearing an override exposes only the original unknown fact, never its private version/history.');
+ assert.equal((await detail(anonymous,'public-course','?from=2026-10-15&since='+before.revision)).body.unchanged,true);
+});
+
+test('public class facts use exact historical configured snapshots including custom types instead of current course defaults',async t=>{
+ const app=await setup(t),schedule=await series(app,{classTypeId:regularClassTypeId,classTypeVersion:1}),customReply=await send(app.admin,'/api/class-types','POST',{name:'Portfolio <workshop>',studentReschedulingAllowed:false,active:true});assert.equal(customReply.status,201,customReply.text);const custom=customReply.body.type;
+ const edited=await send(app.admin,`/api/schedules/${schedule.id}/occurrences/2`,'PATCH',{...scheduleFields(app,{startDate:'2026-10-22',classTypeId:custom.id,classTypeVersion:custom.version}),version:1,scope:'single'});assert.equal(edited.status,200,edited.text);
+ const first=(await add(app,linked(edited.body.schedule))).body.slot,second=(await add(app,linked(edited.body.schedule,{sequence:2}))).body.slot,anonymous=app.client(),initial=(await detail(anonymous,'public-course','?from=2026-10-15&days=14')).body;
+ assert.deepEqual(initial.slots.find(row=>row.id===first.id).classType,{kind:'regular',name:'Regular Class'});assert.deepEqual(initial.slots.find(row=>row.id===second.id).classType,{kind:'custom',name:'Portfolio <workshop>'});
+ const renamed=await send(app.admin,'/api/class-types/'+regularClassTypeId,'PATCH',{version:1,name:'Later renamed Regular',studentReschedulingAllowed:true,active:false});assert.equal(renamed.status,200,renamed.text);
+ const course=app.store.getCourse('public-course'),defaultChanged=await send(app.admin,'/api/courses/public-course','PATCH',{version:course.version,classTypeId:specialClassTypeId,classTypeVersion:1});assert.equal(defaultChanged.status,200,defaultChanged.text);
+ assert.deepEqual((await detail(anonymous,'public-course','?from=2026-10-15&days=14')).body,initial,'Current rule/default changes must not rewrite the configured occurrence snapshots.');
+ for(const forbidden of ['studentReschedulingAllowed','version','id'])for(const row of initial.slots)assert.equal(Object.hasOwn(row.classType,forbidden),false,forbidden);
+});
+
+test('public class facts revisions change only for published facts while private notes colours rules and grants stay private',async t=>{
+ const app=await setup(t),schedule=await series(app,{classTypeId:regularClassTypeId,classTypeVersion:1}),slot=(await add(app,linked(schedule))).body.slot,anonymous=app.client(),teacher=app.client();await teacher.login(2);
+ const baseline=(await detail(anonymous,'public-course')).body;error(await teacher.request('/api/available-slots/'+slot.id),403);
+ assert.deepEqual((await detail(teacher,'public-course')).body,baseline);error(await teacher.request('/api/available-slots/'+slot.id),403,'Public facts must not grant private slot access.');
+ const note=await send(app.admin,'/api/available-slots/'+slot.id,'PATCH',{version:1,remark:'PRIVATE changed slot note'});assert.equal(note.status,200,note.text);
+ const source=await send(app.admin,'/api/schedules/'+schedule.id,'PATCH',{version:1,remark:'PRIVATE changed lesson note',color:'#abcdef'});assert.equal(source.status,200,source.text);
+ const colour=await send(app.admin,'/api/scheduling-resources/'+app.teacher.id,'PATCH',{version:1,representativeColor:'#aabbcc'});assert.equal(colour.status,200,colour.text);
+ const current=source.body.schedule;await setManualClassAvailability(app,current,'available');
+ await grantTeacherAccess(app,app.admin,{courses:['public-course']});
+ const policy=await send(app.admin,'/api/class-types/'+regularClassTypeId,'PATCH',{version:1,name:'Regular Class',studentReschedulingAllowed:false,active:true});assert.equal(policy.status,200,policy.text);
+ const policySnapshot=await send(app.admin,'/api/schedules/'+schedule.id,'PATCH',{version:current.version,classTypeId:regularClassTypeId,classTypeVersion:policy.body.type.version});assert.equal(policySnapshot.status,200,policySnapshot.text);
+ assert.deepEqual((await detail(anonymous,'public-course')).body,baseline,'Private changes and same effective Available must preserve every public byte including revision.');
+ assert.equal((await detail(anonymous,'public-course','?from=2026-10-15&since='+baseline.revision)).body.unchanged,true);
+ const renamed=await send(app.admin,'/api/class-types/'+regularClassTypeId,'PATCH',{version:policy.body.type.version,name:'Regular studio',studentReschedulingAllowed:false,active:true});assert.equal(renamed.status,200,renamed.text);
+ const selected=await send(app.admin,'/api/schedules/'+schedule.id,'PATCH',{version:policySnapshot.body.schedule.version,classTypeId:regularClassTypeId,classTypeVersion:renamed.body.type.version});assert.equal(selected.status,200,selected.text);
+ const changed=(await detail(anonymous,'public-course','?from=2026-10-15&since='+baseline.revision)).body;assert.notEqual(changed.revision,baseline.revision);assert.equal(changed.slots[0].classType.name,'Regular studio');
+ const publicWithoutType=body=>({...body,revision:'',slots:body.slots.map(({classType,...facts})=>facts)});assert.deepEqual(publicWithoutType(changed),publicWithoutType(baseline));
+ const history={schedules:app.store.schedules.audit(),types:app.store.classTypes.audit(),statuses:app.store.classCapacityStatuses.audit()},catalog=(await app.admin.request('/api/catalog')).body;
+ await detail(anonymous,'public-course');await detail(anonymous,'public-course','?from=2026-10-15&since='+changed.revision);
+ assert.deepEqual({schedules:app.store.schedules.audit(),types:app.store.classTypes.audit(),statuses:app.store.classCapacityStatuses.audit()},history);assert.deepEqual((await app.admin.request('/api/catalog')).body,catalog);
+});
+
+test('public class facts reject malformed legacy type snapshots instead of inventing Regular or leaking internal rules',async t=>{
+ const databasePath=await disk(t),app=await setup(t,{databasePath}),schedule=await series(app,{classTypeId:regularClassTypeId,classTypeVersion:1});await add(app,linked(schedule));
+ const anonymous=app.client(),initial=(await detail(anonymous,'public-course')).body;assert.deepEqual(initial.slots[0].classType,{kind:'regular',name:'Regular Class'});
+ const inspection=new DatabaseSync(databasePath);try{
+  const original=JSON.parse(inspection.prepare('SELECT data FROM schedules WHERE id=?').get(schedule.id).data),valid=app.store.classTypes.snapshot(regularClassTypeId,1);
+  for(const type of [null,{kind:'regular',name:'Not configured'}, {...valid,kind:'trial'}, {...valid,name:' '}, {...valid,version:0}, {...valid,studentReschedulingAllowed:'PRIVATE rule'}, {...valid,id:''}]){
+   const data=structuredClone(original);data.classType=type;for(const segment of data.segments||[])segment.rule.classType=type;
+   inspection.prepare('UPDATE schedules SET data=? WHERE id=?').run(JSON.stringify(data),schedule.id);
+   const publicRead=await detail(anonymous,'public-course');assert.equal(publicRead.body.slots[0].classType,null);assert.equal(publicRead.body.slots[0].classAvailability,'available');assert.ok(!publicRead.text.includes('Not configured'));assert.ok(!publicRead.text.includes('PRIVATE rule'));assert.ok(!publicRead.text.includes(regularClassTypeId));
+  }
+  inspection.prepare('UPDATE schedules SET data=? WHERE id=?').run(JSON.stringify(original),schedule.id);
+ }finally{inspection.close();}
+ assert.deepEqual((await detail(anonymous,'public-course')).body,initial);
+});
+
+test('public class facts stay absent for hidden and cancelled sources and restore only their own saved occurrence facts',async t=>{
+ const app=await setup(t),schedule=await series(app,{classTypeId:specialClassTypeId,classTypeVersion:1}),one=(await add(app,linked(schedule))).body.slot,two=(await add(app,linked(schedule,{sequence:2}))).body.slot,anonymous=app.client(),query='?from=2026-10-15&days=14';
+ const first=(await detail(anonymous,'public-course',query)).body;assert.deepEqual(first.slots.map(row=>row.classType),[{kind:'special',name:'Special Class'},{kind:'special',name:'Special Class'}]);
+ const hidden=await send(app.admin,'/api/available-slots/'+one.id,'PATCH',{version:1,publicVisibility:'hide'});assert.equal(hidden.status,200,hidden.text);
+ const visible=(await detail(anonymous,'public-course',query)).body;assert.deepEqual(visible.slots.map(row=>row.id),[two.id]);assert.notEqual(visible.revision,first.revision);
+ await setManualClassAvailability(app,schedule,'full');assert.deepEqual((await detail(anonymous,'public-course',query)).body,visible,'Hidden class changes cannot alter public bytes.');
+ const cancelled=await send(app.admin,`/api/schedules/${schedule.id}/occurrences/2`,'DELETE',{version:1,scope:'single'});assert.equal(cancelled.status,200,cancelled.text);error(await anonymous.request('/api/public/courses/public-course'+query),404);
+ const restored=await send(app.admin,`/api/schedules/${schedule.id}/occurrences/2/restore`,'POST',{version:2,scope:'single'});assert.equal(restored.status,200,restored.text);assert.deepEqual((await detail(anonymous,'public-course',query)).body,visible);
+ const shown=await send(app.admin,'/api/available-slots/'+one.id,'PATCH',{version:hidden.body.slot.version,publicVisibility:'default'});assert.equal(shown.status,200,shown.text);
+ const returned=(await detail(anonymous,'public-course',query)).body;assert.equal(returned.slots.find(row=>row.id===one.id).classAvailability,'full');assert.deepEqual(returned.slots.find(row=>row.id===one.id).classType,{kind:'special',name:'Special Class'});
+});
+
+test('public class facts follow effective automatic and manual availability without treating Trial quota as paid occupancy',async t=>{
+ const app=await setup(t),schedule=await series(app),slot=(await add(app,linked(schedule))).body.slot,anonymous=app.client();
+ app.store.classCapacityStatuses.setOccupancySource((id,sequence)=>id===schedule.id&&sequence===1?12:0);
+ const automatic=(await detail(anonymous,'public-course')).body;assert.equal(automatic.slots[0].classAvailability,'full');assert.equal(automatic.slots[0].trialRemaining,2);assert.equal(automatic.slots[0].trialStatus,'available');
+ const available=await setManualClassAvailability(app,schedule,'available'),overridden=(await detail(anonymous,'public-course')).body;assert.equal(overridden.slots[0].classAvailability,'available');
+ const privateStatus=(await app.admin.request(`/api/available-slots/${slot.id}`)).body.slot.classCapacityStatus;assert.equal(privateStatus.classOccupied,12);assert.equal(privateStatus.automaticStatus,'full');assert.equal(privateStatus.effectiveStatus,'available');
+ app.store.classCapacityStatuses.setOccupancySource((id,sequence)=>id===schedule.id&&sequence===1?13:0);assert.deepEqual((await detail(anonymous,'public-course')).body,overridden,'Private occupied-count changes must not leak through the public revision while effective availability is unchanged.');
+ await setManualClassAvailability(app,schedule,null,available.version);assert.deepEqual((await detail(anonymous,'public-course')).body,automatic,'Clear returns to the same authoritative automatic public fact without exposing private override versions.');
 });

@@ -18,6 +18,47 @@ const slot = {
 const occurrences = [{ sequence: 2, date: '2026-10-16', item: { id: 'schedule-a', course: 'course-b', time: '16:00', duration: 45, teacherIds: ['teacher-a'], roomIds: ['room-a'] } }];
 const tagById = (html, id) => html.match(new RegExp(`<[^>]+\\bid="${id}"[^>]*>`))?.[0] || '';
 
+test('published class and trial availability remain independent and only configured class labels are shown',()=>{
+ const html=publicCourseDetailsMarkup({course,slots:[{...slot,classAvailability:'full',classType:{kind:'regular',name:'Regular Class',studentReschedulingAllowed:false,id:'PRIVATE_TYPE'}}],from:'2026-10-15'},{...ui('en'),trialPreview:true});
+ assert.match(html,/data-public-class-status="full"/);assert.match(html,/Regular Class/);assert.match(html,/Class places/);assert.match(html,/Trial places/);assert.match(html,/2 places remaining/);assert.doesNotMatch(html.match(/<button[^>]*class="availability-trial-preview"[^>]*>/)?.[0]||'',/disabled/);assert.doesNotMatch(html,/PRIVATE_TYPE|Student rescheduling|not allowed/);
+ const inverse=publicCourseDetailsMarkup({course,slots:[{...slot,classAvailability:'available',trialStatus:'full',trialRemaining:0}],from:'2026-10-15'},{...ui('en'),trialPreview:true});
+ assert.match(inverse,/data-public-class-status="available"/);assert.match(inverse,/Trial places/);assert.match(inverse.match(/<button[^>]*class="availability-trial-preview"[^>]*>/)?.[0]||'',/disabled/);
+});
+
+test('unknown classes and standalone times never invent a Regular label or available class places',()=>{
+ const unknown=publicCourseDetailsMarkup({course,slots:[{...slot,classAvailability:'unknown',classType:null}],from:'2026-10-15'},ui('en'));
+ assert.match(unknown,/data-public-class-status="unknown"/);assert.match(unknown,/To be confirmed/);assert.doesNotMatch(unknown,/Regular Class|0 places remaining/);
+ const standalone=publicCourseDetailsMarkup({course,slots:[{...slot,classAvailability:null,classType:{kind:'regular',name:'Regular Class'}}],from:'2026-10-15'},ui('en'));
+ assert.doesNotMatch(standalone,/data-public-class-status=|Regular Class/);
+});
+
+test('public type filters use only published class trial and enabled visible rescheduling facts',()=>{
+ const records=[{...slot,id:'class-only',classAvailability:'unknown',trialEnabled:false,reschedulingVisible:false},{...slot,id:'trial-only',classAvailability:null,reschedulingVisible:false,trialStatus:'full',trialRemaining:0},{...slot,id:'reschedule-only',classAvailability:null,trialEnabled:false},{...slot,id:'closed-reschedule',classAvailability:null,trialEnabled:false,reschedulingEnabled:false}];
+ for(const [slotType,expected]of [['class',['class-only']],['trial',['trial-only']],['rescheduling',['reschedule-only']]]){
+  const html=publicCourseDetailsMarkup({course,slots:records,from:'2026-10-15',slotType},ui('en'));assert.deepEqual([...html.matchAll(/data-availability-slot-id="([^"]+)"/g)].map(m=>m[1]),expected);assert.match(html,new RegExp(`<option value="${slotType}" selected>`));
+ }
+ const hidden=publicCourseDetailsMarkup({course,slots:[records[3]],from:'2026-10-15'},ui('en'));assert.doesNotMatch(hidden,/<strong>Rescheduling/);
+});
+
+test('a public filter with no matching published times has a distinct clear-filter state',()=>{
+ const html=publicCourseDetailsMarkup({course,slots:[{...slot,classAvailability:null}],from:'2026-10-15',slotType:'class'},ui('en'));
+ assert.match(html,/No times match this filter/);assert.match(html,/data-action="availability-public-type-reset"/);assert.doesNotMatch(html,/data-availability-slot-id=|No available times/);
+ const preview=publicCourseDetailsMarkup({course,slots:[{...slot,classAvailability:null}],from:'2026-10-15',slotType:'class'},{...ui('en'),managementPreview:true});assert.match(preview,/data-action="availability-preview-type-reset"/);assert.doesNotMatch(preview,/availability-public-type-reset/);
+});
+
+test('public class types are escaped without exposing rules and the availability key has text labels',()=>{
+ for(const language of ['zh','en']){
+  const html=publicCourseDetailsMarkup({course,slots:[{...slot,classAvailability:'available',classType:{kind:'custom',name:'<Long & type>',studentReschedulingAllowed:false,version:12345}}],from:'2026-10-15'},ui(language));
+  assert.match(html,/&lt;Long &amp; type&gt;/);assert.doesNotMatch(html,/<Long|12345|studentReschedulingAllowed|data-teacher-color/);assert.match(html,language==='zh'?/名額說明/:/Availability key/);
+ }
+});
+
+test('a legacy public response without class facts is described as unavailable data rather than no classes',()=>{
+ const legacy={...slot};delete legacy.classAvailability;
+ const html=publicCourseDetailsMarkup({course,slots:[legacy],from:'2026-10-15',slotType:'class'},ui('en'));
+ assert.match(html,/Some class information is unavailable/);assert.doesNotMatch(html,/No times match this filter|0 classes|Regular Class/);assert.match(html,/data-action="availability-public-type-reset"/);
+});
+
 test('trial preview keeps its selected public slot and disables full or unknown quotas',()=>{
   const data={course,slots:[slot],from:'2026-10-15',to:'2026-10-21'},context={...ui('en'),trialPreview:true};
   const button=html=>html.match(/<button[^>]*class="availability-trial-preview"[^>]*>/)?.[0]||'';
@@ -231,9 +272,9 @@ test('public settings preserve opened version, independent visibility switches a
 
 test('public rescheduling summaries require the explicit projection visibility flag', () => {
   const publicHtml = extra => publicCourseDetailsMarkup({ course, slots: [{ ...slot, ...extra }], from: '2026-10-15', to: '2026-10-21' }, ui('en'));
-  assert.doesNotMatch(publicHtml({ reschedulingVisible: false }), /<strong>Rescheduling<\/strong>/);
-  assert.doesNotMatch(publicHtml({ reschedulingVisible: undefined }), /<strong>Rescheduling<\/strong>/);
-  assert.match(publicHtml({ reschedulingVisible: true }), /<strong>Rescheduling<\/strong>/);
+  assert.doesNotMatch(publicHtml({ reschedulingVisible: false }), /<strong>Rescheduling places<\/strong>/);
+  assert.doesNotMatch(publicHtml({ reschedulingVisible: undefined }), /<strong>Rescheduling places<\/strong>/);
+  assert.match(publicHtml({ reschedulingVisible: true }), /<strong>Rescheduling places<\/strong>/);
 });
 
 test('internal unavailable states never expose a raw technical reason code', () => {
@@ -284,4 +325,30 @@ test('public range selector clamps the calendar boundary without fabricating dat
  const settings=availabilityPublicSettingsMarkup({settings:{rangeDays:14,version:2}},ui('en'));
  assert.match(settings,/name="rangeDays"[^>]*value="14"/);assert.match(settings,/min="7"/);assert.match(settings,/max="30"/);
  assert.doesNotMatch(settings,/Public pages show seven consecutive days at a time/);
+});
+
+test('hiding a full trial preserves the published class while removing only its trial view quota and entry',()=>{
+ for(const language of ['en','zh']){
+  const linked={...slot,classAvailability:'available',classType:{kind:'regular',name:'Regular Class'},trialVisible:false,trialStatus:'full',trialRemaining:0,reschedulingVisible:false};
+  const state={course,slots:[linked],from:'2026-10-15',to:'2026-10-21'};
+  const html=publicCourseDetailsMarkup({...state,slotType:'class'},{...ui(language),trialPreview:true});
+  assert.match(html,/data-availability-slot-id="slot-a"/);assert.match(html,/data-public-class-status="available"/);
+  assert.doesNotMatch(html,/<strong>(?:Trial places|試課名額)<\/strong>|data-action="availability-trial-open"/);
+  const trial=publicCourseDetailsMarkup({...state,slotType:'trial'},{...ui(language),trialPreview:true});
+  assert.doesNotMatch(trial,/data-availability-slot-id="slot-a"/);assert.match(trial,/data-action="availability-public-type-reset"/);
+  const visible=publicCourseDetailsMarkup({...state,slots:[{...linked,trialVisible:true}]},{...ui(language),trialPreview:true});
+  assert.match(visible,/<strong>(?:Trial places|試課名額)<\/strong>/);assert.match(visible,/data-action="availability-trial-open"[^>]*disabled/);
+ }
+});
+
+test('a published rescheduling use is retained without claiming a hidden full trial or a formal class',()=>{
+ const html=publicCourseDetailsMarkup({course,slots:[{...slot,classAvailability:null,classType:null,trialVisible:false,trialStatus:'full',trialRemaining:0}],from:'2026-10-15',to:'2026-10-21',slotType:'rescheduling'},{...ui('en'),trialPreview:true});
+ assert.match(html,/data-availability-slot-id="slot-a"/);assert.match(html,/<strong>Rescheduling places<\/strong>/);
+ assert.doesNotMatch(html,/<strong>Trial places<\/strong>|Class places|data-action="availability-trial-open"/);
+});
+
+test('public trial visibility accepts an explicit true flag or the legacy absent field without trusting malformed flags',()=>{
+ const html=value=>publicCourseDetailsMarkup({course,slots:[{...slot,classAvailability:'available',trialVisible:value}],from:'2026-10-15',to:'2026-10-21'},{...ui('en'),trialPreview:true});
+ for(const value of [false,null,0,1,'false','true'])assert.doesNotMatch(html(value),/<strong>Trial places<\/strong>|data-action="availability-trial-open"/);
+ for(const value of [true,undefined])assert.match(html(value),/data-action="availability-trial-open"/);
 });

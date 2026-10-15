@@ -18,6 +18,24 @@ const slot = {
 const occurrences = [{ sequence: 2, date: '2026-10-16', item: { id: 'schedule-a', course: 'course-b', time: '16:00', duration: 45, teacherIds: ['teacher-a'], roomIds: ['room-a'] } }];
 const tagById = (html, id) => html.match(new RegExp(`<[^>]+\\bid="${id}"[^>]*>`))?.[0] || '';
 
+test('public course colour stays attached to the exact named course in directory details and management preview',()=>{
+ const coloured={...course,courseName:'Watercolour <A> & friends',publicColor:'#A1B2C3'},other={...course,id:'other-course',courseName:'Other course',publicColor:'#ffffff'};
+ const directory=publicCourseDirectoryMarkup({courses:[coloured,other]},ui('en'));
+ assert.match(directory,/--public-course-colour:#a1b2c3/);assert.match(directory,/--public-course-colour:#ffffff/);assert.match(directory,/Watercolour &lt;A&gt; &amp; friends/);
+ for(const managementPreview of [false,true]){
+  const html=publicCourseDetailsMarkup({course:coloured,slots:[{...slot,classAvailability:'full',trialRemaining:2}],from:slot.date},{...ui('en'),managementPreview,trialPreview:!managementPreview});
+  assert.match(html,/--public-course-colour:#a1b2c3/);assert.match(html,/Watercolour &lt;A&gt; &amp; friends/);assert.match(html,/data-public-class-status="full"/);assert.match(html,/2 places remaining/);assert.doesNotMatch(html,/--teacher-colour|#ffffff|<A>/);
+ }
+});
+
+test('missing or malformed public course colours never invent a colour or interpolate unsafe CSS',()=>{
+ for(const publicColor of [undefined,null,'red','#123','#123456;display:none','url(https://example.test)',{},['#abcdef']]){
+  const actual={...course,publicColor};for(const html of [publicCourseDirectoryMarkup({courses:[actual]},ui('en')),publicCourseDetailsMarkup({course:actual,slots:[slot],from:slot.date},ui('en'))]){
+   assert.doesNotMatch(html,/--public-course-colour:|url\(https|display:none|\[object Object\]/);assert.ok(html.includes(course.courseName));assert.ok(html.includes('View times')||html.includes('data-availability-slot-id="slot-a"'));
+  }
+ }
+});
+
 test('published class and trial availability remain independent and only configured class labels are shown',()=>{
  const html=publicCourseDetailsMarkup({course,slots:[{...slot,classAvailability:'full',classType:{kind:'regular',name:'Regular Class',studentReschedulingAllowed:false,id:'PRIVATE_TYPE'}}],from:'2026-10-15'},{...ui('en'),trialPreview:true});
  assert.match(html,/data-public-class-status="full"/);assert.match(html,/Regular Class/);assert.match(html,/Class places/);assert.match(html,/Trial places/);assert.match(html,/2 places remaining/);assert.doesNotMatch(html.match(/<button[^>]*class="availability-trial-preview"[^>]*>/)?.[0]||'',/disabled/);assert.doesNotMatch(html,/PRIVATE_TYPE|Student rescheduling|not allowed/);

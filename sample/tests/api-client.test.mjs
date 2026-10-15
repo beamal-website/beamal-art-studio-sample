@@ -2,6 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createApiClient, ApiError } from '../client/api-client.js';
 
+test('public course colour is forwarded on create and explicit clear without leaking presentation form controls',async t=>{
+ const wire=network(t),client=createApiClient();await login(client,wire,'B');
+ wire.reply('/api/courses',{course:{id:'colour-course',publicColor:'#abcdef'}});
+ await client.saveCourse({courseName:'Colour course',feeName:'Fee',pricingModel:'package',price:300,packageType:'visits',packageTotal:4,publicColor:'#abcdef',usePublicColor:'on',publicColorSetting:'1'},null,'colour-create-key');
+ let body=JSON.parse(wire.calls.at(-1).body);assert.equal(body.publicColor,'#abcdef');assert.equal(Object.hasOwn(body,'usePublicColor'),false);assert.equal(Object.hasOwn(body,'publicColorSetting'),false);
+ wire.reply('/api/courses/colour-course',{course:{id:'colour-course',publicColor:null}});await client.saveCourse({courseName:'Colour course',publicColor:null},{id:'colour-course',version:2});body=JSON.parse(wire.calls.at(-1).body);assert.equal(body.publicColor,null);assert.equal(body.version,2);
+ wire.reply('/api/courses/colour-course',{course:{id:'colour-course'}});await client.saveCourse({courseName:'Old caller'},{id:'colour-course',version:3});assert.equal(Object.hasOwn(JSON.parse(wire.calls.at(-1).body),'publicColor'),false);
+});
+
 test('course lifecycle requests preserve version, authenticated headers and operation keys without resending course or fee data',async t=>{
  const wire=network(t),client=createApiClient();await login(client,wire,'B');
  const current={id:'fictional-course / 一',version:7,courseName:'Preserved course',fees:[{price:300}]},path='/api/courses/'+encodeURIComponent(current.id),deleted={...current,version:8,deletedAt:'2026-10-14T02:00:00Z'};

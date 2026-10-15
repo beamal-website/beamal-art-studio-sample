@@ -714,6 +714,18 @@
 .availability-public-quota strong{font-weight:500}
 .availability-public-quota span{overflow-wrap:anywhere}
 .availability-public-class-type{width:fit-content;max-width:100%;margin:0 0 14px;padding:5px 10px;border:1px solid var(--availability-border);border-radius:4px;background:var(--availability-tint);color:var(--availability-muted);font-size:13px;line-height:1.6;overflow-wrap:anywhere}
+.availability-public-header h1,.availability-public-header h3,.availability-course-row h2{display:flex;align-items:center;gap:12px;overflow-wrap:anywhere}
+.public-course-colour-swatch{display:inline-block;flex:none;width:18px;height:18px;border:1px solid #8b928b;border-radius:3px;background:var(--public-course-colour)}
+.availability-public-slot[style]{border-top:4px solid var(--public-course-colour,var(--availability-border))}
+.course-public-colour{min-width:0;margin:24px 0;padding:16px;border:1px solid #c9cec6;border-radius:4px}
+.course-public-colour legend{padding:0 6px;font-size:16px;font-weight:500}
+.course-public-colour-enabled,.course-public-colour-picker{display:flex;align-items:center;gap:12px;min-height:44px;line-height:1.6}
+.course-public-colour-enabled input[type=checkbox]{width:22px;height:22px;margin:0;flex:none;accent-color:#27777b}
+.course-public-colour-picker{justify-content:space-between;flex-wrap:wrap;margin-top:8px}
+.course-public-colour-picker[hidden]{display:none}
+.course-public-colour-picker input[type=color]{width:76px;min-height:44px;padding:4px;border:1px solid #aab7ad;border-radius:3px;background:#fff;cursor:pointer}
+.course-public-colour-picker input:disabled{opacity:.4;cursor:default}
+.course-public-colour p{margin:12px 0 0;color:#626c62;font-size:13px;line-height:1.7;overflow-wrap:anywhere}
 .availability-public-class-status[data-public-class-status="available"]{background:#edf4ee;border-color:#bdcfc0}
 .availability-public-class-status[data-public-class-status="full"],.availability-public-quota.availability-quota-full{background:#fbf0e9;border-color:#d9bcb0;color:#874a35}
 .availability-public-class-status[data-public-class-status="unknown"]{background:#f2f1ea;color:var(--availability-note)}

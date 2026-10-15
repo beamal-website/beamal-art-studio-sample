@@ -1,5 +1,5 @@
 import {randomUUID,createHash} from 'node:crypto';
-import {ApplicationError} from './validation.mjs';
+import {ApplicationError,normalizePublicCourseColor} from './validation.mjs';
 import {scheduleOccurrence} from '../shared/schedule-occurrences.js';
 
 const hash=value=>createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -92,7 +92,7 @@ export function createAvailableSlotStore({database,transaction,accessControl,cla
   });
   const published=(slot,policy)=>slot.active&&slot.sourceAvailable&&slot.publicVisibility!=='hide'&&(slot.publicVisibility==='show'||slot.trialEnabled||policy.showReschedulingSlots&&slot.reschedulingEnabled);
   const publicSlot=(slot,policy)=>{const reschedulingVisible=policy.showReschedulingSlots||slot.publicVisibility==='show',keys=['id','kind','courseId','date','time','duration','teacherNames','roomNames','totalCapacity','trialEnabled','trialCapacity','trialReserved','trialRemaining','trialStatus',...(reschedulingVisible?['reschedulingEnabled','reschedulingCapacity','reschedulingReserved','reschedulingRemaining','reschedulingStatus']:[])],linked=slot.sourceKind==='linked',status=slot.classCapacityStatus?.effectiveStatus;return {...Object.fromEntries(keys.map(key=>[key,slot[key]])),trialVisible:slot.trialEnabled===true&&(policy.showFullTrialSlots||slot.trialStatus!=='full'),reschedulingVisible,classAvailability:linked?(['available','full'].includes(status)?status:'unknown'):null,classType:linked?publicClassType(slot.classType):null};};
-  const courseDTO=row=>({id:row.id,...Object.fromEntries(['courseName','category','level'].map(key=>[key,JSON.parse(row.data)[key]||'']))});
+  const courseDTO=row=>{const data=JSON.parse(row.data);return {id:row.id,...Object.fromEntries(['courseName','category','level'].map(key=>[key,data[key]||''])),publicColor:normalizePublicCourseColor(data.publicColor)};};
   const publicCourses=({since=''}={})=>transaction(()=>{const policy=settings(),ids=new Set(facts().filter(slot=>published(slot,policy)).map(slot=>slot.courseId)),courses=database.prepare('SELECT * FROM courses WHERE deleted_at IS NULL ORDER BY course_code').all().filter(row=>ids.has(row.id)).map(courseDTO),revision=hash({policy,courses});return since===revision?{revision,unchanged:true}:{revision,courses};},'read');
   const publicDetail=(id,{from,since='',days}={})=>transaction(()=>{
     const policy=settings(),all=facts(),course=database.prepare('SELECT * FROM courses WHERE id=? AND deleted_at IS NULL').get(id);if(!course||!all.some(slot=>slot.courseId===id&&published(slot,policy)))throw new ApplicationError(404,'COURSE_NOT_FOUND','Published course was not found.');

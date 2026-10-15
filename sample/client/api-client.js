@@ -214,7 +214,7 @@ export function createApiClient() {
     restoreCourse: (current, operationKey) => request(`/courses/${encodeURIComponent(current.id)}/restore`, { method: 'POST', body: { version: current.version }, idempotencyKey: operationKey }),
     updateCourseMetadata: (id, fields) => request(`/courses/${encodeURIComponent(id)}`, { method: 'PATCH', body: fields }),
     saveCourse(course, current, operationKey) {
-      const fields = ['courseName', 'feeName', 'category', 'level', 'classTypeId', 'classTypeVersion', 'pricingModel', 'price', 'months', 'duration', 'packageType', 'packageTotal', 'bookingExpiry', 'onlineStore'];
+      const fields = ['courseName', 'feeName', 'category', 'level', 'publicColor', 'classTypeId', 'classTypeVersion', 'pricingModel', 'price', 'months', 'duration', 'packageType', 'packageTotal', 'bookingExpiry', 'onlineStore'];
       const body = Object.fromEntries(fields.filter(key => course[key] !== undefined).map(key => [key, course[key]]));
       if (current) body.version = current.version;
       return request(current ? `/courses/${encodeURIComponent(current.id)}` : '/courses', { method: current ? 'PATCH' : 'POST', body, ...(!current ? { idempotencyKey: operationKey } : {}) });

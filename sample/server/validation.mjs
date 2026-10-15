@@ -9,8 +9,16 @@ export class ApplicationError extends Error {
 const invalid = message => { throw new ApplicationError(400, 'INVALID_COURSE', message); };
 const pricingFields = ['pricingModel', 'price', 'months', 'duration', 'packageType', 'packageTotal', 'bookingExpiry', 'onlineStore'];
 const typeFields = ['classTypeId', 'classTypeVersion'];
-const fields = new Set(['courseName', 'feeName', 'category', 'level', ...typeFields, ...pricingFields]);
+const fields = new Set(['courseName', 'feeName', 'category', 'level', 'publicColor', ...typeFields, ...pricingFields]);
 const plainObject = value => value !== null && typeof value === 'object' && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype;
+export const normalizePublicCourseColor = value => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value) ? value.toLowerCase() : null;
+
+function coursePublicColor(value) {
+  if (value === undefined || value === null) return null;
+  const normalized = normalizePublicCourseColor(value);
+  if (normalized === null) invalid('Public course colour must be a six-digit hexadecimal colour or null.');
+  return normalized;
+}
 
 function text(value, label, required = false) {
   if (value === undefined && !required) return '';
@@ -70,9 +78,9 @@ function classTypeSelection(input) {
 
 export function validateCourseMetadata(input, current = null) {
   if (!plainObject(input)) invalid('Course must be a JSON object.');
-  for (const key of Object.keys(input)) if (!['courseName', 'category', 'level', 'version', ...typeFields].includes(key)) invalid(`Unsupported course field: ${key}.`);
+  for (const key of Object.keys(input)) if (!['courseName', 'category', 'level', 'publicColor', 'version', ...typeFields].includes(key)) invalid(`Unsupported course field: ${key}.`);
   const source = current ? { ...current, ...input } : input;
-  return { courseName: text(source.courseName, 'Course name', true), category: text(source.category, 'Category'), level: text(source.level, 'Level'), ...classTypeSelection(input) };
+  return { courseName: text(source.courseName, 'Course name', true), category: text(source.category, 'Category'), level: text(source.level, 'Level'), publicColor: coursePublicColor(source.publicColor), ...classTypeSelection(input) };
 }
 
 export function validateCourse(input, current = null) {
@@ -80,7 +88,7 @@ export function validateCourse(input, current = null) {
   for (const key of Object.keys(input)) if (!fields.has(key) && key !== 'version') invalid(`Unsupported course field: ${key}.`);
   const source = current ? { ...current, ...input } : input;
   return {
-    courseName: text(source.courseName, 'Course name', true), category: text(source.category, 'Category'), level: text(source.level, 'Level'),
+    courseName: text(source.courseName, 'Course name', true), category: text(source.category, 'Category'), level: text(source.level, 'Level'), publicColor: coursePublicColor(source.publicColor),
     feeName: text(source.feeName, 'Fee name', true), ...validatePricing(source), ...classTypeSelection(input),
   };
 }

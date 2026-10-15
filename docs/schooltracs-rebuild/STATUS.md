@@ -205,3 +205,7 @@ Course新增Admin「公開課表」入口，沿用匿名七日投影；可按確
 ## 2026-10-16 最新：公開 Class／Trial 分開顯示及篩選
 
 匿名與 Admin 公開預覽同源顯示正式 Class Available／Full／待確認及有效課型名稱，提供 All／Class／Trial／Rescheduling 篩選。修正 Full Trial 隱藏連帶刪去已發布正式班的錯誤；只隱藏其 Trial quota／入口，原班與另行公開調課用途保留，不自動發布內部排課、不改配額／資格。背景名冊初次回覆／輪詢／錯誤亦不再蓋走未儲存班額表單。工作區最後1362／1362、build3.08秒；獨立host22／22、Root真390／768／1280中英及精確Manage返回／焦點有證據。獨立GUI代理存取不到指定IAB，只覆核既有截圖，沒有冒稱親自操作；SchoolTracs本輪頁面讀取前工具阻擋，沒有新動態對照。原用戶服務重開前後42表相同；隔離Full hold已移除，歷史保留。詳見[公開Class顯示檢查點](public-class-visibility-checkpoint-20261016.md)。公開課程色彩圖例、真Trial提交、完整Course／Timetable、全UI及Goal仍未完成；乾淨提交快照與Git結果另行記錄。
+
+## 2026-10-16 最新：Course 公開顏色與名額分開
+
+Admin 於指定 Course 新增／修改可選公開顏色，未設定／明確清除／取消分清；匿名課程目錄、單課程時段及管理預覽共用 canonical publicColor，課名文字、老師色、ClassType、Full／quota 不混淆。修正真 GUI 儲存後焦點落 body，回同 ID 修改按鈕及原位置。最後工作區1375／1375、build3.76秒；乾淨提交候選1360／1360、build2.28秒。獨立host17／17及另一位backend來源／純邊界覆核通過；Root真390中英／768英文／1280中文、保存清除／Cancel／Tab／Escape／Trial草稿與preview同色有證據，獨立代理未親自GUI。原用戶42表不變；隔離五次改色僅該Course及audit變，40表不變，最後清除。詳見[公開Course顏色檢查點](public-course-colour-checkpoint-20261016.md)。原稿多課程公開每週格表、Create成功focus、真Trial提交、完整Course／Timetable、全UI及Goal仍未完成。

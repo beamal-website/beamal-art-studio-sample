@@ -18,6 +18,14 @@ const slot = {
 const occurrences = [{ sequence: 2, date: '2026-10-16', item: { id: 'schedule-a', course: 'course-b', time: '16:00', duration: 45, teacherIds: ['teacher-a'], roomIds: ['room-a'] } }];
 const tagById = (html, id) => html.match(new RegExp(`<[^>]+\\bid="${id}"[^>]*>`))?.[0] || '';
 
+test('trial preview keeps its selected public slot and disables full or unknown quotas',()=>{
+  const data={course,slots:[slot],from:'2026-10-15',to:'2026-10-21'},context={...ui('en'),trialPreview:true};
+  const button=html=>html.match(/<button[^>]*class="availability-trial-preview"[^>]*>/)?.[0]||'';
+  const enabled=button(publicCourseDetailsMarkup(data,context));assert.match(enabled,/data-ui-course-id="course-a"/);assert.match(enabled,/data-ui-id="slot-a"/);assert.doesNotMatch(enabled,/disabled/);
+  for(const trialRemaining of [0,null,undefined])assert.match(button(publicCourseDetailsMarkup({...data,slots:[{...slot,trialRemaining}]},context)),/disabled/);
+  assert.equal(button(publicCourseDetailsMarkup(data,ui('en'))),'');
+});
+
 test('standalone editor preserves version and uses actual course, date, duration and resource inputs', () => {
   const html = availabilityEditorMarkup({ slot, courses, resources, occurrences }, ui('en'));
   assert.match(html, /role="dialog" aria-modal="true" aria-labelledby="availability-editor-title"/);

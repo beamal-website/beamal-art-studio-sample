@@ -1,0 +1,24 @@
+.tt-note-modal{padding:16px;grid-template-columns:minmax(0,1fr)}
+.tt-note-modal .tt-note-dialog{--tt-note-ink:#253d3b;--tt-note-muted:#687770;--tt-note-line:#d9e0d4;--tt-note-paper:#fffdf8;--tt-note-teal:var(--teal,#27777b);display:flex;flex-direction:column;width:min(680px,100%);max-width:680px;max-height:calc(100dvh - 32px);min-width:0;padding:0;overflow:hidden;border:1px solid var(--tt-note-line);border-radius:12px;background:var(--tt-note-paper);color:var(--tt-note-ink);box-shadow:0 20px 64px #1b34272b}
+.tt-note-dialog *{box-sizing:border-box}
+.tt-note-header{display:flex;align-items:center;justify-content:space-between;flex:0 0 auto;gap:16px;padding:20px 24px;border-bottom:1px solid var(--tt-note-line)}
+.tt-note-header h2{min-width:0;margin:0;font-size:22px;line-height:1.5;overflow-wrap:anywhere}
+.tt-note-dialog form{display:flex;flex-direction:column;flex:1;min-height:0;margin:0;overflow:hidden}
+.tt-note-body{min-height:0;flex:1;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding:24px}
+.tt-note-context{min-width:0;margin:0 0 24px;padding:16px;border:1px solid var(--tt-note-line);border-radius:8px;background:#eef3ee;line-height:1.7;overflow-wrap:anywhere}
+.tt-note-context strong{display:block;font-size:17px}.tt-note-context p{margin:6px 0 0;font-size:14px}
+.tt-note-field{display:grid;gap:8px;min-width:0;margin:0;font-size:14px;line-height:1.6}
+.tt-note-field textarea{display:block;width:100%;max-width:100%;min-width:0;min-height:176px;margin:0;padding:12px;border:1px solid #becdc4;border-radius:6px;background:#fffefa;color:var(--tt-note-ink);font:inherit;line-height:1.8;resize:vertical;overflow-wrap:anywhere}
+.tt-note-label{margin:0 0 8px;font-size:14px;font-weight:600}.tt-note-text{min-width:0;margin:0;padding:16px;border:1px solid var(--tt-note-line);border-radius:6px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.8;background:#fffefa}
+.tt-note-limit,.tt-note-unsaved{margin:10px 0 0;color:var(--tt-note-muted);font-size:13px;line-height:1.7;overflow-wrap:anywhere}.tt-note-unsaved{margin-top:20px}
+.tt-note-error{margin:0 0 16px;padding:12px 14px;border:1px solid #d8b7a9;border-radius:6px;background:#fbf0e9;color:#8a432c;font-size:14px;line-height:1.7;overflow-wrap:anywhere}
+.tt-note-footer{display:flex;align-items:center;justify-content:flex-end;flex:0 0 auto;flex-wrap:wrap;gap:10px;padding:16px 24px;border-top:1px solid var(--tt-note-line);background:var(--tt-note-paper)}
+.tt-note-dialog .tt-note-button{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;max-width:100%;margin:0;padding:10px 16px;border:1px solid #bdcbc1;border-radius:6px;background:#fffefa;color:var(--tt-note-teal);font:inherit;font-size:14px;font-weight:600;line-height:1.5;white-space:normal;overflow-wrap:anywhere;box-shadow:none;cursor:pointer;touch-action:manipulation}
+.tt-note-dialog .tt-note-primary{background:var(--tt-note-teal);color:#fff;border-color:var(--tt-note-teal)}
+.tt-note-dialog .tt-note-close{flex:0 0 44px;width:44px;padding:0;border-color:transparent;background:transparent;color:var(--tt-note-muted);font-size:28px;font-weight:400}
+.tt-note-dialog .tt-note-button:disabled{background:#ecefe7;border-color:var(--tt-note-line);color:#718073;cursor:not-allowed;filter:none}
+.tt-note-icon{display:inline-flex;align-items:center;justify-content:center;flex:0 0 44px;width:44px;height:44px;min-width:44px;min-height:44px;max-width:44px;margin:0;padding:0;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--teal,#27777b);box-shadow:none;cursor:pointer;touch-action:manipulation;vertical-align:middle}
+.tt-note-icon svg{display:block;width:19px;height:19px;flex:0 0 19px}.tt-note-icon:hover{background:#eaf2ed;border-color:#bdcbc1}.tt-note-icon:disabled{color:#89958d;cursor:not-allowed;filter:none}
+.tt-note-dialog :is(button,textarea):focus-visible,.tt-note-icon:focus-visible{outline:2px solid var(--teal,#27777b);outline-offset:3px}
+@media(max-width:560px){.tt-note-modal{padding:12px}.tt-note-modal .tt-note-dialog{max-height:calc(100dvh - 24px);border-radius:10px}.tt-note-header{gap:8px;padding:16px}.tt-note-header h2{font-size:20px}.tt-note-body{padding:20px 16px}.tt-note-context{padding:14px}.tt-note-field textarea{min-height:152px}.tt-note-footer{padding:12px 16px}.tt-note-footer .tt-note-button{flex:1 1 120px}}
+@media print{.tt-note-icon,.tt-note-modal{display:none!important}}

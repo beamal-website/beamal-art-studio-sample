@@ -177,3 +177,9 @@ Admin可對正式schedule ID＋固定sequence保存Full／Available／清除，�
 ## 2026-10-15 最新：Class Type配置與新班規則快照
 
 Admin已有Regular／Special／自訂類型三態與啟用管理，Course新班預設、Schedule當時規則快照、Keep／scoped時間與repeat保各堂例外及五檢視篩選已接正式服務；Teacher唯讀、linked讀同堂而Standalone／public不借設定。指定6flow／2SDK、14純UI、9真HTTP與相關29回歸，最後前端283／283（51.3002秒）、Root完整543／543（70.7444秒、exit0）及隨後build4.11秒成功。真GUI在全新虛構5181資料完成三態、Course default→新單堂、停用預設省略欄仍保ID、Keep／明確採最新、五檢視／linked、Teacher唯讀及390中英文／未保存退出；public私人類型改前後1074 bytes含revision相同。5181驗後關閉，原分頁還原5180登入畫面及viewport，5180資料未改；不把隔離GUI當5180資料驗收。證據集中[類型檢查點](class-type-checkpoint.md)。來源Chrome只讀Add schedule未看到此欄，這是Notion追加；C-06規則執行、C-02完整條件、四項待決政策、Enrollment／Attendance／Trial／To-do／Payment、111項與300 active仍是主要目標，下一步接正式業務關聯。
+
+## 2026-10-15：日期／精確課次備忘的未保存 UI
+
+日期旁與指定課堂內新增備忘輸入／核對／返回入口；普通老師沿授權課堂，學生端不顯示。已修正背景名單蓋走草稿、返回選取／捲動及 Tab 焦點三項實證問題。工作區完整1264／1264及build成功，獨立13／13，真正三角色／390、768、1280及五檢視／課程同堂返回有證據；提交快照結果另以Git及檢查點為準。**尚未有備忘保存／作者／歷史／正式共享權限，TM-01／TM-02及整個Goal仍未完成。** 詳見[備忘UI檢查點](timetable-notes-ui-checkpoint-20261015.md)。
+
+前一切片 `e3bd079` 已推送 `test`：安全更新舊示例學生資料，保留原人物ID、帳戶／課堂／報名／付款及人手修改。使用者原 `localhost:5173` 對應本機資料已備份並更新300份，生日全年、239個家庭（193／31／15個一／二／三孩子家庭），另補四位老師個人資料；既有38張非學生資料表不變。這是人物資料合理性修正，不是300學生報讀／Paid或全系統規模通過。

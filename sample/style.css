@@ -1090,3 +1090,14 @@
 .tt-filter-presets h3 { margin:0; font-size:15px; }
 .tt-named-status .tt-lesson-filter { min-height:44px; max-width:100%; white-space:normal; overflow-wrap:anywhere; }
 .tt-named-status p { flex-basis:100%; margin:0; }
+
+/* Internal date notes sit beside their date, never inside a lesson button. */
+.tt-grid-heading.tt-note-date-heading{height:84px}
+.tt-note-date-heading .tt-day-heading{display:flex;flex-direction:column;justify-content:center;gap:0;min-width:0}
+.tt-note-date-heading .tt-day-heading>span{padding:3px 6px}
+.tt-note-month-heading{display:flex;align-items:center;justify-content:space-between;gap:4px;min-height:44px;margin-bottom:4px}
+.portal-content .tt-note-month-heading .tt-month-date{width:44px;height:44px;min-width:44px;min-height:44px;margin:0 0 0 auto}
+.tt-note-list-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0}
+.portal-content .tt-note-icon,.lesson-header-actions .tt-note-icon{min-width:44px;width:44px;height:44px;min-height:44px;margin:0;padding:0;background:transparent;color:var(--teal);box-shadow:none}
+.lesson-header-actions:has(.tt-note-icon){flex-wrap:wrap;gap:8px}
+@media print{.tt-grid-heading.tt-note-date-heading{height:36px}.tt-note-month-heading{min-height:30px}}

@@ -371,7 +371,7 @@ test('saved schedule cards show full information, correct recurrence number and 
  const a=scheduleApp();a.submit('schedule-editor',scheduleValues({startDate:'2026-10-05',time:'10:00',duration:'45',session:'3',endMode:'count',count:'3',remark:'Private <note>',detail:'Teacher detail',moreInfo:'Student info'}),{dataset:{id:''}});const id=a.read('db.schedules[0].id');
  a.set("db.bookings=[{id:'BOOK',student:'Enrolled Student',classId:'a',paid:true,status:'confirmed',paidAt:'2026-10-04',lessonCount:4}]");
  a.click({openLesson:id,lessonKind:'schedule',lessonDate:'2026-10-12'});let html=a.nodes['#modal-root'].innerHTML;assert.match(html,/#4 · Course 1/);assert.match(html,/10:00 – 10:45/);assert.match(html,/Private &lt;note&gt;/);assert.match(html,/Teacher detail/);assert.match(html,/Student info/);assert.match(html,/Enrolled Student/);assert.match(html,/style="background:#27777b"/);
- a.click({action:'lesson-edit'});assert.match(a.nodes['#modal-root'].innerHTML,/id="schedule-editor"/);assert.equal(a.read('scheduleDraft.id'),id);a.click({action:'close'});
+ a.click({action:'lesson-edit'});assert.match(a.nodes['#modal-root'].innerHTML,/id="schedule-editor"/);assert.equal(a.read('scheduleDraft.id'),id);a.click({action:'close'});assert.equal(a.read('selectedTimetableLesson.id'),id);assert.equal(a.read('selectedTimetableLesson.date'),'2026-10-12');a.click({action:'lesson-close'});
  const background=a.nodes['#app'].innerHTML;a.click({openLesson:id,lessonKind:'schedule',lessonDate:'2026-10-26'});assert.equal(a.read('selectedTimetableLesson'),null);assert.equal(a.nodes['#app'].innerHTML,background);assert.equal(a.nodes['#modal-root'].innerHTML,'');
 });
 test('student access and invalid lesson references cannot open internal details',()=>{
@@ -650,7 +650,7 @@ test('End rejects empty weekdays, invalid date ranges and counts without applyin
  for(const count of ['0','1.5','1000']){a.submit('schedule-end-editor',{endMode:'count',count});assert.match(a.nodes['#schedule-end-error'].textContent,/whole number/);assert.deepEqual(a.read('scheduleDraft'),before)}
  a.change('endWeekday','4',{checked:false});a.change('endWeekday','1',{checked:true});a.submit('schedule-end-editor',{endMode:'date',endDate:'2026-10-09'});assert.match(a.nodes['#schedule-end-error'].textContent,/No lessons/);assert.deepEqual(a.read('scheduleDraft'),before);
  a.submit('schedule-end-editor',{endMode:'date',endDate:'2026-10-19',mustAttendAll:'yes'});assert.equal(a.read('scheduleDraft.endMode'),'date');assert.deepEqual(a.read('schedulePreviewDates(scheduleDraft)'),['2026-10-12','2026-10-19']);assert.match(a.nodes['#schedule-end-summary'].textContent,/19 Oct 2026/);
- a.click({action:'schedule-end-open'});a.submit('schedule-editor',scheduleValues(),{dataset:{id:''}});assert.equal(a.read('db.schedules.length'),0);a.click({action:'close'});assert.equal(a.read('scheduleEndDraft'),null);assert.equal(a.read('scheduleDraft'),null);
+ a.click({action:'schedule-end-open'});a.submit('schedule-editor',scheduleValues(),{dataset:{id:''}});assert.equal(a.read('db.schedules.length'),0);a.click({action:'close'});assert.ok(a.read('scheduleEndDraft'),'The inert parent close cannot discard the nested End draft');a.keydown('Escape');assert.equal(a.read('scheduleEndDraft'),null);assert.ok(a.read('scheduleDraft'));a.click({action:'close'});assert.equal(a.read('scheduleDraft'),null);
 });
 test('End is bilingual and older schedules default to attending all selected weekdays',()=>{
  const a=scheduleApp();a.click({action:'close'});a.set("lang='zh';db.schedules.push({id:'OLD',course:'art',startDate:'2026-10-08',endMode:'forever',endDate:'',count:1,weekdays:[4],time:'10:00',duration:45,color:'#27777b',session:1})");a.click({editSchedule:'OLD'});a.click({action:'schedule-end-open'});assert.equal(a.read('scheduleEndDraft.mustAttendAll'),true);const html=a.nodes['#schedule-end-layer'].innerHTML;for(const text of ['結束日期','重複星期','學生必須出席所有日子嗎？','永不結束','完成以下次數後','確定'])assert.ok(html.includes(text),text);a.keydown('Escape');a.keydown('Escape');assert.equal(a.read('scheduleDraft'),null);assert.equal(a.read('modal'),'');
@@ -3577,4 +3577,69 @@ test('note modal Tab recaptures external focus and handles an empty control list
  const a=await sharedScheduleApp({rows:[sharedScheduleRecord()],revision:1});a.click({action:'tt-note-open',noteKind:'date',date:'2026-10-08'});const control=()=>({focus(){a.ctx.document.activeElement=this;}}),first=control(),last=control(),dialog=control();a.nodes['.tt-note-dialog']=dialog;a.ctx.document.querySelectorAll=selector=>selector.startsWith('.tt-note-dialog')?[first,last]:[];
  for(const shiftKey of [false,true]){a.ctx.document.activeElement=control();let prevented=false;a.keydown('Tab',{shiftKey,preventDefault(){prevented=true;}});assert.equal(prevented,true);assert.equal(a.ctx.document.activeElement,shiftKey?last:first);}
  a.ctx.document.querySelectorAll=()=>[];a.ctx.document.activeElement=control();let prevented=false;a.keydown('Tab',{preventDefault(){prevented=true;}});assert.equal(prevented,true);assert.equal(a.ctx.document.activeElement,dialog);
+});
+
+test('schedule scope Tab recaptures outside focus and falls back to the dialog while busy',async()=>{
+ const a=await scopedScheduleApp(),form=scopedEditor(a,{values:{time:'12:45'}});await a.submit(form.id,form.values,form);const controls=a.nodes['.schedule-scope-modal'].querySelectorAll('button,input');for(const control of controls)control.focus=function(){a.ctx.document.activeElement=this;};const dialog={focus(){a.ctx.document.activeElement=this;}};a.nodes['.schedule-scope-dialog']=dialog;a.ctx.document.querySelectorAll=selector=>selector.startsWith('.schedule-scope-dialog')?controls.filter(control=>!control.disabled):[];
+ for(const shiftKey of [false,true]){const outside={id:'background'};a.ctx.document.activeElement=outside;let prevented=false;a.keydown('Tab',{shiftKey,preventDefault(){prevented=true;}});assert.equal(prevented,true);assert.notEqual(a.ctx.document.activeElement,outside);}
+ controls.forEach(control=>control.disabled=true);a.ctx.document.activeElement={id:'outside'};let prevented=false;a.keydown('Tab',{preventDefault(){prevented=true;}});assert.equal(prevented,true);assert.equal(a.ctx.document.activeElement,dialog);assert.equal(a.occurrenceCalls.length,0);
+});
+test('a dirty schedule editor close restores the replacement exact opener and consumes its saved return',async()=>{
+ const a=await scopedScheduleApp(),grid={scrollTop:277,scrollLeft:31,isConnected:true},replacementGrid={scrollTop:0,scrollLeft:0,isConnected:true},dataset={editActivity:'qa-scoped-series',activityKind:'schedule',activityDate:'2026-10-21',activitySequence:'2'};let restored=0;const opener={dataset,isConnected:true,closest:selector=>selector==='.tt-grid-scroll'?grid:null,focus(){a.ctx.document.activeElement=this;}},replacement={dataset:{...dataset},isConnected:true,closest:selector=>selector==='.tt-grid-scroll'?replacementGrid:null,focus(){restored++;a.ctx.document.activeElement=this;}};a.ctx.document.activeElement=opener;scopedEditor(a);
+ let html=a.nodes['#app'].innerHTML;Object.defineProperty(a.nodes['#app'],'innerHTML',{get:()=>html,set:value=>{html=value;opener.isConnected=false;grid.isConnected=false;a.ctx.document.activeElement=a.ctx.document.body;}});a.ctx.document.querySelectorAll=selector=>selector==='button'?[replacement]:[];a.set('sharedViewDirty=true');a.click({action:'close'});assert.equal(a.read('modal'),'');assert.equal(a.read('courseEditorReturnFocus'),null);assert.equal(restored,1);assert.equal(replacementGrid.scrollTop,277);assert.equal(replacementGrid.scrollLeft,31);assert.equal(a.occurrenceCalls.length,0);
+});
+test('Course exact lesson Edit cancel restores the same lesson tab scroll and full Course return chain',async()=>{
+ const a=await scopedScheduleApp();a.set("location.pathname='/account/courses/qa-course';courseDetailMonth=new Date(2026,9,1);courseDetailTab='general';render()");const dateButton={dataset:{openLesson:'qa-scoped-series',lessonKind:'schedule',lessonDate:'2026-10-21',lessonSequence:'2'},isConnected:true,focus(){a.ctx.document.activeElement=this;}},courseScroll={scrollTop:77,scrollLeft:211},detail={scrollTop:348,scrollLeft:9};a.nodes['.course-schedule-scroll']=courseScroll;a.nodes['.lesson-dialog-scroll']=detail;a.ctx.document.querySelectorAll=selector=>selector==='[data-open-lesson]'?[dateButton]:[];a.ctx.document.activeElement=dateButton;a.click(dateButton.dataset,dateButton);const editButton={dataset:{action:'lesson-edit'},isConnected:true,focus(){a.ctx.document.activeElement=this;}};a.ctx.document.activeElement=editButton;await a.click({action:'lesson-edit'});assert.match(a.read('modal'),/id="schedule-editor"/);a.click({action:'close'});
+ assert.equal(a.read('selectedTimetableLesson.id'),'qa-scoped-series');assert.equal(a.read('selectedTimetableLesson.sequence'),2);assert.equal(a.read('selectedTimetableLesson.date'),'2026-10-21');assert.match(a.read('modal'),/lesson-detail-title/);assert.equal(detail.scrollTop,348);assert.equal(a.read('courseLessonReturn.path'),'/account/courses/qa-course');a.click({action:'lesson-close'});assert.equal(a.read('location.pathname'),'/account/courses/qa-course');assert.equal(courseScroll.scrollLeft,211);assert.equal(a.ctx.document.activeElement,dateButton);assert.equal(a.occurrenceCalls.length,0);
+});
+
+test('cancelling a new schedule after dirty repaint restores both range grids sidebar and exact replacement cell',async()=>{
+ const a=await scopedScheduleApp();a.set("location.pathname='/account';tab='overview';timetableView='range';timetableViewSettings.rangeDays=14;selectTimetableDate('2026-10-14');render()");
+ const grids=[{scrollTop:134,scrollLeft:16,isConnected:true},{scrollTop:711,scrollLeft:263,isConnected:true}],sidebar={scrollTop:99},dataset={action:'tt-add-cell',date:'2026-10-22',time:'10:15'};
+ const makeCell=()=>({dataset:{...dataset},isConnected:true,focus(){a.ctx.document.activeElement=this},closest:selector=>selector==='.tt-grid-scroll'?grids[1]:null});let cell=makeCell();
+ a.ctx.document.activeElement=cell;a.nodes['.tt-sidebar']=sidebar;a.ctx.document.querySelectorAll=selector=>selector==='.tt-grid-scroll'?grids:selector==='button'?[cell]:[];
+ let html=a.nodes['#app'].innerHTML;Object.defineProperty(a.nodes['#app'],'innerHTML',{get:()=>html,set:value=>{html=value;cell.isConnected=false;cell=makeCell();grids.forEach(grid=>{grid.scrollTop=0;grid.scrollLeft=0});sidebar.scrollTop=0}});
+ await a.click(dataset,cell);assert.ok(a.read('scheduleDraft'));a.set('sharedViewDirty=true');await a.click({action:'close'});
+ assert.deepEqual(grids.map(grid=>[grid.scrollTop,grid.scrollLeft]),[[134,16],[711,263]]);assert.equal(sidebar.scrollTop,99);assert.equal(a.ctx.document.activeElement,cell);assert.equal(a.read('modal'),'');assert.equal(a.scheduleCalls.filter(call=>call.operation==='save').length,0);
+});
+
+test('pending schedule preparation is invalidated by Course month change Back to the same route and identity change',async()=>{
+ for(const outcome of ['month','back','identity']){
+  const gate=deferred();let reads=0;
+  const a=await scopedScheduleApp(undefined,{classTypes:async()=>{reads++;return gate.promise},createClassType:async()=>({}),updateClassType:async()=>({})});
+  a.set("location.pathname='/account/courses/qa-course';tab='catalog';courseDetailMonth=new Date(2026,9,1);courseDetailTab='general';history.replaceState({},'',location.pathname);render()");
+  await a.click({action:'course-add-schedule'});for(let i=0;i<40;i++)await Promise.resolve();assert.ok(reads>0);assert.equal(a.read('scheduleDraft'),null);
+  if(outcome==='month')await a.click({action:'course-month-next'});
+  else if(outcome==='back')a.set("history.pushState({},'','/account');history.back()");
+  else a.set("applySharedUser({id:'next-admin',role:'admin',displayName:'Next identity'});render()");
+  gate.resolve({types:[],revision:'late-preparation'});for(let i=0;i<40;i++)await Promise.resolve();
+  assert.equal(a.read('scheduleDraft'),null,outcome);assert.doesNotMatch(a.read('modal'),/id="schedule-editor"/,outcome);
+ }
+});
+
+test('Browser Back discards a selected-lesson editor even when class types are unavailable',async()=>{
+ const a=await scopedScheduleApp();a.set("location.pathname='/account/courses/qa-course';tab='catalog';courseDetailMonth=new Date(2026,9,1);courseDetailTab='general';render()");
+ await a.click({openLesson:'qa-scoped-series',lessonKind:'schedule',lessonDate:'2026-10-21',lessonSequence:'2'});await a.click({action:'lesson-edit'});
+ assert.equal(a.read('scheduleDraft.id'),'qa-scoped-series');assert.equal(a.read('scheduleDraft.typeContext??null'),null);
+ a.set("history.replaceState({},'','/account/courses/qa-course');history.pushState({},'','/account');history.back()");
+ assert.equal(a.read('scheduleDraft'),null);assert.equal(a.read('scheduleScopeDraft'),null);assert.equal(a.read('selectedTimetableLesson'),null);assert.doesNotMatch(a.read('modal'),/schedule-editor|lesson-detail-title/);
+ await a.click({action:'close'});assert.equal(a.read('modal'),'');assert.equal(a.occurrenceCalls.length,0);
+});
+
+test('a busy whole-schedule editor cannot close and empty enabled controls retain focus in its dialog',async()=>{
+ const a=await scopedScheduleApp();a.set("location.pathname='/account';tab='overview';render()");await a.click({action:'tt-add-schedule'});
+ const form=sharedScheduleForm({values:{course:'qa-course',startDate:'2026-10-14',endMode:'count',count:'1',time:'13:30',duration:'45'}}),gate=deferred();a.client.saveSchedule=()=>gate.promise;
+ const saving=a.submit(form.id,form.values,form);for(let i=0;i<40;i++)await Promise.resolve();assert.equal(a.read('scheduleSaving'),true);
+ const modal=a.read('modal');await a.click({action:'close'});a.keydown('Escape');const retained=a.read('modal')===modal;
+ let focused=false,prevented=false;a.nodes['.schedule-dialog']={focus(){focused=true}};a.ctx.document.activeElement={};a.ctx.document.querySelectorAll=()=>[];a.keydown('Tab',{preventDefault(){prevented=true}});
+ gate.reject(serviceError(503,'SERVICE_UNAVAILABLE'));await saving;
+ assert.equal(retained,true);assert.equal(prevented,true);assert.equal(focused,true);assert.equal(a.read('scheduleSaving'),false);assert.ok(a.read('scheduleDraft'));
+});
+
+test('schedule Escape lets Chinese composition finish before cancelling the draft or nested scope',async()=>{
+ const a=await scopedScheduleApp(),form=scopedEditor(a,{values:{remark:'尚在輸入的中文備註'}});a.set("scheduleDraft.remark='尚在輸入的中文備註'");
+ for(const composition of [{isComposing:true},{keyCode:229}]){a.keydown('Escape',composition);assert.equal(a.read('scheduleDraft.remark'),'尚在輸入的中文備註');assert.match(a.read('modal'),/id="schedule-editor"/);}
+ await a.submit(form.id,form.values,form);assert.ok(a.read('scheduleScopeDraft'));
+ for(const composition of [{isComposing:true},{keyCode:229}]){a.keydown('Escape',composition);assert.ok(a.read('scheduleScopeDraft'));}
+ a.keydown('Escape');assert.equal(a.read('scheduleScopeDraft'),null);assert.ok(a.read('scheduleDraft'));a.keydown('Escape');assert.equal(a.read('scheduleDraft'),null);assert.equal(a.occurrenceCalls.length,0);
 });

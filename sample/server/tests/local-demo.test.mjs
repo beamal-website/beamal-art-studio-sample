@@ -78,3 +78,11 @@ test('refusing an unknown WAL database must not create journals or lock files in
  await assert.rejects(launch(input),{code:'LOCAL_DEMO_UNOWNED_DATABASE'});
  assert.deepEqual((await fs.readdir(input.directory)).sort(),names);assert.deepEqual(await fs.readFile(input.databasePath),before);assert.equal((await fs.stat(input.databasePath)).mtimeMs,stamp);
 });
+
+test('a newly launched demo provisions four distinct adult staff profiles linked to the same four teaching resources',async t=>{
+ const input=await temporary(t),result=await launch(input),store=await createStore({databasePath:input.databasePath});t.after(()=>store.close());
+ const data=store.staffPersonalProfiles.list(DEMO_IDS.users.maya);assert.equal(data.records.length,4);assert.deepEqual(new Set(data.records.map(row=>row.staffId)),new Set(result.mapping.teachers.map(row=>row.id)));
+ assert.equal(new Set(data.records.map(row=>row.dateOfBirth)).size,4);assert.equal(new Set(data.records.map(row=>row.contactEmail)).size,4);
+ for(const row of data.records){assert.ok(row.fullName&&row.localName&&row.staffNumber&&row.position&&row.employment&&row.joined&&row.dateOfBirth);assert.ok(row.dateOfBirth<'2008-01-01');assert.match(row.contactEmail,/@example\.test$/);assert.match(row.mobile,/^\+852 0000 /);}
+ const own=store.staffPersonalProfiles.list(DEMO_IDS.users.leo);assert.deepEqual(own.records.map(row=>row.staffId),[DEMO_IDS.teachers.leo]);
+});

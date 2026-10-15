@@ -231,6 +231,11 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
       if (pathname === '/api/student/timetable' && request.method === 'GET') {
         const session=requireSession(request); const query=enrollmentQuery(['from','to','since']); json(response,200,store.enrollmentOrders.timetable(session.user,query)); return;
       }
+      if (pathname === '/api/timetable/filter-facts' && request.method === 'GET') {
+        const session=requireSession(request);
+        if(!['admin','teacher'].includes(session.user.role))throw new ApplicationError(403,'ROLE_FORBIDDEN','Timetable filter facts are not available for this role.');
+        const query=enrollmentQuery(['from','to','since']);json(response,200,store.enrollmentOrders.filterFacts(session.user,query));return;
+      }
       if (pathname === '/api/orders' && request.method === 'GET') {
         const session=requireSession(request); enrollmentQuery([]); json(response,200,store.enrollmentOrders.list(session.user)); return;
       }
@@ -286,6 +291,11 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
         const session = requireSession(request);
         if (!['admin', 'teacher'].includes(session.user.role)) throw new ApplicationError(403, 'ROLE_FORBIDDEN', 'Scheduling resources are not available for this role.');
         json(response, 200, session.user.role === 'teacher' ? store.accessControl.resourcesSnapshot(session.user, store.schedulingResources, { since: requestUrl.searchParams.get('since') || '' }) : store.schedulingResources.list({ since: requestUrl.searchParams.get('since') || '' })); return;
+      }
+      if (pathname === '/api/staff/personal-profiles' && request.method === 'GET') {
+        const session=requireSession(request);
+        if(!['admin','teacher'].includes(session.user.role))throw new ApplicationError(403,'ROLE_FORBIDDEN','Staff personal profiles are not available for this role.');
+        const query=enrollmentQuery(['since']);json(response,200,store.staffPersonalProfiles.list(session.user,{since:query.since||''}));return;
       }
       if (pathname === '/api/scheduling-resources' && request.method === 'POST') {
         const session = requireMutation(request);
@@ -528,7 +538,7 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
         json(response, 200, store.updateFee(id, fee, version, session.user.id, true)); return;
       }
       if (pathname === '/api' || pathname.startsWith('/api/')) {
-        const known = studentLinkMatch || orderMatch || orderActionMatch || studentRosterMatch || match || feeMatch || courseMaterialMatch || materialMatch || uploadMatch || attachmentMatch || scheduleMatch || occurrenceMatch || courseLifecycleMatch || schedulingResourceMatch || personMatch || personHistoryMatch || teacherLinkMatch || accessGrantMatch || availableSlotMatch || publicCourseMatch || capacityStatusMatch || classTypeMatch || ['/api/student-account-links', '/api/student/profile', '/api/student/timetable', '/api/orders', '/api/class-types', '/api/class-capacity-statuses', '/api/available-slots', '/api/availability-public-settings', '/api/public/courses', '/api/people', '/api/access-control', '/api/access-control/grants', '/api/health', '/api/auth/session', '/api/auth/login', '/api/auth/logout', '/api/courses', '/api/fees', '/api/catalog', '/api/schedules', '/api/scheduling-resources'].includes(pathname);
+        const known = studentLinkMatch || orderMatch || orderActionMatch || studentRosterMatch || match || feeMatch || courseMaterialMatch || materialMatch || uploadMatch || attachmentMatch || scheduleMatch || occurrenceMatch || courseLifecycleMatch || schedulingResourceMatch || personMatch || personHistoryMatch || teacherLinkMatch || accessGrantMatch || availableSlotMatch || publicCourseMatch || capacityStatusMatch || classTypeMatch || ['/api/student-account-links', '/api/student/profile', '/api/student/timetable', '/api/timetable/filter-facts', '/api/staff/personal-profiles', '/api/orders', '/api/class-types', '/api/class-capacity-statuses', '/api/available-slots', '/api/availability-public-settings', '/api/public/courses', '/api/people', '/api/access-control', '/api/access-control/grants', '/api/health', '/api/auth/session', '/api/auth/login', '/api/auth/logout', '/api/courses', '/api/fees', '/api/catalog', '/api/schedules', '/api/scheduling-resources'].includes(pathname);
         throw new ApplicationError(known ? 405 : 404, known ? 'METHOD_NOT_ALLOWED' : 'NOT_FOUND', 'API route or method is not available.');
       }
       await serveStatic(request, response, pathname);

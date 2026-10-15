@@ -5,7 +5,7 @@ import {pathToFileURL} from 'node:url';
 import {open,readFile,stat,unlink} from 'node:fs/promises';
 import {createStore} from './store.mjs';
 import {DEMO_IDS} from './demo-accounts.mjs';
-import {validatePerson} from './people.mjs';
+import {relationalStudentProfile} from './demo-student-profiles.mjs';
 import {scheduleOccurrences} from '../shared/schedule-occurrences.js';
 
 // Deliberately not imported by normal startup. Only an explicit local provision
@@ -80,8 +80,7 @@ function assertNoConflicts(rules,existing,mapping){
  }
 }
 function makeStudent(index,startDate){
- const surnames=['陳','林','黃','張','李','王','何','吳','劉','梁','鄭','周','徐','謝','馬','馮','郭','楊','曾','許'],names=['曉晴','梓軒','悅琳','俊熙','芷澄','睿謙','欣妍','樂言','詠恩','柏朗','思穎','昊然','雅悠','卓然','凱晴','子謙'],surname=surnames[Math.floor(index/names.length)],name=surname+names[index%names.length],age=3+index%16;
- return validatePerson({displayName:name,localName:name,parentName:surname+'嘉敏',contact1Name:surname+'嘉敏',contact1Email:`guardian-${String(index+1).padStart(3,'0')}@example.test`,dateOfBirth:`${Number(startDate.slice(0,4))-age}-01-01`,enrollmentDate:startDate,quitDate:null,level:age<6?'幼兒':age<12?'兒童':'青少年',remark:'喜歡繪畫與動手創作。',promotion:false});
+ return relationalStudentProfile(index,startDate);
 }
 function importProfiles(databasePath,mapping){
  const db=new DatabaseSync(databasePath);db.exec('PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000; BEGIN IMMEDIATE;');

@@ -132,6 +132,8 @@ export function createApiClient() {
     respondOrder: (current, action, reason, operationKey) => request(`/orders/${encodeURIComponent(current.id)}/respond`, {method:'POST',body:{version:current.version,action,reason},idempotencyKey:operationKey}),
     confirmOrderPayment: (current, operationKey) => request(`/orders/${encodeURIComponent(current.id)}/confirm-payment`, {method:'POST',body:{version:current.version},idempotencyKey:operationKey}),
     studentTimetable(range, revision='') {const parameters=new URLSearchParams();for(const key of ['from','to'])if(range?.[key])parameters.set(key,range[key]);if(revision)parameters.set('since',revision);return request(`/student/timetable?${parameters}`);},
+    timetableFilterFacts(range, revision='') {const parameters=new URLSearchParams();for(const key of ['from','to'])if(range?.[key])parameters.set(key,range[key]);if(revision)parameters.set('since',revision);return request(`/timetable/filter-facts?${parameters}`);},
+    staffPersonalProfiles: (revision='') => request(`/staff/personal-profiles${revision?'?since='+encodeURIComponent(revision):''}`),
     lessonStudents: (scheduleId, sequence) => request(`/schedules/${encodeURIComponent(scheduleId)}/occurrences/${encodeURIComponent(sequence)}/students`),
     catalog: (revision = '') => request(`/catalog${revision ? `?since=${encodeURIComponent(revision)}` : ''}`),
     materials: courseId => request(`/courses/${encodeURIComponent(courseId)}/materials`),

@@ -15,7 +15,7 @@ export function staffSharedState(previous={},snapshot={}){
   const user=snapshot.user||{},identity=sessionIdentityKey(user);
   const retain=previous.shared===true&&previous.sharedIdentity===identity;
   const ui=retain?previous:{};
-  const authorized=['admin','teacher'].includes(user.role)&&typeof user.id==='string'&&!!user.id;
+  const authorized=['admin','teacher'].includes(user.role)&&typeof user.id==='string'&&!!user.id.trim();
   const sourceReady=snapshot.ready===true&&authorized;
   // The service, not a previous browser screen, decides whether its saved
   // snapshot is still authorized. A matching identity alone is insufficient.
@@ -31,12 +31,21 @@ export function staffSharedState(previous={},snapshot={}){
   const hasSelfIds=Object.hasOwn(user,'teacherResourceIds');
   const ownIds=hasSelfIds?ids(user.teacherResourceIds):links.filter(link=>link.userId===user.id).map(link=>link.teacherResourceId);
   const ownResources=new Set(ownIds.filter(id=>resourceMap.get(id)?.kind==='teacher'));
+  const personalReady=sourceReady&&snapshot.staffProfileReady===true;
+  const personalResources=new Set(resources.filter(resource=>resource.kind==='teacher'&&resources.filter(other=>other.id===resource.id).length===1).map(resource=>resource.id));
+  const personalRecords=personalReady?rows(snapshot.staffProfileRecords).filter(record=>personalResources.has(record.staffId)&&(user.role==='admin'||ownResources.has(record.staffId))):[];
+  const personalFor=id=>{
+    const matches=personalRecords.filter(record=>record.staffId===id),record=matches.length===1?matches[0]:null;
+    const status=user.role!=='admin'&&!ownResources.has(id)?'unavailable':matches.length>1?'ambiguous':record?'ready':snapshot.staffProfileLoading===true?'loading':snapshot.staffProfileError?'error':personalReady?'empty':'unavailable';
+    const value=key=>typeof record?.[key]==='string'?record[key]:'';
+    return {position:value('position')||{zh:'職位暫未提供',en:'Position unavailable'},employment:record&&typeof record.employment==='string'?record.employment:undefined,contactEmail:value('contactEmail'),phone:value('phone'),mobile:value('mobile'),joined:value('joined'),personalSourceStatus:status,personalSourceLoading:snapshot.staffProfileLoading===true,personalSourceError:!!snapshot.staffProfileError};
+  };
   const occurrences=sourceReady?rows(snapshot.occurrences).filter(row=>row.item&&typeof row.item.id==='string'&&Number.isSafeInteger(row.sequence)&&row.sequence>0&&!row.cancelled&&!row.item.activityDeleted):[];
   const staff=sourceReady?resources.filter(resource=>resource.kind==='teacher').map(resource=>{
     const own=ownResources.has(resource.id),link=links.find(item=>item.teacherResourceId===resource.id&&(!hasSelfIds||item.userId!==user.id||own));
     const linkedUserId=own?user.id:link?.userId||null,account=accounts.get(linkedUserId);
     const courseIds=[...new Set(occurrences.filter(row=>ids(row.item.teacherIds).includes(resource.id)).map(row=>row.item.course))];
-    return {...resource,id:resource.id,userId:linkedUserId||null,accountId:linkedUserId||null,accountName:account?.displayName||'',accountRole:account?.role||null,accountLinkKnown:user.role==='admin'||!!link||ownResources.has(resource.id),displayName:resource.displayName,email:account?.email??'',role:account?.role==='admin'?'admin':'teacher',teaching:true,position:resource.position||{zh:'藝術導師',en:'Art teacher'},courses:courseIds.map(id=>nameOf(courses.get(id))),shared:true};
+    return {...resource,...personalFor(resource.id),id:resource.id,userId:linkedUserId||null,accountId:linkedUserId||null,accountName:account?.displayName||'',accountRole:account?.role||null,accountLinkKnown:user.role==='admin'||!!link||ownResources.has(resource.id),displayName:resource.displayName,email:account?.email??'',role:account?.role==='admin'?'admin':'teacher',teaching:true,courses:courseIds.map(id=>nameOf(courses.get(id))),shared:true};
   }):saved?rows(previous.staff):[];
   const authorizedOccurrences=occurrences.filter(row=>user.role==='teacher'||ids(row.item.teacherIds).some(id=>ownResources.has(id)));
   const classes=sourceReady?authorizedOccurrences.map(row=>{
@@ -56,6 +65,6 @@ export function staffSharedState(previous={},snapshot={}){
     workRosterRecords:sourceReady&&snapshot.workRosterReady===true?rows(snapshot.workRosterRecords):[],workRosterReady:sourceReady&&snapshot.workRosterReady===true,workRosterLoading:authorized&&snapshot.workRosterLoading===true,workRosterError:authorized&&snapshot.workRosterError?String(snapshot.workRosterError):'',
     workRosterGroups:sourceReady&&snapshot.workRosterGroupsReady===true&&snapshot.workRosterGroups&&typeof snapshot.workRosterGroups==='object'&&!Array.isArray(snapshot.workRosterGroups)?snapshot.workRosterGroups:{},workRosterGroupsReady:sourceReady&&snapshot.workRosterGroupsReady===true,
     calendarSharingRecords:sourceReady&&snapshot.calendarSharingReady===true?rows(snapshot.calendarSharingRecords):[],calendarSharingReady:sourceReady&&snapshot.calendarSharingReady===true,calendarSharingLoading:authorized&&snapshot.calendarSharingLoading===true,calendarSharingError:authorized&&snapshot.calendarSharingError?String(snapshot.calendarSharingError):'',
-    staffProfileRecords:sourceReady&&snapshot.staffProfileReady===true?rows(snapshot.staffProfileRecords):[],staffProfileReady:sourceReady&&snapshot.staffProfileReady===true,staffProfileLoading:authorized&&snapshot.staffProfileLoading===true,staffProfileError:authorized&&snapshot.staffProfileError?String(snapshot.staffProfileError):'',
+    staffProfileRecords:personalRecords,staffProfileReady:personalReady,staffProfileLoading:authorized&&snapshot.staffProfileLoading===true,staffProfileError:authorized&&snapshot.staffProfileError?String(snapshot.staffProfileError):'',
   };
 }

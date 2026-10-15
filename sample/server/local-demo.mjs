@@ -5,6 +5,7 @@ import {tmpdir} from 'node:os';
 import {createStore} from './store.mjs';
 import {provisionDemoAccounts,DEMO_IDS} from './demo-accounts.mjs';
 import {provisionRelationalDemo} from './relational-demo.mjs';
+import {namedTeacherDemoProfiles} from './demo-student-profiles.mjs';
 
 // Explicit local launcher only. Existing databases are never adopted, migrated,
 // re-seeded or repaired by this helper, even when they contain other demo data.
@@ -62,6 +63,7 @@ export async function ensureLocalDemo({databasePath,startDate}={}){
     const course=store.createCourse({courseName,feeName:'每堂60分鐘',category:'Art',level:'Beginner',pricingModel:'monthly-lessons',price:280,duration:60,months:1,bookingExpiry:null,onlineStore:true},DEMO_IDS.users.maya);courses.push({id:course.id,feeId:course.feeIds[0]});
    }
    mapping={courses,teachers,rooms:[{id:DEMO_IDS.room}],startDate:date};
+   for(const {key,displayName,...profile} of namedTeacherDemoProfiles){const resource=teachers.find(row=>row.key===key);store.staffPersonalProfiles.createInitial(resource.id,profile,DEMO_IDS.users.maya);}
   }finally{await store.close();}
   const relational=await provisionRelationalDemo({databasePath:stagePath,mapping}),database=new DatabaseSync(stagePath);
   let manifest;

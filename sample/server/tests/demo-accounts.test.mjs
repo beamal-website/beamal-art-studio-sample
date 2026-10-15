@@ -7,6 +7,7 @@ import {DatabaseSync} from 'node:sqlite';
 import {createStore} from '../store.mjs';
 import {hashPassword,verifyPassword} from '../security.mjs';
 import {provisionDemoAccounts,DEMO_IDS} from '../demo-accounts.mjs';
+import * as studentFactory from '../demo-student-profiles.mjs';
 
 async function temporaryDatabase(t) {
   const directory=await mkdtemp(join(tmpdir(),'beamal-demo-accounts-'));
@@ -30,7 +31,7 @@ test('creates the three named test accounts and one explicitly imported existing
     assert.equal(count(db,'users'),3);assert.equal(count(db,'teacher_account_links'),2);assert.equal(count(db,'schedules'),2);
     const person=db.prepare('SELECT * FROM people WHERE id=?').get(DEMO_IDS.studentPerson);
     assert.equal(person.kind,'student');assert.equal(person.converted_at,null);assert.equal(person.converted_by,null);
-    const profile=JSON.parse(person.profile);assert.equal(profile.displayName,'何詠晴 Chloe Ho');assert.equal(profile.email,'student@gmail.com');assert.equal(profile.parentName,'何嘉敏 Carmen Ho');assert.equal(profile.contact1Name,'何嘉敏 Carmen Ho');assert.equal(profile.remark,'喜歡水彩和拼貼創作。');
+    const profile=JSON.parse(person.profile);assert.equal(profile.displayName,'何詠晴 Chloe Ho');assert.equal(profile.email,'chloe.ho@example.test');assert.equal(profile.parentName,'何嘉敏 Carmen Ho');assert.equal(profile.contact1Name,'何嘉敏 Carmen Ho');assert.equal(profile.remark,'喜歡水彩和拼貼創作。');
     const course=JSON.parse(db.prepare('SELECT data FROM courses WHERE id=?').get(DEMO_IDS.course).data);
     assert.equal(course.courseName,'創意繪畫');
     const resources=db.prepare('SELECT id,display_name FROM scheduling_resources ORDER BY id').all();
@@ -50,6 +51,25 @@ test('creates the three named test accounts and one explicitly imported existing
   for(const row of rows)assert.equal(await verifyPassword('000000',row.password_hash),true);
 });
 
+test('the four named teaching resources have complete fictional personal profiles without invented salary data',()=>{
+ const profiles=studentFactory.namedTeacherDemoProfiles;assert.ok(Array.isArray(profiles));assert.equal(profiles.length,4);assert.deepEqual(profiles.map(row=>row.key),['maya','leo','ava','ethan']);assert.deepEqual(profiles.map(row=>row.displayName),['林雅晴 Maya Lam','陳子朗 Leo Chan','許悅童 Ava Hui','鄭思澄 Ethan Cheng']);assert.equal(new Set(profiles.map(row=>row.staffNumber)).size,4);
+ for(const profile of profiles){for(const key of ['fullName','localName','gender','dateOfBirth','position','employment','joined','contactEmail','phone','mobile','detail','remarks','staffNumber'])assert.ok(typeof profile[key]==='string'&&profile[key].trim(),profile.key+' '+key);assert.ok(['male','female'].includes(profile.gender));assert.match(profile.contactEmail,/@example\.test$/);assert.match(profile.phone,/^\+852 0000 \d{4}$/);assert.match(profile.mobile,/^\+852 0000 \d{4}$/);assert.equal(new Date(profile.dateOfBirth+'T00:00:00Z').toISOString().slice(0,10),profile.dateOfBirth);assert.equal(new Date(profile.joined+'T00:00:00Z').toISOString().slice(0,10),profile.joined);assert.ok(profile.joined<='2026-10-15');assert.ok(Number(profile.joined.slice(0,4))-Number(profile.dateOfBirth.slice(0,4))-(profile.joined.slice(5)<profile.dateOfBirth.slice(5)?1:0)>=18);assert.doesNotMatch(JSON.stringify(profile),/salary|hourlyRate|netPay|basePay/);}
+});
+
+const allFictionalProfiles=()=>[studentFactory.chloeStudentProfile('2026-10-16'),...Array.from({length:299},(_,index)=>studentFactory.relationalStudentProfile(index,'2026-10-16'))];
+test('fictional mothers mostly retain their own surname while children share a plausible household and a matching guardian surname',()=>{
+ const families=new Map();for(const student of allFictionalProfiles())if(!families.has(student.contact1Email))families.set(student.contact1Email,student);
+ assert.ok([...families.values()].filter(row=>row.contact1Name.slice(0,1)!==row.localName.slice(0,1)).length/families.size>0.75);
+ assert.ok([...families.values()].every(row=>row.contact2Name.slice(0,1)===row.localName.slice(0,1)));assert.equal(studentFactory.chloeStudentProfile('2026-10-16').contact1Name,'何嘉敏 Carmen Ho');
+});
+test('fictional learning interests are age appropriate and sufficiently varied for the whole centre preview',()=>{
+ const students=allFictionalProfiles();assert.ok(new Set(students.map(row=>row.detail)).size>=100);assert.ok(new Set(students.map(row=>row.remark)).size>=100);
+ for(const student of students){const age=2026-Number(student.dateOfBirth.slice(0,4))-('10-16'<student.dateOfBirth.slice(5)?1:0);if(age<6)assert.doesNotMatch(student.detail+student.remark,/靜物|素描|透視|炭筆/);assert.doesNotMatch(student.address+student.school,/示例|虛構|mock|sample|QA/i);}
+});
+test('teacher employment values match the actual Staff editor options',()=>{
+ for(const profile of studentFactory.namedTeacherDemoProfiles)assert.ok(['full-time','part-time'].includes(profile.employment));
+});
+
 test('safe reruns preserve edited names, passwords, profile data, schedules and audit history without duplicates',async t=>{
   const databasePath=await temporaryDatabase(t);await provision(databasePath);
   const changedHash=await hashPassword('Changed-fictional-password-123!');
@@ -64,6 +84,12 @@ test('safe reruns preserve edited names, passwords, profile data, schedules and 
   assert.equal(second.created,false);assert.equal(second.student.created,false);assert.equal(second.startDate,'2026-10-16');
   const after=inspect(databasePath,db=>Object.fromEntries(Object.keys(before).map(table=>[table,db.prepare(`SELECT * FROM ${table} ORDER BY 1`).all()])));
   assert.deepEqual(after,before);
+});
+
+test('Chloe has a real source birthday Female gender and school while account identities and later human edits are preserved',async t=>{
+ const databasePath=await temporaryDatabase(t);await provision(databasePath);
+ inspect(databasePath,db=>{const person=db.prepare('SELECT profile FROM people WHERE id=?').get(DEMO_IDS.studentPerson),profile=JSON.parse(person.profile);assert.equal(profile.dateOfBirth,'2017-04-18');assert.equal(profile.gender,'Female');assert.ok(profile.school);assert.ok(profile.level);assert.equal(profile.firstName,'Chloe');assert.equal(profile.lastName,'Ho');profile.gender='Unspecified';profile.dateOfBirth='2016-08-12';profile.firstName='Family preferred name';profile.school='Family selected school';db.prepare('UPDATE people SET profile=?,version=version+1 WHERE id=?').run(JSON.stringify(profile),DEMO_IDS.studentPerson);});
+ const before=inspect(databasePath,db=>db.prepare('SELECT * FROM people WHERE id=?').get(DEMO_IDS.studentPerson));await provision(databasePath);assert.deepEqual(inspect(databasePath,db=>db.prepare('SELECT * FROM people WHERE id=?').get(DEMO_IDS.studentPerson)),before);
 });
 
 test('adds only the separately marked Student when upgrading an existing checkpoint profile',async t=>{

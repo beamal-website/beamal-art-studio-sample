@@ -11,10 +11,10 @@ import {fixture} from './helpers.mjs';
 
 const inspect=(path,callback)=>{const db=new DatabaseSync(path);try{return callback(db);}finally{db.close();}};
 const count=(db,table)=>db.prepare(`SELECT COUNT(*) AS count FROM ${table}`).get().count;
-async function setup(t){
+async function setup(t,startDate='2026-10-16'){
  const directory=await mkdtemp(join(tmpdir(),'beamal-relational-demo-'));t.after(()=>rm(directory,{recursive:true,force:true}));
  const databasePath=join(directory,'sample.sqlite');
- await provisionDemoAccounts({databasePath,startDate:'2026-10-16'});
+ await provisionDemoAccounts({databasePath,startDate});
  const store=await createStore({databasePath});
  let mapping;
  try{
@@ -25,10 +25,11 @@ async function setup(t){
    const course=store.createCourse({courseName,feeName:'每堂60分鐘',category:'Art',level:'Beginner',pricingModel:'monthly-lessons',price:280,duration:60,months:1,bookingExpiry:null,onlineStore:true},DEMO_IDS.users.maya);
    courses.push({id:course.id,feeId:course.feeIds[0]});
   }
-  mapping={courses,teachers,rooms:[{id:DEMO_IDS.room}],startDate:'2026-10-16'};
+  mapping={courses,teachers,rooms:[{id:DEMO_IDS.room}],startDate};
  }finally{await store.close();}
  return {databasePath,directory,mapping};
 }
+const ageAt=(birthDate,date)=>Number(date.slice(0,4))-Number(birthDate.slice(0,4))-(date.slice(5)<birthDate.slice(5)?1:0);
 
 test('adopts four teachers and six courses, imports 300 profiles and pays only Chloe through the canonical order pipeline',async t=>{
  const input=await setup(t),before=inspect(input.databasePath,db=>({users:count(db,'users'),courses:count(db,'courses'),resources:count(db,'scheduling_resources'),legacy:db.prepare('SELECT * FROM schedules ORDER BY id').all()}));
@@ -38,11 +39,66 @@ test('adopts four teachers and six courses, imports 300 profiles and pays only C
  inspect(input.databasePath,db=>{
   assert.equal(count(db,'users'),before.users);assert.equal(count(db,'users'),3);assert.equal(count(db,'courses'),before.courses);assert.equal(count(db,'scheduling_resources'),before.resources);assert.equal(count(db,'people'),300);assert.equal(count(db,'student_account_links'),1);
   assert.deepEqual(db.prepare('SELECT * FROM schedules WHERE id IN (?,?) ORDER BY id').all(DEMO_IDS.schedules.leo,DEMO_IDS.schedules.maya),before.legacy);
-  const students=db.prepare("SELECT profile FROM people WHERE kind='student'").all().map(row=>JSON.parse(row.profile));assert.ok(students.every(row=>row.quitDate===null));assert.ok(students.every(row=>2026-Number(row.dateOfBirth.slice(0,4))>=3&&2026-Number(row.dateOfBirth.slice(0,4))<=18));
+  const students=db.prepare("SELECT profile FROM people WHERE kind='student'").all().map(row=>JSON.parse(row.profile));assert.ok(students.every(row=>row.quitDate===null));assert.ok(students.every(row=>ageAt(row.dateOfBirth,input.mapping.startDate)>=3&&ageAt(row.dateOfBirth,input.mapping.startDate)<=18));
   assert.doesNotMatch(JSON.stringify(students),/QA|虛構|中期檢查|測試學生/);
   const actions=db.prepare('SELECT action FROM enrollment_order_audit_log ORDER BY id').all().map(row=>row.action);for(const action of['order.create','order.send','order.respond','order.confirm-payment'])assert.equal(actions.filter(value=>value===action).length,2);
   assert.equal(count(db,'enrollment_sales'),2);assert.equal(count(db,'student_sessions'),7);assert.ok(db.prepare('SELECT capacity FROM (SELECT json_extract(data,\'$.capacity\') AS capacity FROM schedules)').all().every(row=>row.capacity<=8));
  });
+});
+
+test('all 300 owned students have useful fictional demographic profiles with both genders and birthdays across every month',async t=>{
+ const input=await setup(t);await provisionRelationalDemo(input);
+ inspect(input.databasePath,db=>{
+  const students=db.prepare("SELECT id,display_name,profile FROM people WHERE kind='student' ORDER BY id").all().map(row=>({...row,profile:JSON.parse(row.profile)}));assert.equal(students.length,300);
+  for(const {id,display_name,profile}of students){
+   assert.match(display_name,/[\u3400-\u9fff]/);assert.equal(profile.displayName,display_name);assert.ok(['Male','Female'].includes(profile.gender));
+   for(const key of ['firstName','lastName','fullName','localName','school','level'])assert.ok(typeof profile[key]==='string'&&profile[key].trim(),id+' '+key);
+   assert.equal(new Date(profile.dateOfBirth+'T00:00:00Z').toISOString().slice(0,10),profile.dateOfBirth);assert.ok(ageAt(profile.dateOfBirth,input.mapping.startDate)>=3&&ageAt(profile.dateOfBirth,input.mapping.startDate)<=18);
+   assert.equal(profile.citizenId,'');assert.match(profile.phone,/^\+852 0000 \d{4}$/);assert.match(profile.mobile,/^\+852 0000 \d{4}$/);assert.match(profile.contact1Email,/@example\.test$/);
+   if(id!==DEMO_IDS.studentPerson)assert.match(profile.email,/@example\.test$/);
+  }
+  const additional=students.filter(row=>row.id!==DEMO_IDS.studentPerson).map(row=>row.profile);
+  assert.deepEqual([...new Set(additional.map(row=>ageAt(row.dateOfBirth,input.mapping.startDate)))].sort((a,b)=>a-b),Array.from({length:16},(_,index)=>index+3));
+  assert.equal(new Set(additional.map(row=>row.dateOfBirth.slice(5,7))).size,12);assert.ok(new Set(additional.map(row=>row.dateOfBirth.slice(8))).size>=20);
+  for(const gender of ['Male','Female'])assert.ok(additional.filter(row=>row.gender===gender).length>=100);
+  for(let age=3;age<=18;age++)assert.equal(new Set(additional.filter(row=>ageAt(row.dateOfBirth,input.mapping.startDate)===age).map(row=>row.gender)).size,2,'Both genders should occur in age '+age);
+  const chloe=students.find(row=>row.id===DEMO_IDS.studentPerson).profile;assert.equal(chloe.dateOfBirth,'2017-04-18');assert.equal(chloe.gender,'Female');assert.equal(chloe.firstName,'Chloe');assert.equal(chloe.lastName,'Ho');assert.match(chloe.email,/@example\.test$/);
+  assert.equal(count(db,'users'),3);assert.equal(count(db,'student_sessions'),7);assert.equal(count(db,'enrollment_sales'),2);
+ });
+});
+
+test('the 300-person cohort models mostly single-child families with complete safe registration contacts and plausible siblings',async t=>{
+ const input=await setup(t);await provisionRelationalDemo(input);
+ inspect(input.databasePath,db=>{
+  const rows=db.prepare("SELECT id,display_name,profile FROM people WHERE kind='student' ORDER BY id").all(),students=rows.map(row=>({...JSON.parse(row.profile),id:row.id})),families=new Map(),guardianFamilies=new Map();
+  assert.equal(new Set(students.map(row=>row.displayName)).size,300);assert.equal(new Set(students.map(row=>row.fullName)).size,300);assert.ok(new Set(students.map(row=>row.localName.slice(1))).size>=100);assert.ok(new Set(students.map(row=>row.firstName)).size>=100);
+  for(const student of students){
+   for(const key of ['parentName','contact1Name','contact1Phone','contact1Email','contact2Name','contact2Phone','contact2Email','district','address','whatsApp','phone','mobile','school','level'])assert.ok(typeof student[key]==='string'&&student[key].trim(),student.id+' '+key);
+   for(const key of ['email','contact1Email','contact2Email'])assert.match(student[key],/^[^\s@]+@example\.test$/);
+   for(const key of ['contact1Phone','contact2Phone','whatsApp','phone','mobile'])assert.match(student[key],/^\+852 0000 \d{4}$/);
+   assert.equal(student.parentName,student.contact1Name);assert.notEqual(student.contact1Name,student.contact2Name);assert.notEqual(student.contact1Phone,student.contact2Phone);assert.ok(student.promotion===false||student.promotion===null);assert.equal(student.citizenId,'');
+   assert.ok([student.contact1Name,student.contact2Name].some(name=>name.slice(0,1)===student.localName.slice(0,1)));
+   assert.doesNotMatch(student.address+student.school,/示例|虛構|mock|sample|QA/i);
+   const age=ageAt(student.dateOfBirth,input.mapping.startDate),expectedLevel=age<6?'K'+(age-2):age<12?'P'+(age-5):'S'+Math.min(6,age-11);assert.equal(student.level,expectedLevel,student.id+' school grade');
+   const group=families.get(student.contact1Email)||[];group.push(student);families.set(student.contact1Email,group);const previous=guardianFamilies.get(student.contact1Name);assert.ok(!previous||previous===student.contact1Email,'A guardian name must not represent unrelated large families');guardianFamilies.set(student.contact1Name,student.contact1Email);
+  }
+  assert.ok(families.size>200);assert.ok([...families.values()].every(children=>children.length<=3));assert.ok([...families.values()].some(children=>children.length===2));assert.ok([...families.values()].some(children=>children.length===3));assert.ok([...families.values()].filter(children=>children.length===1).length/families.size>0.7);
+  for(const children of families.values()){
+   const first=children[0];for(const sibling of children.slice(1))for(const key of ['parentName','contact1Name','contact1Phone','contact1Email','contact2Name','contact2Phone','contact2Email','district','address','whatsApp','phone','mobile'])assert.equal(sibling[key],first[key],key+' must agree within one family');
+   const birthdays=children.map(row=>Date.parse(row.dateOfBirth+'T00:00:00Z')).sort((a,b)=>a-b);for(let index=1;index<birthdays.length;index++)assert.ok((birthdays[index]-birthdays[index-1])/86400000>=365,'Siblings need plausible distinct birthdays');
+  }
+  const chloe=students.find(row=>row.id===DEMO_IDS.studentPerson);assert.equal(chloe.dateOfBirth,'2017-04-18');assert.equal(chloe.displayName,'何詠晴 Chloe Ho');assert.equal(families.get(chloe.contact1Email).length,1);assert.deepEqual(db.prepare('SELECT student_id,user_id FROM student_account_links').all().map(row=>[row.student_id,row.user_id]),[[DEMO_IDS.studentPerson,DEMO_IDS.users.chloe]]);assert.equal(count(db,'users'),3);assert.equal(count(db,'enrollment_sales'),2);assert.equal(count(db,'student_sessions'),7);
+ });
+});
+
+test('additional student birthdays remain genuinely 3–18 on January and leap-day start dates rather than using the birth year alone',async t=>{
+ for(const startDate of ['2027-01-01','2024-02-29']){
+  const input=await setup(t,startDate);await provisionRelationalDemo(input);
+  const profiles=inspect(input.databasePath,db=>db.prepare("SELECT profile FROM people WHERE kind='student' AND id<>?").all(DEMO_IDS.studentPerson).map(row=>JSON.parse(row.profile)));
+  assert.equal(profiles.length,299);assert.equal(new Set(profiles.map(row=>row.dateOfBirth.slice(5,7))).size,12);
+  assert.deepEqual([...new Set(profiles.map(row=>ageAt(row.dateOfBirth,startDate)))].sort((a,b)=>a-b),Array.from({length:16},(_,index)=>index+3));
+  assert.ok(profiles.every(row=>new Date(row.dateOfBirth+'T00:00:00Z').toISOString().slice(0,10)===row.dateOfBirth));
+ }
 });
 
 test('reruns preserve edits and unknown records, and mapping drift cannot append or reset the fixture',async t=>{

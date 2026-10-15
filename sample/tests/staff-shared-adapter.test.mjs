@@ -313,3 +313,39 @@ test('the authenticated own teacher ID keeps the current account identity when a
  assert.equal(own.accountName,source.user.displayName);assert.equal(own.email,source.user.email??'');
  assert.notEqual(own.accountName,'Old management account');
 });
+
+test('personal source supplies directory position employment and contact separately from the login account',()=>{
+ const current=snapshot();Object.assign(current,{staffProfileReady:true,staffProfileRecords:[{staffId:'resource-leo',version:1,position:'Watercolour tutor',employment:'part-time',contactEmail:'leo.contact@example.test',mobile:'+852 9000 1234',phone:'2345 6789',joined:'2024-09-02',dateOfBirth:'1996-10-16'}]});
+ const before=JSON.stringify(current),state=staffSharedState({},current),member=state.staff.find(row=>row.id==='resource-leo');
+ assert.equal(member.position,'Watercolour tutor');assert.equal(member.employment,'part-time');assert.equal(member.contactEmail,'leo.contact@example.test');assert.equal(member.mobile,'+852 9000 1234');assert.equal(member.email,'');assert.equal(member.personalSourceStatus,'ready');
+ const html=staffDirectoryMarkup(state,en);assert.match(html,/Watercolour tutor/);assert.match(html,/Employment[\s\S]*Part-time/);assert.match(html,/Contact[\s\S]*leo.contact@example.test/);assert.match(html,/Login account/);assert.doesNotMatch(html,/1996-10-16/);assert.equal(JSON.stringify(current),before);
+});
+
+test('personal directory source loading error and verified empty stay natural without scheduling or login fallbacks',()=>{
+ const current=snapshot();current.resources[1].position='UNTRUSTED RESOURCE POSITION';current.resources[1].employment='part-time';current.resources[1].phone='UNTRUSTED RESOURCE PHONE';
+ for(const [extra,status,pattern]of [[{staffProfileLoading:true},'loading',/Loading personal details/],[{staffProfileError:'PRIVATE SQL'},'error',/Could not load personal details/],[{staffProfileReady:true,staffProfileRecords:[]},'empty',/Personal details not provided/],[{},'unavailable',/Personal details unavailable/]]){
+  const state=staffSharedState({}, {...current,...extra}),member=state.staff.find(row=>row.id==='resource-leo'),html=staffDirectoryMarkup(state,en);assert.equal(member.personalSourceStatus,status);assert.equal(member.contactEmail,'');assert.equal(member.employment,undefined);assert.match(html,pattern);assert.doesNotMatch(html,/UNTRUSTED RESOURCE|PRIVATE SQL|Part-time|Full-time/);
+ }
+});
+
+test('personal profiles are scoped by exact self identity even when a malformed host supplies other staff records',()=>{
+ const current=snapshot();current.user={id:'user-teacher',role:'teacher',teacherResourceIds:['resource-leo']};current.staffProfileReady=true;current.staffProfileRecords=[{staffId:'resource-maya',position:'PRIVATE OTHER POSITION',contactEmail:'private-other@example.test'},{staffId:'resource-leo',position:'Own tutor',contactEmail:'own@example.test'},{staffId:'orphan',contactEmail:'orphan-private@example.test'}];
+ const state=staffSharedState({},current);assert.deepEqual(state.staffProfileRecords.map(row=>row.staffId),['resource-leo']);assert.match(staffDirectoryMarkup(state,en),/Own tutor|own@example.test/);assert.doesNotMatch(JSON.stringify(state.staff),/PRIVATE OTHER|private-other|orphan-private/);
+ for(const teacherResourceIds of [[],null,'resource-leo']){const denied=staffSharedState({}, {...current,user:{...current.user,teacherResourceIds}});assert.deepEqual(denied.staffProfileRecords,[]);assert.doesNotMatch(JSON.stringify(denied.staff),/own@example.test|private-other/);}
+});
+
+test('ambiguous personal records cannot supply guessed directory facts and signed-out identity cannot retain contact data',()=>{
+ const current={...snapshot(),staffProfileReady:true,staffProfileRecords:[{staffId:'resource-leo',position:'PRIVATE FIRST',contactEmail:'private1@example.test'},{staffId:'resource-leo',position:'PRIVATE SECOND',contactEmail:'private2@example.test'}]},state=staffSharedState({},current);
+ const member=state.staff.find(row=>row.id==='resource-leo');assert.equal(member.personalSourceStatus,'ambiguous');assert.equal(member.contactEmail,'');assert.doesNotMatch(staffDirectoryMarkup(state,en),/PRIVATE FIRST|PRIVATE SECOND|private[12]@/);
+ const denied=staffSharedState(state,{...current,user:{id:' ',role:'admin'},ready:false,hasSavedData:true});assert.deepEqual(denied.staff,[]);assert.deepEqual(denied.staffProfileRecords,[]);
+});
+
+test('a teacher cannot mistake other visible scheduling resources for known empty personal profiles',()=>{
+ const current={...snapshot(),user:{id:'user-teacher',role:'teacher',teacherResourceIds:['resource-leo']},staffProfileReady:true,staffProfileRecords:[]},state=staffSharedState({},current);
+ assert.equal(state.staff.find(row=>row.id==='resource-leo').personalSourceStatus,'empty');assert.equal(state.staff.find(row=>row.id==='resource-maya').personalSourceStatus,'unavailable');
+});
+
+test('staff profile host projection keeps the canonical current day for read-only age details',()=>{
+ const current={...snapshot(),staffProfileReady:true,staffProfileRecords:[{staffId:'resource-leo',dateOfBirth:'1996-10-16'}]},state=staffSharedState({},current),html=staffDialogMarkup({...state,dialog:{kind:'detail',id:'resource-leo',tab:'contact'}},en);
+ assert.match(html,/1996-10-16/);assert.match(html,/29 years/);assert.doesNotMatch(html,/name="age"|name="dateOfBirth"/);
+});

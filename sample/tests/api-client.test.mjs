@@ -351,3 +351,15 @@ test('enrollment orders use stable mutation keys, versions, explicit identity li
  wire.reply('/api/student/timetable?from=2026-10-01&to=2026-10-31&since=rev',{revision:'rev',unchanged:true});await client.studentTimetable({from:'2026-10-01',to:'2026-10-31'},'rev');
  wire.reply('/api/schedules/s%20%2F/occurrences/7/students',{students:[],occupied:0,capacity:8});await client.lessonStudents('s /',7);
 });
+
+test('timetable filter facts are a bounded explicit read and stale identities cannot apply a delayed snapshot',async t=>{
+ const wire=network(t),client=createApiClient();await login(client,wire,'B');
+ const result={revision:'facts / 一',facts:[{scheduleId:'series',sequence:1,date:'2026-10-16',students:[]}]};wire.reply('/api/timetable/filter-facts?from=2026-10-01&to=2026-10-31&since=facts+%2F+%E4%B8%80',result);
+ assert.deepEqual(await client.timetableFilterFacts({from:'2026-10-01',to:'2026-10-31',studentId:'not-forwarded',gender:'not-forwarded'},'facts / 一'),result);const call=wire.calls.at(-1);assert.equal(call.method,'GET');assert.equal(call.credentials,'same-origin');assert.equal(call.body,undefined);assert.equal(call.headers.get('X-CSRF-Token'),null);
+ const wait=wire.pending('/api/timetable/filter-facts?from=2026-10-01&to=2026-10-31'),pending=observe(client.timetableFilterFacts({from:'2026-10-01',to:'2026-10-31'}));client.invalidateSession();wait.resolve(response(result));superseded(await pending);
+});
+
+test('staff personal profile reads carry only the snapshot revision and discard delayed responses after identity changes',async t=>{
+ const wire=network(t),client=createApiClient();await login(client,wire,'B');const result={revision:'staff / 一',records:[{staffId:'teacher-resource',version:1,fullName:'Own Teacher'}]};wire.reply('/api/staff/personal-profiles?since=staff%20%2F%20%E4%B8%80',result);assert.deepEqual(await client.staffPersonalProfiles('staff / 一'),result);assert.equal(wire.calls.at(-1).method,'GET');assert.equal(wire.calls.at(-1).body,undefined);
+ const wait=wire.pending('/api/staff/personal-profiles'),pending=observe(client.staffPersonalProfiles());client.invalidateSession();wait.resolve(response(result));superseded(await pending);
+});

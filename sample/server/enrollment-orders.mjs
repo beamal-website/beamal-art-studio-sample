@@ -1,6 +1,6 @@
 import {createHash,randomUUID} from 'node:crypto';
 import {ApplicationError} from './validation.mjs';
-import {scheduleOccurrence} from '../shared/schedule-occurrences.js';
+import {scheduleOccurrence,scheduleOccurrences} from '../shared/schedule-occurrences.js';
 
 const plain=value=>value!==null&&typeof value==='object'&&!Array.isArray(value)&&Object.getPrototypeOf(value)===Object.prototype;
 const hash=value=>createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -9,11 +9,19 @@ const invalid=message=>fail(400,'INVALID_ENROLLMENT_ORDER',message);
 const key=(scheduleId,sequence)=>JSON.stringify([scheduleId,sequence]);
 const validId=value=>typeof value==='string'&&value.length>0&&value.length<=200;
 const validDate=value=>typeof value==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(value)&&value>='0001-01-01'&&value<='9999-12-31'&&Number.isFinite(Date.parse(value+'T00:00:00Z'))&&new Date(value+'T00:00:00Z').toISOString().slice(0,10)===value;
-export function validateStudentTimetableQuery(input={}){
+function validateTimetableQuery(input,maximumDays){
  if(!plain(input)||Object.keys(input).some(field=>!['from','to','since'].includes(field)))invalid('Only a date range and revision may be queried.');
- if(!validDate(input.from)||!validDate(input.to)||input.to<input.from||(Date.parse(input.to)-Date.parse(input.from))/86400000>=366)fail(400,'INVALID_DATE_RANGE','Choose an inclusive date range of at most 366 days.');
+ if(!validDate(input.from)||!validDate(input.to)||input.to<input.from||(Date.parse(input.to)-Date.parse(input.from))/86400000>=maximumDays)fail(400,'INVALID_DATE_RANGE',`Choose an inclusive date range of at most ${maximumDays} days.`);
  if(input.since!==undefined&&(typeof input.since!=='string'||input.since.length>200))invalid('Choose a revision of at most 200 characters.');
  return {from:input.from,to:input.to,since:input.since||''};
+}
+export function validateStudentTimetableQuery(input={}){return validateTimetableQuery(input,366);}
+export function validateTimetableFilterFactsQuery(input={}){return validateTimetableQuery(input,62);}
+function lessonDateAge(birthDate,asOf){
+ if(!validDate(birthDate)||birthDate>asOf)return null;
+ const [year,month,day]=asOf.split('-').map(Number),[birthYear,birthMonth,birthDay]=birthDate.split('-').map(Number);
+ const months=(year-birthYear)*12+month-birthMonth-(day<birthDay?1:0);
+ return {years:Math.floor(months/12),months:months%12,asOf};
 }
 function requireVersion(input,fields=['version']){
  if(!plain(input)||!Number.isSafeInteger(input.version)||input.version<1)fail(409,'VERSION_REQUIRED','Reload the order and include its current version.');
@@ -210,5 +218,34 @@ export function createEnrollmentOrderStore({database,transaction,schedules,resou
   const students=database.prepare("SELECT sessions.*,people.display_name FROM student_sessions AS sessions JOIN enrollment_orders AS orders ON orders.id=sessions.order_id JOIN people ON people.id=sessions.student_id WHERE sessions.schedule_id=? AND sessions.sequence=? AND orders.payment_status='paid' ORDER BY people.display_name,sessions.id").all(scheduleId,sequence).map(row=>({id:row.id,studentId:row.student_id,displayName:row.display_name,orderId:row.order_id,paymentStatus:'paid',attendance:row.attendance,remark:''}));
   return {students,occupied:students.length,capacity:occurrence.item.capacity??null};
  },'read');
- return {managementSnapshot,setAccountLink,studentProfile,create,list,get,authorize:authorizedOrder,send,respond,confirmPayment,occupied,timetable,roster,audit:()=>database.prepare('SELECT * FROM enrollment_order_audit_log ORDER BY id').all().map(row=>({...row,snapshot:JSON.parse(row.snapshot)})),sales:()=>database.prepare('SELECT * FROM enrollment_sales ORDER BY created_at,id').all().map(row=>({id:row.id,orderId:row.order_id,studentId:row.student_id,amountCents:row.amount_cents,actorId:row.actor_id,createdAt:row.created_at}))};
+ const filterFacts=(user,input)=>transaction(()=>{
+  const actor=requireRole(user,['admin','teacher']),{from,to,since}=validateTimetableFilterFactsQuery(input),scope=actor.role==='teacher'?accessControl.scopeFor(actor):null,entries=new Map();
+  for(const schedule of scope?scope.schedules:schedules.list().schedules){
+   const course=getCourse(schedule.course);if(schedule.activityDeleted||!course||course.deletedAt)continue;
+   for(const occurrence of scheduleOccurrences(schedule,from,to)){
+    if(scope&&!scope.permits(occurrence))continue;
+    entries.set(key(schedule.id,occurrence.sequence),{fact:{scheduleId:schedule.id,sequence:occurrence.sequence,date:occurrence.date,students:[]},sourceVersion:schedule.version,students:new Map()});
+   }
+  }
+  const values=[...entries.values()],profiles=new Map(),versions=new Map();
+  // Query only authorized occurrence identities, in bounded parameter chunks.
+  // Never expose family/contact fields in the filter-facts projection.
+  for(let offset=0;offset<values.length;offset+=200){
+   const chunk=values.slice(offset,offset+200),where=chunk.map(()=>'(sessions.schedule_id=? AND sessions.sequence=?)').join(' OR '),parameters=chunk.flatMap(row=>[row.fact.scheduleId,row.fact.sequence]);
+   const rows=database.prepare(`SELECT sessions.schedule_id,sessions.sequence,people.id,people.display_name,people.profile,people.version FROM student_sessions AS sessions JOIN enrollment_orders AS orders ON orders.id=sessions.order_id JOIN people ON people.id=sessions.student_id WHERE orders.payment_status='paid' AND people.kind='student' AND (${where}) ORDER BY people.id,sessions.id`).all(...parameters);
+   for(const row of rows){
+    const entry=entries.get(key(row.schedule_id,row.sequence));if(!entry||entry.students.has(row.id))continue;
+    if(!profiles.has(row.id)){let profile;try{profile=JSON.parse(row.profile);}catch{profile={};}profiles.set(row.id,plain(profile)?profile:{});}
+    const profile=profiles.get(row.id),student={id:row.id,displayName:row.display_name},age=lessonDateAge(profile.dateOfBirth,entry.fact.date);
+    if(typeof profile.gender==='string'&&profile.gender.length<=200&&profile.gender.trim())student.gender=profile.gender.trim();
+    if(age)student.age=age;
+    entry.students.set(row.id,student);versions.set(row.id,row.version);
+   }
+  }
+  const sorted=values.sort((a,b)=>a.fact.date.localeCompare(b.fact.date)||a.fact.scheduleId.localeCompare(b.fact.scheduleId)||a.fact.sequence-b.fact.sequence);
+  const facts=sorted.map(entry=>({...entry.fact,students:[...entry.students.values()].sort((a,b)=>a.displayName.localeCompare(b.displayName)||a.id.localeCompare(b.id))}));
+  const revision=hash({scope:scope?.revision??actor,from,to,facts,profiles:[...versions].sort(([a],[b])=>a.localeCompare(b)),sources:sorted.map(entry=>[entry.fact.scheduleId,entry.fact.sequence,entry.fact.date,entry.sourceVersion])});
+  return since===revision?{revision,unchanged:true}:{revision,facts};
+ },'read');
+ return {managementSnapshot,setAccountLink,studentProfile,create,list,get,authorize:authorizedOrder,send,respond,confirmPayment,occupied,timetable,roster,filterFacts,audit:()=>database.prepare('SELECT * FROM enrollment_order_audit_log ORDER BY id').all().map(row=>({...row,snapshot:JSON.parse(row.snapshot)})),sales:()=>database.prepare('SELECT * FROM enrollment_sales ORDER BY created_at,id').all().map(row=>({id:row.id,orderId:row.order_id,studentId:row.student_id,amountCents:row.amount_cents,actorId:row.actor_id,createdAt:row.created_at}))};
 }

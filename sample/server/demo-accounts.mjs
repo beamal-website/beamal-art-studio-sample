@@ -6,7 +6,7 @@ import {createStore} from './store.mjs';
 import {hashPassword} from './security.mjs';
 import {validateCourse} from './validation.mjs';
 import {validateSchedule} from './schedules.mjs';
-import {validatePerson} from './people.mjs';
+import {chloeStudentProfile} from './demo-student-profiles.mjs';
 
 // Explicit opt-in local fixture only. Normal application bootstrap does not import
 // this module or weaken its ordinary account/password validation.
@@ -94,15 +94,15 @@ function insertCheckpoint(database,{startDate,passwordHashes,now}) {
   database.prepare('INSERT INTO schema_metadata(name,value) VALUES (?,?)').run(metadataKey,JSON.stringify(manifest));
   return manifest;
 }
-function importExistingStudent(database,now) {
+function importExistingStudent(database,now,startDate) {
   const saved=savedMarker(database,studentMetadataKey);
   if(saved) {
     if(saved.profileKey!==studentProfileKey||saved.personId!==DEMO_IDS.studentPerson)conflict();
     if(!database.prepare('SELECT id FROM people WHERE id=?').get(saved.personId))incomplete();
     return {...saved,created:false};
   }
-  const profile=validatePerson({displayName:'何詠晴 Chloe Ho',firstName:'Chloe',lastName:'Ho',fullName:'Chloe Ho',localName:'何詠晴',email:'student@gmail.com',dateOfBirth:'2017-04-18',parentName:'何嘉敏 Carmen Ho',contact1Name:'何嘉敏 Carmen Ho',contact1Email:'chloe.guardian@example.test',level:'Beginner',remark:'喜歡水彩和拼貼創作。',promotion:false});
-  if(database.prepare("SELECT id FROM people WHERE id=? OR display_name=? COLLATE NOCASE OR json_extract(profile,'$.email')=? COLLATE NOCASE").get(DEMO_IDS.studentPerson,profile.displayName,profile.email))conflict();
+  const profile=chloeStudentProfile(startDate);
+  if(database.prepare("SELECT id FROM people WHERE id=? OR display_name=? COLLATE NOCASE OR json_extract(profile,'$.email')=? COLLATE NOCASE OR json_extract(profile,'$.email')=? COLLATE NOCASE").get(DEMO_IDS.studentPerson,profile.displayName,profile.email,accounts.find(row=>row.id===DEMO_IDS.users.chloe).email))conflict();
   const actor=database.prepare('SELECT id,display_name,role FROM users WHERE id=?').get(checkpointIds.users.maya);
   if(actor?.role!=='admin')incomplete();
   database.prepare("INSERT INTO people(id,kind,display_name,profile,search_text,version,created_at,updated_at) VALUES (?,'student',?,?,?,1,?,?)").run(DEMO_IDS.studentPerson,profile.displayName,JSON.stringify(profile),Object.values(profile).filter(value=>typeof value==='string').join('\n').toLowerCase(),now,now);
@@ -129,7 +129,7 @@ export async function provisionDemoAccounts({databasePath,startDate=nextFriday()
       const saved=savedMarker(database,metadataKey),now=new Date().toISOString();
       if(saved)verifyCheckpoint(database,saved);
       const checkpoint=saved||insertCheckpoint(database,{startDate,passwordHashes,now});
-      const student=importExistingStudent(database,now);
+      const student=importExistingStudent(database,now,checkpoint.startDate);
       const result={profileKey,profileVersion:1,created:!saved,startDate:checkpoint.startDate,ids:{...checkpointIds,studentPerson:DEMO_IDS.studentPerson},student,notice:'Fictional local demo only. No enrollment, payment, occupied seat or Student account link was created.'};
       database.exec('COMMIT');return result;
     }catch(error){database.exec('ROLLBACK');throw error;}

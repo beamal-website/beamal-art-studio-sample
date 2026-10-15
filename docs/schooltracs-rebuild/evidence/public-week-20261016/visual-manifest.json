@@ -1,0 +1,14 @@
+{
+  "date": "2026-10-16",
+  "acceptedScreenshotSHA256": {
+    "public-1280-zh.jpg": "938d222d424948c71124476885b385294becf8722e49d63844fe21b16d404587",
+    "public-390-zh.jpg": "eebe9913a1de3dbf3c31b29ed586e3bba2c9f08cbfbba2574e6bf921738a65b8",
+    "public-768-en.jpg": "24ef1cc98335d14b3503dc724f027b4f99e9e688b591006961d07b221b0ec24d",
+    "trial-390-zh.jpg": "ae7b994aed3e812211ba2e42b3956dacb4e45405de9d79c388ad82681b85b262",
+    "admin-1280-en-top.jpg": "3c039cdc76f41c94e30caa97e76b009ad988bb617f71b5c2c38806496f000fc2",
+    "admin-390-en.jpg": "fc0208ee9b73df79a68f0cba66f3c30980d550059c73a86ae541a5fba6bdb2fd"
+  },
+  "excludedOptionalScreenshot": "trial-390-en.jpg",
+  "review": "visual-review.md",
+  "independentLiveBrowser": false
+}

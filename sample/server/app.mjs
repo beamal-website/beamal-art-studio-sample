@@ -346,6 +346,9 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
         const query = slotQuery(publicCourseMatch ? ['from','since','days'] : ['since']);
         json(response, 200, publicCourseMatch ? store.availableSlots.publicDetail(decodeId(publicCourseMatch[1]), query) : store.availableSlots.publicCourses(query)); return;
       }
+      if (pathname === '/api/public/timetable' && request.method === 'GET') {
+        json(response,200,store.availableSlots.publicTimetable(slotQuery(['from','since','days']))); return;
+      }
       if (request.method === 'GET' && (pathname === '/api/available-slots' || availableSlotMatch)) {
         const session = requireSession(request);
         if (!['admin','teacher'].includes(session.user.role)) throw new ApplicationError(403, 'ROLE_FORBIDDEN', 'Availability is not available for this role.');
@@ -538,7 +541,7 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
         json(response, 200, store.updateFee(id, fee, version, session.user.id, true)); return;
       }
       if (pathname === '/api' || pathname.startsWith('/api/')) {
-        const known = studentLinkMatch || orderMatch || orderActionMatch || studentRosterMatch || match || feeMatch || courseMaterialMatch || materialMatch || uploadMatch || attachmentMatch || scheduleMatch || occurrenceMatch || courseLifecycleMatch || schedulingResourceMatch || personMatch || personHistoryMatch || teacherLinkMatch || accessGrantMatch || availableSlotMatch || publicCourseMatch || capacityStatusMatch || classTypeMatch || ['/api/student-account-links', '/api/student/profile', '/api/student/timetable', '/api/timetable/filter-facts', '/api/staff/personal-profiles', '/api/orders', '/api/class-types', '/api/class-capacity-statuses', '/api/available-slots', '/api/availability-public-settings', '/api/public/courses', '/api/people', '/api/access-control', '/api/access-control/grants', '/api/health', '/api/auth/session', '/api/auth/login', '/api/auth/logout', '/api/courses', '/api/fees', '/api/catalog', '/api/schedules', '/api/scheduling-resources'].includes(pathname);
+        const known = studentLinkMatch || orderMatch || orderActionMatch || studentRosterMatch || match || feeMatch || courseMaterialMatch || materialMatch || uploadMatch || attachmentMatch || scheduleMatch || occurrenceMatch || courseLifecycleMatch || schedulingResourceMatch || personMatch || personHistoryMatch || teacherLinkMatch || accessGrantMatch || availableSlotMatch || publicCourseMatch || capacityStatusMatch || classTypeMatch || ['/api/student-account-links', '/api/student/profile', '/api/student/timetable', '/api/timetable/filter-facts', '/api/staff/personal-profiles', '/api/orders', '/api/class-types', '/api/class-capacity-statuses', '/api/available-slots', '/api/availability-public-settings', '/api/public/courses', '/api/public/timetable', '/api/people', '/api/access-control', '/api/access-control/grants', '/api/health', '/api/auth/session', '/api/auth/login', '/api/auth/logout', '/api/courses', '/api/fees', '/api/catalog', '/api/schedules', '/api/scheduling-resources'].includes(pathname);
         throw new ApplicationError(known ? 405 : 404, known ? 'METHOD_NOT_ALLOWED' : 'NOT_FOUND', 'API route or method is not available.');
       }
       await serveStatic(request, response, pathname);

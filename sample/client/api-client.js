@@ -98,6 +98,13 @@ export function createApiClient() {
         idempotencyKey: operationKey,
       });
     },
+    publicTimetable(from, revision = '', days) {
+      const query = new URLSearchParams();
+      if (from) query.set('from', from);
+      if (revision) query.set('since', revision);
+      if (days !== undefined) query.set('days', days);
+      return request(`/public/timetable${query.size ? '?' + query : ''}`);
+    },
     publicCourses: (revision = '') => request(`/public/courses${revision ? '?since=' + encodeURIComponent(revision) : ''}`),
     publicCourseDetails(id, from, revision = '', days) {
       const query = new URLSearchParams();

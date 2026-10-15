@@ -1,7 +1,8 @@
+import {publicTimetableMarkup} from './public-timetable-ui.js';
 import { publicCourseDetailsMarkup } from './availability-ui.js';
 
 export function availabilityPublicPreviewMarkup(
-  { course = null, slots = [], from = '', to = '', rangeDays = 7, slotType = 'all', loading = false, error = '', dateError = '', dateInput } = {},
+  { mixed = false, courses = [], courseFilter = '', course = null, slots = [], from = '', to = '', rangeDays = 7, slotType = 'all', loading = false, error = '', dateError = '', dateInput } = {},
   { t, esc },
 ) {
   const failure = typeof error === 'string' ? error : '';
@@ -11,7 +12,7 @@ export function availabilityPublicPreviewMarkup(
   const unavailable = !busy && !failure && !invalidDate && !hasCourse
     ? t('課程資料暫未提供。', 'Course details are unavailable.') : '';
   const shownCourse = loading !== true && !failure && hasCourse ? course : null;
-  const projection = publicCourseDetailsMarkup({
+  const projection = mixed ? publicTimetableMarkup({courses: loading || failure ? [] : courses, courseFilter, slots: loading || failure || invalidDate ? [] : slots, from, to, rangeDays, slotType, loading:busy, error:failure, dateError:invalidDate, dateInput},{t,esc,managementPreview:true}) : publicCourseDetailsMarkup({
     course: shownCourse,
     slots: shownCourse && !invalidDate && Array.isArray(slots) ? slots : [],
     from, to, rangeDays, slotType, dateInput, loading: busy, error: failure || unavailable, dateError: invalidDate,

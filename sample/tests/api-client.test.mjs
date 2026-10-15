@@ -383,3 +383,7 @@ test('staff personal profile reads carry only the snapshot revision and discard 
  const wire=network(t),client=createApiClient();await login(client,wire,'B');const result={revision:'staff / 一',records:[{staffId:'teacher-resource',version:1,fullName:'Own Teacher'}]};wire.reply('/api/staff/personal-profiles?since=staff%20%2F%20%E4%B8%80',result);assert.deepEqual(await client.staffPersonalProfiles('staff / 一'),result);assert.equal(wire.calls.at(-1).method,'GET');assert.equal(wire.calls.at(-1).body,undefined);
  const wait=wire.pending('/api/staff/personal-profiles'),pending=observe(client.staffPersonalProfiles());client.invalidateSession();wait.resolve(response(result));superseded(await pending);
 });
+
+test('anonymous mixed timetable uses explicit finite range and conditional revision without a private course catalogue',async t=>{
+ const wire=network(t),client=createApiClient();wire.reply('/api/public/timetable?from=2026-10-15&since=public%2Frevision&days=14',{courses:[],slots:[],revision:'mixed'});assert.equal((await client.publicTimetable('2026-10-15','public/revision',14)).revision,'mixed');assert.equal(wire.calls.at(-1).method,'GET');assert.equal(wire.calls.at(-1).body,undefined);
+});

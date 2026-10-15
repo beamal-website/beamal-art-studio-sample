@@ -98,3 +98,45 @@ test('the private ownership probe reads committed WAL markers and missing fields
  const rows=db.prepare("SELECT * FROM schema_metadata WHERE name IN ('local_demo_v1','relational_centre_demo_v1','checkpoint_demo3_v1','checkpoint_demo3_student_v1')").all();db.exec("DELETE FROM schema_metadata WHERE name IN ('local_demo_v1','relational_centre_demo_v1','checkpoint_demo3_v1','checkpoint_demo3_student_v1'); PRAGMA wal_checkpoint(TRUNCATE);");for(const row of rows)db.prepare('INSERT INTO schema_metadata VALUES (?,?)').run(row.name,row.value);db.prepare("UPDATE people SET profile=json_set(profile,'$.gender','') WHERE id=?").run(DEMO_IDS.studentPerson);
  const before=protectedSnapshot(db),result=await enrichOwnedDemoProfiles({databasePath:input.databasePath});assert.equal(result.updatedProfiles,1);assert.equal(JSON.parse(db.prepare('SELECT profile FROM people WHERE id=?').get(DEMO_IDS.studentPerson).profile).gender,'Female');assert.deepEqual(protectedSnapshot(db),before);assert.equal(profiles(db).length,300);
 });
+
+
+test('explicit generated refresh upgrades an owned pre-launcher cohort while preserving human edits and all linked records',async t=>{
+ const input=await fixture(t),id=RELATIONAL_DEMO_IDS.students[0];
+ const before=inspect(input.databasePath,db=>{
+  db.prepare("DELETE FROM schema_metadata WHERE name='local_demo_v1'").run();
+  for(const row of profiles(db)){
+   if(row.id===DEMO_IDS.studentPerson)continue;
+   const profile={...JSON.parse(row.profile),dateOfBirth:'2017-01-01',parentName:'陳嘉敏',contact1Name:'陳嘉敏',displayName:'陳學生 '+row.id.slice(-3),school:'',gender:'',firstName:'',fullName:'',remark:'喜歡繪畫與動手創作。'};
+   db.prepare('UPDATE people SET display_name=?,profile=? WHERE id=?').run(profile.displayName,JSON.stringify(profile),row.id);
+   const audit=db.prepare("SELECT id,snapshot FROM person_audit_log WHERE person_id=? AND action='person.import'").get(row.id),snapshot={...JSON.parse(audit.snapshot),...profile};
+   db.prepare('UPDATE person_audit_log SET snapshot=? WHERE id=?').run(JSON.stringify(snapshot),audit.id);
+  }
+  const row=db.prepare('SELECT profile FROM people WHERE id=?').get(id),profile={...JSON.parse(row.profile),remark:'家長親自更新：喜歡陶藝',mobile:'+852 0000 8888'};
+  db.prepare('UPDATE people SET profile=?,version=version+1 WHERE id=?').run(JSON.stringify(profile),id);
+  return {protected:protectedSnapshot(db),names:profiles(db).map(row=>row.id)};
+ });
+ const result=await enrichOwnedDemoProfiles({databasePath:input.databasePath,refreshGenerated:true});assert.equal(result.updatedProfiles,299);
+ inspect(input.databasePath,db=>{
+  assert.deepEqual(protectedSnapshot(db),before.protected);assert.deepEqual(profiles(db).map(row=>row.id),before.names);
+  const all=profiles(db).map(row=>({...JSON.parse(row.profile),displayName:row.display_name}));assert.equal(new Set(all.map(row=>row.dateOfBirth.slice(5,7))).size,12);assert.equal(new Set(all.map(row=>row.fullName)).size,300);
+  const contacts=new Map();for(const row of all)contacts.set(row.contact1Name,(contacts.get(row.contact1Name)||0)+1);assert.ok(Math.max(...contacts.values())<=3);
+  const saved=JSON.parse(db.prepare('SELECT profile FROM people WHERE id=?').get(id).profile);assert.equal(saved.remark,'家長親自更新：喜歡陶藝');assert.equal(saved.mobile,'+852 0000 8888');
+  assert.equal(db.prepare("SELECT COUNT(*) AS count FROM person_audit_log WHERE action='person.refresh-owned-demo'").get().count,299);
+ });
+ const after=await fileSnapshot(input);assert.equal((await enrichOwnedDemoProfiles({databasePath:input.databasePath,refreshGenerated:true})).updatedProfiles,0);await unchanged(input,after);
+});
+
+test('generated refresh is opt-in and requires valid relational ownership even if names look like demos',async t=>{
+ const input=await fixture(t);inspect(input.databasePath,db=>db.prepare("DELETE FROM schema_metadata WHERE name='local_demo_v1'").run());const before=await fileSnapshot(input);
+ await assert.rejects(enrichOwnedDemoProfiles({databasePath:input.databasePath}),{code:'DEMO_PROFILES_UNOWNED_DATABASE'});await unchanged(input,before);
+ inspect(input.databasePath,db=>db.prepare("DELETE FROM schema_metadata WHERE name='relational_centre_demo_v1'").run());const tampered=await fileSnapshot(input);
+ await assert.rejects(enrichOwnedDemoProfiles({databasePath:input.databasePath,refreshGenerated:true}),{code:'DEMO_PROFILES_UNOWNED_DATABASE'});await unchanged(input,tampered);
+});
+
+test('generated refresh rolls back all changed names profiles and versions if its audit cannot be written',async t=>{
+ const input=await fixture(t),id=RELATIONAL_DEMO_IDS.students[0];
+ inspect(input.databasePath,db=>{db.prepare("UPDATE people SET profile=json_set(profile,'$.gender','') WHERE id IN (?,?)").run(id,RELATIONAL_DEMO_IDS.students[1]);db.exec(`CREATE TRIGGER refresh_audit_failure BEFORE INSERT ON person_audit_log WHEN NEW.action='person.refresh-owned-demo' AND NEW.person_id='${RELATIONAL_DEMO_IDS.students[1]}' BEGIN SELECT RAISE(ABORT,'Refresh audit unavailable'); END;`);});
+ const before=inspect(input.databasePath,db=>({people:profiles(db),audit:db.prepare('SELECT * FROM person_audit_log ORDER BY id').all(),protected:protectedSnapshot(db)}));
+ await assert.rejects(enrichOwnedDemoProfiles({databasePath:input.databasePath,refreshGenerated:true}),/Refresh audit unavailable/);
+ inspect(input.databasePath,db=>{assert.deepEqual(profiles(db),before.people);assert.deepEqual(db.prepare('SELECT * FROM person_audit_log ORDER BY id').all(),before.audit);assert.deepEqual(protectedSnapshot(db),before.protected);});
+});

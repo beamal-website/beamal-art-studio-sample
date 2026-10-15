@@ -7,6 +7,7 @@ import {rosterPageMarkup,rosterDialogMarkup,advanceRosterUi} from './staff-roste
 import {calendarSharingDialogMarkup,advanceCalendarSharingUi,calendarSharingCopySource} from './staff-calendar-sharing-ui.js';
 import {staffProfileDialogMarkup,advanceStaffProfileUi} from './staff-profile-ui.js';
 import {lessonWorkflowMarkup,getLessonWorkflowData,advanceLessonWorkflow} from './lesson-workflow-ui.js';
+import {sharedLessonWorkflowMarkup,advanceSharedLessonWorkflow} from './shared-lesson-workflow-ui.js';
 import {dataToolsMarkup,advanceDataTools} from './data-tools-ui.js';
 import {getStudentPortalData,studentPortalPageMarkup,studentPortalDialogMarkup,advanceStudentPortal} from './student-portal-ui.js';
 import {accountActionsMarkup,advanceAccountActions} from './account-actions-ui.js';
@@ -14,11 +15,80 @@ import {staffSharedState} from './staff-shared-adapter.js';
 
 // Presentation drafts are deliberately separate from shared business records.
 // No API client, browser storage, account changes or message delivery lives here.
-export function createInterfacePreview({context,showModal,repaint,dom=document,Form=FormData,sharedSnapshot,onOpenStaffLesson,onEditStaff,onManageStaffAccess,onRetryStaff,onCopyCalendarSharing}) {
-  let operations,staff,student,documentPreview=null,account=null,lesson=null,dataTools=null,overlay=null,returnFocus=null,accountingReturns=[],accountingListReturn=null,messageListReturn=null,messageComposeReturn=null,staffReturn=null,staffManagementSection='directory',staffHrReturn=null,staffHrContext='',staffHrPositions=[],calendarCopyEpoch=0;
-  const fresh=()=>{calendarCopyEpoch++;messageListReturn=null;messageComposeReturn=null;operations={data:getOperationsPreviewData(),today:context()?.today,query:'',status:'all',category:'all',accountingTab:'invoices',selectedThreadId:'thread-1',settingsTab:'general',dialog:null,notice:''};staff=staffInterfacePreviewState();student={data:getStudentPortalData(),section:'profile',requestFilter:'all',notificationFilter:'all',query:'',selectedStudentId:'child-1',dialog:null,notice:''};account=null;lesson=null;dataTools=null;overlay=null;};
+export function createInterfacePreview({context,showModal,repaint,dom=document,Form=FormData,sharedSnapshot,onOpenStaffLesson,onEditStaff,onManageStaffAccess,onRetryStaff,onCopyCalendarSharing,resolveSharedLesson,onCloseSharedLesson}) {
+  let operations,staff,student,documentPreview=null,account=null,lesson=null,dataTools=null,overlay=null,returnFocus=null,accountingReturns=[],accountingListReturn=null,messageListReturn=null,messageComposeReturn=null,staffReturn=null,staffManagementSection='directory',staffHrReturn=null,staffHrContext='',staffHrPositions=[],calendarCopyEpoch=0,sharedLesson=null,sharedLessonTicket=null,sharedLessonEditPosition=null;
+  const fresh=()=>{calendarCopyEpoch++;messageListReturn=null;messageComposeReturn=null;operations={data:getOperationsPreviewData(),today:context()?.today,query:'',status:'all',category:'all',accountingTab:'invoices',selectedThreadId:'thread-1',settingsTab:'general',dialog:null,notice:''};staff=staffInterfacePreviewState();student={data:getStudentPortalData(),section:'profile',requestFilter:'all',notificationFilter:'all',query:'',selectedStudentId:'child-1',dialog:null,notice:''};account=null;lesson=null;dataTools=null;overlay=null;sharedLesson=null;sharedLessonTicket=null;sharedLessonEditPosition=null;};
   fresh();
   const ctx=()=>{const current=context()||{};return {...current,esc:current.esc||(value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char])))};};
+  const sharedLessonControls=()=>[...dom.querySelectorAll('#modal-root .slw-dialog button,#modal-root .slw-dialog input,#modal-root .slw-dialog select,#modal-root .slw-dialog textarea')];
+  const sharedLessonPosition=()=>{
+    const active=dom.activeElement,body=dom.querySelector('#modal-root .slw-body');
+    return {top:body?.scrollTop||0,left:body?.scrollLeft||0,element:active,name:active?.name,tag:active?.tagName,index:sharedLessonControls().indexOf(active),start:active?.selectionStart,end:active?.selectionEnd};
+  };
+  const restoreSharedLessonPosition=position=>{
+    if(!position)return;
+    const usable=node=>node&&node.isConnected!==false&&!node.disabled,controls=sharedLessonControls();
+    const target=usable(position.element)?position.element:controls.find(node=>usable(node)&&position.name&&node.name===position.name&&node.tagName===position.tag)||controls[position.index];
+    if(usable(target)){target.focus({preventScroll:true});if(typeof position.start==='number'&&typeof target.setSelectionRange==='function')try{target.setSelectionRange(position.start,position.end);}catch{}}
+    const body=dom.querySelector('#modal-root .slw-body');if(body){body.scrollTop=position.top;body.scrollLeft=position.left;}
+  };
+  const captureSharedLessonDraft=form=>{
+    if(overlay!=='shared-lesson'||sharedLesson?.step!=='edit')return false;
+    form??=dom.querySelector('#shared-lesson-workflow-form');
+    if(!form||form.id!=='shared-lesson-workflow-form')return false;
+    sharedLesson=advanceSharedLessonWorkflow(sharedLesson,'draft',Object.fromEntries(new Form(form)));return true;
+  };
+  const discardSharedLesson=({restore=false,draw=true}={})=>{
+    const ticket=sharedLessonTicket;
+    sharedLesson=null;sharedLessonTicket=null;sharedLessonEditPosition=null;
+    if(overlay==='shared-lesson')overlay=null;
+    if(draw){returnFocus=null;showModal('');}
+    if(ticket&&typeof onCloseSharedLesson==='function')onCloseSharedLesson(ticket,{restore});
+  };
+  const syncSharedLesson=({capture=true}={})=>{
+    if(overlay!=='shared-lesson'||!sharedLesson)return 'ready';
+    const current=ctx();
+    if(!current.sharedMode||!['admin','teacher'].includes(current.role)||!current.sharedIdentity||current.sharedIdentity!==sharedLesson.identity||typeof resolveSharedLesson!=='function'){
+      discardSharedLesson();return 'invalid';
+    }
+    const resolved=resolveSharedLesson({sessionId:sharedLesson.lesson.id,returnTicket:sharedLessonTicket});
+    if(!resolved||!['ready','loading','error'].includes(resolved.status)||resolved.returnTicket&&resolved.returnTicket!==sharedLessonTicket){discardSharedLesson();return 'invalid';}
+    if(capture)captureSharedLessonDraft();
+    if(resolved.status!=='ready'){
+      sharedLesson={...sharedLesson,sourceStatus:resolved.status,sourceError:resolved.error||''};return resolved.status;
+    }
+    const facts=resolved.facts,original=sharedLesson;
+    if(!facts||facts.identity!==current.sharedIdentity||facts.contextKey!==original.contextKey||facts.student?.id!==original.student.id||facts.lesson?.id!==original.lesson.id||facts.lesson.scheduleId!==original.lesson.scheduleId||facts.lesson.sequence!==original.lesson.sequence){discardSharedLesson();return 'invalid';}
+    sharedLesson={...original,...facts,view:original.view,step:original.step,draft:original.draft,sourceStatus:'ready',sourceError:'',capabilities:{review:true,save:false}};return 'ready';
+  };
+  const openSharedLesson=(view,{sessionId}={})=>{
+    const current=ctx();
+    if(overlay||!['attendance','arrange'].includes(view)||!current.sharedMode||!['admin','teacher'].includes(current.role)||!current.sharedIdentity||!sessionId||typeof resolveSharedLesson!=='function'||typeof onCloseSharedLesson!=='function')return false;
+    const resolved=resolveSharedLesson({sessionId,opener:dom.activeElement}),facts=resolved?.facts;
+    if(resolved?.status!=='ready'||!resolved.returnTicket||!facts||facts.identity!==current.sharedIdentity||facts.lesson?.id!==sessionId||!facts.student?.id||!facts.contextKey)return false;
+    sharedLesson={...facts,view,step:'edit',draft:{},sourceStatus:'ready',sourceError:'',capabilities:{review:true,save:false}};sharedLessonTicket=resolved.returnTicket;sharedLessonEditPosition=null;overlay='shared-lesson';returnFocus=null;redrawOverlay();return true;
+  };
+  const refreshSharedLesson=()=>{
+    if(overlay!=='shared-lesson')return false;
+    captureSharedLessonDraft();const before=sharedLessonWorkflowMarkup(sharedLesson,ctx()),position=sharedLessonPosition();
+    if(syncSharedLesson({capture:false})==='invalid')return true;
+    if(sharedLessonWorkflowMarkup(sharedLesson,ctx())!==before){redrawOverlay();restoreSharedLessonPosition(position);}return true;
+  };
+  const advanceSharedLesson=(command,fields={},form)=>{
+    const status=syncSharedLesson();if(status==='invalid')return true;
+    if(!sharedLesson)return true;
+    if(command==='close'){discardSharedLesson({restore:true});return true;}
+    if(status!=='ready'&&!['draft','back'].includes(command)){redrawOverlay();return true;}
+    if(form)captureSharedLessonDraft(form);
+    if(command==='review'){
+      const currentForm=form||dom.querySelector('#shared-lesson-workflow-form');
+      if(currentForm?.id==='shared-lesson-workflow-form')fields={...Object.fromEntries(new Form(currentForm)),...fields};
+    }
+    const prior=sharedLesson.step,position=prior==='edit'?sharedLessonPosition():null;
+    sharedLesson=advanceSharedLessonWorkflow(sharedLesson,command,fields);
+    if(prior==='edit'&&sharedLesson.step==='review')sharedLessonEditPosition=position;
+    redrawOverlay();if(command==='back'&&sharedLesson.step==='edit')restoreSharedLessonPosition(sharedLessonEditPosition);return true;
+  };
   const sharedPersonFacts=(view,personId)=>{
     const current=ctx(),scope=current.peopleContext,person=scope?.person;
     if(!current.sharedMode||current.role!=='admin'||!current.sharedIdentity||!scope?.allowed||!scope.ready||!personId||scope.personId!==personId||person?.id!==personId||!person.displayName||!['applicant','student'].includes(person.kind)||!['applicant','family','convert','activation'].includes(view)||view==='convert'&&person.kind!=='applicant')return null;
@@ -70,12 +140,12 @@ export function createInterfacePreview({context,showModal,repaint,dom=document,F
     // The draft was harvested before the transition. A controlled redraw must
     // validate access without copying an earlier form's DOM back over it.
     if(overlay==='lesson'&&syncStudentRequest(undefined,{captureDraft:false})==='invalid'){lesson=null;overlay=null;}
-    const html=overlay==='operations'?operationsDialogMarkup(operations,ctx()):overlay==='order-document'?operationsDialogMarkup(documentPreview,ctx()):overlay==='staff'?staffDialogMarkup(staff,staffContext()):hrModules[overlay]?hrModules[overlay].markup(hrModules[overlay].model(),staffContext()):overlay==='lesson'?lessonWorkflowMarkup(lesson,ctx()):overlay==='student'?studentPortalDialogMarkup(student,ctx()):overlay==='account'?accountActionsMarkup(account,ctx()):overlay==='data-tools'?dataToolsMarkup(dataTools,ctx()):'';
+    const html=overlay==='shared-lesson'?sharedLessonWorkflowMarkup(sharedLesson,ctx()):overlay==='operations'?operationsDialogMarkup(operations,ctx()):overlay==='order-document'?operationsDialogMarkup(documentPreview,ctx()):overlay==='staff'?staffDialogMarkup(staff,staffContext()):hrModules[overlay]?hrModules[overlay].markup(hrModules[overlay].model(),staffContext()):overlay==='lesson'?lessonWorkflowMarkup(lesson,ctx()):overlay==='student'?studentPortalDialogMarkup(student,ctx()):overlay==='account'?accountActionsMarkup(account,ctx()):overlay==='data-tools'?dataToolsMarkup(dataTools,ctx()):'';
     showModal(html);
     if(html)dom.querySelector('#modal-root .dialog button:not(:disabled),#modal-root .dialog input:not(:disabled),#modal-root .dialog select:not(:disabled)')?.focus();
     else {overlay=null;const original=returnFocus?.element;const replacement=original?.isConnected&&!original.disabled?original:[...dom.querySelectorAll('button')].find(button=>!button.disabled&&returnFocus&&Object.keys(returnFocus.dataset).length&&Object.entries(returnFocus.dataset).every(([key,value])=>button.dataset[key]===value));replacement?.focus({preventScroll:true});returnFocus=null;}
   };
-  const close=()=>{calendarCopyEpoch++;staffReturn=null;staffHrReturn=null;staffHrContext='';staffHrPositions=[];for(const hr of Object.values(hrModules))staff[hr.key]={...staff[hr.key],dialog:null};operations.dialog=null;staff.dialog=null;student.dialog=null;documentPreview=null;account=null;lesson=null;dataTools=null;overlay=null;accountingReturns=[];accountingListReturn=null;messageListReturn=null;messageComposeReturn=null;redrawOverlay();};
+  const close=()=>{if(overlay==='shared-lesson'){discardSharedLesson({restore:true});return;}calendarCopyEpoch++;staffReturn=null;staffHrReturn=null;staffHrContext='';staffHrPositions=[];for(const hr of Object.values(hrModules))staff[hr.key]={...staff[hr.key],dialog:null};operations.dialog=null;staff.dialog=null;student.dialog=null;documentPreview=null;account=null;lesson=null;dataTools=null;overlay=null;accountingReturns=[];accountingListReturn=null;messageListReturn=null;messageComposeReturn=null;redrawOverlay();};
   const staffPosition=()=>{
     const body=dom.querySelector('#modal-root .ui-staff-dialog-body'),active=dom.activeElement;
     const controls=[...dom.querySelectorAll('#modal-root button,#modal-root input,#modal-root select,#modal-root textarea')];
@@ -482,6 +552,9 @@ export function createInterfacePreview({context,showModal,repaint,dom=document,F
     return true;
   };
   const action=(d,element)=>{
+    if(d.action==='ui-shared-lesson')return advanceSharedLesson(d.uiCommand,{id:d.uiId});
+    if(overlay==='shared-lesson'&&syncSharedLesson()==='invalid')return true;
+    if(d.action==='ui-lesson'&&d.uiCommand==='launch'&&ctx().sharedMode&&['attendance','arrange'].includes(d.uiView)){openSharedLesson(d.uiView,{sessionId:d.uiId});return true;}
     const requestStatus=guardStudentRequest();
     if(requestStatus!=='ready'){
       if(requestStatus==='loading'&&d.action==='ui-lesson'&&['close','close-dialog'].includes(d.uiCommand))close();
@@ -605,6 +678,7 @@ export function createInterfacePreview({context,showModal,repaint,dom=document,F
   };
   const submit=form=>{
     const values=new Form(form),fields=Object.fromEntries(values);
+    if(form.id==='shared-lesson-workflow-form')return advanceSharedLesson('review',fields,form);
     if(guardStudentRequest(form.id==='ui-lesson-form'?fields:undefined)!=='ready')return true;
     if(hrKinds.some(kind=>form.id===hrModules[kind].formId)){
       const kind=hrKinds.find(key=>form.id===hrModules[key].formId);
@@ -648,6 +722,11 @@ export function createInterfacePreview({context,showModal,repaint,dom=document,F
   };
   const keyboard=event=>{
     if(!overlay)return false;
+    if(overlay==='shared-lesson'){
+      if(syncSharedLesson()==='invalid'){event.preventDefault();return true;}
+      if(event.isComposing||event.keyCode===229)return true;
+      if(event.key==='Escape'){event.preventDefault();discardSharedLesson({restore:true});return true;}
+    }
     if(!syncSharedPerson()){event.preventDefault();close();return true;}
     const wasLoading=lesson?.requestLoading,requestStatus=syncStudentRequest();
     if(requestStatus==='invalid'){event.preventDefault();close();return true;}
@@ -661,6 +740,7 @@ export function createInterfacePreview({context,showModal,repaint,dom=document,F
     return true;
   };
   const input=target=>{
+    if(overlay==='shared-lesson'&&target.closest?.('#shared-lesson-workflow-form')){if(syncSharedLesson({capture:false})!=='invalid')captureSharedLessonDraft(target.closest('form'));return true;}
     if(guardStudentRequest()!=='ready')return true;
     if(hrControl(target))return true;
     if(captureAccountingEntry(target))return true;
@@ -674,6 +754,7 @@ export function createInterfacePreview({context,showModal,repaint,dom=document,F
     return false;
   };
   const change=target=>{
+    if(overlay==='shared-lesson'&&target.closest?.('#shared-lesson-workflow-form')){if(syncSharedLesson({capture:false})==='invalid')return true;captureSharedLessonDraft(target.closest('form'));if(target.dataset?.uiCommand==='filter-date'){const position=sharedLessonPosition();sharedLesson=advanceSharedLessonWorkflow(sharedLesson,'filter-date',{date:target.value});redrawOverlay();restoreSharedLessonPosition(position);}return true;}
     if(guardStudentRequest()!=='ready')return true;
     if(hrControl(target,true))return true;
     if(captureAccountingEntry(target))return true;
@@ -698,8 +779,8 @@ export function createInterfacePreview({context,showModal,repaint,dom=document,F
     directory:(accountActions='')=>{guardStudentRequest();syncStaff();return staffManagementMarkup(accountActions);},
     teacherPortal:()=>{guardStudentRequest();syncStaff();if(!staff.shared)staff={...staff,viewerId:ctx().role==='admin'?'maya':'leo'};return staffPortalMarkup(staff,ctx());},
     studentPage:section=>{guardStudentRequest();return studentPortalPageMarkup(section,student,ctx());},
-    action,submit,keyboard,input,change,openLesson,openAccount,openOrderDocument,studentLessonFacts,refreshSharedStudentRequest,refreshSharedPerson,refreshSharedStaff,resumeStaffReturn,discardStaffReturn:()=>{staffReturn=null;},close,
-    clear:()=>{staffReturn=null;staffManagementSection='directory';staffHrReturn=null;staffHrContext='';staffHrPositions=[];fresh();documentPreview=null;returnFocus=null;accountingReturns=[];accountingListReturn=null;},
+    action,submit,keyboard,input,change,openLesson,openSharedLesson,refreshSharedLesson,openAccount,openOrderDocument,studentLessonFacts,refreshSharedStudentRequest,refreshSharedPerson,refreshSharedStaff,resumeStaffReturn,discardStaffReturn:()=>{staffReturn=null;},close,
+    clear:()=>{if(sharedLessonTicket)discardSharedLesson({draw:false});staffReturn=null;staffManagementSection='directory';staffHrReturn=null;staffHrContext='';staffHrPositions=[];fresh();documentPreview=null;returnFocus=null;accountingReturns=[];accountingListReturn=null;},
     get isOpen(){return !!overlay;},
   };
 }

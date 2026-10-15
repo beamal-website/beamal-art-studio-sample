@@ -1056,3 +1056,14 @@
 }
 .portal-course-page .portal-course-table .course-sort-button > span { color: #687770; }
 .portal-course-page .portal-course-table td:nth-child(6) { overflow-wrap: break-word; }
+
+
+/* Per-course timetable actions stay inside the course table. */
+.portal-course-page .portal-course-table table.course-list-with-actions { min-width: 1350px; }
+.portal-course-page .portal-course-table th.course-row-actions { width: 190px; }
+.portal-course-page .portal-course-table .course-row-timetable {
+  min-height: 44px;
+  padding: 10px 12px;
+  font-size: 14px;
+  white-space: nowrap;
+}

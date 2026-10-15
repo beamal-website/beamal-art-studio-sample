@@ -3,6 +3,83 @@ import assert from 'node:assert/strict';
 import {createInterfacePreview} from '../client/interface-preview.js';
 const t=(_zh,en)=>en;
 
+function canonicalRosterPreview(options={}){
+ const ticket={},returns=[],reads=[];
+ let current={t,role:'admin',sharedMode:true,sharedIdentity:'actual-admin'},status='ready';
+ const facts={identity:'actual-admin',contextKey:'actual-roster-context',student:{id:'actual-person',displayName:'林思晴 Serena Lam',attendance:'unmarked'},lesson:{id:'actual-session',scheduleId:'actual-schedule',sequence:7,sourceVersion:3,courseId:'actual-course',courseName:'陶藝研究 Ceramic Study',date:'2026-11-19',time:'16:20',duration:40,teacher:'Teaching artist',room:'Studio B'},capabilities:{review:true,save:false},availability:{ready:false,slots:[]}};
+ const p=preview({context:()=>current,resolveSharedLesson:request=>{reads.push(request);return request.sessionId==='actual-session'&&(!request.returnTicket||request.returnTicket===ticket)?{status,facts,returnTicket:ticket}:{status:'unavailable'};},onCloseSharedLesson:(value,settings)=>returns.push({value,settings}),...options});
+ return {...p,get html(){return p.html;},get modalWrites(){return p.modalWrites;},ticket,returns,reads,facts,setContext:value=>{current={...current,...value};},setStatus:value=>{status=value;}};
+}
+
+test('shared roster attendance and arrangements use only the resolved person and occurrence and never claim a preview save',()=>{
+ const p=canonicalRosterPreview();
+ assert.equal(typeof p.ui.openSharedLesson,'function');
+ for(const view of ['attendance','arrange']){
+  assert.equal(p.ui.openSharedLesson(view,{sessionId:'actual-session',student:{displayName:'Forged person'},lesson:{date:'1999-01-01'}}),true);
+  assert.match(p.html,/Serena Lam/);assert.match(p.html,/Ceramic Study/);assert.match(p.html,/2026-11-19/);assert.match(p.html,/16:20/);
+  assert.doesNotMatch(p.html,/Forged person|1999-01-01|Chloe|2026-10-16|Interface preview/);
+  if(view==='attendance')p.ui.submit({id:'shared-lesson-workflow-form',dataset:{uiCommand:'review'},values:{attendance:'absent',remark:'Bring the portfolio',showRemark:'yes'}});
+  else p.ui.action({action:'ui-shared-lesson',uiCommand:'pending'});
+  for(const command of ['final-save','final-confirm','save-preview','confirm-preview','submit'])p.ui.action({action:'ui-shared-lesson',uiCommand:command});
+  assert.doesNotMatch(p.html,/Preview complete|This preview has been updated|Saved successfully|Arrangement confirmed/);
+  assert.match(p.html,/<button[^>]*disabled/);
+  p.ui.close();
+ }
+ assert.ok(p.reads.every(request=>!request.student&&!request.lesson),'The resolver receives references, never caller-provided canonical facts');
+});
+
+test('shared roster launch rejects absent sessions, unrelated roles and the old public fixture entry',()=>{
+ const p=canonicalRosterPreview();assert.equal(typeof p.ui.openSharedLesson,'function');
+ for(const sessionId of ['',undefined,'different-session']){assert.equal(p.ui.openSharedLesson('attendance',{sessionId}),false);assert.equal(p.ui.isOpen,false);}
+ for(const role of ['student','',undefined]){p.setContext({role});assert.equal(p.ui.openSharedLesson('attendance',{sessionId:'actual-session'}),false);}
+ p.setContext({role:'teacher'});assert.equal(p.ui.openLesson('attendance',{shared:true,student:p.facts.student,lesson:p.facts.lesson}),false);
+ p.ui.action({action:'ui-lesson',uiCommand:'launch',uiView:'attendance',uiId:'actual-session'});assert.match(p.html,/Serena Lam/);
+});
+
+test('closing a canonical roster workflow returns its exact ticket once while clear and identity changes never reopen the parent',()=>{
+ const p=canonicalRosterPreview();assert.equal(typeof p.ui.openSharedLesson,'function');
+ assert.equal(p.ui.openSharedLesson('attendance',{sessionId:'actual-session'}),true);p.ui.keyboard({key:'Escape',preventDefault(){}});
+ assert.equal(p.ui.isOpen,false);assert.equal(p.returns.length,1);assert.equal(p.returns[0].value,p.ticket);assert.equal(p.returns[0].settings.restore,true);
+ p.ui.close();assert.equal(p.returns.length,1);
+ p.ui.openSharedLesson('attendance',{sessionId:'actual-session'});p.ui.clear();assert.equal(p.returns.at(-1).settings.restore,false);
+ p.ui.openSharedLesson('attendance',{sessionId:'actual-session'});p.setContext({sharedIdentity:'different-admin'});p.ui.refreshSharedLesson();
+ assert.equal(p.ui.isOpen,false);assert.equal(p.returns.at(-1).settings.restore,false);assert.equal(p.html,'');
+});
+
+test('canonical roster polls preserve native drafts and review-back restores the edit position',()=>{
+ let p,focused=0;const body={scrollTop:318,scrollLeft:7},form={id:'shared-lesson-workflow-form',values:{attendance:'sick',remark:'Keep this private draft',showRemark:''}},input={name:'remark',tagName:'TEXTAREA',isConnected:true,selectionStart:5,selectionEnd:12,dataset:{},focus(){focused++;},setSelectionRange(start,end){this.selectionStart=start;this.selectionEnd=end;},closest:selector=>selector.includes('form')?form:null};
+ const dom={activeElement:input,querySelector:selector=>selector.includes('.slw-body')?body:selector.includes('shared-lesson-workflow-form')?form:null,querySelectorAll:()=>[input]};
+ p=canonicalRosterPreview({dom});assert.equal(typeof p.ui.openSharedLesson,'function');p.ui.openSharedLesson('attendance',{sessionId:'actual-session'});
+ const writes=p.modalWrites;p.ui.input({name:'remark',closest:()=>form});p.ui.refreshSharedLesson();assert.equal(p.modalWrites,writes,'An unchanged poll must not remount native fields');
+ p.ui.submit({...form,dataset:{uiCommand:'review'}});assert.match(p.html,/Keep this private draft/);
+ body.scrollTop=0;body.scrollLeft=0;p.ui.action({action:'ui-shared-lesson',uiCommand:'back'});
+ assert.match(p.html,/Keep this private draft/);assert.equal(body.scrollTop,318);assert.equal(body.scrollLeft,7);assert.ok(focused);assert.equal(input.selectionStart,5);assert.equal(input.selectionEnd,12);
+ p.setStatus('error');p.ui.refreshSharedLesson();assert.match(p.html,/Keep this private draft/);assert.doesNotMatch(p.html,/Chloe|Preview complete/);
+ p.setStatus('ready');p.ui.refreshSharedLesson();assert.match(p.html,/Keep this private draft/);
+});
+
+test('the actual shared review button harvests the entire native form including the checked timetable remark',()=>{
+ const form={id:'shared-lesson-workflow-form',values:{attendance:'absent',remark:'Portfolio discussion',showRemark:'yes'}},dom={activeElement:null,querySelector:selector=>selector.includes('shared-lesson-workflow-form')?form:null,querySelectorAll:()=>[]},p=canonicalRosterPreview({dom});
+ p.ui.openSharedLesson('attendance',{sessionId:'actual-session'});
+ // The real delegated button click is consumed before a native submit event.
+ p.ui.action({action:'ui-shared-lesson',uiCommand:'review'});
+ assert.match(p.html,/Portfolio discussion/);
+ p.ui.action({action:'ui-shared-lesson',uiCommand:'back'});
+ assert.match(p.html,/<input[^>]*name="showRemark"[^>]*value="yes"[^>]*checked/);
+});
+
+test('Escape while composing Chinese preserves the shared draft while normal Escape still returns to the lesson',()=>{
+ const p=canonicalRosterPreview();
+ p.ui.openSharedLesson('attendance',{sessionId:'actual-session'});
+ for(const composition of [{isComposing:true},{keyCode:229}]){
+  let prevented=false;
+  assert.equal(p.ui.keyboard({key:'Escape',...composition,preventDefault(){prevented=true;}}),true);
+  assert.equal(prevented,false);assert.equal(p.ui.isOpen,true);assert.equal(p.returns.length,0);
+ }
+ p.ui.keyboard({key:'Escape',preventDefault(){}});
+ assert.equal(p.ui.isOpen,false);assert.equal(p.returns.length,1);assert.equal(p.returns[0].settings.restore,true);
+});
+
 test('shared People workflows use the loaded profile and never an unrelated lesson or family fixture',()=>{
  const person={id:'person-second',kind:'applicant',displayName:'另一位學生 Second Student',email:'second@example.test',phone:'23456789'};
  let current={t,role:'admin',sharedMode:true,sharedIdentity:'admin-A',peopleContext:{allowed:true,ready:true,personId:person.id,person}};

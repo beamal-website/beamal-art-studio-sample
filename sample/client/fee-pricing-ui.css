@@ -1,0 +1,324 @@
+.fee-pricing-modal,
+.fee-overview-modal {
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.fee-pricing-dialog,
+.fee-overview-dialog {
+  --fee-ui-ink: #253d3b;
+  --fee-ui-muted: #526a60;
+  --fee-ui-line: #d9ddd2;
+  --fee-ui-paper: #fffdf8;
+  width: min(800px, 100%);
+  min-width: 0;
+  max-width: 100%;
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--fee-ui-paper);
+  color: var(--fee-ui-ink);
+}
+
+.fee-pricing-dialog *,
+.fee-overview-dialog * {
+  box-sizing: border-box;
+}
+
+.fee-pricing-dialog #fee-pricing-editor {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.fee-pricing-dialog .fee-ui-header,
+.fee-overview-dialog .fee-ui-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--fee-ui-line);
+  flex: 0 0 auto;
+}
+
+.fee-pricing-dialog .fee-ui-header h2,
+.fee-overview-dialog .fee-ui-header h2 {
+  min-width: 0;
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.4;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.fee-pricing-dialog .fee-pricing-body,
+.fee-overview-dialog .fee-overview-body {
+  min-height: 0;
+  padding: 24px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.fee-pricing-dialog .fee-ui-section,
+.fee-overview-dialog .fee-ui-section {
+  min-width: 0;
+  margin: 0 0 24px;
+}
+
+.fee-pricing-dialog .fee-ui-section h3,
+.fee-overview-dialog .fee-ui-section h3 {
+  margin: 0 0 16px;
+  font-size: 19px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.fee-pricing-dialog .fee-ui-facts,
+.fee-overview-dialog .fee-ui-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 24px;
+  margin: 0;
+}
+
+.fee-pricing-dialog .fee-ui-facts > div,
+.fee-overview-dialog .fee-ui-facts > div {
+  min-width: 0;
+}
+
+.fee-pricing-dialog .fee-ui-facts dt,
+.fee-overview-dialog .fee-ui-facts dt {
+  margin: 0 0 4px;
+  color: var(--fee-ui-muted);
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.fee-pricing-dialog .fee-ui-facts dd,
+.fee-overview-dialog .fee-ui-facts dd {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.fee-pricing-dialog .fee-ui-inputs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 20px;
+}
+
+.fee-pricing-dialog .fee-ui-field {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.fee-pricing-dialog .fee-ui-field input {
+  display: block;
+  min-width: 0;
+  width: 100%;
+  height: 48px;
+  padding: 10px 12px;
+  border: 1px solid #bdcbc1;
+  border-radius: 4px;
+  background: var(--fee-ui-paper);
+  color: var(--fee-ui-ink);
+  font: inherit;
+}
+
+.fee-pricing-dialog .fee-ui-field small,
+.fee-pricing-dialog .fee-ui-note,
+.fee-overview-dialog .fee-ui-note {
+  margin: 0;
+  color: var(--fee-ui-muted);
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.fee-pricing-dialog .fee-ui-note + .fee-ui-notice {
+  margin-top: 12px;
+}
+
+.fee-pricing-dialog .fee-ui-notice {
+  padding: 12px 16px;
+  border: 1px solid var(--fee-ui-line);
+  border-radius: 4px;
+  background: #eef3eb;
+  color: var(--fee-ui-muted);
+  font-size: 14px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.fee-pricing-dialog .fee-ui-error,
+.fee-overview-dialog .fee-ui-error {
+  margin: 0 0 20px;
+  padding: 12px 16px;
+  border: 1px solid #d6ada3;
+  border-radius: 4px;
+  background: #fbebe3;
+  color: #913b2e;
+  font-size: 14px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.fee-pricing-dialog .fee-ui-error[hidden],
+.fee-overview-dialog .fee-ui-error[hidden] {
+  display: none;
+}
+
+.fee-pricing-dialog .fee-ui-field .fee-ui-field-error {
+  color: #913b2e;
+}
+
+.fee-pricing-dialog .fee-ui-field input[aria-invalid="true"] {
+  border-color: #a43d2b;
+}
+
+.fee-pricing-dialog .fee-ui-courses,
+.fee-overview-dialog .fee-ui-courses {
+  margin: 0;
+  padding-left: 20px;
+  line-height: 1.7;
+}
+
+.fee-pricing-dialog .fee-ui-courses li,
+.fee-overview-dialog .fee-ui-courses li {
+  padding: 2px 0;
+  overflow-wrap: anywhere;
+}
+
+.fee-overview-dialog .fee-ui-history {
+  display: grid;
+  gap: 20px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fee-overview-dialog .fee-ui-history > li {
+  min-width: 0;
+  padding: 16px 0 0;
+  border-top: 1px solid var(--fee-ui-line);
+}
+
+.fee-overview-dialog .fee-ui-history h4 {
+  margin: 0 0 16px;
+  font-size: 16px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.fee-pricing-dialog .fee-ui-footer,
+.fee-overview-dialog .fee-ui-footer {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  margin-top: 0;
+  padding: 16px 24px;
+  border-top: 1px solid var(--fee-ui-line);
+  flex: 0 0 auto;
+  background: var(--fee-ui-paper);
+}
+
+.fee-pricing-dialog button,
+.fee-overview-dialog button {
+  min-width: 44px;
+  min-height: 44px;
+  max-width: 100%;
+  padding: 10px 16px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: var(--teal, #27777b);
+  color: white;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  box-shadow: none;
+}
+
+.fee-pricing-dialog .fee-ui-header button,
+.fee-overview-dialog .fee-ui-header button {
+  padding: 4px 8px;
+  background: transparent;
+  color: var(--fee-ui-muted);
+  font-size: 30px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.fee-pricing-dialog button.ghost,
+.fee-overview-dialog button.ghost {
+  background: transparent;
+  color: var(--fee-ui-muted);
+}
+
+.fee-pricing-dialog .fee-ui-secondary,
+.fee-overview-dialog .fee-ui-secondary {
+  border-color: #bdcbc1;
+  background: transparent;
+  color: var(--teal, #27777b);
+}
+
+.fee-pricing-dialog button:disabled,
+.fee-overview-dialog button:disabled {
+  border-color: var(--fee-ui-line);
+  background: #e7eae3;
+  color: #687770;
+  cursor: not-allowed;
+}
+
+.fee-pricing-dialog .fee-pricing-body:focus-visible,
+.fee-overview-dialog .fee-overview-body:focus-visible,
+.fee-pricing-dialog button:focus-visible,
+.fee-overview-dialog button:focus-visible,
+.fee-pricing-dialog input:focus-visible,
+.fee-pricing-dialog .fee-ui-error:focus,
+.fee-overview-dialog .fee-ui-error:focus {
+  outline: 3px solid #b79232;
+  outline-offset: 3px;
+}
+
+@media (max-width: 600px) {
+  .fee-pricing-dialog .fee-ui-header,
+  .fee-overview-dialog .fee-ui-header,
+  .fee-pricing-dialog .fee-pricing-body,
+  .fee-overview-dialog .fee-overview-body,
+  .fee-pricing-dialog .fee-ui-footer,
+  .fee-overview-dialog .fee-ui-footer {
+    padding: 16px;
+  }
+
+  .fee-pricing-dialog .fee-ui-facts,
+  .fee-overview-dialog .fee-ui-facts,
+  .fee-pricing-dialog .fee-ui-inputs {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fee-pricing-dialog .fee-ui-footer button,
+  .fee-overview-dialog .fee-ui-footer button {
+    flex: 1 1 120px;
+  }
+}

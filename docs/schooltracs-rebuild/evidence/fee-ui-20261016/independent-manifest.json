@@ -1,0 +1,55 @@
+{
+  "scope": "Fee overview / future proposal / recorded history — final independent host matrix; no live GUI or future persistence acceptance",
+  "head": "9c46fdab62afd6643e0eea97077c88d2ac570017",
+  "files": {
+    "sample/src.js": "e7bc5d74d198e9570de3106736c8a08714ca38726abba32970d9bd8d73cd8949",
+    "sample/tests/flows.test.mjs": "56882f15ed283dcaa530687becbe5bedbdaebcdfd3a4bff8265fd40608caf162",
+    "sample/client/fee-pricing-ui.js": "8dbc45dc423f5c9898d4a95cf741608ced6742a98dcd65536c77a85d9c6b0a28",
+    "sample/client/fee-pricing-ui.css": "aa137753f27bcb53f50c05cff7ac02c4bd2b29d9617010c810da9b8ecb68de4c",
+    "sample/tests/fee-pricing-ui.test.mjs": "36b6bd43615d9dd59acb103a87f4e426a7aa4992204c683a64e80b92d4d586aa",
+    "sample/server/store.mjs": "aa8c2a67ba071c9582f93787fb24600648a7ac463c90a44e7d6e15d3ab130167",
+    "sample/server/app.mjs": "4b627baf06bd5c41669b1fd2ac9d34bdb5490d30432df846ca52bd523830cc75",
+    "sample/client/api-client.js": "35c0cd10001d31c1e1829fd2a187285b1d65e60b3e3be411c67098b9921602e8",
+    "sample/server/tests/fee-history.test.mjs": "6ba021017fd9eca98f1932a1c44bc2662817fbae81ef26db206300006a1ed1a7"
+  },
+  "tests": {
+    "baseline4": "/tmp/beamal-fee-overview-baseline-independent-red.log",
+    "host4": "/tmp/beamal-fee-overview-independent-initial-4.log",
+    "pure7": "/tmp/beamal-fee-overview-pure-independent-final.log",
+    "native7": "/tmp/beamal-fee-pricing-native-independent-final-7.log",
+    "makerHistory5Rerun": "/tmp/beamal-fee-history-reviewer-targeted.log",
+    "extended13": "/tmp/beamal-fee-overview-extended-independent-final-13.log",
+    "catalogueGenuineRed2": "/tmp/beamal-fee-overview-course-catalogue-independent-red.log",
+    "regression31Final": "/tmp/beamal-fee-overview-regression-final-31.log",
+    "keyboard4PreviousControllerRED": "/tmp/beamal-fee-keyboard-body-independent-red.log",
+    "keyboard4FinalGREEN": "/tmp/beamal-fee-keyboard-body-independent-green.log"
+  },
+  "limits": [
+    "No browser/GUI or actual native IME session by this reviewer",
+    "No live or user database operations",
+    "No source edits, Git mutation, full suite or build by this reviewer",
+    "No future-price persistence or business-policy acceptance",
+    "All 31 previous reviewer-authored groups rerun on keyboard-final source; 4 new native-shaped keyboard groups also passed"
+  ],
+  "status": "PASS within documented scope",
+  "sourceDeltaProof": {
+    "method": "Inverse only the exact portalCourses course-list-fee-link action/reader-enable expressions; restored SHA equals prior frozen IME-fixed source SHA",
+    "restoredSourceSHA256": "efdc582ba1bccd9a43303c9d0d26bef21587b7ec419a9e3cdd8f30aca805dd26",
+    "keyboardBodyFinal": {
+      "method": "Reverse only 2 controller body selectors, 2 markup tabindex attributes and 2 CSS focus-visible selectors; all three restored hashes equal pre-keyboard manifest",
+      "restoredHashes": {
+        "sample/src.js": "922f479ea909f2765e5a6f3fb4056b30be50ace0a20075246bad0992c58ce909",
+        "sample/client/fee-pricing-ui.js": "efa715c4a569d7c92cc4c1aadb5709afaadb0c7781a3facfca30bd55dac8fc1c",
+        "sample/client/fee-pricing-ui.css": "ba94a1261b525271c0dc795f059c9f2c541243967a11705fd52b9745c37501bb"
+      }
+    }
+  },
+  "reviewerArtifacts": {
+    "/tmp/beamal-fee-overview-extended-independent.mjs": "c06d9fdf1b23b9e75214e02c64c2580624aaf6180e72956881fcc7e41fdb5cde",
+    "/tmp/beamal-fee-overview-extended-helper.mjs": "f804d777b63770f8346a5ccf39dc8c594f5b64218734d96d351087c830cae6b3",
+    "/tmp/beamal-fee-overview-extended-independent-final-13.log": "1df72a6062fc83716d537455e4c48a7459ad820701c26924fde9f0c999d108be",
+    "/tmp/beamal-fee-keyboard-body-independent.mjs": "ee6744f8d0f39866eeb7593b05570160ae008a64f7b741963916291eb24d1818",
+    "/tmp/beamal-fee-keyboard-body-independent-green.log": "65826e7ddef80fba0720686a9ce46689104c05750c584e35a02f4c47c6e7d7bc",
+    "/tmp/beamal-fee-overview-regression-final-31.log": "5c60411e076a1576165d39da63be300a2336059fcbfcc4246bf49a9b3c2bbef4"
+  }
+}

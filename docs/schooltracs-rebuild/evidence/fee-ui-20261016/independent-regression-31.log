@@ -1,0 +1,196 @@
+TAP version 13
+# Subtest: extended actual global same-name second Fee resolves history Edit and current units by exact ID
+ok 1 - extended actual global same-name second Fee resolves history Edit and current units by exact ID
+  ---
+  duration_ms: 68.959708
+  type: 'test'
+  ...
+# Subtest: extended actual Course catalogue fee-name uses Overview instead of bypassing directly into Edit
+ok 2 - extended actual Course catalogue fee-name uses Overview instead of bypassing directly into Edit
+  ---
+  duration_ms: 8.178833
+  type: 'test'
+  ...
+# Subtest: extended authorized Teacher can read exact Course catalogue Fee without history or editing
+ok 3 - extended authorized Teacher can read exact Course catalogue Fee without history or editing
+  ---
+  duration_ms: 4.922084
+  type: 'test'
+  ...
+# Subtest: extended global Fees and Course B Overview Edit child cancel restore exact fresh origin filters month and all captured positions
+ok 4 - extended global Fees and Course B Overview Edit child cancel restore exact fresh origin filters month and all captured positions
+  ---
+  duration_ms: 24.865667
+  type: 'test'
+  ...
+# Subtest: extended malformed or wrong-fee history fails closed without private payload and native Retry replaces it with the exact real record
+ok 5 - extended malformed or wrong-fee history fails closed without private payload and native Retry replaces it with the exact real record
+  ---
+  duration_ms: 28.270375
+  type: 'test'
+  ...
+# Subtest: extended async 503 is an error not empty and Retry respects one outstanding read then recovers exact history
+ok 6 - extended async 503 is an error not empty and Retry respects one outstanding read then recovers exact history
+  ---
+  duration_ms: 4.467125
+  type: 'test'
+  ...
+# Subtest: extended older success and 401 or 403 failure cannot alter a newer Fee owner or trigger session refresh
+ok 7 - extended older success and 401 or 403 failure cannot alter a newer Fee owner or trigger session refresh
+  ---
+  duration_ms: 11.292042
+  type: 'test'
+  ...
+# Subtest: extended close and reopen same exact Fee cannot reuse the older opening history
+ok 8 - extended close and reopen same exact Fee cannot reuse the older opening history
+  ---
+  duration_ms: 13.090167
+  type: 'test'
+  ...
+# Subtest: extended current history 401 clears private surfaces session and route without reviving any editor
+ok 9 - extended current history 401 clears private surfaces session and route without reviving any editor
+  ---
+  duration_ms: 10.5265
+  type: 'test'
+  ...
+# Subtest: extended 403 rechecks actual account and revoked role or same-admin access revision cannot retain parent draft or private history
+ok 10 - extended 403 rechecks actual account and revoked role or same-admin access revision cannot retain parent draft or private history
+  ---
+  duration_ms: 58.737333
+  type: 'test'
+  ...
+# Subtest: extended explicit identity role access or navigation change discards old pending history and never restores old focus
+ok 11 - extended explicit identity role access or navigation change discards old pending history and never restores old focus
+  ---
+  duration_ms: 108.017583
+  type: 'test'
+  ...
+# Subtest: extended delayed history success or error does not replace a live current-price editor native draft and Cancel shows updated history state
+ok 12 - extended delayed history success or error does not replace a live current-price editor native draft and Cancel shows updated history state
+  ---
+  duration_ms: 14.335167
+  type: 'test'
+  ...
+# Subtest: extended forged inaccessible exact Fee and student anonymous commands never open read source or mutation UI
+ok 13 - extended forged inaccessible exact Fee and student anonymous commands never open read source or mutation UI
+  ---
+  duration_ms: 12.076208
+  type: 'test'
+  ...
+# Subtest: independent original Admin fee-name entry opens readonly current overview rather than the current-price editor
+ok 14 - independent original Admin fee-name entry opens readonly current overview rather than the current-price editor
+  ---
+  duration_ms: 66.031208
+  type: 'test'
+  ...
+# Subtest: independent original authorized Teacher fee name is readable without an enabled edit action
+ok 15 - independent original authorized Teacher fee name is readable without an enabled edit action
+  ---
+  duration_ms: 7.519333
+  type: 'test'
+  ...
+# Subtest: independent original future-pricing form can reach Review before a disabled final Save
+ok 16 - independent original future-pricing form can reach Review before a disabled final Save
+  ---
+  duration_ms: 0.572084
+  type: 'test'
+  ...
+# Subtest: independent original future-pricing UI does not invent order-start-date selection policy
+ok 17 - independent original future-pricing UI does not invent order-start-date selection policy
+  ---
+  duration_ms: 0.265416
+  type: 'test'
+  ...
+# Subtest: independent money and true dates validate while retaining exact typed strings and without a backdating rule
+ok 18 - independent money and true dates validate while retaining exact typed strings and without a backdating rule
+  ---
+  duration_ms: 3.969667
+  type: 'test'
+  ...
+# Subtest: independent invalid money or dates cannot reach valid review
+ok 19 - independent invalid money or dates cannot reach valid review
+  ---
+  duration_ms: 0.274916
+  type: 'test'
+  ...
+# Subtest: independent future edit review and blocked source preserve values without an enabled final operation or unproven policy
+ok 20 - independent future edit review and blocked source preserve values without an enabled final operation or unproven policy
+  ---
+  duration_ms: 49.526125
+  type: 'test'
+  ...
+# Subtest: independent authorized teacher overview excludes Admin edit scheduling and history even if a history payload is supplied
+ok 21 - independent authorized teacher overview excludes Admin edit scheduling and history even if a history payload is supplied
+  ---
+  duration_ms: 0.583041
+  type: 'test'
+  ...
+# Subtest: independent history is recorded snapshots rather than effective periods and never borrows current pricing for unknown records
+ok 22 - independent history is recorded snapshots rather than effective periods and never borrows current pricing for unknown records
+  ---
+  duration_ms: 12.10925
+  type: 'test'
+  ...
+# Subtest: independent malicious visible facts are escaped and source error does not display the stale fee
+ok 23 - independent malicious visible facts are escaped and source error does not display the stale fee
+  ---
+  duration_ms: 1.181459
+  type: 'test'
+  ...
+# Subtest: independent recorded known zero is not relabelled unknown by the future-amount rule
+ok 24 - independent recorded known zero is not relabelled unknown by the future-amount rule
+  ---
+  duration_ms: 0.97
+  type: 'test'
+  ...
+# Subtest: independent native composition Escape must not close the future draft
+ok 25 - independent native composition Escape must not close the future draft
+  ---
+  duration_ms: 68.669292
+  type: 'test'
+  ...
+# Subtest: independent native Review Back preserves raw strings and scroll and Cancel preserves the same unsaved parent editor without writes
+ok 26 - independent native Review Back preserves raw strings and scroll and Cancel preserves the same unsaved parent editor without writes
+  ---
+  duration_ms: 8.781875
+  type: 'test'
+  ...
+# Subtest: independent native invalid inputs focus a current error and retain exact draft without a current-price operation
+ok 27 - independent native invalid inputs focus a current error and retain exact draft without a current-price operation
+  ---
+  duration_ms: 17.255
+  type: 'test'
+  ...
+# Subtest: independent native current-source change retains proposal blocks Review and reloading rebases only child saved facts
+ok 28 - independent native current-source change retains proposal blocks Review and reloading rebases only child saved facts
+  ---
+  duration_ms: 4.583416
+  type: 'test'
+  ...
+# Subtest: independent native late history fills only owner state while child is open and is visible after cancel without remounting draft
+ok 29 - independent native late history fills only owner state while child is open and is visible after cancel without remounting draft
+  ---
+  duration_ms: 5.576
+  type: 'test'
+  ...
+# Subtest: independent native navigation or identity during reload discards child and late replies cannot revive it
+ok 30 - independent native navigation or identity during reload discards child and late replies cannot revive it
+  ---
+  duration_ms: 9.297375
+  type: 'test'
+  ...
+# Subtest: independent native IME Escape cannot discard a current-price Edit entered through Overview
+ok 31 - independent native IME Escape cannot discard a current-price Edit entered through Overview
+  ---
+  duration_ms: 3.897791
+  type: 'test'
+  ...
+1..31
+# tests 31
+# suites 0
+# pass 31
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 566.051541

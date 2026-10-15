@@ -1,0 +1,98 @@
+TAP version 13
+# Subtest: independent Review native Tab goes Close reading-body Back and reverse without trapping body or focusing disabled Save
+not ok 1 - independent Review native Tab goes Close reading-body Back and reverse without trapping body or focusing disabled Save
+  ---
+  duration_ms: 111.435541
+  type: 'test'
+  location: '/private/tmp/beamal-fee-keyboard-body-independent.mjs:22:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The browser must be allowed to move from the reading body to Back
+
+    true !== false
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: false
+  actual: true
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///private/tmp/beamal-fee-keyboard-body-independent.mjs:23:399)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+  ...
+# Subtest: independent Edit native body Tab reaches fields and footer both ways while wrap contains focus and raw draft survives
+not ok 2 - independent Edit native body Tab reaches fields and footer both ways while wrap contains focus and raw draft survives
+  ---
+  duration_ms: 9.565666
+  type: 'test'
+  location: '/private/tmp/beamal-fee-keyboard-body-independent.mjs:26:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+
+    true !== false
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: false
+  actual: true
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///private/tmp/beamal-fee-keyboard-body-independent.mjs:27:302)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: independent Admin Overview body remains in native path with actual Retry and correct first-last wrapping
+not ok 3 - independent Admin Overview body remains in native path with actual Retry and correct first-last wrapping
+  ---
+  duration_ms: 8.617875
+  type: 'test'
+  location: '/private/tmp/beamal-fee-keyboard-body-independent.mjs:30:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+
+    true !== false
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: false
+  actual: true
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///private/tmp/beamal-fee-keyboard-body-independent.mjs:31:577)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: independent Teacher Overview native body reaches footer Close without hidden Admin controls or background escape
+not ok 4 - independent Teacher Overview native body reaches footer Close without hidden Admin controls or background escape
+  ---
+  duration_ms: 4.027083
+  type: 'test'
+  location: '/private/tmp/beamal-fee-keyboard-body-independent.mjs:34:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+
+    true !== false
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: false
+  actual: true
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///private/tmp/beamal-fee-keyboard-body-independent.mjs:35:552)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+1..4
+# tests 4
+# suites 0
+# pass 0
+# fail 4
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 349.85625

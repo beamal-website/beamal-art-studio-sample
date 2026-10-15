@@ -1,0 +1,86 @@
+{
+  "date": "2026-10-16",
+  "branch": "test",
+  "readerCommit": "fafd6ef",
+  "scope": "UI stage: exact Fee details, recorded edits, future proposal input/review/cancel; no future pricing write",
+  "candidate": {
+    "source": "HEAD 9c46fda plus exact index of the ten owned source/test files, exported into a non-Git temporary directory",
+    "dependencies": "existing node_modules symlink; not a fresh installation test",
+    "testCommand": "npm test --prefix sample",
+    "tests": 1452,
+    "passed": 1452,
+    "failed": 0,
+    "skipped": 0,
+    "durationMs": 78027.86575,
+    "buildCommand": "npm run build --prefix sample",
+    "buildSeconds": 13.92,
+    "buildWarnings": [
+      "Existing Vite chunk-size warning",
+      "Existing Node SQLite experimental warning during tests"
+    ],
+    "workspaceDifference": "15 unrelated untracked Staff Groups tests excluded; no database, private mapping or unrelated file exported"
+  },
+  "independent": {
+    "originalGroups": 35,
+    "passed": 35,
+    "separateMakerHttpRerun": 5,
+    "liveGuiByReviewer": false
+  },
+  "rootGui": {
+    "roles": [
+      "Admin",
+      "authorized Teacher"
+    ],
+    "widthsCss": [
+      390,
+      768,
+      1280
+    ],
+    "languages": [
+      "zh",
+      "en"
+    ],
+    "teacher": "Exact scoped watercolour Fee at HK$280; same-name creative Fee is distinct. No edit/history controls; returns to exact watercolour row.",
+    "data": {
+      "originalTables": 42,
+      "originalChangedTables": [],
+      "isolatedTables": 42,
+      "isolatedChangedTables": [
+        "sessions"
+      ],
+      "reason": "Explicit isolated Teacher login/logout and restoration of Admin; no business-table mutation"
+    },
+    "limitations": [
+      "Not all width/language combinations were exhaustively repeated",
+      "Native IME composition was event-tested; no physical IME session claimed",
+      "No whole-app accessibility or performance certification",
+      "Transient browser input/screenshot errors were checked against resulting DOM; rejected cropped captures not archived"
+    ],
+    "invalidCapture": "Final 768 English error screenshot uses the top Fees record FE-001 at page scroll zero; the offset Workshop capture was rejected. Error focus and heading/Close DOM bounds were checked before recapture."
+  },
+  "sourceHashes": {
+    "sample/client/api-client.js": "35c0cd10001d31c1e1829fd2a187285b1d65e60b3e3be411c67098b9921602e8",
+    "sample/client/fee-pricing-ui.js": "8dbc45dc423f5c9898d4a95cf741608ced6742a98dcd65536c77a85d9c6b0a28",
+    "sample/client/fee-pricing-ui.css": "aa137753f27bcb53f50c05cff7ac02c4bd2b29d9617010c810da9b8ecb68de4c",
+    "sample/server/app.mjs": "4b627baf06bd5c41669b1fd2ac9d34bdb5490d30432df846ca52bd523830cc75",
+    "sample/server/store.mjs": "aa8c2a67ba071c9582f93787fb24600648a7ac463c90a44e7d6e15d3ab130167",
+    "sample/server/tests/fee-history.test.mjs": "6ba021017fd9eca98f1932a1c44bc2662817fbae81ef26db206300006a1ed1a7",
+    "sample/src.js": "e7bc5d74d198e9570de3106736c8a08714ca38726abba32970d9bd8d73cd8949",
+    "sample/tests/api-client.test.mjs": "b8cfb8c09ae7444bd7fb8764ab841282427f8911445ca14f70ecc024c2dc9c3b",
+    "sample/tests/fee-pricing-ui.test.mjs": "36b6bd43615d9dd59acb103a87f4e426a7aa4992204c683a64e80b92d4d586aa",
+    "sample/tests/flows.test.mjs": "56882f15ed283dcaa530687becbe5bedbdaebcdfd3a4bff8265fd40608caf162"
+  },
+  "images": [
+    "overview-390-zh.png",
+    "review-390-zh.png",
+    "review-1280-en.png",
+    "overview-768-zh.png",
+    "review-768-zh.png",
+    "review-768-en.png",
+    "invalid-768-en.png"
+  ],
+  "evidenceFormatting": {
+    "keyboard-independent-red.log": "Only trailing whitespace normalized in archived TAP output; original /tmp log preserved.",
+    "originalRawSha256": "9b6b7645bf464c522ddd796eeb675d75655b100be6334f9985a89c45c3119d45"
+  }
+}

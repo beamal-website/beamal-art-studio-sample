@@ -1,0 +1,34 @@
+TAP version 13
+# Subtest: independent Review native Tab goes Close reading-body Back and reverse without trapping body or focusing disabled Save
+ok 1 - independent Review native Tab goes Close reading-body Back and reverse without trapping body or focusing disabled Save
+  ---
+  duration_ms: 285.296709
+  type: 'test'
+  ...
+# Subtest: independent Edit native body Tab reaches fields and footer both ways while wrap contains focus and raw draft survives
+ok 2 - independent Edit native body Tab reaches fields and footer both ways while wrap contains focus and raw draft survives
+  ---
+  duration_ms: 8.658334
+  type: 'test'
+  ...
+# Subtest: independent Admin Overview body remains in native path with actual Retry and correct first-last wrapping
+ok 3 - independent Admin Overview body remains in native path with actual Retry and correct first-last wrapping
+  ---
+  duration_ms: 23.091458
+  type: 'test'
+  ...
+# Subtest: independent Teacher Overview native body reaches footer Close without hidden Admin controls or background escape
+ok 4 - independent Teacher Overview native body reaches footer Close without hidden Admin controls or background escape
+  ---
+  duration_ms: 19.500959
+  type: 'test'
+  ...
+1..4
+# tests 4
+# suites 0
+# pass 4
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 722.068667

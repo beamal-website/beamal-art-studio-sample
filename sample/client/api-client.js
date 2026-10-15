@@ -76,6 +76,7 @@ export function createApiClient() {
     logout: () => mutateAuth(async epoch => { const result = await request('/auth/logout', { method: 'POST', authOperation: 'logout' }); if (epoch === authEpoch) csrfToken = ''; return result; }),
     courses: () => request('/courses'),
     fees: () => request('/fees'),
+    feeHistory: id => request(`/fees/${encodeURIComponent(id)}/history`),
     availability(range, revision = '') {
       const query = new URLSearchParams();
       for (const key of ['from', 'to', 'courseId']) if (range?.[key]) query.set(key, range[key]);

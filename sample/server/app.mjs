@@ -528,6 +528,13 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
         json(response, result.status, result.body); return;
       }
       const feeMatch = /^\/api\/fees\/([^/]+)$/.exec(pathname);
+      const feeHistoryMatch = /^\/api\/fees\/([^/]+)\/history$/.exec(pathname);
+      if (feeHistoryMatch) {
+        const session = requireSession(request);
+        if (session.user.role !== 'admin') throw new ApplicationError(403, 'ROLE_FORBIDDEN', 'Only an administrator can read fee history.');
+        if (request.method !== 'GET') throw new ApplicationError(405, 'METHOD_NOT_ALLOWED', 'Fee history is read-only.');
+        json(response, 200, store.feeHistory(decodeId(feeHistoryMatch[1]))); return;
+      }
       if (feeMatch && request.method === 'PATCH') {
         const session = requireMutation(request);
         if (session.user.role !== 'admin') throw new ApplicationError(403, 'ROLE_FORBIDDEN', 'Only an administrator can change fees.');

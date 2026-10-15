@@ -58,6 +58,19 @@ async function login(client, wire, name) {
   return client.login(`${name}@example.test`, `FictionalPassword-${name}`);
 }
 
+test('fee history reads encode the exact target and use authenticated GET without save payloads',async t=>{
+ const wire=network(t),client=createApiClient();await login(client,wire,'B');const id='fee / 費用',path='/api/fees/'+encodeURIComponent(id)+'/history',history={feeId:id,records:[]};
+ assert.equal(typeof client.feeHistory,'function');wire.reply(path,history);assert.deepEqual(await client.feeHistory(id),history);
+ const call=wire.calls.at(-1);assert.equal(call.method,'GET');assert.equal(call.credentials,'same-origin');assert.equal(call.body,undefined);assert.equal(call.headers.has('X-CSRF-Token'),false);
+ wire.reply(path,{error:{code:'FEE_NOT_FOUND',message:'Fee was not found.'}},404);await assert.rejects(client.feeHistory(id),failure=>failure instanceof ApiError&&failure.status===404&&failure.code==='FEE_NOT_FOUND');
+});
+
+test('fee history cannot apply a late private response after account change or session invalidation',async t=>{
+ const wire=network(t),client=createApiClient();await login(client,wire,'A');assert.equal(typeof client.feeHistory,'function');
+ const wait=wire.pending('/api/fees/private-A/history'),old=observe(client.feeHistory('private-A'));await login(client,wire,'B');wait.resolve(response({feeId:'private-A',records:[{feeName:'Private A history'}]}));superseded(await old);
+ const next=wire.pending('/api/fees/private-B/history'),expired=observe(client.feeHistory('private-B'));client.invalidateSession();next.resolve(response({feeId:'private-B',records:[]}));superseded(await expired);
+});
+
 async function save(client, wire, name = 'B') {
   wire.reply('/api/courses/fictional-course/materials', { material: { id: 'fictional-note', name: `Fictional ${name} note` } }, 201);
   const result = await client.saveMaterial('fictional-course', { name: `Fictional ${name} note` }, null, 'fictional-save-key');

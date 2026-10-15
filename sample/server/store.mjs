@@ -22,6 +22,18 @@ const metadata = (record, includeClassType = false) => ({ courseName: record.cou
 const pricing = record => Object.fromEntries(pricingKeys.filter(key => Object.hasOwn(record, key)).map(key => [key, record[key]]));
 const nameKey = name => name.trim().toLowerCase();
 const deletion = row => row.deleted_at ? { deletedAt: row.deleted_at } : {};
+const historyPricing = snapshot => {
+  const result = {
+    pricingModel: ['monthly-lessons', 'fixed-monthly', 'package'].includes(snapshot?.pricingModel) ? snapshot.pricingModel : null,
+    price: typeof snapshot?.price === 'number' && Number.isFinite(snapshot.price) && snapshot.price >= 0 ? snapshot.price : null,
+  };
+  for (const key of ['months', 'duration', 'packageTotal']) if (Number.isSafeInteger(snapshot?.[key]) && snapshot[key] > 0) result[key] = snapshot[key];
+  if (['visits', 'lessons', 'minutes'].includes(snapshot?.packageType)) result.packageType = snapshot.packageType;
+  const expiry = snapshot?.bookingExpiry;
+  if (expiry === null) result.bookingExpiry = null;
+  else if (expiry && Number.isSafeInteger(expiry.value) && expiry.value > 0 && ['days', 'weeks', 'months'].includes(expiry.unit)) result.bookingExpiry = { value: expiry.value, unit: expiry.unit };
+  return result;
+};
 
 export async function createStore({ databasePath = ':memory:', seedUsers = [], seedCourses = [], attachmentsDir } = {}) {
   if (databasePath !== ':memory:') mkdirSync(dirname(databasePath), { recursive: true, mode: 0o700 });
@@ -112,6 +124,21 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
     courseIds: database.prepare('SELECT course_id FROM course_fees WHERE fee_id = ? ORDER BY course_id').all(row.id).map(link => link.course_id),
   } : null;
   const getFee = id => parseFee(database.prepare('SELECT * FROM fees WHERE id = ?').get(id));
+  const feeHistory = id => transaction(() => {
+    if (!database.prepare('SELECT 1 FROM fees WHERE id = ?').get(id)) throw new ApplicationError(404, 'FEE_NOT_FOUND', 'Fee was not found.');
+    const records = database.prepare(`SELECT history.id, history.version, history.action, history.created_at, history.snapshot, users.display_name AS actor_name
+      FROM fee_audit_log AS history LEFT JOIN users ON users.id = history.actor_id
+      WHERE history.fee_id = ? ORDER BY history.id DESC`).all(id).map(row => {
+      let snapshot;
+      try { snapshot = JSON.parse(row.snapshot); } catch { snapshot = null; }
+      return {
+        id: row.id, version: row.version, action: row.action, recordedAt: row.created_at,
+        feeName: typeof snapshot?.feeName === 'string' ? snapshot.feeName : '', pricing: historyPricing(snapshot),
+        ...(typeof row.actor_name === 'string' && row.actor_name.trim() ? { actorName: row.actor_name } : {}),
+      };
+    });
+    return { feeId: id, records };
+  }, 'read');
   const parseCourse = (row, publicOnly = false) => {
     if (!row) return null;
     const fees = database.prepare(`SELECT fees.* FROM fees JOIN course_fees ON fees.id = course_fees.fee_id WHERE course_fees.course_id = ? ${publicOnly ? 'AND fees.online_store = 1' : ''} ORDER BY course_fees.position, fees.fee_code`).all(row.id).map(parseFee);
@@ -391,6 +418,7 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
     deleteSession: tokenHash => database.prepare('DELETE FROM sessions WHERE token_hash = ?').run(tokenHash),
     audit: () => database.prepare('SELECT * FROM audit_log ORDER BY id').all().map(row => ({ ...row, snapshot: JSON.parse(row.snapshot) })),
     feeAudit: () => database.prepare('SELECT * FROM fee_audit_log ORDER BY id').all().map(row => ({ ...row, snapshot: JSON.parse(row.snapshot) })),
+    feeHistory,
     close() { if (!closed) { closed = true; const cleanup = attachments.close(); database.close(); return cleanup; } },
   };
 }

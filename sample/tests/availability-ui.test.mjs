@@ -212,16 +212,16 @@ test('public course names and teacher names are escaped in both languages', () =
   }
 });
 
-test('public settings preserve opened version, independent visibility switches and a fixed seven-day window', () => {
+test('public settings preserve opened version, independent visibility switches and the default seven-day window', () => {
   const html = availabilityPublicSettingsMarkup({ settings: { version: 0, rangeDays: 7, showFullTrialSlots: true, showReschedulingSlots: false } }, ui('en'));
   assert.match(html, /<form id="availability-public-settings" data-version="0"/);
   assert.match(html, /type="checkbox" name="showFullTrialSlots" checked/);
   assert.match(html, /type="checkbox" name="showReschedulingSlots"/);
   assert.doesNotMatch(html, /type="checkbox" name="showReschedulingSlots" checked/);
-  assert.match(html, /seven consecutive days/);
+  assert.match(html, /name="rangeDays" type="number" value="7" min="7" max="30"/);
   assert.match(html, /id="availability-public-settings-save"/);
   assert.match(html, /data-action="availability-settings-cancel"/);
-  assert.doesNotMatch(html, /type="number"|Total remaining|API|SQLite/);
+  assert.doesNotMatch(html, /Total remaining|API|SQLite/);
   const busy = availabilityPublicSettingsMarkup({ settings: { version: 5 }, busy: true, error: 'Settings <failed>' }, ui('en'));
   assert.match(busy, /data-version="5"/);
   assert.match(tagById(busy, 'availability-public-settings-save'), /disabled/);
@@ -263,4 +263,25 @@ test('readonly available-time detail uses a single formal teacher colour and pre
   const unsafe = availabilityDetailMarkup({ slot: { ...slot, teacherColors: ['red;position:fixed'] } }, ui('en'));
   assert.doesNotMatch(unsafe, /position:fixed/);
   assert.match(unsafe, /availability-detail-dialog" tabindex="-1" style="--tt-lesson-color:#27777b"/);
+});
+
+test('public date selector supports every confirmed range from seven to thirty days and navigates the chosen window',()=>{
+ for(const rangeDays of [7,8,14,30]){
+  const end=new Date('2026-12-20T00:00:00Z');end.setUTCDate(end.getUTCDate()+rangeDays-1);
+  const html=publicCourseDetailsMarkup({course,slots:[],from:'2026-12-20',to:end.toISOString().slice(0,10),rangeDays},ui('en'));
+  assert.equal((html.match(/data-availability-date=/g)||[]).length,rangeDays);
+  assert.match(html,new RegExp(`value="${rangeDays}" selected`));
+  assert.equal((html.match(/<option value="(?:[7-9]|[12]\d|30)"/g)||[]).length,24);
+  const next=new Date('2026-12-20T00:00:00Z');next.setUTCDate(next.getUTCDate()+rangeDays);
+  assert.match(html,new RegExp(`data-action="availability-public-range" data-from="${next.toISOString().slice(0,10)}"`));
+ }
+});
+
+test('public range selector clamps the calendar boundary without fabricating dates or quota and settings expose the persisted default',()=>{
+ const html=publicCourseDetailsMarkup({course,slots:[],from:'9999-12-25',to:'9999-12-31',rangeDays:30},ui('en'));
+ assert.equal((html.match(/data-availability-date=/g)||[]).length,7);assert.doesNotMatch(html,/10000-/);
+ assert.match(html,/Next 30 days/);assert.match(html,/data-action="availability-public-range" data-from="9999-12-25"[^>]*disabled/);
+ const settings=availabilityPublicSettingsMarkup({settings:{rangeDays:14,version:2}},ui('en'));
+ assert.match(settings,/name="rangeDays"[^>]*value="14"/);assert.match(settings,/min="7"/);assert.match(settings,/max="30"/);
+ assert.doesNotMatch(settings,/Public pages show seven consecutive days at a time/);
 });

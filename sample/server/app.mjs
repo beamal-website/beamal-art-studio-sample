@@ -343,7 +343,7 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
         json(response,result.status,result.body); return;
       }
       if (request.method === 'GET' && (pathname === '/api/public/courses' || publicCourseMatch)) {
-        const query = slotQuery(publicCourseMatch ? ['from','since'] : ['since']);
+        const query = slotQuery(publicCourseMatch ? ['from','since','days'] : ['since']);
         json(response, 200, publicCourseMatch ? store.availableSlots.publicDetail(decodeId(publicCourseMatch[1]), query) : store.availableSlots.publicCourses(query)); return;
       }
       if (request.method === 'GET' && (pathname === '/api/available-slots' || availableSlotMatch)) {

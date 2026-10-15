@@ -1,7 +1,7 @@
 import { publicCourseDetailsMarkup } from './availability-ui.js';
 
 export function availabilityPublicPreviewMarkup(
-  { course = null, slots = [], from = '', to = '', loading = false, error = '', dateError = '', dateInput } = {},
+  { course = null, slots = [], from = '', to = '', rangeDays = 7, loading = false, error = '', dateError = '', dateInput } = {},
   { t, esc },
 ) {
   const failure = typeof error === 'string' ? error : '';
@@ -14,7 +14,7 @@ export function availabilityPublicPreviewMarkup(
   const projection = publicCourseDetailsMarkup({
     course: shownCourse,
     slots: shownCourse && !invalidDate && Array.isArray(slots) ? slots : [],
-    from, to, dateInput, loading: busy, error: failure || unavailable, dateError: invalidDate,
+    from, to, rangeDays, dateInput, loading: busy, error: failure || unavailable, dateError: invalidDate,
   }, { t, esc, managementPreview: true });
   return `<div class="modal availability-modal availability-preview-modal" role="dialog" aria-modal="true" aria-labelledby="availability-preview-title">
     <div class="dialog availability-preview-dialog" tabindex="-1">

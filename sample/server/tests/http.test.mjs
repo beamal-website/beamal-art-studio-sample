@@ -5,6 +5,16 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {origin,users,seedCourses,course,fixture,error,publicUser,noCredentials,serverCourse,grantTeacherAccess} from './helpers.mjs';
 
+test('anonymous course detail accepts only a single bounded integer days query and cannot mutate public settings',async t=>{
+ const app=await fixture(t),admin=app.client();await admin.login();const teacher=await admin.request('/api/scheduling-resources',{method:'POST',body:{kind:'teacher',displayName:'Range test teacher'}});assert.equal(teacher.status,201,teacher.text);
+ const created=await admin.request('/api/available-slots',{method:'POST',body:{courseId:'public-course',date:'2026-12-30',time:'12:00',duration:30,teacherIds:[teacher.body.resource.id],roomIds:[],totalCapacity:4,trialCapacity:2,reschedulingCapacity:0,trialEnabled:true,reschedulingEnabled:false,active:true}});assert.equal(created.status,201,created.text);
+ const anonymous=app.client(),settings=(await admin.request('/api/availability-public-settings')).body.settings;
+ for(const[days,to]of[[7,'2027-01-04'],[8,'2027-01-05'],[14,'2027-01-11'],[30,'2027-01-27']]){const result=await anonymous.request('/api/public/courses/public-course?from=2026-12-29&days='+days);assert.equal(result.status,200,result.text);assert.equal(result.body.rangeDays,days);assert.equal(result.body.to,to);assert.equal(result.body.slots[0].id,created.body.slot.id);assert.equal(result.headers.get('cache-control'),'no-store');}
+ for(const query of['days=6','days=31','days=7.5','days=abc','days=','days=true','days=7&days=14','days=14&extra=yes','days=14&from=2026-12-29&from=2026-12-30'])error(await anonymous.request('/api/public/courses/public-course?'+query),400);
+ error(await anonymous.request('/api/public/courses?days=14'),400);error(await anonymous.request('/api/availability-public-settings',{method:'PATCH',body:{...settings,rangeDays:30}}),401);
+ assert.equal(anonymous.cookies.size,0);assert.deepEqual((await admin.request('/api/availability-public-settings')).body.settings,settings);assert.deepEqual((await admin.request('/api/available-slots/'+created.body.slot.id)).body.slot,created.body.slot);
+});
+
 test('HTTP health and anonymous session identify shared test mode without exposing accounts',async t=>{
   const app=await fixture(t),anonymous=app.client();
   const health=await anonymous.request('/api/health');

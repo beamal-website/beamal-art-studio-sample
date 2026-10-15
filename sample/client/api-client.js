@@ -94,15 +94,16 @@ export function createApiClient() {
     saveAvailabilityPublicSettings(settings, current, operationKey) {
       return request('/availability-public-settings', {
         method: 'PATCH',
-        body: { showFullTrialSlots: settings.showFullTrialSlots, showReschedulingSlots: settings.showReschedulingSlots, version: current.version },
+        body: { showFullTrialSlots: settings.showFullTrialSlots, showReschedulingSlots: settings.showReschedulingSlots, ...(Object.hasOwn(settings, 'rangeDays') ? { rangeDays: settings.rangeDays } : {}), version: current.version },
         idempotencyKey: operationKey,
       });
     },
     publicCourses: (revision = '') => request(`/public/courses${revision ? '?since=' + encodeURIComponent(revision) : ''}`),
-    publicCourseDetails(id, from, revision = '') {
+    publicCourseDetails(id, from, revision = '', days) {
       const query = new URLSearchParams();
       if (from) query.set('from', from);
       if (revision) query.set('since', revision);
+      if (days !== undefined) query.set('days', days);
       return request(`/public/courses/${encodeURIComponent(id)}${query.size ? '?' + query : ''}`);
     },
     people: (query = {}, revision = '') => {

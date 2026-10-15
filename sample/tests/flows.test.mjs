@@ -3673,7 +3673,7 @@ test('public preview linked time edits its exact occurrence and cancels back to 
 test('Course public preview rejects mismatched public DTOs without falling back to private Course or slot records',async()=>{
  for(const invalid of ['course','range','date','duplicate']){
   const remote={},a=await availabilityUiApp(remote);await a.click({openCourse:'qa-course'});a.set("selectTimetableDate('2026-10-15')");
-  const original=a.client.publicCourseDetails;a.client.publicCourseDetails=async(...args)=>{const value=await original(...args);if(invalid==='course')value.course.id='different-course';if(invalid==='range')value.rangeDays=14;if(invalid==='date')value.slots[0].date='2026-10-22';if(invalid==='duplicate')value.slots.push(copy(value.slots[0]));return value;};
+  const original=a.client.publicCourseDetails;a.client.publicCourseDetails=async(...args)=>{const value=await original(...args);if(invalid==='course')value.course.id='different-course';if(invalid==='range')value.rangeDays=31;if(invalid==='date')value.slots[0].date='2026-10-22';if(invalid==='duplicate')value.slots.push(copy(value.slots[0]));return value;};
   await a.click({action:'availability-preview-open',courseId:'qa-course'});assert.equal(a.read('availabilityOverlay.loading'),false);assert.ok(a.read('availabilityOverlay.error'));assert.equal(a.read('availabilityOverlay.course'),null);assert.deepEqual(a.read('availabilityOverlay.slots'),[]);assert.doesNotMatch(a.read('modal'),/PRIVATE slot preparation|PRIVATE excluded person|data-action="availability-preview-manage"/);assert.equal(a.availabilityWrites.length,0);
  }
 });
@@ -3710,4 +3710,63 @@ test('saving a preview managed time returns through a fresh public read rather t
 test('invalid preview date input retains the empty value that needs correction rather than displaying a valid date with an error',async()=>{
  const a=await availabilityUiApp();await a.click({openCourse:'qa-course'});a.set("selectTimetableDate('2026-10-15')");await a.click({action:'availability-preview-open',courseId:'qa-course'});a.change('from','',{id:'availability-preview-from'});assert.ok(a.read('availabilityOverlay.dateError'));assert.equal(a.read('availabilityOverlay.from'),'2026-10-15');const input=a.read('modal').match(/<input[^>]*id="availability-preview-from"[^>]*>/)?.[0]||'';assert.match(input,/value=""/);assert.doesNotMatch(a.read('modal'),/data-action="availability-preview-manage"/);
  await a.click({action:'availability-preview-refresh'});assert.equal(a.read('availabilityOverlay.dateError'),'');assert.match(a.read('modal').match(/<input[^>]*id="availability-preview-from"[^>]*>/)?.[0]||'',/value="2026-10-15"/);
+});
+
+const publicRangeReply=(a,id,from,days)=>{const rangeDays=days??a.availabilityRemote.settings.rangeDays;const to=new Date(Math.min(Date.parse(from+'T00:00:00Z')+(rangeDays-1)*86400000,Date.parse('9999-12-31T00:00:00Z'))).toISOString().slice(0,10);return {course:copy(a.availabilityRemote.publicCourse),slots:copy(a.availabilityRemote.publishedSlots.filter(slot=>slot.date>=from&&slot.date<=to)),from,to,rangeDays,revision:`${from}-${rangeDays}`};};
+
+test('public visitor uses centre default and can change range without losing the course or accepting a late older window',async()=>{
+ const a=await availabilityUiApp({settings:{showFullTrialSlots:false,showReschedulingSlots:false,rangeDays:14,version:2}}),reads=[];let gate;
+ a.client.publicCourseDetails=async(id,from,revision,days)=>{reads.push({id,from,days});if(gate&&days===30)return gate.promise;return publicRangeReply(a,id,from,days);};
+ a.set("applySharedUser(null);lang='en'");await a.click({action:'availability-public-course',courseId:'qa-course'});await until(()=>a.read("publicAvailabilityDetails.get('qa-course')?.ready"),'Default public window must load');
+ assert.equal((a.nodes['#app'].innerHTML.match(/data-availability-date=/g)||[]).length,14);assert.equal(reads[0].days,undefined);
+ gate=deferred();a.change('days','30',{id:'availability-public-days'});await until(()=>reads.some(r=>r.days===30),'30-day selection must dispatch');
+ a.change('days','8',{id:'availability-public-days'});await until(()=>a.read("publicAvailabilityDetails.get('qa-course')?.rangeDays")===8,'Eight-day result must be selected');
+ gate.resolve(publicRangeReply(a,'qa-course',reads[0].from,30));await until(()=>!a.read('publicAvailabilityReads.size'),'Both requests settle');
+ assert.equal((a.nodes['#app'].innerHTML.match(/data-availability-date=/g)||[]).length,8);assert.equal(a.read('publicAvailabilityDays'),8);assert.equal(a.availabilityWrites.length,0);
+});
+
+test('management preview uses same public range default and keeps explicit range through exact detail cancellation',async()=>{
+ const a=await availabilityUiApp({settings:{showFullTrialSlots:false,showReschedulingSlots:false,rangeDays:14,version:2}}),reads=[];
+ a.client.publicCourseDetails=async(id,from,revision,days)=>{reads.push({id,from,days});return publicRangeReply(a,id,from,days);};
+ await a.click({openCourse:'qa-course'});a.set("selectTimetableDate('2026-10-15')");await a.click({action:'availability-preview-open',courseId:'qa-course'});
+ assert.equal(a.read('availabilityOverlay.rangeDays'),14);assert.equal(a.read('availabilityOverlay.to'),'2026-10-28');
+ a.change('days','30',{id:'availability-preview-days'});await until(()=>a.read('availabilityOverlay.rangeDays')===30&&!a.read('availabilityOverlay.loading'),'Preview range must refresh');
+ assert.equal(a.read('availabilityOverlay.to'),'2026-11-13');assert.equal(reads.at(-1).days,30);
+ await a.click({action:'availability-preview-manage',slotId:'qa-available-slot'});await a.click({action:'availability-close'});
+ assert.equal(a.read('availabilityOverlay.kind'),'public-preview');assert.equal(a.read('availabilityOverlay.rangeDays'),30);assert.match(a.read('modal'),/Next 30 days/);assert.equal(a.availabilityWrites.length,0);
+});
+
+test('public default range saves with other settings and invalid values preserve the open draft without a write',async()=>{
+ const a=await availabilityUiApp();await openAvailabilityTimetable(a);await a.click({action:'availability-public-settings-open'});
+ let values={rangeDays:'6',showFullTrialSlots:'on'},f=availabilityForm(a,values,'availability-public-settings');await a.submit(f.id,values,f);
+ assert.equal(a.availabilityWrites.length,0);assert.ok(a.nodes['#availability-settings-error'].textContent);assert.equal(a.read('availabilityOverlay.kind'),'settings');
+ values={rangeDays:'30',showFullTrialSlots:'on'};f=availabilityForm(a,values,'availability-public-settings');await a.submit(f.id,values,f);
+ assert.equal(a.availabilityWrites.length,1);assert.equal(a.availabilityWrites[0].settings.rangeDays,30);assert.equal(a.availabilityRemote.settings.rangeDays,30);
+});
+
+test('public date draft is retained with a clear error and refresh restores the last canonical window',async()=>{
+ const a=await availabilityUiApp();a.set("applySharedUser(null);lang='en'");await a.click({action:'availability-public-course',courseId:'qa-course'});await until(()=>a.read("publicAvailabilityDetails.get('qa-course')?.ready"),'Public source must load');
+ const canonical=a.read('publicAvailabilityFrom'),reads=a.publicAvailabilityReads.length;
+ a.change('from','',{id:'availability-public-from'});
+ assert.match(a.nodes['#app'].innerHTML,/id="availability-public-from"[^>]*value=""[^>]*aria-invalid="true"/);assert.match(a.nodes['#app'].innerHTML,/Choose a valid start date/);assert.doesNotMatch(a.nodes['#app'].innerHTML,/data-availability-slot-id=|No available times/);assert.equal(a.publicAvailabilityReads.length,reads);
+ await a.click({action:'availability-public-refresh'});await until(()=>a.read("publicAvailabilityDetails.get('qa-course')?.ready"),'Refresh restores canonical range');
+ assert.equal(a.read('publicAvailabilityFrom'),canonical);assert.doesNotMatch(a.nodes['#app'].innerHTML,/aria-invalid|Choose a valid start date/);assert.equal(a.availabilityWrites.length,0);
+});
+
+test('public range navigation restores the matching previous or next button focus',async()=>{
+ const a=await availabilityUiApp();a.set("applySharedUser(null);lang='en'");await a.click({action:'availability-public-course',courseId:'qa-course'});await until(()=>a.read("publicAvailabilityDetails.get('qa-course')?.ready"),'Public source must load');
+ let focused=false;const next={focus(){focused=true},isConnected:true};a.nodes['[data-action="availability-public-range"][data-direction="next"]']=next;
+ await a.click({action:'availability-public-range',from:'2026-10-22',direction:'next'});assert.equal(focused,true);
+});
+
+test('an initial unchanged public response cannot invent a loaded empty course',async()=>{
+ const a=await availabilityUiApp();a.client.publicCourseDetails=async()=>({unchanged:true,rangeDays:14,from:'2026-10-14',to:'2026-10-27',revision:'not-a-source'});a.set("applySharedUser(null);lang='en'");await a.click({action:'availability-public-course',courseId:'qa-course'});await until(()=>a.read("publicAvailabilityDetails.get('qa-course')?.ready"),'Malformed response settles as an error');assert.ok(a.read("publicAvailabilityDetails.get('qa-course').error"));assert.doesNotMatch(a.nodes['#app'].innerHTML,/No available times/);
+});
+
+test('explicit public reload requests a full source for both directory and course instead of rejecting a valid conditional reply',async()=>{
+ const a=await availabilityUiApp();let details=0,directories=0;
+ a.client.publicCourses=async revision=>{directories++;return revision?{unchanged:true,revision}:{courses:[copy(a.availabilityRemote.publicCourse)],revision:'directory-current'};};
+ a.client.publicCourseDetails=async(id,from,revision,days)=>{details++;const result=publicRangeReply(a,id,from,days);return revision?{unchanged:true,revision,from,to:result.to,rangeDays:result.rangeDays}:result;};
+ a.set("applySharedUser(null);lang='en';go('/classes')");await until(()=>a.read('publicCoursesCache.ready'),'Directory source loads');await a.click({action:'availability-public-refresh'});await until(()=>directories>=2&&a.read('publicCoursesCache.ready'),'Directory force reload settles');assert.equal(a.read('publicCoursesCache.error'),'');
+ await a.click({action:'availability-public-course',courseId:'qa-course'});await until(()=>a.read("publicAvailabilityDetails.get('qa-course')?.ready"),'Course source loads');await a.click({action:'availability-public-refresh'});await until(()=>details>=2&&a.read("publicAvailabilityDetails.get('qa-course')?.ready"),'Course force reload settles');assert.equal(a.read("publicAvailabilityDetails.get('qa-course').error"),'');assert.match(a.nodes['#app'].innerHTML,/Published authoritative studio/);
 });

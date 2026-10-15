@@ -292,10 +292,21 @@ test('formal available slot requests encode their bounded query and stable ID an
  wire.reply(path,{error:{code:'VERSION_CONFLICT',message:'The slot changed in another browser.'}},409);await assert.rejects(client.saveAvailableSlot(edited,slot,'fictional-slot-edit'),error=>error instanceof ApiError&&error.status===409&&error.code==='VERSION_CONFLICT');
 });
 
-test('availability public setting requests send only display booleans with initial version zero and stable authenticated keys',async t=>{
+test('legacy availability public setting requests omit an unprovided range with initial version zero and stable authenticated keys',async t=>{
  const wire=network(t),client=createApiClient();await login(client,wire,'B');const current={showFullTrialSlots:false,showReschedulingSlots:false,rangeDays:7,version:0},settings={showFullTrialSlots:true,showReschedulingSlots:false},saved={...current,...settings,version:1};wire.reply('/api/availability-public-settings',{settings:current});assert.deepEqual(await client.availabilityPublicSettings(),{settings:current});
  wire.reply('/api/availability-public-settings',{settings:saved});assert.deepEqual(await client.saveAvailabilityPublicSettings(settings,current,'fictional-public-settings'),{settings:saved});const call=wire.calls.at(-1);assert.equal(call.method,'PATCH');assert.deepEqual(JSON.parse(call.body),{...settings,version:0},'The fixed range and other slot content must not be sent as display settings');assert.equal(call.headers.get('Idempotency-Key'),'fictional-public-settings');assert.equal(call.headers.get('X-CSRF-Token'),'csrf-fictional-B');assert.equal(call.credentials,'same-origin');
  wire.reply('/api/availability-public-settings',{error:{code:'VERSION_CONFLICT',message:'The settings changed in another browser.'}},409);await assert.rejects(client.saveAvailabilityPublicSettings(settings,current,'fictional-public-settings'),error=>error instanceof ApiError&&error.status===409&&error.code==='VERSION_CONFLICT');
+});
+
+test('availability settings send an explicitly chosen range with the opened version and no unrelated fields',async t=>{
+ const wire=network(t),client=createApiClient();await login(client,wire,'B');const settings={showFullTrialSlots:false,showReschedulingSlots:true,rangeDays:14,remark:'private unsupported field'},current={version:3,rangeDays:7};
+ wire.reply('/api/availability-public-settings',{settings:{...settings,version:4}});await client.saveAvailabilityPublicSettings(settings,current,'range-settings');const call=wire.calls.at(-1);assert.deepEqual(JSON.parse(call.body),{showFullTrialSlots:false,showReschedulingSlots:true,rangeDays:14,version:3});assert.equal(call.method,'PATCH');assert.equal(call.headers.get('Idempotency-Key'),'range-settings');
+});
+
+test('anonymous public detail optionally encodes days as a fourth argument while leaving old calls unchanged',async t=>{
+ const wire=network(t),client=createApiClient(),id='course / 二',from='2026-12-29',revision='revision / 二';
+ for(const days of[7,8,14,30]){wire.reply(input=>{const url=new URL(input,'http://fictional.test');assert.equal(url.pathname,'/api/public/courses/'+encodeURIComponent(id));assert.equal(url.searchParams.get('from'),from);assert.equal(url.searchParams.get('since'),revision);assert.equal(url.searchParams.get('days'),String(days));assert.deepEqual([...url.searchParams.keys()],['from','since','days']);},{from,to:'2027-01-27',rangeDays:days,slots:[]});await client.publicCourseDetails(id,from,revision,days);}
+ wire.reply(input=>{const url=new URL(input,'http://fictional.test');assert.deepEqual([...url.searchParams.keys()],['from','since']);},{rangeDays:7,slots:[]});await client.publicCourseDetails(id,from,revision);assert.ok(wire.calls.every(call=>call.method==='GET'&&call.path.startsWith('/api/public/courses/')&&!call.body));
 });
 
 test('public course availability reads work without login and encode their independent public revision and seven-day start query',async t=>{

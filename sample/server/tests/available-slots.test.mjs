@@ -20,6 +20,44 @@ async function series(app,extra={}){const reply=await send(app.admin,'/api/sched
 const linked=(schedule,extra={})=>({scheduleId:schedule.id,sequence:1,...config(),...extra});
 function hold(database,id,kind='trial',state='held'){database.prepare('INSERT INTO availability_reservations(id,slot_id,kind,state) VALUES (?,?,?,?)').run(randomUUID(),id,kind,state);}
 
+test('public detail supports every requested 7–30 day projection with exact boundaries and range-specific revisions',async t=>{
+ const app=await setup(t),dates=['2026-12-28','2027-01-03','2027-01-04','2027-01-10','2027-01-26','2027-01-27'],ids=[];
+ for(const date of dates)ids.push((await add(app,standalone(app,{date}))).body.slot.id);
+ for(const [days,to,count]of[[7,'2027-01-03',2],[8,'2027-01-04',3],[14,'2027-01-10',4],[30,'2027-01-26',5]]){
+  const result=app.store.availableSlots.publicDetail('public-course',{from:'2026-12-28',days});
+  assert.equal(result.rangeDays,days);assert.equal(result.from,'2026-12-28');assert.equal(result.to,to);assert.deepEqual(result.slots.map(slot=>slot.id),ids.slice(0,count));
+  assert.deepEqual(app.store.availableSlots.publicDetail('public-course',{from:'2026-12-28',days,since:result.revision}),{revision:result.revision,unchanged:true,from:'2026-12-28',to,rangeDays:days});
+  for(const slot of result.slots)for(const key of['remark','excludedStudentIds','teacherIds','roomIds','scheduleId','sequence','version'])assert.equal(Object.hasOwn(slot,key),false,key);
+ }
+ for(let days=7;days<=30;days++)assert.equal(app.store.availableSlots.publicDetail('public-course',{from:'2026-12-28',days}).rangeDays,days);
+ assert.equal(app.store.availableSlots.publicDetail('public-course',{from:'2028-02-24',days:8}).to,'2028-03-02');
+ const seven=app.store.availableSlots.publicDetail('public-course',{from:'9999-12-31',days:7}),thirty=app.store.availableSlots.publicDetail('public-course',{from:'9999-12-31',days:30,since:seven.revision});
+ assert.equal(thirty.to,'9999-12-31');assert.equal(thirty.rangeDays,30);assert.notEqual(thirty.revision,seven.revision);assert.equal(thirty.unchanged,undefined);
+ for(const days of[6,31,7.5,'7.5','no',null,true])assert.throws(()=>app.store.availableSlots.publicDetail('public-course',{from:'2026-12-28',days}),error=>error.status===400);
+});
+
+test('public range settings persist versions across restart and omitted legacy PATCH ranges preserve the saved choice',async t=>{
+ const databasePath=await disk(t),app=await setup(t,{databasePath});await add(app);let current=(await app.admin.request('/api/availability-public-settings')).body.settings;assert.equal(current.rangeDays,7);
+ for(const rangeDays of[7,8,14,30]){const saved=await send(app.admin,'/api/availability-public-settings','PATCH',{...current,rangeDays});assert.equal(saved.status,200,saved.text);assert.equal(saved.body.settings.version,current.version+1);assert.equal(saved.body.settings.rangeDays,rangeDays);current=saved.body.settings;}
+ for(const rangeDays of[6,31,7.5,'14',null,true]){error(await send(app.admin,'/api/availability-public-settings','PATCH',{...current,rangeDays}),400);assert.deepEqual((await app.admin.request('/api/availability-public-settings')).body.settings,current);}
+ error(await send(app.admin,'/api/availability-public-settings','PATCH',{...current,version:current.version-1,rangeDays:14}),409);
+ const legacy=await send(app.admin,'/api/availability-public-settings','PATCH',{version:current.version,showFullTrialSlots:true,showReschedulingSlots:false});assert.equal(legacy.status,200,legacy.text);assert.equal(legacy.body.settings.rangeDays,30);current=legacy.body.settings;
+ const slots=(await list(app.admin)).slots;await app.close();const restarted=await fixture(t,{databasePath}),admin=restarted.client();await admin.login();assert.deepEqual((await admin.request('/api/availability-public-settings')).body.settings,current);assert.deepEqual((await list(admin)).slots,slots);
+ const anonymous=restarted.client(),check=new DatabaseSync(databasePath),before=check.prepare('SELECT * FROM availability_audit_log ORDER BY id').all();try{
+  const result=await detail(anonymous,'public-course');assert.equal(result.body.rangeDays,30);assert.equal(result.body.to,'2026-11-13');
+  const override=await detail(anonymous,'public-course','?from=2026-10-15&days=8');assert.equal(override.body.rangeDays,8);assert.equal(override.body.to,'2026-10-22');assert.equal(anonymous.cookies.size,0);
+  assert.deepEqual(check.prepare('SELECT * FROM availability_audit_log ORDER BY id').all(),before);assert.deepEqual((await admin.request('/api/availability-public-settings')).body.settings,current);assert.deepEqual((await list(admin)).slots,slots);
+ }finally{check.close();}
+});
+
+test('legacy availability settings gain a seven-day column without replacing saved flags version slots or audit history',async t=>{
+ const databasePath=await disk(t),app=await setup(t,{databasePath}),slot=(await add(app)).body.slot;await app.close();
+ const old=new DatabaseSync(databasePath);let audit;try{audit=old.prepare('SELECT * FROM availability_audit_log ORDER BY id').all();old.exec('DROP TABLE availability_public_settings; CREATE TABLE availability_public_settings(id INTEGER PRIMARY KEY CHECK(id=1),show_full_trial_slots INTEGER NOT NULL,show_rescheduling_slots INTEGER NOT NULL,version INTEGER NOT NULL); INSERT INTO availability_public_settings VALUES(1,1,1,9);');}finally{old.close();}
+ const migrated=await fixture(t,{databasePath}),admin=migrated.client();await admin.login();assert.deepEqual((await admin.request('/api/availability-public-settings')).body.settings,{version:9,rangeDays:7,showFullTrialSlots:true,showReschedulingSlots:true});assert.deepEqual((await admin.request('/api/available-slots/'+slot.id)).body.slot,slot);
+ const inspect=new DatabaseSync(databasePath);try{assert.equal(inspect.prepare('PRAGMA table_info(availability_public_settings)').all().filter(row=>row.name==='range_days').length,1);assert.deepEqual(inspect.prepare('SELECT * FROM availability_audit_log ORDER BY id').all(),audit);}finally{inspect.close();}
+ await migrated.close();const again=await fixture(t,{databasePath}),second=again.client();await second.login();assert.equal((await second.request('/api/availability-public-settings')).body.settings.rangeDays,7);assert.equal((await second.request('/api/availability-public-settings')).body.settings.version,9);
+});
+
 test('one administrative slot persists unchanged facts and feeds a genuine anonymous seven-day public course projection',async t=>{
  const app=await setup(t),anonymous=app.client(),before=(await app.admin.request('/api/catalog')).body,accounts=app.store.listUsers();const initial=await anonymous.request('/api/public/courses');assert.equal(initial.status,200,initial.text);assert.deepEqual(initial.body.courses,[]);
  const saved=await add(app),slot=saved.body.slot;assert.match(slot.id,/^[a-f0-9-]{36}$/);assert.equal(slot.kind,'available-slot');assert.equal(slot.sourceKind,'standalone');assert.equal(slot.version,1);assert.equal(slot.totalReserved,null);assert.equal(slot.classOccupied,null);assert.equal(slot.classCapacity,null);assert.equal(slot.trialReserved,0);assert.equal(slot.reschedulingReserved,0);assert.equal(slot.trialRemaining,2);assert.equal(slot.reschedulingRemaining,3);assert.equal(slot.trialStatus,'available');assert.equal(slot.sourceAvailable,true);assert.deepEqual(slot.teacherNames,[app.teacher.displayName]);assert.deepEqual(slot.roomNames,[app.room.displayName]);

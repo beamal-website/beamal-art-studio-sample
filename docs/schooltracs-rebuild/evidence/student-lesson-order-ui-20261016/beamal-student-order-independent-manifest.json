@@ -1,0 +1,30 @@
+{
+  "head": "b573f917834db105d3c4360151d7bb07b71d022c",
+  "branch": "refs/heads/test",
+  "scope": "Student My classes exact lesson order independent targeted acceptance; no DB/browser/full suite/build",
+  "tests": {
+    "composed": 34,
+    "passed": 34,
+    "failed": 0,
+    "repoHostTests": 9
+  },
+  "files": {
+    "sample/src.js": "744ebac2eaa9cd8d8c30ecead5f9c432190201b15de71b41e1320be1da652f4f",
+    "sample/tests/flows.test.mjs": "56882f15ed283dcaa530687becbe5bedbdaebcdfd3a4bff8265fd40608caf162",
+    "sample/client/student-lesson-order-origin.js": "e493e989fc9ae33cbc3a380280f4d508ddbc7b69001d3c365c69b69f01e5eda5",
+    "sample/tests/student-lesson-order-origin.test.mjs": "2decfa6aeb2f154fa5813374b2aadb5a943c7f9be3920f324863e8f6ff6d6322",
+    "sample/client/enrollment-orders-ui.js": "3367d43d2bbb654f4edbe2a3843093961106a0150153e930caee83cf5f3247c3",
+    "sample/tests/enrollment-orders-ui.test.mjs": "772ab50792f3af1a15c5d317bf8038b4e76007500f52770fe4839a3c59fc5af1",
+    "sample/tests/student-lesson-order-host.test.mjs": "41be3bb8e781160217df5b95749c56889102d2e42d45fbb6678d71bed26d5093"
+  },
+  "screenshots": {
+    "docs/schooltracs-rebuild/evidence/student-lesson-order-ui-20261016/beamal-student-order-390-zh.png": {
+      "sha256": "2a633cbd9e5f8ce8ecbf536b80dd0cbeeab15a5744b0c1ed12a0b348c9e9d8a9",
+      "inspection": "view_image screenshot only; not independent live GUI"
+    },
+    "docs/schooltracs-rebuild/evidence/student-lesson-order-ui-20261016/beamal-student-order-768-en.png": {
+      "sha256": "b16ac932672b4065f5ef5a67778fc8d7e7e3dffb9da169cbeaf758bff3d9841c",
+      "inspection": "view_image screenshot only; not independent live GUI"
+    }
+  }
+}

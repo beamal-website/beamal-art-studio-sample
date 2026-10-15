@@ -1,0 +1,14 @@
+{
+  "active": "查看訂單：創意繪畫 · 2026-10-23 · 13:00 · 何詠晴 Chloe Ho",
+  "bundle": "/assets/main-CurQWqmH.js",
+  "dataset": {
+    "action": "orders-open-student-class",
+    "orderId": "0939cc93-1958-431b-8bc9-bac377ded182",
+    "sessionId": "a32df733-3e21-4a2d-ae23-6ccc3176813f",
+    "studentId": "d3000000-0000-4000-8000-000000000601"
+  },
+  "dialogs": 0,
+  "scrollWidth": 390,
+  "scrollY": 798,
+  "width": 390
+}

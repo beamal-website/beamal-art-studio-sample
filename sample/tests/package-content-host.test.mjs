@@ -39,7 +39,7 @@ test('removing the last package segment keeps scroll and returns focus to Add co
 function orderKeyboard(){
  const start=source.indexOf('function enrollmentKeyboard('),end=source.indexOf('\nasync function refreshLessonStudents(',start);assert.ok(start>=0&&end>start);
  let context,closed=0;const node=()=>({focus(){context.document.activeElement=this;}}),close=node(),body=node(),footer=node(),background=node(),all=[close,body,footer];
- context=vm.createContext({enrollmentOverlay:{kind:'details'},closeEnrollmentOverlay(){closed++;context.enrollmentOverlay=null;},document:{activeElement:close,querySelectorAll(selector){return selector.includes('.enrollment-order-summary[tabindex]')?all:[close,footer];},querySelector(){return close;}}});vm.runInContext(source.slice(start,end),context);
+ context=vm.createContext({studentLessonOrderPending:null,enrollmentOverlay:{kind:'details'},closeEnrollmentOverlay(){closed++;context.enrollmentOverlay=null;},document:{activeElement:close,querySelectorAll(selector){return selector.includes('.enrollment-order-summary[tabindex]')?all:[close,footer];},querySelector(){return close;}}});vm.runInContext(source.slice(start,end),context);
  return {context,close,body,footer,background,get closed(){return closed;},key(key,extra={}){let prevented=false;context.enrollmentKeyboard({key,preventDefault(){prevented=true;},...extra});return prevented;}};
 }
 test('order details keyboard allows native body traversal and contains forward reverse or background focus',()=>{

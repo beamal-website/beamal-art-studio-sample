@@ -220,7 +220,7 @@ export function createApiClient() {
     },
     deleteCourse: (current, operationKey) => request(`/courses/${encodeURIComponent(current.id)}`, { method: 'DELETE', body: { version: current.version }, idempotencyKey: operationKey }),
     restoreCourse: (current, operationKey) => request(`/courses/${encodeURIComponent(current.id)}/restore`, { method: 'POST', body: { version: current.version }, idempotencyKey: operationKey }),
-    updateCourseMetadata: (id, fields) => request(`/courses/${encodeURIComponent(id)}`, { method: 'PATCH', body: fields }),
+    updateCourseMetadata: (id, fields, operationKey) => request(`/courses/${encodeURIComponent(id)}`, { method: 'PATCH', body: fields, idempotencyKey: operationKey }),
     saveCourse(course, current, operationKey) {
       const fields = ['courseName', 'feeName', 'category', 'level', 'publicColor', 'classTypeId', 'classTypeVersion', 'pricingModel', 'price', 'months', 'duration', 'packageType', 'packageTotal', 'bookingExpiry', 'onlineStore'];
       const body = Object.fromEntries(fields.filter(key => course[key] !== undefined).map(key => [key, course[key]]));

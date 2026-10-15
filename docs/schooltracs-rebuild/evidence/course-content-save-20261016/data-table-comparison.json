@@ -1,0 +1,15 @@
+{
+  "user": {
+    "tables": 42,
+    "changed": []
+  },
+  "gui": {
+    "tables": 42,
+    "changed": [
+      "audit_log",
+      "courses",
+      "idempotent_creates",
+      "sessions"
+    ]
+  }
+}

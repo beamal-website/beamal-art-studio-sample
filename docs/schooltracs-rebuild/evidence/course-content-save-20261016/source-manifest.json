@@ -1,0 +1,12 @@
+{
+  "sample/src.js": "b1f9305bfefcf680ded528c9bae13d6843b7d5d480b80f131823039875171d3a",
+  "sample/client/course-content-ui.js": "a4b6b416d628b2fb8e4d8e26176ce5f35ee453a06ced3eee8805c8741afa688f",
+  "sample/client/api-client.js": "7c4bd4eed68b87b3ac84f237abe7199995c2471c4d900ae07b7ca058213c4f48",
+  "sample/server/app.mjs": "8fd2c234222296304e53efa98f8720384b532c0e7c19de6ae1c0d6521b4fa918",
+  "sample/server/store.mjs": "16e44b665c1ab9b3b620a64455b292dabce5893e16429acaeeda9ed21f1e7205",
+  "sample/server/validation.mjs": "35a0170a727787baf39e1e3d8cf2dff49bdef3426ad87c59ebbe95de5bf8ce14",
+  "sample/tests/course-content-host.test.mjs": "3d181a85eaed50afe6f5f532c8c375b4b6718f4d095f30d0ca1daa705aafcf08",
+  "sample/tests/course-content-ui.test.mjs": "6eac69a32cd1d618920fa3e29589e32b35a435622f3582266d5443d3f1eb03d4",
+  "sample/tests/api-client.test.mjs": "57d485b49f4b684da5efb6a09a45824a63bdd0c501bb552ab77343ab143ed37d",
+  "sample/server/tests/course-content.test.mjs": "1447bbf5c54f0b1d4b1eca95fee1dfca598ead74c5ab8dbdc73d393d3716cdf5"
+}

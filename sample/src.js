@@ -1298,7 +1298,7 @@ function courseContentSourceError(state){
  const current=courseSettingsFor(state.courseId);
  if(sharedCatalogError)return t('未能讀取課程資料。已填內容保留，請重試。','Could not read course details. Your entries are kept; retry.');
  if(!current||current.deletedAt)return t('此課程已無法修改。請關閉後查看最新課程資料。','This course can no longer be edited. Close to view the latest details.');
- if(courseContentSourceKey(current)!==state.sourceKey)state.stale=true;
+ if(!state.unconfirmed&&courseContentSourceKey(current)!==state.sourceKey)state.stale=true;
  return state.stale?t('課程資料已更新。已填內容保留；請關閉後重新開啟，核對最新資料。','Course details changed. Your entries are kept; close and reopen to review the latest details.'):'';
 }
 function openCourseContent(id,opener=document.activeElement){
@@ -1320,15 +1320,16 @@ function renderCourseContent({focus='preserve',sourceOnly=false}={}){
  if(!courseContentContextCurrent(state)){discardCourseEditorNavigation();renderModal();return;}
  modal=courseContentEditorMarkup({...state,role:authUser.role},{t,esc});
  if(sourceOnly){
-  const alert=document.querySelector('#course-content-source-error'),retry=document.querySelector('#course-content-refresh'),review=document.querySelector('#course-content-review'),form=document.querySelector('#course-content-editor');
+  const alert=document.querySelector('#course-content-source-error'),retry=document.querySelector('#course-content-refresh'),review=document.querySelector('#course-content-review'),save=document.querySelector('#course-content-save'),form=document.querySelector('#course-content-editor');
   if(alert){alert.textContent=state.sourceError;alert.hidden=!state.sourceError;}
   if(retry){retry.hidden=!state.sourceError&&!state.stale;retry.disabled=state.loading;}
   if(review)review.disabled=!!(state.sourceError||state.stale||state.loading);
-  form?.setAttribute('aria-busy',String(state.loading));return;
+  if(save)save.disabled=!!(state.sourceError||state.stale||state.loading||state.saving);
+  form?.setAttribute('aria-busy',String(state.loading||state.saving));return;
  }
  renderModal();const body=document.querySelector('#course-content-body');if(body)body.scrollTop=focus==='edit'?state.editScroll:0;
  const name=focus==='error'?state.field:focus==='edit'?state.editFocus?.name||'descriptionZh':'';
- const target=name?document.querySelector('#course-content-editor [name='+name+']'):focus==='review'?body:document.querySelector('[data-action="course-content-close"]');target?.focus({preventScroll:true});
+ const target=name?document.querySelector('#course-content-editor [name='+name+']'):focus==='error'?document.querySelector(state.error?'#course-content-error':'#course-content-source-error'):focus==='review'?body:document.querySelector('[data-action="course-content-close"]');target?.focus({preventScroll:true});
  if(focus==='edit'&&state.editFocus&&target){if(target.setSelectionRange&&Number.isInteger(state.editFocus.start))target.setSelectionRange(state.editFocus.start,state.editFocus.end,state.editFocus.direction||'none');target.scrollTop=state.editFocus.scrollTop||0;target.scrollLeft=state.editFocus.scrollLeft||0;}
  if(target&&body&&(focus==='error'||focus==='edit')){const reveal=focus==='error'?target.closest?.('[data-course-content-field]')||target:target,box=reveal.getBoundingClientRect?.(),view=body.getBoundingClientRect?.();if(box&&view&&(box.top<view.top||box.bottom>view.bottom))reveal.scrollIntoView?.({block:'nearest'});}
 }
@@ -1337,23 +1338,44 @@ function reviewCourseContent(form){
  state.values=readCourseContentDraft(Object.fromEntries(new FormData(form)));const result=validateCourseContentDraft(state.values);state.values=result.values;state.error=result.error;state.field=result.field;state.sourceError=courseContentSourceError(state);
  if(state.error||state.sourceError){renderCourseContent({focus:state.error?'error':'preserve'});return;}state.step='review';renderCourseContent({focus:'review'});
 }
-function backCourseContent(){const state=courseContentDraft;if(!courseContentContextCurrent(state))return;state.step='edit';state.error='';state.field='';state.sourceError=courseContentSourceError(state);renderCourseContent({focus:'edit'});}
+function backCourseContent(){const state=courseContentDraft;if(!courseContentContextCurrent(state)||state.saving)return;state.step='edit';state.error='';state.field='';state.operationKey=null;state.unconfirmed=false;state.sourceError=courseContentSourceError(state);renderCourseContent({focus:'edit'});}
 function closeCourseContent(){
- const state=courseContentDraft;if(!state)return;const current=courseContentContextCurrent(state);courseContentDraft=null;courseEditorReturnFocus=current?state.view:null;modal='';renderModal();
+ const state=courseContentDraft;if(!state||state.saving)return;const current=courseContentContextCurrent(state);courseContentDraft=null;courseEditorReturnFocus=current?state.view:null;modal='';renderModal();
+}
+async function saveCourseContent(){
+ const state=courseContentDraft;if(!courseContentContextCurrent(state)||state.step!=='review'||state.loading||state.saving)return;
+ const checked=validateCourseContentDraft(state.values);state.error=checked.error;state.field=checked.field;state.sourceError=courseContentSourceError(state);
+ if(state.error||state.sourceError){renderCourseContent({focus:'error'});return;}
+ state.operationKey ||= newOperationKey();state.saving=true;state.error='';const generation=sharedGeneration;renderCourseContent({focus:'review'});
+ const current=()=>courseContentDraft===state&&generation===sharedGeneration&&courseContentContextCurrent(state);
+ try{
+  const result=await sharedClient.updateCourseMetadata(state.courseId,{content:{...state.values},version:state.course.version},state.operationKey);
+  if(!current())return;
+  if(result.course?.id!==state.courseId||!Number.isSafeInteger(result.course.version)||result.course.version<=state.course.version||!result.course.content||JSON.stringify(readCourseContentDraft(result.course.content))!==JSON.stringify(state.values))throw new Error(t('未能確認儲存結果，請重試。','Could not confirm the saved result. Please retry.'));
+  courseContentDraft=null;courseEditorReturnFocus=state.view;modal='';applyCourseAcknowledgement(result.course);render();restoreCourseEditorFocus();toast(t('課程內容已儲存','Course contents saved'));
+ }catch(error){
+  if(!current())return;
+  if(error.status===401){applySharedUser(null);go('/login');return;}
+  state.saving=false;state.unconfirmed=!error.status||error.code==='service_unavailable'&&error.status>=200&&error.status<300;state.stale=state.stale||error.status===409;
+  state.error=error.status===409?t('課程已由其他人修改。已填內容保留，請返回最新課程再核對。','Someone else changed this course. Your entries are kept; reopen the latest course to review them.'):sharedErrorText(error);
+  state.sourceError=courseContentSourceError(state);renderCourseContent({focus:'error'});
+  if(error.status===403)await refreshSharedSession();
+ }finally{if(courseContentDraft===state)state.saving=false;}
 }
 async function reloadCourseContent(){
- const state=courseContentDraft;if(!courseContentContextCurrent(state)||state.loading)return;state.loading=true;state.sourceError=t('正在讀取最新課程資料…','Loading the latest course details…');renderCourseContent({sourceOnly:true});
+ const state=courseContentDraft;if(!courseContentContextCurrent(state)||state.loading||state.saving)return;state.loading=true;state.sourceError=t('正在讀取最新課程資料…','Loading the latest course details…');renderCourseContent({sourceOnly:true});
  try{await refreshSharedCourses({paint:false});if(courseContentDraft!==state||!courseContentContextCurrent(state))return;state.sourceError=courseContentSourceError(state);}
  catch(error){if(courseContentDraft!==state||!courseContentContextCurrent(state))return;state.sourceError=t('未能讀取課程資料。已填內容保留，請重試。','Could not read course details. Your entries are kept; retry.');}
  finally{if(courseContentDraft===state&&courseContentContextCurrent(state)){state.loading=false;renderCourseContent({sourceOnly:true});}}
 }
 function refreshCourseContentReadState(){
- const state=courseContentDraft;if(!state)return;if(!courseContentContextCurrent(state)){discardCourseEditorNavigation();renderModal();return;}if(state.loading)return;
+ const state=courseContentDraft;if(!state)return;if(!courseContentContextCurrent(state)){discardCourseEditorNavigation();renderModal();return;}if(state.loading||state.saving)return;
  const error=courseContentSourceError(state);if(error!==state.sourceError){state.sourceError=error;renderCourseContent({sourceOnly:true});}
 }
 function handleCourseContentAction(action,data,opener){if(action==='course-content-open')openCourseContent(data.courseId,opener);else if(action==='course-content-close')closeCourseContent();else if(action==='course-content-back')backCourseContent();else if(action==='course-content-refresh')void reloadCourseContent();}
 function courseContentKeyboard(event){
  if(!courseContentDraft)return false;if(event.isComposing||event.keyCode===229)return true;
+ if(courseContentDraft.saving&&event.key==='Escape'){event.preventDefault();return true;}
  if(event.key==='Escape'){event.preventDefault();closeCourseContent();return true;}
  if(event.key==='Tab'){const controls=[...(document.querySelectorAll?.('.course-content-dialog button:not(:disabled),.course-content-dialog input:not(:disabled),.course-content-dialog textarea:not(:disabled),#course-content-body[tabindex]')||[])].filter(node=>!node.hidden&&!node.closest?.('[hidden],fieldset[disabled]')),first=controls[0],last=controls.at(-1);if(!controls.includes(document.activeElement)||event.shiftKey&&document.activeElement===first||!event.shiftKey&&document.activeElement===last){event.preventDefault();(event.shiftKey?last:first)?.focus();}}
  return true;
@@ -2389,7 +2411,7 @@ document.addEventListener('focusout',event=>{if(courseContentDraft)courseContent
 document.addEventListener('input',e=>{if(courseContentInput(e.target))return;if(packageContentInput(e.target))return;if(feePricingInput(e.target))return;if(publicTrialInput(e.target))return;if(updateTimetableNoteDraft(e.target))return;if(updateNamedTimetableDraft(e.target))return;if(interfacePreview?.input(e.target))return;if(e.target.name==='amount'&&e.target.closest?.('#enrollment-order-editor')){updateEnrollmentDraft(e.target.closest('form'),'amount');return}if(scheduleEndDraft&&e.target.closest?.('#schedule-end-editor')){updateScheduleEndDraft(e.target);return}if(timetableSettingsDraft&&e.target.closest?.('#tt-view-settings')){updateTimetableSettingsDraft(e.target);return}if(e.target.closest?.('#schedule-editor')){updateScheduleDraft(e.target.name,e.target.value);return}if(e.target.id==='class-crop-size'&&classCrop){let maxWidth=Math.min(.98,.98*classPhotoRatio/classCrop.aspect);resizeClassCrop(maxWidth*Number(e.target.value)/100);return}if(e.target.id==='phone'){e.target.value=e.target.value.replace(/[^0-9]/g,'');return}if(e.target.id==='search'){let pos=e.target.selectionStart;search=e.target.value;render();let input=document.querySelector('#search');input.focus();input.setSelectionRange(pos,pos)}});
 document.addEventListener('submit',async e=>{if(e.target.id==='tt-note-form'){e.preventDefault();reviewTimetableNote(e.target);return;}if(e.target.id==='tt-named-filter-editor'){e.preventDefault();saveNamedTimetableFilter(e.target,e.submitter?.value);return;}
 e.preventDefault();
-let f=e.target;if(f.id==='course-content-editor'){reviewCourseContent(f);return;}if(f.id==='package-content-editor'){reviewPackageContent(f);return;}if(f.id==='public-trial-form'){await handlePublicTrialCommand('review',f);return;}if(f.id==='fee-pricing-editor'){reviewFeePricing(f);return;}if(interfacePreview?.submit(f))return;let data=Object.fromEntries(new FormData(f));
+let f=e.target;if(f.id==='course-content-editor'){if(courseContentDraft?.step==='review')await saveCourseContent();else reviewCourseContent(f);return;}if(f.id==='package-content-editor'){reviewPackageContent(f);return;}if(f.id==='public-trial-form'){await handlePublicTrialCommand('review',f);return;}if(f.id==='fee-pricing-editor'){reviewFeePricing(f);return;}if(interfacePreview?.submit(f))return;let data=Object.fromEntries(new FormData(f));
 if(f.id==='enrollment-order-editor'){await saveEnrollmentOrder(f);return;}if(f.classList.contains('student-account-link-row')){await saveStudentAccountLink(f);return;}
 if(f.id==='schedule-editor'&&sharedMode)readScheduleResourceFields(data,f);
 if(f.id==='class-type-editor'){await saveClassType(data,f);return;}if(f.id==='class-capacity-status-editor'){await saveClassCapacityStatus(data,f);return}if(f.id==='availability-editor'||f.id==='availability-public-settings'){await saveAvailability(data,f);return}if(sharedMode&&f.id==='join')return;if(f.id==='people-editor'){await saveSharedPerson(data,f);return}if(f.id==='people-search'){if(!canManagePeople()||peopleEditorDraft)return;peopleList.q=String(data.q||'').trim().slice(0,200);peopleList.page=1;render();return}

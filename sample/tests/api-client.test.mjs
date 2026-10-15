@@ -400,3 +400,10 @@ test('staff personal profile reads carry only the snapshot revision and discard 
 test('anonymous mixed timetable uses explicit finite range and conditional revision without a private course catalogue',async t=>{
  const wire=network(t),client=createApiClient();wire.reply('/api/public/timetable?from=2026-10-15&since=public%2Frevision&days=14',{courses:[],slots:[],revision:'mixed'});assert.equal((await client.publicTimetable('2026-10-15','public/revision',14)).revision,'mixed');assert.equal(wire.calls.at(-1).method,'GET');assert.equal(wire.calls.at(-1).body,undefined);
 });
+
+
+test('course content metadata saves retain raw optional fields, the opened version and the same retry key without sending pricing',async t=>{
+ const wire=network(t),client=createApiClient();await login(client,wire,'B');const id='course / 一',content={descriptionZh:' 中文\n保留 ',descriptionEn:' English ',minAgeYears:'0',maxAgeYears:'2.5'},fields={content,version:7};
+ for(let attempt=0;attempt<2;attempt++){wire.reply('/api/courses/'+encodeURIComponent(id),{course:{id,version:8,content}});await client.updateCourseMetadata(id,fields,'content-retry');const call=wire.calls.at(-1);assert.deepEqual(JSON.parse(call.body),fields);assert.equal(call.method,'PATCH');assert.equal(call.headers.get('Idempotency-Key'),'content-retry');assert.equal(call.headers.get('X-CSRF-Token'),'csrf-fictional-B');}
+ wire.reply('/api/courses/'+encodeURIComponent(id),{course:{id,version:9}});await client.updateCourseMetadata(id,{version:8,courseName:'Renamed'});assert.equal(wire.calls.at(-1).headers.get('Idempotency-Key'),null);
+});

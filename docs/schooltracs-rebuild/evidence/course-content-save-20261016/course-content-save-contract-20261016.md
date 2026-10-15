@@ -1,0 +1,57 @@
+# Course content: safe real-save contract and independent acceptance plan
+2026-10-16. Read-only source review. No repo/DB/Git/browser changes, no services opened, no full tests/build. These are proposed maker assertions, not passed implementation claims.
+
+## Current facts and exact seam
+- Actual pure UI schema is **course.content = {descriptionZh, descriptionEn, minAgeYears, maxAgeYears}**, not the flat field names proposed in an earlier research note (`sample/client/course-content-ui.js:1,44–52,81–94`). Reuse it.
+- Current validator accepts only name/category/level/publicColor/classType for metadata (`sample/server/validation.mjs:79–83`). Both metadata and combined pricing validation reject `content` today (`:12,86–94`).
+- `metadata()` currently drops any content (`store.mjs:21`); all private, Teacher and Student course projections reuse it (`:142–149,178–190,194–209`). `courseMetadata()` only explicitly preserves classType/publicColor (`:115–119`).
+- Admin PATCH `/api/courses/:id` already authenticates + CSRF/origin checks before role, exact ID lookup, deleted/version checks; chooses metadata-only vs combined pricing, then transactional store update (`app.mjs:500–513`). `hasPricingFields` does not include content (`validation.mjs:59–61`). This existing PATCH is the minimal seam; content does not need a new endpoint or pricing save.
+- Store checks exact current version again, updates data, bumps exact Course version and audits transactionally (`store.mjs:286–306`). Metadata-only updatePricing=false avoids Fee writes. Existing public color tests supply a useful negative-business-row and rollback pattern (`server/tests/course-public-color.test.mjs`).
+- SDK `updateCourseMetadata(id,fields)` forwards fields through existing session/error mechanics (`client/api-client.js:223`). Old `saveCourse` whitelist does not include content (`:225`): this caller must preserve existing saved content, not clear it.
+- Real source is currently missing; UI Review final Save remains disabled (`course-content-ui.js:103–128`). Existing public UI can display explicitly provided content, but its tests inject curated content; that does not prove publication or server source.
+
+## Source direction and publication boundary
+- Goal `docs/schooltracs-rebuild/ULTIMATE-GOAL-PROMPT.md:199–206`: maintain content/recommended ages without hard-coded examples; Course/Fee/duration separate.
+- Local Notion source `:22` lists backend-maintained age/description; `:255–257` explicitly allows saving without publishing and forbids auto-publicising uncertain courses. Exact publish statuses/channels remain undecided. This is the local captured source, not fresh live Notion.
+- Prior PDF p1/p9 review is documented in `/tmp/beamal-course-content-source-review.md`: 2.5 is legitimate guidance; Fee duration is not Course age/duration; examples do not become eligibility or automatic six-Course content.
+- **Safe bounded choice this slice: save internal content only.** Include content in Admin + authorised Teacher course DTOs. Do not add it to anonymous public course/timetable DTOs or Student/publicOnly catalog projections. The public renderer may continue to handle deliberately supplied public content, but the server must not deliver the newly saved internal draft as public content.
+- Existing Fee.onlineStore and published OverallSlot establish course/catalog visibility only; neither is an explicit content-publication instruction. `available-slots.mjs:101–109` publishes via Slot, and `courseDTO(:104)` has an explicit current public whitelist. Keep it unchanged. A later explicit published-content snapshot/channel contract can promote content; do not invent a published flag now.
+- **Key leakage trap:** do not append `content` unconditionally to shared `metadata()`. `parseCourse`, `compactCourse` and `listCourses` pass publicOnly for Student reads; each needs an explicit private-content inclusion boundary. Teachers retain existing `accessControl.scopeFor(user).courseIds` filtering (`store.mjs:183,195–199`).
+
+## Recommended wire/storage contract
+PATCH `/api/courses/:encodedId`, existing version required:
+```json
+{"version":4,"content":{"descriptionZh":" 從故事開始\n探索色彩。 ","descriptionEn":"Explore colour.","minAgeYears":2.5,"maxAgeYears":6}}
+```
+- Private response `{course:{...,version:5,content:{...}}}` from canonical stored data, exact ID. Re-read/catalog and restart must agree.
+- Store inside existing courses.data JSON; no schema migration, seed rewrite, new fixture, account or duplicated content table is necessary.
+- Existing record with no content → private DTO `content:null` (no invented text/age). New old-style Course create also defaults null. A valid explicit allblank content object is a deliberately blank saved value.
+- **Top-level content omitted always preserves existing content**, both metadata-only and combined pricing update. This must also hold for direct validated store callers.
+- Present content must be a plain object with only the four fields. Use leaf-patch semantics: omitted leaves preserve current validated leaves; on absent/null previous content, missing descriptions initialise `''`, age bounds `null`. Explicit empty descriptions clear them; explicit null age clears that bound. Reject whole-content null/arrays/strings/booleans (400) to avoid ambiguous mass clearing; all four explicit blank leaves are sufficient to clear the form. If Root chooses another whole-null contract, document and test it before coupling host.
+- Descriptions optional plain strings ≤10,000 JS characters; preserve raw spaces/newlines, no trim/truncate/HTML parsing/automatic translation. Canonical rendering escapes text. Do not reuse existing `text()` (200-character trim) for introductions.
+- Canonical ages number|null. Accept finite nonnegative numbers, fractional2.5 and explicit0; optional independent bounds; both known must satisfy min<=max. Empty UI input maps to null, not Number('')=0; no numeric coercion from false/array/object. JSON numeric strings can be rejected; Root keeps raw text separately until validation and sends numbers/null.
+- No arbitrary3–18, half-year step, business age cap or duration/eligibility policy. Current UI raw decimal validation/16-character technical bound must remain coherent with canonical values; do not silently round a reversed decimal draft into an acceptable interval during conversion.
+- Unknown historical/malformed content sanitises to null or a validated whitelisted canonical object on reads, never raw extra keys or another course's values. Reads must not repair the stored JSON, backfill legacy `age`/`zd`, auto-translate or update audit/version.
+
+## Concurrency, roles and effects
+- Reuse existing Admin-only mutation boundary; unauthenticated401, Teacher/Student403 before ID/version existence detail, including Teacher with read grant. CSRF/origin protections unchanged.
+- Missing/stale version409; deleted Course409; exact missing Course404; malformed ID400; rejected attempts leave Course, audit and every business table unchanged.
+- Content-only success increments only target Course once + one course audit, same transaction. No Fee mutation/fee-audit/repricing of old orders, ClassType changes, enrolment gating, Slot creation/publication, quota changes, attendance or permission changes.
+- Fee or unrelated Course edits still invalidate a stale Course snapshot through existing Course version. A newer metadata/color/ClassType edit must not be overwritten by a stale content save.
+- Save timeout/409 is not success. Host retains exact raw draft and gives reload/retry path; an old identity/route/course response cannot close or mark a new editor saved. Business ACK followed by catalog refresh failure must distinguish “save succeeded; display not refreshed” from failed write, without overwriting a later course.
+
+## Maker test matrix (meaningful RED before code)
+1. **Real HTTP save and re-read:** create/seed exact Course B; save Chinese-only +2.5, read Admin courses/catalog with same content, version+1 and one audit; Course A unchanged. Test paragraph/newline whitespace and `<script>` stored as plain text.
+2. **Old caller preservation:** after content save, current-version PATCH category-only; price-only combined route; publicColor/classType-only; each retains all four leaves. Direct store update with omittedcontent also retains it. Old create omittedcontent remains null and never uses legacy static fields.
+3. **Leaf patch/clear/zero:** update only descriptionEn preserves Chinese/ages; minAgeYears:null clears only min; descriptions:'' clear only requested language; min0/max0 remain0, not unknown. One-sided2.5 accepted. Full explicitblank object valid. Whole null/unknown nestedkey rejected as per fixed contract.
+4. **Validation/no side effects:** bad nested shapes/nontext/10,001chars/negative/nonfinite/string ages/invertedbounds all400 with source/audit/fees/order/schedule/Slot/rights unchanged. Real10000chars and2.5 accepted. No forced bilingual descriptions.
+5. **Version race:** two clients same version; first saves, second gets409. Later metadata save + stale content also409. Missingversion409. Wrong/deleted ID semantics correct. Snapshot equality proves no partial/audit write.
+6. **Role/auth first:** anonymous401; Teacher and Student403 for both existing/missing IDs; Teacher with course read grant still403; bad CSRF/origin403. Authorised Teacher catalog reads content only within already granted Course IDs; out-of-scope Course text absent.
+7. **Never auto-publish:** save content on private Course (no published Slot) → all anonymous/public endpoints still exclude/404. Save content on already published Course → public directory/detail/mixed timetable DTOs **and their revisions remain identical**. GET Student courses/catalog contains no content/private text even when Fee.onlineStore=true. This deliberately replaces no current public whitelist expectations.
+8. **Publication/eligibility independent:** extreme but valid recommended age does not change public Slot inclusion/status/trial quota/rescheduling fields or order/trial eligibility. No added fields in publicSlot. Content save does not modify onlineStore/publicVisibility/settings.
+9. **Legacy read safety:** private raw JSON missing/malformed content with sentinel extra privatekeys sanitises safely; no alternate course/legacy fallback. Public unchanged; raw JSON bytes/version/audit unchanged after reads.
+10. **Durability/atomicity:** disk fixture restart preserves exact content. Force audit INSERT failure → no Course partial change. Compare all non-Course tables before/after successful content-only save (except expected course audit), including fee_audit and idempotency records where unchanged is expected.
+11. **Host later:** native FormData→Review→real Save sends exact course/version/nested4fields only; empty bounds null; no pricing keys; double-click no duplicate; late/revoked response cannot affect new editor; success returns same General panel/focus/scroll with true canonical values. Root owns this layer and actual GUI.
+
+## Review conclusion
+No existing backend can presently save the content; implementing the explicit private field with old-caller preservation and existing version guards is a narrow safe step. The main blocker to avoid is accidental public/Student propagation through shared metadata helpers. Public content publishing is important future work but is not implied by this private save.

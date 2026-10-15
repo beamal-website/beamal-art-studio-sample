@@ -3,7 +3,7 @@ import { randomUUID, createHash } from 'node:crypto';
 import { mkdirSync, chmodSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { hashPassword, normaliseEmail } from './security.mjs';
-import { validateCourse, normalizePublicCourseColor, ApplicationError } from './validation.mjs';
+import { validateCourse, validateCourseContent, normalizeCourseContent, normalizePublicCourseColor, ApplicationError } from './validation.mjs';
 import { createMaterialStore } from './materials.mjs';
 import { createAttachmentStore } from './attachments.mjs';
 import { createScheduleStore } from './schedules.mjs';
@@ -18,7 +18,7 @@ import { createStaffPersonalProfileStore } from './staff-personal-profiles.mjs';
 
 const publicUser = row => row ? { id: row.id, email: row.email, displayName: row.display_name, role: row.role } : null;
 const pricingKeys = ['feeName', 'pricingModel', 'price', 'months', 'duration', 'packageType', 'packageTotal', 'bookingExpiry', 'onlineStore'];
-const metadata = (record, includeClassType = false) => ({ courseName: record.courseName, category: record.category || '', level: record.level || '', publicColor: normalizePublicCourseColor(record.publicColor), ...(includeClassType ? { classTypeId: record.classTypeId ?? null } : {}) });
+const metadata = (record, includePrivate = false) => ({ courseName: record.courseName, category: record.category || '', level: record.level || '', publicColor: normalizePublicCourseColor(record.publicColor), ...(includePrivate ? { classTypeId: record.classTypeId ?? null, content: normalizeCourseContent(record.content) } : {}) });
 const pricing = record => Object.fromEntries(pricingKeys.filter(key => Object.hasOwn(record, key)).map(key => [key, record[key]]));
 const nameKey = name => name.trim().toLowerCase();
 const deletion = row => row.deleted_at ? { deletedAt: row.deleted_at } : {};
@@ -116,7 +116,8 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
     const classTypeId = Object.hasOwn(data, 'classTypeId') ? data.classTypeId : current?.classTypeId ?? null;
     if (Object.hasOwn(data, 'classTypeId') && classTypeId !== null) classTypes.snapshot(classTypeId, data.classTypeVersion);
     const publicColor = Object.hasOwn(data, 'publicColor') ? data.publicColor : current?.publicColor ?? null;
-    return metadata({ ...data, publicColor, classTypeId }, true);
+    const content = Object.hasOwn(data, 'content') ? validateCourseContent(data.content) : current?.content ?? null;
+    return metadata({ ...data, publicColor, classTypeId, content }, true);
   };
   const parseFee = row => row ? {
     ...JSON.parse(row.data), id: row.id, feeCode: row.fee_code, price: row.price_cents / 100,
@@ -379,7 +380,7 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
     for (const seed of seedCourses) {
       if (!seed.id || typeof seed.id !== 'string' || seed.id.length > 200) throw new Error('Seed course requires a valid id.');
       if (getCourse(seed.id)) continue;
-      const fields = ['courseName', 'feeName', 'category', 'level', 'publicColor', 'classTypeId', 'classTypeVersion', ...pricingKeys.slice(1)];
+      const fields = ['courseName', 'feeName', 'category', 'level', 'publicColor', 'content', 'classTypeId', 'classTypeVersion', ...pricingKeys.slice(1)];
       const input = Object.fromEntries(fields.filter(field => Object.hasOwn(seed, field)).map(field => [field, seed[field]]));
       createCourse(validateCourse(input), null, seed.id);
     }

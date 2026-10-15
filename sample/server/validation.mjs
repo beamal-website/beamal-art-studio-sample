@@ -9,9 +9,48 @@ export class ApplicationError extends Error {
 const invalid = message => { throw new ApplicationError(400, 'INVALID_COURSE', message); };
 const pricingFields = ['pricingModel', 'price', 'months', 'duration', 'packageType', 'packageTotal', 'bookingExpiry', 'onlineStore'];
 const typeFields = ['classTypeId', 'classTypeVersion'];
-const fields = new Set(['courseName', 'feeName', 'category', 'level', 'publicColor', ...typeFields, ...pricingFields]);
+const fields = new Set(['courseName', 'feeName', 'category', 'level', 'publicColor', 'content', ...typeFields, ...pricingFields]);
 const plainObject = value => value !== null && typeof value === 'object' && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype;
 export const normalizePublicCourseColor = value => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value) ? value.toLowerCase() : null;
+const contentFields = ['descriptionZh', 'descriptionEn', 'minAgeYears', 'maxAgeYears'];
+
+function normalizedAge(value) {
+  const [whole = '', fraction = ''] = value.split('.');
+  return [whole.replace(/^0+/, '') || '0', fraction.replace(/0+$/, '')];
+}
+
+function ageGreaterThan(first, second) {
+  const [firstWhole, firstFraction] = normalizedAge(first), [secondWhole, secondFraction] = normalizedAge(second);
+  if (firstWhole.length !== secondWhole.length) return firstWhole.length > secondWhole.length;
+  if (firstWhole !== secondWhole) return firstWhole > secondWhole;
+  const length = Math.max(firstFraction.length, secondFraction.length);
+  return firstFraction.padEnd(length, '0') > secondFraction.padEnd(length, '0');
+}
+
+export function normalizeCourseContent(value) {
+  if (!plainObject(value) || Object.keys(value).length !== contentFields.length || contentFields.some(field => !Object.hasOwn(value, field))) return null;
+  const result = {};
+  for (const field of ['descriptionZh', 'descriptionEn']) {
+    if (typeof value[field] !== 'string' || value[field].length > 10000) return null;
+    result[field] = value[field];
+  }
+  for (const field of ['minAgeYears', 'maxAgeYears']) {
+    if (typeof value[field] !== 'string' && !(typeof value[field] === 'number' && Number.isFinite(value[field]))) return null;
+    const age = String(value[field]);
+    if (age !== '' && (age.length > 16 || !/^(?:\d+(?:\.\d+)?|\.\d+)$/.test(age) || !Number.isFinite(Number(age)))) return null;
+    result[field] = age;
+  }
+  if (result.minAgeYears && result.maxAgeYears && ageGreaterThan(result.minAgeYears, result.maxAgeYears)) return null;
+  return result;
+}
+
+export function validateCourseContent(value) {
+  const content = normalizeCourseContent(value);
+  if (content === null) invalid('Course content must contain both optional descriptions and both optional recommended age fields. Descriptions must be text of at most 10000 characters; ages must be non-negative decimals of at most 16 characters with maximum not below minimum.');
+  return content;
+}
+
+const courseContentSelection = input => Object.hasOwn(input, 'content') ? { content: validateCourseContent(input.content) } : {};
 
 function coursePublicColor(value) {
   if (value === undefined || value === null) return null;
@@ -78,9 +117,9 @@ function classTypeSelection(input) {
 
 export function validateCourseMetadata(input, current = null) {
   if (!plainObject(input)) invalid('Course must be a JSON object.');
-  for (const key of Object.keys(input)) if (!['courseName', 'category', 'level', 'publicColor', 'version', ...typeFields].includes(key)) invalid(`Unsupported course field: ${key}.`);
+  for (const key of Object.keys(input)) if (!['courseName', 'category', 'level', 'publicColor', 'content', 'version', ...typeFields].includes(key)) invalid(`Unsupported course field: ${key}.`);
   const source = current ? { ...current, ...input } : input;
-  return { courseName: text(source.courseName, 'Course name', true), category: text(source.category, 'Category'), level: text(source.level, 'Level'), publicColor: coursePublicColor(source.publicColor), ...classTypeSelection(input) };
+  return { courseName: text(source.courseName, 'Course name', true), category: text(source.category, 'Category'), level: text(source.level, 'Level'), publicColor: coursePublicColor(source.publicColor), ...classTypeSelection(input), ...courseContentSelection(input) };
 }
 
 export function validateCourse(input, current = null) {
@@ -89,7 +128,7 @@ export function validateCourse(input, current = null) {
   const source = current ? { ...current, ...input } : input;
   return {
     courseName: text(source.courseName, 'Course name', true), category: text(source.category, 'Category'), level: text(source.level, 'Level'), publicColor: coursePublicColor(source.publicColor),
-    feeName: text(source.feeName, 'Fee name', true), ...validatePricing(source), ...classTypeSelection(input),
+    feeName: text(source.feeName, 'Fee name', true), ...validatePricing(source), ...classTypeSelection(input), ...courseContentSelection(input),
   };
 }
 

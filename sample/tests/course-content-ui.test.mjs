@@ -110,14 +110,14 @@ test('admin edit has natural optional fields, keyboard-scrolling body and raw va
   assert.doesNotMatch(html, /required|data-action="publish"|Save complete|Saved successfully/);
 });
 
-test('review is explicitly an unpublished preview with the same draft, Back and disabled final Save', () => {
+test('review is explicitly an unpublished preview with the same draft, Back and an enabled final Save', () => {
   const html = courseContentEditorMarkup({course, role: 'admin', step: 'review', values});
   assert.match(html, /data-step="review"/);
   assert.match(html, /Preview \(not published\)/);
   assert.match(html, /Explore colour\nthrough stories/);
   assert.match(html, /2\.5–18 years/);
   assert.match(html, /data-action="course-content-back"/);
-  assert.match(html, /<button type="submit"[^>]*disabled[^>]*>Save contents<\/button>/);
+  assert.match(html, /<button type="submit" id="course-content-save">Save contents<\/button>/);
   assert.doesNotMatch(html, /<textarea|Published successfully|Contents saved/);
 });
 
@@ -253,4 +253,10 @@ test('source failure and Retry stay outside the scrolling form so a bottom-field
   }
   assert.match(html, /name="descriptionZh"/);
   assert.doesNotMatch(html, /<textarea[^>]*disabled/);
+});
+
+
+test('saving content blocks repeated submission and editor exits while the server acknowledgement is pending',()=>{
+ const html=courseContentEditorMarkup({course,role:'admin',step:'review',values,saving:true});
+ assert.match(html,/aria-busy="true"/);assert.match(html,/id="course-content-save" disabled>Saving/);assert.match(html,/data-action="course-content-back" disabled/);assert.match(html,/data-action="course-content-close" disabled/);assert.doesNotMatch(html,/Saving course contents is not available yet/);
 });

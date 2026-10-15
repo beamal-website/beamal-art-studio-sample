@@ -504,13 +504,16 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
         const input = await body(request), version = requireVersion(input);
         let id;
         try { id = decodeURIComponent(match[1]); } catch { throw new ApplicationError(400, 'INVALID_PATH', 'Invalid course identifier.'); }
-        const current = store.getCourse(id);
-        if (!current) throw new ApplicationError(404, 'COURSE_NOT_FOUND', 'Course was not found.');
-        if (current.deletedAt) throw new ApplicationError(409, 'COURSE_DELETED', 'This course is deleted. Restore it before making changes.');
-        if (current.version !== version) throw new ApplicationError(409, 'VERSION_CONFLICT', 'This course was changed by someone else. Reload it before saving.');
-        const updatePricing = hasPricingFields(input);
-        const course = updatePricing ? validateCourse(input, current) : validateCourseMetadata(input, current);
-        json(response, 200, { course: store.updateCourse(id, course, version, session.user.id, updatePricing) }); return;
+        const result = store.mutateOnce({userId:session.user.id,route:'PATCH /api/courses/'+encodeURIComponent(id),key:idempotencyKey(request),payloadHash:payloadHash(input),status:200},()=>{
+          const current = store.getCourse(id);
+          if (!current) throw new ApplicationError(404, 'COURSE_NOT_FOUND', 'Course was not found.');
+          if (current.deletedAt) throw new ApplicationError(409, 'COURSE_DELETED', 'This course is deleted. Restore it before making changes.');
+          if (current.version !== version) throw new ApplicationError(409, 'VERSION_CONFLICT', 'This course was changed by someone else. Reload it before saving.');
+          const updatePricing = hasPricingFields(input);
+          const course = updatePricing ? validateCourse(input, current) : validateCourseMetadata(input, current);
+          return {course:store.updateCourse(id, course, version, session.user.id, updatePricing)};
+        });
+        json(response, result.status, result.body); return;
       }
       if (pathname === '/api/fees' && request.method === 'GET') {
         const session = requireSession(request);

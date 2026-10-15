@@ -1,0 +1,63 @@
+{
+  "date": "2026-10-16",
+  "baseCommit": "9453ababc701f78586194a65b5c71e2e96b1a114",
+  "sourceSHA256": {
+    "sample/src.js": "1f91aa8c90867ddaadf09081a5728b2339ccd8bf7da4ff10396d5599d1fa229d",
+    "sample/style.css": "669b033850050ec448da3738a872d62efcf381b33f6ba2e63c8b83025397ad61",
+    "sample/tests/flows.test.mjs": "33d4194d6112d4d2263acfb53d4e559227e70111175efece7eff65c15790a224"
+  },
+  "workspace": {
+    "passed": 1416,
+    "failed": 0,
+    "seconds": 236.449467125,
+    "buildSeconds": 7.32
+  },
+  "cleanCandidate": {
+    "passed": 1401,
+    "failed": 0,
+    "seconds": 235.051987792,
+    "buildSeconds": 8.07
+  },
+  "independentHost": {
+    "passed": 25,
+    "liveBrowser": false
+  },
+  "independentScreenshotOnly": {
+    "passed": 5,
+    "liveBrowser": false
+  },
+  "rootBrowser": {
+    "widths": [
+      390,
+      768,
+      1280
+    ],
+    "languages": [
+      "zh",
+      "en"
+    ],
+    "isolatedDataOnly": true
+  },
+  "dataCheck": {
+    "gui": {
+      "tables": 42,
+      "changedTables": [
+        "audit_log",
+        "course_fees",
+        "course_sequence",
+        "courses",
+        "fee_audit_log",
+        "fee_sequence",
+        "fees",
+        "idempotent_creates"
+      ],
+      "protectedTables": 34
+    },
+    "user": {
+      "tables": 42,
+      "changedTables": [],
+      "protectedTables": 42
+    }
+  },
+  "goalComplete": false
+}

@@ -1051,7 +1051,7 @@
 .portal-course-page .portal-course-table th:nth-child(2) { width: 200px; }
 .portal-course-page .portal-course-table th:nth-child(3),
 .portal-course-page .portal-course-table th:nth-child(4) { width: 110px; }
-.portal-course-page .portal-course-table th:nth-child(5) { width: 88px; }
+.portal-course-page .portal-course-table th:nth-child(5) { width: 130px; }
 .portal-course-page .portal-course-table th:nth-child(6) { width: 260px; }
 .portal-course-page .portal-course-table th:nth-child(7) { width: 110px; }
 .portal-course-page .portal-course-table th:nth-child(8) { width: 120px; }
@@ -1060,6 +1060,12 @@
   padding: 16px 12px;
   text-align: left;
   vertical-align: middle;
+}
+/* Headers may wrap within their own column; the table scrolls as one region. */
+.portal-course-page .portal-course-table th { white-space: normal; overflow-wrap: anywhere; }
+@media(max-width:780px){
+  #portal-course-search{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #portal-course-search select{min-width:0;width:100%}
 }
 .portal-course-page .portal-course-table .portal-select-cell { text-align: center; }
 .portal-course-page .portal-course-table .course-sort-button {

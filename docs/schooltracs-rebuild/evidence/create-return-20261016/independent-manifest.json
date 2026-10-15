@@ -1,0 +1,32 @@
+{
+  "date": "2026-10-16",
+  "readOnlyHead": "9453ababc701f78586194a65b5c71e2e96b1a114",
+  "sourceSHA256": {
+    "sample/src.js": "1f91aa8c90867ddaadf09081a5728b2339ccd8bf7da4ff10396d5599d1fa229d",
+    "sample/tests/flows.test.mjs": "33d4194d6112d4d2263acfb53d4e559227e70111175efece7eff65c15790a224"
+  },
+  "baselineSourceSHA256": "2b7a0070cd5f279a0c3086b67fadbadbfdc558f3d88400a3c09dd9da9ef949fe",
+  "independentScriptSHA256": "9e6c0b097a8390d9413f31511177f2701443adb4a75cf3d8631897c0e917c145",
+  "originalGroups": 25,
+  "passed": 25,
+  "baselineOriginalFailures": 5,
+  "baselineOriginalPassingGuards": 3,
+  "liveBrowser": false,
+  "realDatabase": false,
+  "fullSuiteOrBuild": false,
+  "report": "/tmp/beamal-create-fee-return-independent-review.md",
+  "finalCompatibilityGuardReviewed": true,
+  "backgroundPollFocusOriginalGroups": 4,
+  "backgroundPollControlledInverseRed": "/tmp/beamal-create-fee-poll-independent-red.log",
+  "finalLog": "/tmp/beamal-create-fee-error-independent-green-25.log",
+  "independentScript": "/tmp/beamal-create-fee-error-independent.mjs",
+  "failed": 0,
+  "cancelled": 0,
+  "skipped": 0,
+  "previous19ScriptPreserved": "/tmp/beamal-create-fee-return-independent.mjs",
+  "previous19Log": "/tmp/beamal-create-fee-return-independent-final-19.log",
+  "errorVisibilityOriginalGroups": 6,
+  "errorControlledInverseRed": "/tmp/beamal-create-fee-error-independent-red.log",
+  "unresolvedBlockers": [],
+  "freeze": true
+}

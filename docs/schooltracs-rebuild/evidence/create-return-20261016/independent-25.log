@@ -1,0 +1,160 @@
+TAP version 13
+# Subtest: return independent 1 Course create reveals exact acknowledged record clears only incompatible category/level status search preserves sort
+ok 1 - return independent 1 Course create reveals exact acknowledged record clears only incompatible category/level status search preserves sort
+  ---
+  duration_ms: 260.662125
+  type: 'test'
+  ...
+# Subtest: return independent 2 compatible Course filters remain exact and similarly named neighbour never receives success focus
+ok 2 - return independent 2 compatible Course filters remain exact and similarly named neighbour never receives success focus
+  ---
+  duration_ms: 4.775833
+  type: 'test'
+  ...
+# Subtest: return independent 3 global Fee create releases hiding search and incompatible cardinality filter and focuses exact acknowledged fee
+ok 3 - return independent 3 global Fee create releases hiding search and incompatible cardinality filter and focuses exact acknowledged fee
+  ---
+  duration_ms: 5.460417
+  type: 'test'
+  ...
+# Subtest: return independent 4 global Fee compatible name/cardinality filters retained and edit rename clears only hiding query
+ok 4 - return independent 4 global Fee compatible name/cardinality filters retained and edit rename clears only hiding query
+  ---
+  duration_ms: 5.768792
+  type: 'test'
+  ...
+# Subtest: return independent 5 Fee added from Course stays that Course month and leaves hidden global filters untouched
+ok 5 - return independent 5 Fee added from Course stays that Course month and leaves hidden global filters untouched
+  ---
+  duration_ms: 6.124167
+  type: 'test'
+  ...
+# Subtest: return independent 6 Cancel never changes filters data and returns same connected opener without success reveal
+ok 6 - return independent 6 Cancel never changes filters data and returns same connected opener without success reveal
+  ---
+  duration_ms: 54.738125
+  type: 'test'
+  ...
+# Subtest: return independent 7 failure preserves native draft operation key old filters and no success/focus reveal
+ok 7 - return independent 7 failure preserves native draft operation key old filters and no success/focus reveal
+  ---
+  duration_ms: 24.050041
+  type: 'test'
+  ...
+# Subtest: return independent 8 late successful reply after true identity change cannot focus old new record or switch route
+ok 8 - return independent 8 late successful reply after true identity change cannot focus old new record or switch route
+  ---
+  duration_ms: 13.199333
+  type: 'test'
+  ...
+# Subtest: return independent 9 same-identity real navigation refuses late success route tab focus or reveal for normal and legacy editors
+ok 9 - return independent 9 same-identity real navigation refuses late success route tab focus or reveal for normal and legacy editors
+  ---
+  duration_ms: 24.964375
+  type: 'test'
+  ...
+# Subtest: return independent 10 newer canonical Course metadata controls visibility after older successful create acknowledgment
+ok 10 - return independent 10 newer canonical Course metadata controls visibility after older successful create acknowledgment
+  ---
+  duration_ms: 8.888334
+  type: 'test'
+  ...
+# Subtest: return independent 11 newer canonical Fee name and linked count control global visibility after older acknowledgment
+ok 11 - return independent 11 newer canonical Fee name and linked count control global visibility after older acknowledgment
+  ---
+  duration_ms: 15.027833
+  type: 'test'
+  ...
+# Subtest: return independent 12 shared Fee success from second Course catalogue row returns exact second-row instance
+ok 12 - return independent 12 shared Fee success from second Course catalogue row returns exact second-row instance
+  ---
+  duration_ms: 4.200375
+  type: 'test'
+  ...
+# Subtest: return independent 13 unlinking Fee from originating Course returns meaningful same-source fallback not another Course fee
+ok 13 - return independent 13 unlinking Fee from originating Course returns meaningful same-source fallback not another Course fee
+  ---
+  duration_ms: 13.104125
+  type: 'test'
+  ...
+# Subtest: return independent 14 normal metadata Cancel and Save preserve exact Course source rather than create success routing
+ok 14 - return independent 14 normal metadata Cancel and Save preserve exact Course source rather than create success routing
+  ---
+  duration_ms: 7.76025
+  type: 'test'
+  ...
+# Subtest: return independent 15 pending legacy metadata navigation discards form and refuses late old-source focus
+ok 15 - return independent 15 pending legacy metadata navigation discards form and refuses late old-source focus
+  ---
+  duration_ms: 5.98025
+  type: 'test'
+  ...
+# Subtest: return independent 16 background catalogue remount preserves saved Course Fee and second-row exact focus without a reveal or scroll
+ok 16 - return independent 16 background catalogue remount preserves saved Course Fee and second-row exact focus without a reveal or scroll
+  ---
+  duration_ms: 17.504958
+  type: 'test'
+  ...
+# Subtest: return independent 17 a removed record or removed second-row Fee instance never falls back to another record during poll
+ok 17 - return independent 17 a removed record or removed second-row Fee instance never falls back to another record during poll
+  ---
+  duration_ms: 18.220292
+  type: 'test'
+  ...
+# Subtest: return independent 18 background deleted Course disables exact Fee button and must not restore focus onto it or another button
+ok 18 - return independent 18 background deleted Course disables exact Fee button and must not restore focus onto it or another button
+  ---
+  duration_ms: 4.466834
+  type: 'test'
+  ...
+# Subtest: return independent 19 old pending catalogue poll after identity change cannot restore old focus even with same record visible to new admin
+ok 19 - return independent 19 old pending catalogue poll after identity change cannot restore old focus even with same record visible to new admin
+  ---
+  duration_ms: 5.5425
+  type: 'test'
+  ...
+# Subtest: error independent 20 Course local duplicate price colour and class-type errors focus and reveal current alert without remount or write
+ok 20 - error independent 20 Course local duplicate price colour and class-type errors focus and reveal current alert without remount or write
+  ---
+  duration_ms: 23.01825
+  type: 'test'
+  ...
+# Subtest: error independent 21 Fee missing duplicate course selection focuses exact current Fee alert and preserves input filters without write
+ok 21 - error independent 21 Fee missing duplicate course selection focuses exact current Fee alert and preserves input filters without write
+  ---
+  duration_ms: 18.145917
+  type: 'test'
+  ...
+# Subtest: error independent 22 current Course Fee400409503 errors reveal current alert retain draft key filters and restore save controls
+ok 22 - error independent 22 current Course Fee400409503 errors reveal current alert retain draft key filters and restore save controls
+  ---
+  duration_ms: 27.251875
+  type: 'test'
+  ...
+# Subtest: error independent 23 pending Course and Fee disable behavior survives visible failure and does not focus error prematurely
+ok 23 - error independent 23 pending Course and Fee disable behavior survives visible failure and does not focus error prematurely
+  ---
+  duration_ms: 13.314041
+  type: 'test'
+  ...
+# Subtest: error independent 24 late identity or navigation400409503 errors cannot focus disconnected old editor or steal current focus
+ok 24 - error independent 24 late identity or navigation400409503 errors cannot focus disconnected old editor or steal current focus
+  ---
+  duration_ms: 87.503792
+  type: 'test'
+  ...
+# Subtest: error independent 25 stale rejection cannot populate or focus a newly opened same-ID form and absent other-form selectors do nothing
+ok 25 - error independent 25 stale rejection cannot populate or focus a newly opened same-ID form and absent other-form selectors do nothing
+  ---
+  duration_ms: 12.711209
+  type: 'test'
+  ...
+1..25
+# tests 25
+# suites 0
+# pass 25
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 979.932584

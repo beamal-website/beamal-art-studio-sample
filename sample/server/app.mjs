@@ -207,6 +207,60 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
         const session = requireSession(request);
         json(response, 200, store.catalogSnapshot({ user: session.user, publicOnly: session.user.role === 'student', since: requestUrl.searchParams.get('since') || '' })); return;
       }
+      const studentLinkMatch = /^\/api\/people\/([^/]+)\/account-link$/.exec(pathname);
+      const orderMatch = /^\/api\/orders\/([^/]+)$/.exec(pathname);
+      const orderActionMatch = /^\/api\/orders\/([^/]+)\/(send|respond|confirm-payment)$/.exec(pathname);
+      const studentRosterMatch = /^\/api\/schedules\/([^/]+)\/occurrences\/([^/]+)\/students$/.exec(pathname);
+      const enrollmentQuery = allowed => {
+        for (const [key,value] of requestUrl.searchParams) if (!allowed.includes(key) || value.length > 200 || requestUrl.searchParams.getAll(key).length !== 1) throw new ApplicationError(400,'INVALID_QUERY','Choose supported enrollment query parameters.');
+        return Object.fromEntries(requestUrl.searchParams);
+      };
+      if (pathname === '/api/student-account-links' && request.method === 'GET') {
+        const session=requireSession(request); enrollmentQuery([]); json(response,200,store.enrollmentOrders.managementSnapshot(session.user)); return;
+      }
+      if (studentLinkMatch && request.method === 'PATCH') {
+        const session=requireMutation(request);
+        if(session.user.role!=='admin') throw new ApplicationError(403,'ROLE_FORBIDDEN','Only an administrator can link student login accounts.');
+        enrollmentQuery([]); const id=decodeId(studentLinkMatch[1]),input=await body(request),key=idempotencyKey(request);
+        const result=store.mutateOnce({userId:session.user.id,route:'PATCH /api/people/'+encodeURIComponent(id)+'/account-link',key,payloadHash:payloadHash(input),status:200},()=>store.enrollmentOrders.setAccountLink(id,input,session.user));
+        json(response,result.status,result.body); return;
+      }
+      if (pathname === '/api/student/profile' && request.method === 'GET') {
+        const session=requireSession(request); enrollmentQuery([]); json(response,200,store.enrollmentOrders.studentProfile(session.user)); return;
+      }
+      if (pathname === '/api/student/timetable' && request.method === 'GET') {
+        const session=requireSession(request); const query=enrollmentQuery(['from','to','since']); json(response,200,store.enrollmentOrders.timetable(session.user,query)); return;
+      }
+      if (pathname === '/api/orders' && request.method === 'GET') {
+        const session=requireSession(request); enrollmentQuery([]); json(response,200,store.enrollmentOrders.list(session.user)); return;
+      }
+      if (pathname === '/api/orders' && request.method === 'POST') {
+        const session=requireMutation(request);
+        if(session.user.role!=='admin') throw new ApplicationError(403,'ROLE_FORBIDDEN','Only an administrator can create orders.');
+        enrollmentQuery([]); const input=await body(request),key=idempotencyKey(request);
+        const result=store.mutateOnce({userId:session.user.id,route:'POST /api/orders',key,payloadHash:payloadHash(input),status:201},()=>({order:store.enrollmentOrders.create(input,session.user)}));
+        json(response,result.status,result.body); return;
+      }
+      if (orderMatch && request.method === 'GET') {
+        const session=requireSession(request); enrollmentQuery([]); json(response,200,{order:store.enrollmentOrders.get(decodeId(orderMatch[1]),session.user)}); return;
+      }
+      if (orderActionMatch && request.method === 'POST') {
+        const session=requireMutation(request),action=orderActionMatch[2],id=decodeId(orderActionMatch[1]);
+        if(session.user.role!==(action==='respond'?'student':'admin')) throw new ApplicationError(403,'ROLE_FORBIDDEN','This role cannot perform this order action.');
+        enrollmentQuery([]);
+        const input=await body(request),key=idempotencyKey(request),method={send:'send',respond:'respond','confirm-payment':'confirmPayment'}[action];
+        // The body await may outlive an account-link revocation. Check current
+        // ownership afterwards, immediately before the synchronous receipt
+        // transaction, so a replay cannot return an old private order response.
+        store.enrollmentOrders.authorize(id,session.user);
+        const result=store.mutateOnce({userId:session.user.id,route:'POST /api/orders/'+encodeURIComponent(id)+'/'+action,key,payloadHash:payloadHash(input),status:200},()=>({order:store.enrollmentOrders[method](id,input,session.user)}));
+        json(response,result.status,result.body); return;
+      }
+      if (studentRosterMatch && request.method === 'GET') {
+        const session=requireSession(request); enrollmentQuery([]);const id=decodeId(studentRosterMatch[1]),sequenceText=decodeId(studentRosterMatch[2]),sequence=Number(sequenceText);
+        if(!/^[1-9]\d*$/.test(sequenceText)||!Number.isSafeInteger(sequence)) throw new ApplicationError(400,'INVALID_LESSON_SEQUENCE','Choose a valid lesson sequence.');
+        json(response,200,store.enrollmentOrders.roster(id,sequence,session.user)); return;
+      }
       const classTypeMatch = /^\/api\/class-types\/([^/]+)$/.exec(pathname);
       if (pathname === '/api/class-types' && request.method === 'GET') {
         const session = requireSession(request);
@@ -474,7 +528,7 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
         json(response, 200, store.updateFee(id, fee, version, session.user.id, true)); return;
       }
       if (pathname === '/api' || pathname.startsWith('/api/')) {
-        const known = match || feeMatch || courseMaterialMatch || materialMatch || uploadMatch || attachmentMatch || scheduleMatch || occurrenceMatch || courseLifecycleMatch || schedulingResourceMatch || personMatch || personHistoryMatch || teacherLinkMatch || accessGrantMatch || availableSlotMatch || publicCourseMatch || capacityStatusMatch || classTypeMatch || ['/api/class-types', '/api/class-capacity-statuses', '/api/available-slots', '/api/availability-public-settings', '/api/public/courses', '/api/people', '/api/access-control', '/api/access-control/grants', '/api/health', '/api/auth/session', '/api/auth/login', '/api/auth/logout', '/api/courses', '/api/fees', '/api/catalog', '/api/schedules', '/api/scheduling-resources'].includes(pathname);
+        const known = studentLinkMatch || orderMatch || orderActionMatch || studentRosterMatch || match || feeMatch || courseMaterialMatch || materialMatch || uploadMatch || attachmentMatch || scheduleMatch || occurrenceMatch || courseLifecycleMatch || schedulingResourceMatch || personMatch || personHistoryMatch || teacherLinkMatch || accessGrantMatch || availableSlotMatch || publicCourseMatch || capacityStatusMatch || classTypeMatch || ['/api/student-account-links', '/api/student/profile', '/api/student/timetable', '/api/orders', '/api/class-types', '/api/class-capacity-statuses', '/api/available-slots', '/api/availability-public-settings', '/api/public/courses', '/api/people', '/api/access-control', '/api/access-control/grants', '/api/health', '/api/auth/session', '/api/auth/login', '/api/auth/logout', '/api/courses', '/api/fees', '/api/catalog', '/api/schedules', '/api/scheduling-resources'].includes(pathname);
         throw new ApplicationError(known ? 405 : 404, known ? 'METHOD_NOT_ALLOWED' : 'NOT_FOUND', 'API route or method is not available.');
       }
       await serveStatic(request, response, pathname);

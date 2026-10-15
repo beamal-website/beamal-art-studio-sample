@@ -119,7 +119,14 @@ export function createAccessControlStore({database,transaction}) {
     const courseStates=database.prepare('SELECT id,deleted_at FROM courses ORDER BY id').all().filter(row=>courseIds.has(row.id));
     return {courseIds,resourceIds,permits,permitsSlot,schedules,revision:hash({policy:2,id:person.id,role:person.role,links:links.map(linkDTO),grants:grants.map(grantDTO),effective,available,courseStates})};
   },'read');
-  const revisionFor=user=>scopeFor(user).revision;
+  const revisionFor=user=>transaction(()=>{
+    const person=identity(user);
+    if(person?.role!=='student')return scopeFor(user).revision;
+    // Each family refreshes only when its explicit profile links change. This
+    // invalidates an already open private view after access is reassigned.
+    const links=database.prepare('SELECT links.student_id,links.version,people.version AS profile_version FROM student_account_links AS links JOIN people ON people.id=links.student_id WHERE links.user_id=? ORDER BY links.student_id').all(person.id);
+    return hash({policy:3,id:person.id,role:person.role,links});
+  },'read');
   const canReadCourse=(courseId,user)=>{const scope=scopeFor(user);return scope.courseIds===null||scope.courseIds.has(courseId);};
   const teacherSchedules=(user,{from,to,since=''}={})=>transaction(()=>{
     const scope=scopeFor(user);let occurrences=[];

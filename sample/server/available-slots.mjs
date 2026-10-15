@@ -1,7 +1,6 @@
 import {randomUUID,createHash} from 'node:crypto';
 import {ApplicationError} from './validation.mjs';
 import {scheduleOccurrence} from '../shared/schedule-occurrences.js';
-import {classCapacityStatusDTO} from './class-capacity-status.mjs';
 
 const hash=value=>createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const plain=value=>value!==null&&typeof value==='object'&&!Array.isArray(value)&&Object.getPrototypeOf(value)===Object.prototype;
@@ -54,11 +53,11 @@ export function createAvailableSlotStore({database,transaction,accessControl,cla
     if(!reason&&[...effective.teacherIds,...effective.roomIds].some(id=>!ctx.resources.has(id)))reason='RESOURCE_NOT_FOUND';
     const identity=sourceIdentity({...effective,scheduleId:data.scheduleId,sequence:data.sequence});if(!reason&&held.some(hold=>(hold.source_identity||row.source_identity)!==identity))reason='HELD_SOURCE_CHANGED';
     const storedClassStatus=linked?ctx.classStatuses.get(JSON.stringify([data.scheduleId,data.sequence])):null;
-    const classCapacityStatus=linked&&occurrence&&!occurrence.cancelled&&!schedule.deleted&&course&&!course.deleted_at?classCapacityStatusDTO(occurrence,storedClassStatus):null;
+    const classCapacityStatus=linked&&occurrence&&!occurrence.cancelled&&!schedule.deleted&&course&&!course.deleted_at?classCapacityStatuses.project(occurrence,storedClassStatus):null;
     // Hiding an inactive lesson cannot roll its independent status version back.
     if(linked)sourceVersions['class-status:'+data.scheduleId+':'+data.sequence]=storedClassStatus?.version??0;
     const trialReserved=held.filter(hold=>hold.kind==='trial').length,reschedulingReserved=held.filter(hold=>hold.kind==='rescheduling').length,trialRemaining=Math.max(0,data.trialCapacity-trialReserved),reschedulingRemaining=Math.max(0,data.reschedulingCapacity-reschedulingReserved);
-    return {...Object.fromEntries(fields.filter(key=>!sourceFields.includes(key)).map(key=>[key,data[key]])),...effective,id:row.id,kind:'available-slot',sourceKind:linked?'linked':'standalone',courseName:course?JSON.parse(course.data).courseName:'',version:row.version,createdAt:row.created_at,updatedAt:row.updated_at,teacherNames:effective.teacherIds.map(id=>ctx.resources.get(id)?.display_name||''),teacherColors:effective.teacherIds.map(id=>teacherColour(ctx.resources.get(id))),roomNames:effective.roomIds.map(id=>ctx.resources.get(id)?.display_name||''),sourceVersions,sourceAvailable:!reason,unavailableReason:reason,trialReserved,reschedulingReserved,trialRemaining,reschedulingRemaining,trialStatus:data.trialEnabled&&!trialRemaining?'full':'available',reschedulingStatus:data.reschedulingEnabled&&!reschedulingRemaining?'full':'available',totalReserved:null,classCapacity:linked?occurrence?.item.capacity??null:null,classOccupied:null,...(linked?{classCapacityStatus,classType:occurrence?.item.classType??null}:{})};
+    return {...Object.fromEntries(fields.filter(key=>!sourceFields.includes(key)).map(key=>[key,data[key]])),...effective,id:row.id,kind:'available-slot',sourceKind:linked?'linked':'standalone',courseName:course?JSON.parse(course.data).courseName:'',version:row.version,createdAt:row.created_at,updatedAt:row.updated_at,teacherNames:effective.teacherIds.map(id=>ctx.resources.get(id)?.display_name||''),teacherColors:effective.teacherIds.map(id=>teacherColour(ctx.resources.get(id))),roomNames:effective.roomIds.map(id=>ctx.resources.get(id)?.display_name||''),sourceVersions,sourceAvailable:!reason,unavailableReason:reason,trialReserved,reschedulingReserved,trialRemaining,reschedulingRemaining,trialStatus:data.trialEnabled&&!trialRemaining?'full':'available',reschedulingStatus:data.reschedulingEnabled&&!reschedulingRemaining?'full':'available',totalReserved:null,classCapacity:linked?occurrence?.item.capacity??null:null,classOccupied:classCapacityStatus?.classOccupied??null,...(linked?{classCapacityStatus,classType:occurrence?.item.classType??null}:{})};
   };
   const facts=()=>{const ctx=context();return database.prepare('SELECT * FROM available_slots ORDER BY id').all().map(row=>project(row,ctx));};
   const teacherDTO=slot=>Object.fromEntries(Object.entries(slot).filter(([key])=>!['remark','excludedStudentIds'].includes(key)));

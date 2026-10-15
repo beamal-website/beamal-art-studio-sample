@@ -341,3 +341,13 @@ test('formal class type creation and edits send only explicit three-state config
  const cleared={...updated,studentReschedulingAllowed:null,version:9};wire.reply(path,{type:cleared});assert.deepEqual(await client.updateClassType(updated,{...edited,studentReschedulingAllowed:null},'fictional-class-type-clear-key'),{type:cleared});assert.deepEqual(JSON.parse(wire.calls.at(-1).body),{...edited,studentReschedulingAllowed:null,version:8});
  wire.reply(path,{error:{code:'VERSION_CONFLICT',message:'Another administrator changed the type.'}},409);await assert.rejects(client.updateClassType(current,edited,'fictional-class-type-edit-key'),error=>error instanceof ApiError&&error.status===409&&error.code==='VERSION_CONFLICT');
 });
+
+test('enrollment orders use stable mutation keys, versions, explicit identity links and scoped student reads',async t=>{
+ const wire=network(t),client=createApiClient();await login(client,wire,'B');
+ wire.reply('/api/student-account-links',{students:[],accounts:[],links:[],revision:'r'});await client.studentAccountLinks();
+ wire.reply('/api/people/p%20%2F/account-link',{link:{studentId:'p /',userId:'u',version:1}});await client.saveStudentAccountLink('p /','u',0,'link-key');assert.deepEqual(JSON.parse(wire.calls.at(-1).body),{userId:'u',version:0});
+ const fields={studentId:'p',items:[{courseId:'c',feeId:'f',lessons:[{scheduleId:'s',sequence:1,sourceVersion:2}]}],amountCents:30000};wire.reply('/api/orders',{order:{id:'o',version:1}});await client.createOrder(fields,'order-key');assert.deepEqual(JSON.parse(wire.calls.at(-1).body),fields);assert.equal(wire.calls.at(-1).headers.get('Idempotency-Key'),'order-key');
+ for(const [method,suffix,extra] of [['sendOrder','send',{}],['respondOrder','respond',{action:'confirm',reason:''}],['confirmOrderPayment','confirm-payment',{}]]){wire.reply('/api/orders/o/'+suffix,{order:{id:'o',version:3}});if(method==='respondOrder')await client[method]({id:'o',version:2},'confirm','','mutation-key');else await client[method]({id:'o',version:2},'mutation-key');assert.deepEqual(JSON.parse(wire.calls.at(-1).body),{version:2,...extra});assert.equal(wire.calls.at(-1).headers.get('X-CSRF-Token'),'csrf-fictional-B');assert.equal(wire.calls.at(-1).headers.get('Idempotency-Key'),'mutation-key');}
+ wire.reply('/api/student/timetable?from=2026-10-01&to=2026-10-31&since=rev',{revision:'rev',unchanged:true});await client.studentTimetable({from:'2026-10-01',to:'2026-10-31'},'rev');
+ wire.reply('/api/schedules/s%20%2F/occurrences/7/students',{students:[],occupied:0,capacity:8});await client.lessonStudents('s /',7);
+});

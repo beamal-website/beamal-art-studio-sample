@@ -21,7 +21,7 @@ const tagById = (html, id) => html.match(new RegExp(`<[^>]+\\bid="${id}"[^>]*>`)
 test('trial preview keeps its selected public slot and disables full or unknown quotas',()=>{
   const data={course,slots:[slot],from:'2026-10-15',to:'2026-10-21'},context={...ui('en'),trialPreview:true};
   const button=html=>html.match(/<button[^>]*class="availability-trial-preview"[^>]*>/)?.[0]||'';
-  const enabled=button(publicCourseDetailsMarkup(data,context));assert.match(enabled,/data-ui-course-id="course-a"/);assert.match(enabled,/data-ui-id="slot-a"/);assert.doesNotMatch(enabled,/disabled/);
+  const enabled=button(publicCourseDetailsMarkup(data,context));assert.match(enabled,/data-course-id="course-a"/);assert.match(enabled,/data-slot-id="slot-a"/);assert.doesNotMatch(enabled,/disabled/);
   for(const trialRemaining of [0,null,undefined])assert.match(button(publicCourseDetailsMarkup({...data,slots:[{...slot,trialRemaining}]},context)),/disabled/);
   assert.equal(button(publicCourseDetailsMarkup(data,ui('en'))),'');
 });

@@ -1030,3 +1030,9 @@ test('message host invalid Compose submission keeps the actual form draft positi
  assert.match(p.html,/Choose a recipient/);assert.equal(p.body.scrollTop,167);assert.equal(p.dom.activeElement?.type,'submit');assert.equal(p.field('subject').value,'Keep the unfinished subject');assert.equal(p.field('message').value,'Keep this unfinished message');
  p.field('message').value='RAW BEFORE CANCEL';p.clickNode(p.controls.filter(node=>node.dataset.uiCommand==='close').at(-1));assert.equal(p.html,'');assert.equal(p.dom.activeElement,opener);p.click('compose');assert.equal(p.field('message').value,'RAW BEFORE CANCEL');assert.equal(p.field('recipient').value,'');
 });
+
+test('shared public trial cannot enter the legacy account fixture without the canonical public controller',()=>{
+ const p=preview({context:()=>({t,sharedMode:true,role:'',sharedIdentity:null})});
+ assert.equal(p.ui.openAccount('trial-application'),false);assert.equal(p.html,'');
+ p.ui.action({action:'ui-account-actions',uiCommand:'launch',uiView:'trial-application',uiCourseId:'arbitrary',uiId:'arbitrary-slot'});assert.equal(p.html,'');
+});

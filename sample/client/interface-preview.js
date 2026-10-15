@@ -466,6 +466,7 @@ export function createInterfacePreview({context,showModal,repaint,dom=document,F
     const element=dom.activeElement;returnFocus={element,dataset:{...element?.dataset}};const data=getLessonWorkflowData();lesson={view,step:'edit',student:data.students[0],lesson:{courseName:'創意繪畫 · Creative Drawing',date:'2026-10-16',time:'13:00',duration:60,teacher:'陳子朗 Leo Chan'},data,...facts};overlay='lesson';redrawOverlay();
   };
   const openAccount=(view,facts={})=>{
+    if(ctx().sharedMode&&view==='trial-application')return false;
     if(guardStudentRequest()!=='ready')return false;
     if(facts.sharedPerson===true){
       const resolved=sharedPersonFacts(view,facts.personId);

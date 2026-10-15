@@ -1,0 +1,71 @@
+{
+  "scope": "Products maintenance and stock Review UI only; full Goal remains active",
+  "branch": "test",
+  "parent": "75c061e5ac5cdb61ce8adf6143835eb3e65a06a9",
+  "candidateTreeBeforeDocumentation": "ddfb8878ce52256fa7a2a4a6d0363aa3aa039b83",
+  "candidateTests": {
+    "passed": 1568,
+    "failed": 0,
+    "durationMs": 96418.394458
+  },
+  "candidateBuild": {
+    "passed": true,
+    "seconds": 3.92,
+    "existingLargeBundleWarning": true
+  },
+  "worktreeTests": {
+    "passed": 1583,
+    "failed": 0,
+    "durationMs": 87805.452,
+    "includesUnrelatedUntrackedStaffTests": 15
+  },
+  "worktreeBuild": {
+    "passed": true,
+    "seconds": 16.81
+  },
+  "independentControllerCasesPassed": 39,
+  "independentVisualImages": 9,
+  "gui": {
+    "browser": "Codex IAB",
+    "roles": [
+      "admin",
+      "teacher",
+      "student"
+    ],
+    "testedCssSizes": [
+      [
+        390,
+        844
+      ],
+      [
+        768,
+        900
+      ],
+      [
+        1280,
+        900
+      ]
+    ],
+    "originalRestored": "http://localhost:5173/account; admin; Chinese Products; no dialog; default viewport"
+  },
+  "database": {
+    "user": {
+      "tables": 42,
+      "changed": []
+    },
+    "gui": {
+      "tables": 42,
+      "changed": [
+        "sessions"
+      ]
+    }
+  },
+  "productionAndTestFilesMatchIndependentManifestAndIndex": true,
+  "notCompleted": [
+    "Product/stock persistence",
+    "Remaining major stock subflows",
+    "Product-order/payment/report integration",
+    "Discount policies and application",
+    "All UI and full Goal"
+  ]
+}

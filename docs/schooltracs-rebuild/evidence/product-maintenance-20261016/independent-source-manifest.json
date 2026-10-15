@@ -1,0 +1,132 @@
+{
+  "capturedAt": "2026-10-16T06:58:02.322805+08:00",
+  "repositoryHead": "75c061e5ac5cdb61ce8adf6143835eb3e65a06a9",
+  "scope": "Products Stage A independent acceptance; no persistence or live GUI claimed",
+  "independentCases": {
+    "host": 12,
+    "pure": 10,
+    "composition": 2,
+    "stockHost": 8,
+    "precision": 5,
+    "totalPassed": 39,
+    "failed": 0,
+    "renderFocusout": 2
+  },
+  "files": [
+    {
+      "path": "sample/client/interface-preview.js",
+      "sha256": "7f9b44d1168e0a3c6616e62ef5601ebc26aa20ec141072d4c2f073adf96e15d5",
+      "bytes": 80476,
+      "snapshot": "/tmp/beamal-products-independent-final-v2-20261016/sample/client/interface-preview.js",
+      "changedSince37CaseManifest": true
+    },
+    {
+      "path": "sample/client/operations-ui.js",
+      "sha256": "b437c21b272cd68756a5c99a72c278441b89ec8594344476b8e38f98ead3b917",
+      "bytes": 127326,
+      "snapshot": "/tmp/beamal-products-independent-final-v2-20261016/sample/client/operations-ui.js",
+      "changedSince37CaseManifest": false
+    },
+    {
+      "path": "sample/client/operations-ui.css",
+      "sha256": "62e2ae047a4fca7a6cd441b3e0cc81771d7ae2459ad732f7e8235e47af82107a",
+      "bytes": 34720,
+      "snapshot": "/tmp/beamal-products-independent-final-v2-20261016/sample/client/operations-ui.css",
+      "changedSince37CaseManifest": false
+    },
+    {
+      "path": "sample/src.js",
+      "sha256": "183f25bd18a5bb15999c432a702d85256867b900d2dc93494d081e5ff71c0647",
+      "bytes": 621441,
+      "snapshot": "/tmp/beamal-products-independent-final-v2-20261016/sample/src.js",
+      "changedSince37CaseManifest": false
+    },
+    {
+      "path": "sample/tests/interface-preview.test.mjs",
+      "sha256": "ef3eebeca4cf4850fdf0fa7f22e456fcb1f4e300909d91e250d8e2081ec550aa",
+      "bytes": 117624,
+      "snapshot": "/tmp/beamal-products-independent-final-v2-20261016/sample/tests/interface-preview.test.mjs",
+      "changedSince37CaseManifest": false
+    },
+    {
+      "path": "sample/tests/operations-ui.test.mjs",
+      "sha256": "be568ef244439e9f1ac45918fa6ffda3bca070952af95f79472ed929b05a4349",
+      "bytes": 59125,
+      "snapshot": "/tmp/beamal-products-independent-final-v2-20261016/sample/tests/operations-ui.test.mjs",
+      "changedSince37CaseManifest": false
+    },
+    {
+      "path": "sample/tests/product-maintenance-host.test.mjs",
+      "sha256": "06f26f9bdf790573790b4aba4273f4a7bcd15dc6999cd2c7abcbe1f12ac5c288",
+      "bytes": 4588,
+      "snapshot": "/tmp/beamal-products-independent-final-v2-20261016/sample/tests/product-maintenance-host.test.mjs",
+      "changedSince37CaseManifest": false
+    },
+    {
+      "path": "sample/tests/product-maintenance-ui.test.mjs",
+      "sha256": "f5c8fa74c1e3a7417285241d51e9f5698dba819bdba9b6338e33d12036ebaa8c",
+      "bytes": 20665,
+      "snapshot": "/tmp/beamal-products-independent-final-v2-20261016/sample/tests/product-maintenance-ui.test.mjs",
+      "changedSince37CaseManifest": false
+    },
+    {
+      "path": "sample/tests/product-maintenance-interactions.test.mjs",
+      "sha256": "d81e8487de6b92f66b0ebc594fbb83e8464b6b92c4eb4b1c0c783058be2b7986",
+      "bytes": 3708,
+      "snapshot": "/tmp/beamal-products-independent-final-v2-20261016/sample/tests/product-maintenance-interactions.test.mjs",
+      "changedSince37CaseManifest": true
+    },
+    {
+      "path": "sample/tests/helpers/product-host.mjs",
+      "sha256": "0690aeca35326c07d5e7b076f8ed7802ebd024bb9a6c4ec28486bd55f01e78e9",
+      "bytes": 10860,
+      "snapshot": "/tmp/beamal-products-independent-final-v2-20261016/sample/tests/helpers/product-host.mjs",
+      "changedSince37CaseManifest": true
+    }
+  ],
+  "baselineManifest": "/tmp/beamal-products-independent-baseline-manifest.json",
+  "stockBaselineManifest": "/tmp/beamal-products-stock-baseline-manifest.json",
+  "reviewerArtifacts": [
+    {
+      "path": "/tmp/beamal-products-independent-host.mjs",
+      "sha256": "9a1151fb8257f0f63c01c1dc824400f3e34a463ae46931ede98360ba096e4a57"
+    },
+    {
+      "path": "/tmp/beamal-products-independent-host-helper.mjs",
+      "sha256": "bb18c57783de26c6e4ee38bfcfbc81d3e56f5808542a2e54055135c352f0d958"
+    },
+    {
+      "path": "/tmp/beamal-products-independent-pure.mjs",
+      "sha256": "461e9012bca05de2db8414dda278247bc17ea57159cd437629a201b7f3839525"
+    },
+    {
+      "path": "/tmp/beamal-products-independent-composition.mjs",
+      "sha256": "3d272948433efaea514cf4a5ea458035128424921e640e94437e6ff03c70201b"
+    },
+    {
+      "path": "/tmp/beamal-products-independent-stock-host.mjs",
+      "sha256": "bba4e8d0a47d9e20e95b56d980d06143582a88d6f3710db4f90e9ffdf4d411d1"
+    },
+    {
+      "path": "/tmp/beamal-products-independent-precision.mjs",
+      "sha256": "bc73f35bd66ab1a5e1ae33906e34055086d6fd94c0fcc23c6085107b7e75bc5e"
+    },
+    {
+      "path": "/tmp/beamal-products-independent-focusout.mjs",
+      "sha256": "f9a2c65ee82c711f58b8df817f73a297815369f7d8c7638a011a09812aae1f12"
+    },
+    {
+      "path": "/tmp/beamal-products-independent-focusout-helper.mjs",
+      "sha256": "431c7958fa2c4c5b1ad24cffd83b1b43ad716670343a05a734d56dcc36a59491"
+    }
+  ],
+  "logs": {
+    "host": "/tmp/beamal-products-independent-host-final-v2.log",
+    "pure": "/tmp/beamal-products-independent-pure-final-v2.log",
+    "composition": "/tmp/beamal-products-independent-composition-final-v2.log",
+    "precision": "/tmp/beamal-products-independent-precision-final-v2.log",
+    "stock": "/tmp/beamal-products-independent-stock-host-final-v2.log",
+    "renderFocusout": "/tmp/beamal-products-independent-focusout-green.log"
+  },
+  "supersedesManifest": "/tmp/beamal-products-independent-final-manifest.json"
+}

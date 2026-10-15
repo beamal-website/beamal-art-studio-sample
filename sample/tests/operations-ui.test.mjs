@@ -5,14 +5,23 @@ const ctx={t:(_z,e)=>e};
 test('operations workspaces use clean customer-facing sample content and useful action entries',()=>{for(const locale of [ctx,{t:z=>z}])for(const section of ['products','accounting','messages','channels','settings']){const html=operationsPageMarkup(section,{},locale);assert.match(html,/data-action="ui-operations"/);assert.doesNotMatch(html,/ops-preview-note|Fictional sample records|（虛構）|\(fictional\)|undefined|NaN|href="http|<img/);}});
 test('product search and category filters narrow the supplied preview records and preserve explicit empty state',()=>{let html=operationsPageMarkup('products',{query:'watercolour'},ctx);assert.match(html,/Watercolour set/);assert.doesNotMatch(html,/Sketchbook A4/);html=operationsPageMarkup('products',{query:'unfindable'},ctx);assert.match(html,/No matching products/);assert.match(html,/clear-filters/);});
 test('accounting has separate invoice payment and credit views without pretending preview actions are settled payments',()=>{for(const accountingTab of ['invoices','payments','credits']){const html=operationsPageMarkup('accounting',{accountingTab},ctx);assert.match(html,/Invoices/);assert.match(html,/Payments/);assert.match(html,/Credits/);assert.match(html,/Showing \d+ records?/);assert.doesNotMatch(html,/PREVIEW-(?:INV|PAY|CR)|\(fictional\)/);}const invoice=operationsDialogMarkup({dialog:{type:'invoice',id:'invoice-1'}},ctx);assert.match(invoice,/Line total/);assert.match(invoice,/Balance due/);assert.doesNotMatch(invoice,/data-ui-command="confirm-payment"|Download PDF/);});
-test('product invoice payment and credit forms use ordinary submit labels and complete fields',()=>{for(const type of ['create-product','edit-product','stock-product','create-invoice','record-payment','create-credit']){const html=operationsDialogMarkup({dialog:{type,id:type.includes('product')?'product-1':'invoice-1'}},ctx);assert.match(html,/id="ui-operations-form"/);assert.match(html,/name="formKind"/);assert.match(html,/name="formSection"/);assert.doesNotMatch(html,/ops-dialog-disclosure/);assert.match(html,/<button type="submit" class="ops-primary">(?:Save|Create product|Review)<\/button>/);assert.match(html,/<label/);assert.match(html,new RegExp('data-ui-command="'+(type.includes('product')?'cancel-product':'cancel-accounting')+'"'));}});
+test('product invoice payment and credit forms use ordinary submit labels and complete fields',()=>{for(const type of ['create-product','edit-product','stock-product','create-invoice','record-payment','create-credit']){const html=operationsDialogMarkup({dialog:{type,id:type.includes('product')?'product-1':'invoice-1'}},ctx);assert.match(html,/id="ui-operations-form"/);assert.match(html,/name="formKind"/);assert.match(html,/name="formSection"/);assert.doesNotMatch(html,/ops-dialog-disclosure/);assert.match(html,/<button type="submit" class="ops-primary">(?:Save|Create product|Review|Review adjustment)<\/button>/);assert.match(html,/<label/);assert.match(html,new RegExp('data-ui-command="'+(type.includes('product')?'cancel-product':'cancel-accounting')+'"'));}});
 test('message workspace includes separate conversation list and thread, composer never claims delivery',()=>{const html=operationsPageMarkup('messages',{selectedThreadId:'thread-1'},ctx);assert.match(html,/Conversation list/);assert.match(html,/Message history/);assert.match(html,/name="message"/);assert.match(html,/Preview reply/);assert.doesNotMatch(html,/Sent successfully|Message sent|href="https:\/\//);const compose=operationsDialogMarkup({dialog:{type:'compose'}},ctx);assert.match(compose,/name="recipient"/);assert.match(compose,/name="subject"/);assert.match(compose,/name="message"/);});
 test('channels detail and settings do not bind real providers or expose external links',()=>{const html=operationsPageMarkup('channels',{},ctx);for(const title of ['Student portal','WhatsApp','Email','Online store'])assert.match(html,new RegExp(title));const detail=operationsDialogMarkup({dialog:{type:'channel-settings',id:'whatsapp'}},ctx);assert.match(detail,/name="senderName"/);assert.match(detail,/Settings/);assert.match(detail,/>Save settings<\/button>/);assert.doesNotMatch(detail,/href=|token|API key/);});
 test('settings categories have substantive forms, proper selected state and conservative notification payment defaults',()=>{for(const settingsTab of ['general','courses','notifications','payments','templates']){const html=operationsPageMarkup('settings',{settingsTab},ctx);assert.match(html,/id="ui-operations-settings"/);assert.match(html,/aria-current="page"/);assert.match(html,/name="formKind" value="settings"/);}assert.match(operationsPageMarkup('settings',{settingsTab:'payments'},ctx),/Manual verification/);});
 test('all display inputs are escaped and each preview dataset copy is independent',()=>{const first=getOperationsPreviewData(),second=getOperationsPreviewData();first.products[0].nameEn='<script>bad()</script>';assert.notEqual(first.products[0].nameEn,second.products[0].nameEn);const html=operationsPageMarkup('products',{data:first},ctx);assert.match(html,/&lt;script&gt;bad\(\)&lt;\/script&gt;/);assert.doesNotMatch(html,/<script>bad/);});
 test('Chinese uses localized navigation and natural product labels',()=>{const zh={t:z=>z};assert.match(operationsPageMarkup('products',{},zh),/產品/);assert.match(operationsPageMarkup('settings',{settingsTab:'notifications'},zh),/通知設定/);});
 
-test('preview reducer creates and edits fictional products without mutating its input or claiming a live save',async()=>{const {advanceOperationsPreview}=await import('../client/operations-ui.js');const state={data:getOperationsPreviewData(),dialog:{type:'create-product'}},before=JSON.stringify(state);const created=advanceOperationsPreview(state,'submit',{formKind:'create-product',formSection:'products',nameZh:'示範畫筆',nameEn:'Example brush',sku:'PREVIEW-NEW',category:'materials',price:'25',cost:'12',stock:'10',threshold:'3',status:'active'});assert.equal(JSON.stringify(state),before);assert.equal(created.data.products.length,state.data.products.length+1);assert.equal(created.dialog.type,'product');assert.match(created.notice,/preview|預覽/i);const invalid=advanceOperationsPreview(state,'submit',{formKind:'create-product',nameZh:'',nameEn:''});assert.ok(invalid.error);assert.equal(invalid.data.products.length,state.data.products.length);assert.match(operationsDialogMarkup(invalid,ctx),/role="alert"[^>]*>[^<]+/);});
+test('product creation reaches an unsaved review without mutating the source or inventing a saved row',async()=>{
+ const {advanceOperationsPreview}=await import('../client/operations-ui.js');
+ const state={data:getOperationsPreviewData(),dialog:{type:'create-product'}},before=JSON.stringify(state);
+ const reviewed=advanceOperationsPreview(state,'submit',{formKind:'create-product',formSection:'products',nameZh:'畫筆',nameEn:'Brush',sku:'NEW-BRUSH',category:'materials',price:'25',cost:'12',stock:'10',threshold:'3',status:'active'});
+ assert.equal(JSON.stringify(state),before);assert.deepEqual(reviewed.data,state.data);
+ assert.equal(reviewed.dialog.type,'product-review');assert.equal(reviewed.dialog.values.sku,'NEW-BRUSH');
+ const html=operationsDialogMarkup(reviewed,ctx);assert.match(html,/has not been saved/);assert.match(html,/<button[^>]*disabled[^>]*>Save product/);
+ const invalid=advanceOperationsPreview(state,'submit',{formKind:'create-product',nameZh:'',nameEn:''});
+ assert.ok(invalid.error);assert.deepEqual(invalid.data,state.data);assert.match(operationsDialogMarkup(invalid,ctx),/role="alert"[^>]*>[^<]+/);
+});
 test('preview payment record does not silently mark the linked invoice paid and compose only opens a preview',async()=>{const {advanceOperationsPreview}=await import('../client/operations-ui.js'),state={data:getOperationsPreviewData(),dialog:{type:'record-payment'}};const next=advanceOperationsPreview(state,'submit',{formKind:'record-payment',invoiceId:'invoice-1',amount:'100',date:'2026-10-15',method:'fps'});assert.equal(next.data.invoices.find(row=>row.id==='invoice-1').status,'awaiting-payment');assert.equal(next.data.payments.length,state.data.payments.length);assert.equal(next.dialog.type,'accounting-entry-review');const message=advanceOperationsPreview({...state,dialog:{type:'compose'}},'submit',{formKind:'compose',recipient:state.data.threads[0].id,subject:'Example',message:'Preview text'});assert.equal(message.dialog.type,'message-preview');assert.equal(message.data.threads[0].messages.length,3);});
 
 test('invoice and payment details keep PDF Receipt entry with separate Save and Send by Email preview options',()=>{for(const [type,id] of [['invoice','invoice-1'],['payment','payment-1']])assert.match(operationsDialogMarkup({dialog:{type,id}},ctx),/PDF Receipt/);const options=operationsDialogMarkup({dialog:{type:'receipt-options',id:'invoice-1'}},ctx);assert.match(options,/Save/);assert.match(options,/Send by Email/);const email=operationsDialogMarkup({dialog:{type:'receipt-email',id:'invoice-1'}},ctx);for(const name of ['recipientEmail','subject','body','templateId','attachmentName'])assert.match(email,new RegExp('name="'+name+'"'));assert.match(email,/not been generated|not generated|not sent/i);});
@@ -95,12 +104,14 @@ test('stock validation retains the entered quantity and cancellation never chang
   assert.equal(cancelled.data.products.find(row=>row.id==='product-2').stock,4);
  }
  state=advanceOperationsPreview(state,'submit',{formKind:'stock-product',recordId:'product-2',direction:'remove',quantity:'2',reason:'Class materials'});
- assert.equal(state.dialog.type,'product');
+ assert.equal(state.dialog.type,'stock-product-review');
  assert.equal(state.dialog.id,'product-2');
- assert.equal(state.data.products.find(row=>row.id==='product-2').stock,2);
+ assert.equal(state.data.products.find(row=>row.id==='product-2').stock,4);
+ assert.match(operationsDialogMarkup(state,ctx),/Review stock adjustment/);
+ assert.match(operationsDialogMarkup(state,ctx),/type="submit"[^>]*disabled/);
  assert.equal(source.data.products.find(row=>row.id==='product-2').stock,4);
  assert.deepEqual([state.query,state.status,state.category],['watercolour','active','materials']);
- assert.match(state.notice,/preview|預覽/i);
+ assert.doesNotMatch(state.notice,/updated|saved|成功/i);
 });
 
 test('direct list edits cancel to the list and editing preserves row order and stable product identity',async()=>{
@@ -111,11 +122,13 @@ test('direct list edits cancel to the list and editing preserves row order and s
  assert.equal(advanceOperationsPreview(opened,'cancel-product').dialog,null);
  const state=advanceOperationsPreview(opened,'submit',{formKind:'edit-product',recordId:'product-2',nameZh:'水彩套裝更新',nameEn:'Watercolour set revised',sku:'ART-002',category:'materials',price:'130',cost:'72',stock:'4',threshold:'6',status:'active'});
  assert.deepEqual(state.data.products.map(row=>row.id),source.data.products.map(row=>row.id));
- assert.equal(state.data.products.find(row=>row.id==='product-2').price,130);
+ assert.equal(state.data.products.find(row=>row.id==='product-2').price,128);
+ assert.equal(state.dialog.type,'product-review');assert.equal(state.dialog.values.price,'130');
  assert.equal(source.data.products.find(row=>row.id==='product-2').price,128);
  assert.equal(state.dialog.id,'product-2');
  assert.match(operationsDialogMarkup(state,ctx),/Watercolour set revised/);
- assert.match(state.notice,/no live record was saved/i);
+ assert.match(operationsDialogMarkup(state,ctx),/has not been saved/);
+ assert.deepEqual(state.data.products,source.data.products);
 });
 
 test('product form close icon and Cancel share one return command and reject mismatched product parents',async()=>{
@@ -214,9 +227,10 @@ test('product detail, nested edit and stock returns retain the sorted filtered p
  const data=productCatalogue();data.products=data.products.filter(row=>row.id!=='catalogue-22');
  const lastPage={...source,data,productPage:3};
  const edited=advanceOperationsPreview(advanceOperationsPreview(lastPage,'edit-product',{id:'catalogue-21'}),'submit',{formKind:'edit-product',recordId:'catalogue-21',nameZh:'產品 21',nameEn:'Product 21',sku:'ITEM-21',category:'materials',price:'20',cost:'1',stock:'21',threshold:'3',status:'archived'});
- assert.equal(edited.productPage,2);
- assert.equal(edited.productSort,'stock');
- assert.match(operationsPageMarkup('products',edited,ctx),/Showing 11–20 of 20 products/);
+ assert.equal(edited.dialog.type,'product-review');assert.equal(edited.dialog.values.status,'archived');
+ assert.equal(edited.productPage,3);assert.equal(edited.productSort,'stock');
+ assert.deepEqual(edited.data,lastPage.data);
+ assert.match(operationsPageMarkup('products',edited,ctx),/Showing 21–21 of 21 products/);
 });
 
 test('product pagination remains bilingual and safely displays long product names and malformed page state',()=>{

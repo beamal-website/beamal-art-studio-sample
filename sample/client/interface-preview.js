@@ -15,11 +15,72 @@ import {staffSharedState} from './staff-shared-adapter.js';
 
 // Presentation drafts are deliberately separate from shared business records.
 // No API client, browser storage, account changes or message delivery lives here.
-export function createInterfacePreview({context,showModal,repaint,dom=document,Form=FormData,sharedSnapshot,onOpenStaffLesson,onEditStaff,onManageStaffAccess,onRetryStaff,onCopyCalendarSharing,resolveSharedLesson,onCloseSharedLesson}) {
+export function createInterfacePreview({context,showModal,cacheModal=()=>{},repaint,dom=document,Form=FormData,sharedSnapshot,onOpenStaffLesson,onEditStaff,onManageStaffAccess,onRetryStaff,onCopyCalendarSharing,resolveSharedLesson,onCloseSharedLesson}) {
+  let productOwner=null,productEditPosition=null,productDetailPosition=null,productListReturn=null,productSourceProvided=false,productRendering=false;
   let operations,staff,student,documentPreview=null,account=null,lesson=null,dataTools=null,overlay=null,returnFocus=null,accountingReturns=[],accountingListReturn=null,messageListReturn=null,messageComposeReturn=null,staffReturn=null,staffManagementSection='directory',staffHrReturn=null,staffHrContext='',staffHrPositions=[],calendarCopyEpoch=0,sharedLesson=null,sharedLessonTicket=null,sharedLessonEditPosition=null;
-  const fresh=()=>{calendarCopyEpoch++;messageListReturn=null;messageComposeReturn=null;operations={data:getOperationsPreviewData(),today:context()?.today,query:'',status:'all',category:'all',accountingTab:'invoices',selectedThreadId:'thread-1',settingsTab:'general',dialog:null,notice:''};staff=staffInterfacePreviewState();student={data:getStudentPortalData(),section:'profile',requestFilter:'all',notificationFilter:'all',query:'',selectedStudentId:'child-1',dialog:null,notice:''};account=null;lesson=null;dataTools=null;overlay=null;sharedLesson=null;sharedLessonTicket=null;sharedLessonEditPosition=null;};
+  const fresh=()=>{productOwner=null;productEditPosition=null;productDetailPosition=null;productListReturn=null;productSourceProvided=false;calendarCopyEpoch++;messageListReturn=null;messageComposeReturn=null;operations={data:getOperationsPreviewData(),today:context()?.today,query:'',status:'all',category:'all',accountingTab:'invoices',selectedThreadId:'thread-1',settingsTab:'general',dialog:null,notice:''};staff=staffInterfacePreviewState();student={data:getStudentPortalData(),section:'profile',requestFilter:'all',notificationFilter:'all',query:'',selectedStudentId:'child-1',dialog:null,notice:''};account=null;lesson=null;dataTools=null;overlay=null;sharedLesson=null;sharedLessonTicket=null;sharedLessonEditPosition=null;};
   fresh();
   const ctx=()=>{const current=context()||{};return {...current,esc:current.esc||(value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char])))};};
+  const productDialog=dialog=>['product','view-product','create-product','edit-product','stock-product','product-review','stock-product-review'].includes(dialog?.type);
+  const productContextKey=()=>{
+    const current=ctx();
+    if(current.sharedMode&&(current.role!=='admin'||!current.sharedIdentity))return '';
+    return JSON.stringify([current.sharedMode?current.sharedIdentity:'presentation',current.role||'',current.staffViewKey||'']);
+  };
+  const discardProduct=()=>{
+    const open=overlay==='operations'&&productDialog(operations.dialog);
+    if(productDialog(operations.dialog)){operations.dialog=null;operations.draft={};}
+    if(open){overlay=null;returnFocus=null;showModal('');}
+    productOwner=null;productEditPosition=null;productDetailPosition=null;productListReturn=null;
+  };
+  const rememberProductOwner=()=>{
+    const dialog=operations.dialog;
+    if(!productDialog(dialog)){productOwner=null;return true;}
+    const selected=dialog.type==='create-product'||dialog.originType==='create-product'?'':dialog.id;
+    const matches=selected?operations.data.products.filter(row=>row.id===selected):[];
+    if(selected&&matches.length!==1){discardProduct();return false;}
+    productOwner={key:productContextKey(),selectedId:selected,sourceKey:selected?JSON.stringify(matches[0]):'',provided:ctx().productsContext!==undefined,stale:false};return true;
+  };
+  const syncProductSource=()=>{
+    const current=ctx(),key=productContextKey(),open=overlay==='operations'&&productDialog(operations.dialog);
+    if(!key||open&&productOwner&&productOwner.key!==key){
+      discardProduct();operations.data.products=[];operations.productSource={status:'unavailable'};return false;
+    }
+    const source=current.productsContext;
+    if(source===undefined&&productSourceProvided){discardProduct();operations.data.products=[];operations.productSource={status:'unavailable'};return false;}
+    if(source===undefined){
+      operations.productSource={status:'ready'};
+      return true;
+    }
+    productSourceProvided=true;
+    const position=open?productPosition():null;
+    if(open)harvestProduct();
+    const before=open?operationsDialogMarkup(operations,ctx()):'';
+    const validRecords=Array.isArray(source?.records)&&source.records.every(row=>row&&typeof row==='object'&&!Array.isArray(row)&&typeof row.id==='string'&&!!row.id.trim());
+    const status=source&&['ready','loading','error','unavailable'].includes(source.status)?source.status:'unavailable';
+    operations.productSource={status:status==='ready'&&!validRecords?'unavailable':status,error:typeof source?.error==='string'?source.error:''};
+    if(operations.productSource.status==='ready')operations.data.products=JSON.parse(JSON.stringify(source.records));
+    else if(!open)operations.data.products=[];
+    if(open&&operations.productSource.status==='ready'&&productOwner?.selectedId){
+      const rows=operations.data.products.filter(row=>row.id===productOwner.selectedId);
+      if(rows.length!==1){discardProduct();return false;}
+      if(['edit-product','product-review','stock-product','stock-product-review'].includes(operations.dialog.type)){
+        if(JSON.stringify(rows[0])!==productOwner.sourceKey)productOwner.stale=true;
+        if(productOwner.stale)operations.productSource={status:'error',error:current.t('產品資料已更新。已填內容保留；請關閉後重新開啟。','Product details changed. Your entries are kept; close and reopen the product.')};
+      }else{productOwner.sourceKey=JSON.stringify(rows[0]);productOwner.stale=false;}
+    }
+    if(open){const html=operationsDialogMarkup(operations,ctx());if(html!==before){
+      const alert=dom.querySelector('#ops-product-source-error'),form=dom.querySelector('#ui-operations-form');
+      if(['create-product','edit-product','stock-product','product-review','stock-product-review'].includes(operations.dialog?.type)&&alert&&form){
+        const source=operations.productSource,message=source.status==='ready'?'':source.error||current.t(source.status==='loading'?'正在讀取產品資料，請稍候。':'產品資料暫未提供，請重新開啟產品頁。',source.status==='loading'?'Product details are loading. Please wait.':'Product data is unavailable. Reopen Products to try again.');
+        alert.textContent=message;alert.hidden=!message;
+        const submit=[...dom.querySelectorAll('#ui-operations-form button')].find(node=>node.type==='submit');
+        if(submit)submit.disabled=['product-review','stock-product-review'].includes(operations.dialog.type)||source.status!=='ready';
+        cacheModal(html);
+      }else{showModal(html);restoreProductPosition(position);}
+    }}
+    return true;
+  };
   const sharedLessonControls=()=>[...dom.querySelectorAll('#modal-root .slw-dialog button,#modal-root .slw-dialog input,#modal-root .slw-dialog select,#modal-root .slw-dialog textarea,#modal-root .slw-dialog summary')];
   const sharedLessonNotes=()=>[...dom.querySelectorAll('#modal-root .slw-dialog details[data-slw-note]')];
   const sharedLessonPosition=()=>{
@@ -148,7 +209,7 @@ export function createInterfacePreview({context,showModal,repaint,dom=document,F
     if(html)dom.querySelector('#modal-root .dialog button:not(:disabled),#modal-root .dialog input:not(:disabled),#modal-root .dialog select:not(:disabled)')?.focus();
     else {overlay=null;const original=returnFocus?.element;const replacement=original?.isConnected&&!original.disabled?original:[...dom.querySelectorAll('button')].find(button=>!button.disabled&&returnFocus&&Object.keys(returnFocus.dataset).length&&Object.entries(returnFocus.dataset).every(([key,value])=>button.dataset[key]===value));replacement?.focus({preventScroll:true});returnFocus=null;}
   };
-  const close=()=>{if(overlay==='shared-lesson'){discardSharedLesson({restore:true});return;}calendarCopyEpoch++;staffReturn=null;staffHrReturn=null;staffHrContext='';staffHrPositions=[];for(const hr of Object.values(hrModules))staff[hr.key]={...staff[hr.key],dialog:null};operations.dialog=null;staff.dialog=null;student.dialog=null;documentPreview=null;account=null;lesson=null;dataTools=null;overlay=null;accountingReturns=[];accountingListReturn=null;messageListReturn=null;messageComposeReturn=null;redrawOverlay();};
+  const close=()=>{if(overlay==='operations'&&productDialog(operations.dialog)){if(!productContextKey()||productOwner&&productOwner.key!==productContextKey()){discardProduct();return;}const previous=operations.dialog,position=productPosition();operations=advanceOperations('close',{});drawProductTransition(previous,position,null);return;}if(overlay==='shared-lesson'){discardSharedLesson({restore:true});return;}calendarCopyEpoch++;staffReturn=null;staffHrReturn=null;staffHrContext='';staffHrPositions=[];for(const hr of Object.values(hrModules))staff[hr.key]={...staff[hr.key],dialog:null};operations.dialog=null;staff.dialog=null;student.dialog=null;documentPreview=null;account=null;lesson=null;dataTools=null;overlay=null;accountingReturns=[];accountingListReturn=null;messageListReturn=null;messageComposeReturn=null;redrawOverlay();};
   const staffPosition=()=>{
     const body=dom.querySelector('#modal-root .ui-staff-dialog-body'),active=dom.activeElement;
     const controls=[...dom.querySelectorAll('#modal-root button,#modal-root input,#modal-root select,#modal-root textarea')];
@@ -428,15 +489,67 @@ export function createInterfacePreview({context,showModal,repaint,dom=document,F
     if(nextBody){nextBody.scrollTop=scroll.top;nextBody.scrollLeft=scroll.left;}
     return true;
   };
-  const cancelProductForm=()=>{
-    const form=operations.dialog;
-    if(overlay!=='operations'||!['create-product','edit-product','stock-product'].includes(form?.type))return false;
-    operations=advanceOperations('cancel-product',{});overlay=operations.dialog?'operations':null;
-    repaint();redrawOverlay();
-    if(operations.dialog?.type==='product'&&form.returnTo?.type==='product'&&form.returnTo.id===form.id&&operations.dialog.id===form.id){
-      [...dom.querySelectorAll('#modal-root .dialog button')].find(node=>!node.disabled&&node.dataset?.action==='ui-operations'&&node.dataset.uiSection==='products'&&node.dataset.uiCommand===form.type&&node.dataset.uiId===form.id)?.focus();
+  const productBody=()=>dom.querySelector('#modal-root .ops-product-body')||dom.querySelector('#modal-root .ops-dialog-body');
+  const productControls=()=>[...accountingControls(),productBody()].filter(Boolean);
+  const productPosition=()=>{
+    const active=dom.activeElement,body=productBody();
+    return {focus:messageFocus(active,productControls()),top:body?.scrollTop||0,left:body?.scrollLeft||0,inputTop:active?.scrollTop||0,inputLeft:active?.scrollLeft||0};
+  };
+  const restoreProductPosition=position=>{
+    if(!position)return;
+    restoreMessageFocus(position.focus,productControls());
+    const body=productBody();if(body){body.scrollTop=position.top;body.scrollLeft=position.left;}
+    const active=dom.activeElement;if(active?.name&&active.name===position.focus?.name){active.scrollTop=position.inputTop;active.scrollLeft=position.inputLeft;}
+  };
+  const productListPosition=()=>({top:dom.scrollingElement?.scrollTop||0,left:dom.scrollingElement?.scrollLeft||0,tableTop:dom.querySelector('.ops-products-table')?.scrollTop||0,tableLeft:dom.querySelector('.ops-products-table')?.scrollLeft||0});
+  const harvestProduct=({preserveError=true}={})=>{
+    if(productRendering)return false;
+    if(overlay!=='operations'||!['create-product','edit-product','stock-product'].includes(operations.dialog?.type))return false;
+    const form=dom.querySelector('#ui-operations-form');if(!form)return false;
+    const error=operations.error,errorField=operations.productErrorField;
+    operations=advanceOperations(operations.dialog.type==='stock-product'?'stock-product-draft':'product-draft',Object.fromEntries(new Form(form)));
+    if(preserveError){operations.error=error;operations.productErrorField=errorField;}
+    cacheModal(operationsDialogMarkup(operations,ctx()));return true;
+  };
+  const captureProductControl=target=>{
+    if(productRendering)return true;
+    if(!target?.closest?.('#ui-operations-form')||!['create-product','edit-product','stock-product'].includes(operations.dialog?.type)||overlay!=='operations')return false;
+    const changed=!!target.name&&String(operations.dialog.values?.[target.name]??'')!==String(target.value??'');
+    if(!syncProductSource())return true;
+    harvestProduct({preserveError:!changed});productEditPosition={...productPosition(),focus:messageFocus(target,productControls()),inputTop:target.scrollTop||0,inputLeft:target.scrollLeft||0};return true;
+  };
+  const drawProductTransition=(previous,position,listPosition)=>{
+    const dialog=operations.dialog;
+    if(!productDialog(previous)&&!productDialog(dialog))return false;
+    if(!previous&&dialog){productListReturn=listPosition||productListPosition();productEditPosition=null;productDetailPosition=null;}
+    if(['product','view-product'].includes(previous?.type)&&['edit-product','stock-product'].includes(dialog?.type))productDetailPosition=position;
+    if(['create-product','edit-product','stock-product'].includes(previous?.type)&&['product-review','stock-product-review'].includes(dialog?.type)){
+      const editing=position?.focus?.name?position:productEditPosition;
+      productEditPosition={...editing,top:position?.top||0,left:position?.left||0};
+    }
+    overlay=dialog?'operations':null;productRendering=true;
+    try{repaint();redrawOverlay();}finally{productRendering=false;}
+    if(['product-review','stock-product-review'].includes(dialog?.type)){const body=productBody();if(body){body.scrollTop=0;body.scrollLeft=0;body.focus?.({preventScroll:true});}}
+    else if(['create-product','edit-product','stock-product'].includes(dialog?.type)){
+      if(['product-review','stock-product-review'].includes(previous?.type))restoreProductPosition(productEditPosition);
+      else if(previous?.type===dialog.type)restoreProductPosition(position);
+      else dom.querySelector(dialog.type==='stock-product'?'#ui-operations-form [name="quantity"]':'#ui-operations-form [name="nameZh"]')?.focus({preventScroll:true});
+      if(operations.error){const field=operations.productErrorField,control=field?dom.querySelector('#ui-operations-form [name="'+field+'"]'):null,error=dom.querySelector('#ops-product-error');(control||error)?.focus?.({preventScroll:true});(control?.closest?.('[data-product-field]')||error||control)?.scrollIntoView?.({block:'nearest'});}
+    }else if(['product','view-product'].includes(dialog?.type)&&['edit-product','stock-product','product-review','stock-product-review'].includes(previous?.type)){
+      restoreProductPosition(productDetailPosition);
+      const command=previous.type==='stock-product-review'?'stock-product':previous.originType||previous.type;
+      [...dom.querySelectorAll('#modal-root .dialog button')].find(node=>!node.disabled&&node.dataset?.uiCommand===command&&node.dataset.uiId===dialog.id)?.focus({preventScroll:true});
+    }else if(!dialog){
+      const saved=productListReturn;productOwner=null;productEditPosition=null;productDetailPosition=null;productListReturn=null;
+      if(saved){const page=dom.scrollingElement,table=dom.querySelector('.ops-products-table');if(page){page.scrollTop=saved.top;page.scrollLeft=saved.left;}if(table){table.scrollTop=saved.tableTop;table.scrollLeft=saved.tableLeft;}}
     }
     return true;
+  };
+  const cancelProductForm=()=>{
+    const previous=operations.dialog;
+    if(overlay!=='operations'||!['create-product','edit-product','stock-product','product-review','stock-product-review'].includes(previous?.type))return false;
+    const position=productPosition();operations=advanceOperations('cancel-product',{});
+    return drawProductTransition(previous,position,null);
   };
   const fieldsFromDataset=d=>({id:d.uiId,tab:d.uiTab,section:d.uiSection,value:d.uiValue});
   const openLesson=(view,facts={})=>{
@@ -556,6 +669,7 @@ export function createInterfacePreview({context,showModal,repaint,dom=document,F
     return true;
   };
   const action=(d,element)=>{
+    if(d.action==='ui-operations'&&(d.uiSection==='products'||String(d.uiCommand||'').includes('product')||productDialog(operations.dialog))&&!syncProductSource())return true;
     if(d.action==='ui-shared-lesson')return advanceSharedLesson(d.uiCommand,{id:d.uiId});
     if(overlay==='shared-lesson'&&syncSharedLesson()==='invalid')return true;
     if(d.action==='ui-lesson'&&d.uiCommand==='launch'&&ctx().sharedMode&&['student','attendance','arrange'].includes(d.uiView)){openSharedLesson(d.uiView,{sessionId:d.uiId});return true;}
@@ -606,9 +720,12 @@ export function createInterfacePreview({context,showModal,repaint,dom=document,F
       if(d.uiSection==='accounting'&&['apply-filters','clear-filters','accounting-tab'].includes(d.uiCommand)){
         operations=advanceOperations(d.uiCommand,fields);repaintAccountingPage();return true;
       }
-      harvestMessage();
+      harvestMessage();harvestProduct();
       const previous=operations.dialog,position=accountingDialog(previous)?accountingDialogPosition():null,listPosition=!overlay?accountingListPosition():null,messagePosition=messageDialog(previous)?messageDialogPosition():null,messageList=!overlay?messageListPosition(['preview-reply','preview-message'].includes(d.uiCommand)):null;
+      const productBefore=productDialog(previous)?productPosition():null,productList=!overlay&&d.uiSection==='products'?productListPosition():null;
       operations=advanceOperations(d.uiCommand,fields);
+      if(productDialog(operations.dialog)&&(!productOwner||operations.dialog.type==='edit-product'&&previous?.type==='product')&&!rememberProductOwner()){repaint();redrawOverlay();return true;}
+      if(drawProductTransition(previous,productBefore,productList))return true;
       if(drawAccountingTransition(previous,position,listPosition)){
         if(accountingItemChange)focusAccountingItem(d.uiCommand,accountingItemNames,d.uiValue);
         return true;
@@ -681,7 +798,9 @@ export function createInterfacePreview({context,showModal,repaint,dom=document,F
     return false;
   };
   const submit=form=>{
+    if(form.id==='ui-operations-form'&&productDialog(operations.dialog)&&!syncProductSource())return true;
     const values=new Form(form),fields=Object.fromEntries(values);
+    if(form.id==='ui-operations-form'&&(fields.formSection==='products'||String(fields.formKind||'').includes('product'))&&(!syncProductSource()||overlay!=='operations'||!productDialog(operations.dialog)))return true;
     if(form.id==='shared-lesson-workflow-form')return advanceSharedLesson('review',fields,form);
     if(guardStudentRequest(form.id==='ui-lesson-form'?fields:undefined)!=='ready')return true;
     if(hrKinds.some(kind=>form.id===hrModules[kind].formId)){
@@ -696,7 +815,9 @@ export function createInterfacePreview({context,showModal,repaint,dom=document,F
       }
       else {
         const previous=operations.dialog,position=accountingDialog(previous)?accountingDialogPosition():null,messagePosition=messageDialog(previous)?messageDialogPosition():null;
+        const productBefore=productDialog(previous)?productPosition():null;
         operations=advanceOperations('submit',{...fields,formKind:fields.formKind||form.dataset.uiForm});
+        if(drawProductTransition(previous,productBefore,null))return true;
         if(drawAccountingTransition(previous,position,null))return true;
         if(drawMessageTransition(previous,messagePosition,null))return true;
         overlay=operations.dialog?'operations':null;
@@ -726,6 +847,10 @@ export function createInterfacePreview({context,showModal,repaint,dom=document,F
   };
   const keyboard=event=>{
     if(!overlay)return false;
+    if(overlay==='operations'&&productDialog(operations.dialog)&&(event.isComposing||event.keyCode===229)){
+      if(!productContextKey()||productOwner&&productOwner.key!==productContextKey()){discardProduct();event.preventDefault();return true;}
+    }
+    if(overlay==='operations'&&productDialog(operations.dialog)&&!syncProductSource()){event.preventDefault();return true;}
     if(overlay==='shared-lesson'){
       if(syncSharedLesson()==='invalid'){event.preventDefault();return true;}
       if(event.isComposing||event.keyCode===229)return true;
@@ -734,16 +859,18 @@ export function createInterfacePreview({context,showModal,repaint,dom=document,F
     if(!syncSharedPerson()){event.preventDefault();close();return true;}
     const wasLoading=lesson?.requestLoading,requestStatus=syncStudentRequest();
     if(requestStatus==='invalid'){event.preventDefault();close();return true;}
+    if(overlay==='operations'&&['product','view-product','create-product','edit-product','stock-product','product-review','stock-product-review'].includes(operations.dialog?.type)&&(event.isComposing||event.keyCode===229))return true;
     if(event.key==='Escape'){event.preventDefault();if(!cancelHr()&&!cancelProductForm()&&!cancelAccountingDialog()&&!cancelMessageDialog())close();return true;}
     if(requestStatus==='loading'&&!wasLoading||requestStatus==='ready'&&wasLoading)redrawOverlay();
     if(event.key==='Tab'){
-      const controls=[...dom.querySelectorAll('#modal-root .dialog button:not(:disabled),#modal-root .dialog input:not(:disabled):not([type=hidden]),#modal-root .dialog select:not(:disabled),#modal-root .dialog textarea:not(:disabled),#modal-root .dialog summary')].filter(node=>!node.closest('[hidden]')&&(typeof node.getClientRects!=='function'||node.getClientRects().length>0));
+      const controls=[...dom.querySelectorAll('#modal-root .dialog button:not(:disabled),#modal-root .dialog input:not(:disabled):not([type=hidden]),#modal-root .dialog select:not(:disabled),#modal-root .dialog textarea:not(:disabled),#modal-root .dialog summary,#modal-root .ops-product-body[tabindex]')].filter(node=>!node.closest('[hidden]')&&(typeof node.getClientRects!=='function'||node.getClientRects().length>0));
       const first=controls[0],last=controls.at(-1);
       if(!controls.includes(dom.activeElement)||event.shiftKey&&dom.activeElement===first||!event.shiftKey&&dom.activeElement===last){event.preventDefault();(event.shiftKey?last:first)?.focus();}
     }
     return true;
   };
   const input=target=>{
+    if(captureProductControl(target))return true;
     if(overlay==='shared-lesson'&&target.closest?.('#shared-lesson-workflow-form')){if(syncSharedLesson({capture:false})!=='invalid')captureSharedLessonDraft(target.closest('form'));return true;}
     if(guardStudentRequest()!=='ready')return true;
     if(hrControl(target))return true;
@@ -758,6 +885,7 @@ export function createInterfacePreview({context,showModal,repaint,dom=document,F
     return false;
   };
   const change=target=>{
+    if(captureProductControl(target))return true;
     if(overlay==='shared-lesson'&&target.closest?.('#shared-lesson-workflow-form')){if(syncSharedLesson({capture:false})==='invalid')return true;captureSharedLessonDraft(target.closest('form'));if(target.dataset?.uiCommand==='filter-date'){const position=sharedLessonPosition();sharedLesson=advanceSharedLessonWorkflow(sharedLesson,'filter-date',{date:target.value});redrawOverlay();restoreSharedLessonPosition(position);}return true;}
     if(guardStudentRequest()!=='ready')return true;
     if(hrControl(target,true))return true;
@@ -779,7 +907,7 @@ export function createInterfacePreview({context,showModal,repaint,dom=document,F
     return false;
   };
   return {
-    operations:section=>{guardStudentRequest();return operationsPageMarkup(section,operations,ctx());},
+    operations:section=>{guardStudentRequest();if(section==='products')syncProductSource();return operationsPageMarkup(section,operations,ctx());},
     directory:(accountActions='')=>{guardStudentRequest();syncStaff();return staffManagementMarkup(accountActions);},
     teacherPortal:()=>{guardStudentRequest();syncStaff();if(!staff.shared)staff={...staff,viewerId:ctx().role==='admin'?'maya':'leo'};return staffPortalMarkup(staff,ctx());},
     studentPage:section=>{guardStudentRequest();return studentPortalPageMarkup(section,student,ctx());},

@@ -1,0 +1,56 @@
+[
+  {
+    "name": "create-768-en.jpg",
+    "width": 768,
+    "height": 900,
+    "sha256": "0063c4c21277c758dc9b3b10fbce953ee02ca6ee92314976664541782af68f34"
+  },
+  {
+    "name": "create-review-390-en.jpg",
+    "width": 390,
+    "height": 844,
+    "sha256": "ee93f3bda2f34f60f3944b5a59b571fc0d5eb8c359e8d98958eb3a015c485af9"
+  },
+  {
+    "name": "detail-1280-zh.jpg",
+    "width": 1280,
+    "height": 900,
+    "sha256": "9e322719de90aa481976d9bd2cf4389beac46127fc4f5fe4f0d7b7d62d5f38f2"
+  },
+  {
+    "name": "detail-390-zh.jpg",
+    "width": 390,
+    "height": 844,
+    "sha256": "83e7fdf14abcf33fdd030c9773601c025a6b9e48b61290dbbc8b4a04bf09c936"
+  },
+  {
+    "name": "price-error-390-zh.jpg",
+    "width": 390,
+    "height": 844,
+    "sha256": "b01fe7ae39ef1d951f7e43ad226b2c552030592336cc023ffdf8355230116658"
+  },
+  {
+    "name": "review-1280-en.jpg",
+    "width": 1280,
+    "height": 900,
+    "sha256": "36d3fc2dde1fccf49b90b834192c966a264b0031f12d3cdae3c2fa7fcbbb230d"
+  },
+  {
+    "name": "review-390-zh.jpg",
+    "width": 390,
+    "height": 844,
+    "sha256": "f6761cb68d317f734c0492cb179cf4b2203120ab1889365052ccaf165f51c2c1"
+  },
+  {
+    "name": "stock-review-390-zh.jpg",
+    "width": 390,
+    "height": 844,
+    "sha256": "7fc4d34e3377ec1376139e52eac3ccb042020fb2fbee2584e297d545a2312e8d"
+  },
+  {
+    "name": "stock-review-768-zh.jpg",
+    "width": 768,
+    "height": 900,
+    "sha256": "65d8fcab902ebd0a9b005f965fbb6cb7e277e56eba16181d2904e56161d3a067"
+  }
+]

@@ -843,8 +843,8 @@ function productPaginationFocusHarness(){
  let ui,buttons=[],html='',modal='';const body={isConnected:true,focus(){dom.activeElement=this;}};const dom={activeElement:body,querySelector:s=>null,querySelectorAll:s=>s==='button'?buttons:[]};
  function repaint(){for(const button of buttons){if(dom.activeElement===button)dom.activeElement=body;button.isConnected=false;}html=ui.operations('products');buttons=[...html.matchAll(/<button\b([^>]*)>/g)].map(([,a])=>({isConnected:true,disabled:/\bdisabled\b/.test(a),dataset:Object.fromEntries([...a.matchAll(/data-([a-z-]+)="([^"]*)"/g)].map(([,k,v])=>[k.replace(/-([a-z])/g,(_,c)=>c.toUpperCase()),v])),focus(){if(!this.disabled)dom.activeElement=this;}}));}
  class Form{constructor(f){this.values=Object.entries(f.values||{});}*[Symbol.iterator](){yield* this.values;}}
- ui=createInterfacePreview({context:()=>({t:(_,en)=>en,role:'teacher'}),showModal:s=>modal=s,repaint,dom,Form});
- for(let i=0;i<23;i++){ui.action({action:'ui-operations',uiCommand:'create-product',uiSection:'products'});ui.submit({id:'ui-operations-form',dataset:{uiForm:'create-product'},values:{formKind:'create-product',nameZh:'產品'+i,nameEn:'Extra '+i,sku:'EXTRA-'+i,price:'1',stock:'2',threshold:'0'}});ui.close();}
+ const records=Array.from({length:27},(_,i)=>({id:'page-product-'+i,nameZh:'產品 '+i,nameEn:'Product '+i,sku:'PAGE-'+i,price:1,stock:2,threshold:0,category:'materials',status:'active'}));
+ ui=createInterfacePreview({context:()=>({t:(_,en)=>en,role:'admin',sharedMode:true,sharedIdentity:'pagination-admin',productsContext:{status:'ready',records,revision:'r1'}}),showModal:s=>modal=s,repaint,dom,Form});
  ui.action({action:'ui-operations',uiCommand:'apply-filters',uiSection:'products'},{closest:()=>({querySelectorAll:()=>[{name:'productPageSize',value:'10'}]})});
  return {ui,dom,body,get html(){return html},button:(command,value)=>buttons.find(b=>b.dataset.uiCommand===command&&(value===undefined||b.dataset.uiValue===value))};
 }

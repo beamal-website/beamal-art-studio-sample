@@ -1,0 +1,65 @@
+.availability-preview-dialog {
+  --availability-surface: #fffdf8;
+  --availability-ink: #253d3b;
+  --availability-border: #d9ddd2;
+  --availability-note: #687770;
+  display: flex;
+  flex-direction: column;
+  width: min(1100px, 100%);
+  height: min(940px, calc(100dvh - 32px));
+  max-height: calc(100dvh - 32px);
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--availability-border);
+  border-radius: 6px;
+  background: var(--availability-surface);
+  color: var(--availability-ink);
+}
+.availability-preview-dialog > .availability-header,
+.availability-preview-dialog > .availability-footer { flex: none; }
+.availability-preview-body { min-height: 0; min-width: 0; overflow: auto; }
+.availability-preview-body .availability-public { margin: 0; padding: 0; }
+.availability-preview-body .availability-public-back { margin-bottom: 8px; }
+.availability-preview-body .availability-public-header { margin: 0 0 16px; }
+.availability-preview-body .availability-public-notice { margin-bottom: 16px; padding: 10px 14px; }
+.availability-preview-body .availability-public-header h3 {
+  margin: 0 0 12px;
+  color: var(--teal);
+  font-size: clamp(24px, 3vw, 32px);
+  font-weight: 500;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.availability-preview-body .availability-public-day > h4 {
+  margin: 0;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--availability-border);
+  background: var(--availability-tint);
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+.availability-preview-body .availability-public-slot h5 {
+  margin: 0;
+  color: var(--teal);
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.availability-preview-dialog button { min-height: 44px; white-space: normal; overflow-wrap: anywhere; }
+.availability-preview-manage { margin-top: 16px; max-width: 100%; }
+.availability-preview-body .availability-public-controls { margin: 16px 0; }
+@media (max-width: 800px) {
+  .availability-preview-body .availability-public-days { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) {
+  .availability-preview-modal { padding: 8px; }
+  .availability-preview-dialog { height: calc(100dvh - 16px); max-height: calc(100dvh - 16px); }
+  .availability-preview-dialog > .availability-header { padding: 16px; }
+  .availability-preview-dialog > .availability-footer { padding: 14px 16px; gap: 12px; }
+  .availability-preview-dialog > .availability-footer button { flex: 1; min-width: 0; }
+  .availability-preview-body { padding: 20px 16px; }
+  .availability-preview-body .availability-public-day > h4 { padding: 14px 16px; font-size: 17px; }
+  .availability-preview-manage { width: 100%; }
+}

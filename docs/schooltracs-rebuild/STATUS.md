@@ -187,3 +187,7 @@ Admin已有Regular／Special／自訂類型三態與啟用管理，Course新班�
 ## 2026-10-15 最新：排課編輯取消與原位返回 UI
 
 課程指定第 N 堂修改取消，先返回同一課堂及分頁，再回原課程月份與日期入口；背景重畫保原按鈕與14日雙區／側欄／課程捲動。修正遲到載入跨月份或離頁再返回開錯表單、Browser Back殘留、忙碌視窗Tab及中文組字Escape丟草稿。工作區最後1272/1272、build13.15秒；獨立11/11，CUA實際390／768／1280中英單堂／往後取消及第二週原格返回已驗。詳見[取消返回檢查點](schedule-return-ui-checkpoint-20261015.md)。本片不新增業務寫入或權限；完整Course／Timetable、全UI及Goal仍未完成。
+
+## 2026-10-15 最新：公開課表管理預覽與正式來源返回 UI
+
+Course新增Admin「公開課表」入口，沿用匿名七日投影；可按確切Slot進正式資料，Linked另定位原schedule+sequence修改，取消逐層返回同Slot／週期／Course位置。真保存ACK後重讀公開結果；不以管理DTO複製時間或內部備註。不公開／載入／空結果／錯誤重試、遲到回覆、身份撤權、範圍及精確來源、IME與日期錯誤保輸入均有回歸。最後工作區1295/1295、build通過，獨立17/17；真CUA390／768／1280中英與三角色、匿名無Cookie、隔離Slot16:00→16:15重開結果已驗。CSS最後收窄空白後首屏Manage可操作。完整證據及界線見[公開課表管理檢查點](public-timetable-management-ui-checkpoint-20261015.md)。原稿Regular／Trial／Full組合、30日、公眾申請、全UI及完整Goal仍待完成，沒有改列minor或宣稱整個UI-V2-07通過。

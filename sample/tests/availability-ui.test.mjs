@@ -100,6 +100,16 @@ test('internal detail shows genuine capacity and source state, without inventing
   assert.match(unavailable, /Inactive/);
 });
 
+test('editing a linked formal lesson requires explicit source permission and an available exact link', () => {
+  const linked = { ...slot, scheduleId: 'schedule-second', sequence: 2 };
+  const allowed = availabilityDetailMarkup({ slot: linked, canEdit: true, canEditSource: true }, ui('en'));
+  assert.match(allowed, /data-action="availability-source-edit" data-slot-id="slot-a">Edit linked lesson<\/button>/);
+  for (const data of [{ slot: linked }, { slot: linked, canEdit: true }, { slot, canEditSource: true }, { slot: { ...linked, sourceAvailable: false }, canEditSource: true }]) {
+    assert.doesNotMatch(availabilityDetailMarkup(data, ui('en')), /availability-source-edit/);
+  }
+  assert.doesNotMatch(publicCourseDetailsMarkup({ course, slots: [linked], from: '2026-10-15' }, ui('en')), /schedule-second|availability-source-edit/);
+});
+
 test('public directory uses only published course facts with no invented image, price or description', () => {
   const html = publicCourseDirectoryMarkup({ courses: [{ ...course, description: 'PRIVATE_DESCRIPTION', fee: 1234, image: 'PRIVATE_IMAGE', remark: 'PRIVATE_REMARK' }] }, ui('en'));
   assert.match(html, /data-action="availability-public-course" data-course-id="course-a"/);
@@ -125,6 +135,40 @@ test('public details navigates seven days and only displays real slot ids and qu
   assert.match(html, /2 places remaining/);
   assert.match(html, /Trial applications are not yet open/);
   assert.doesNotMatch(html, /Private note|private-person-a|totalCapacity|1234|API|SQLite|data-go="\/join|data-action="pay/);
+});
+
+test('management preview reuses seven public dates and exact projected slots without a trial application action', () => {
+  const data = { course, slots: [slot, { ...slot, id: 'other', courseId: 'course-b' }, { ...slot, id: 'unavailable', sourceAvailable: false }], from: '2026-10-15', to: '2026-10-21' };
+  const html = publicCourseDetailsMarkup(data, { ...ui('en'), managementPreview: true, trialPreview: true });
+  assert.match(html, /<h3 id="availability-preview-course-title">Fictional art class<\/h3>/);
+  assert.match(html, /aria-labelledby="availability-preview-course-title"/);
+  assert.match(html, /id="availability-preview-from" name="from" type="date" value="2026-10-15"/);
+  assert.match(html, /data-action="availability-preview-back"/);
+  assert.match(html, /data-action="availability-preview-range" data-from="2026-10-08"/);
+  assert.match(html, /data-action="availability-preview-range" data-from="2026-10-22"/);
+  assert.equal((html.match(/data-availability-date="/g) || []).length, 7);
+  assert.equal((html.match(/data-action="availability-preview-manage"/g) || []).length, 1);
+  assert.match(html, /data-action="availability-preview-manage" data-slot-id="slot-a"/);
+  assert.doesNotMatch(html, /data-action="availability-public-|availability-public-from|availability-public-course-title|availability-trial-preview|trial-application|Private note|private-person-a|data-slot-id="other"|data-slot-id="unavailable"/);
+  assert.equal(publicCourseDetailsMarkup(data, ui('en')), publicCourseDetailsMarkup(data, { ...ui('en'), managementPreview: false }));
+});
+
+test('management preview errors retry inside the preview without exposing stale slot actions', () => {
+  const html = publicCourseDetailsMarkup({ course, slots: [slot], from: '2026-10-15', error: 'Times <unavailable>' }, { ...ui('en'), managementPreview: true });
+  assert.match(html, /role="alert"[^>]*>Times &lt;unavailable&gt;/);
+  assert.match(html, /data-action="availability-preview-refresh"/);
+  assert.doesNotMatch(html, /data-action="availability-public-|data-action="availability-preview-manage"|No available times/);
+});
+
+test('preview date input is escaped independently of the canonical range and never changes anonymous controls', () => {
+  const data = { course, slots: [slot], from: '2026-10-15', to: '2026-10-21', dateInput: '\" onfocus=\"bad', dateError: 'Choose a date.' };
+  const preview = publicCourseDetailsMarkup(data, { ...ui('en'), managementPreview: true });
+  assert.match(preview, /id="availability-preview-from"[^>]*value="&quot; onfocus=&quot;bad"/);
+  assert.match(preview, /data-action="availability-preview-range" data-from="2026-10-22"/);
+  assert.doesNotMatch(preview, /value="" onfocus=|availability-preview-manage/);
+  const anonymous = publicCourseDetailsMarkup(data, ui('en'));
+  assert.match(anonymous, /id="availability-public-from"[^>]*value="2026-10-15"/);
+  assert.doesNotMatch(anonymous, /onfocus|Choose a date|aria-invalid/);
 });
 
 test('public details distinguishes a full quota from an unknown quota instead of fabricating zero remaining', () => {

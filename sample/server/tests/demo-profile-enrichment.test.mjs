@@ -140,3 +140,26 @@ test('generated refresh rolls back all changed names profiles and versions if it
  await assert.rejects(enrichOwnedDemoProfiles({databasePath:input.databasePath,refreshGenerated:true}),/Refresh audit unavailable/);
  inspect(input.databasePath,db=>{assert.deepEqual(profiles(db),before.people);assert.deepEqual(db.prepare('SELECT * FROM person_audit_log ORDER BY id').all(),before.audit);assert.deepEqual(protectedSnapshot(db),before.protected);});
 });
+
+test('explicit registration-date refresh changes only old generated dates and preserves human dates and business records',async t=>{
+ const input=await fixture(t),generatedId=RELATIONAL_DEMO_IDS.students[0],humanId=RELATIONAL_DEMO_IDS.students[1],changedBirthdayId=RELATIONAL_DEMO_IDS.students[2];
+ const before=inspect(input.databasePath,db=>{
+  for(const [id,date]of[[generatedId,'2026-10-16'],[humanId,'2026-07-14'],[changedBirthdayId,'2026-10-16']]){
+   db.prepare("UPDATE people SET profile=json_set(profile,'$.enrollmentDate',?) WHERE id=?").run(date,id);
+   const audit=db.prepare("SELECT id,snapshot FROM person_audit_log WHERE person_id=? AND action='person.import'").get(id),snapshot={...JSON.parse(audit.snapshot),enrollmentDate:'2026-10-16'};
+   db.prepare('UPDATE person_audit_log SET snapshot=? WHERE id=?').run(JSON.stringify(snapshot),audit.id);
+  }
+  db.prepare("UPDATE people SET profile=json_set(profile,'$.dateOfBirth','2023-10-01') WHERE id=?").run(changedBirthdayId);
+  return {protected:protectedSnapshot(db),ids:profiles(db).map(row=>row.id)};
+ });
+ const result=await enrichOwnedDemoProfiles({databasePath:input.databasePath,refreshGenerated:true});assert.equal(result.updatedProfiles,1);assert.equal(result.updatedFields,1);
+ inspect(input.databasePath,db=>{
+  const generated=JSON.parse(db.prepare('SELECT profile FROM people WHERE id=?').get(generatedId).profile),human=JSON.parse(db.prepare('SELECT profile FROM people WHERE id=?').get(humanId).profile);
+  assert.ok(generated.enrollmentDate<'2026-10-16');assert.equal(human.enrollmentDate,'2026-07-14');
+  const changedBirthday=JSON.parse(db.prepare('SELECT profile FROM people WHERE id=?').get(changedBirthdayId).profile);assert.equal(changedBirthday.dateOfBirth,'2023-10-01');assert.equal(changedBirthday.enrollmentDate,'2026-10-16','Do not calculate registration history from a birthday that a person has replaced');
+  assert.deepEqual(protectedSnapshot(db),before.protected);assert.deepEqual(profiles(db).map(row=>row.id),before.ids);
+  const audit=JSON.parse(db.prepare("SELECT snapshot FROM person_audit_log WHERE person_id=? AND action='person.refresh-owned-demo' ORDER BY id DESC LIMIT 1").get(generatedId).snapshot);
+  assert.deepEqual(audit.enrichment.fields,['enrollmentDate']);
+ });
+ assert.equal((await enrichOwnedDemoProfiles({databasePath:input.databasePath,refreshGenerated:true})).updatedProfiles,0,'A second run must not duplicate records or change dates');
+});

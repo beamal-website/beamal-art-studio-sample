@@ -60,6 +60,9 @@ function patchesFor(source,{refreshGenerated=false}={}){
    const current=key==='displayName'?row.display_name:row.profile[key];
    return !blank(desired[key])&&!same(current,desired[key])&&(blank(current)||refreshGenerated&&same(current,row.original[key]));
   }).map(key=>[key,desired[key]]));
+  // A human-edited birthday must not acquire history calculated for the
+  // original generated child. Keep that registration date for manual review.
+  if(patch.enrollmentDate&&(patch.dateOfBirth??row.profile.dateOfBirth)!==desired.dateOfBirth)delete patch.enrollmentDate;
   return Object.keys(patch).length?[{row,patch}]:[];
  });
 }

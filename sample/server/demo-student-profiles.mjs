@@ -55,6 +55,14 @@ function birthday(student,startDate){
  const month=1+(hash('birth-month:'+student.ordinal)>>>8)%12,maxDay=month===2?28:[4,6,9,11].includes(month)?30:31,day=1+(hash('birth-day:'+student.ordinal)>>>8)%maxDay,monthDay=String(month).padStart(2,'0')+'-'+String(day).padStart(2,'0'),year=Number(startDate.slice(0,4))-student.age-(monthDay>startDate.slice(5)?1:0);
  if(year<1)throw new Error('The sample start date is too early for the requested student age range.');return String(year).padStart(4,'0')+'-'+monthDay;
 }
+// Registration history is fictional profile information, not paid enrolment.
+// Keep the established login student date and spread other registrations across
+// the recent three years, after each child's third birthday in this cohort.
+function registrationDate(student,startDate,dateOfBirth){
+ if(student.ordinal===0)return startDate;
+ const end=Date.parse(startDate+'T00:00:00Z'),thirdBirthday=String(Number(dateOfBirth.slice(0,4))+3)+dateOfBirth.slice(4),start=Math.max(end-1095*86400000,Date.parse(thirdBirthday+'T00:00:00Z')),days=Math.floor((end-start)/86400000);
+ return new Date(start+(hash('registration:'+student.ordinal)%(days+1))*86400000).toISOString().slice(0,10);
+}
 function learningInterests(ordinal,age){
  const choose=(pool,salt)=>pool[(hash(salt+':'+ordinal)>>>5)%pool.length],group=age<6?'preschool':age<12?'child':'teen';
  const subjects={preschool:['圓形與方形','花朵與葉子','彩虹與雲朵','森林小動物','海底世界','喜歡的玩具','四季顏色','水果與蔬菜','交通工具','恐龍故事','家中的寵物','童話城堡'],child:['動物姿態','海洋生態','昆蟲與植物','太空與星球','城市建築','故事場景','卡通角色','交通工具','節日佈置','四季風景','夢想房間','運動場景','科學小發明','街市生活'],teen:['人物動作','靜物與材質','城市街景','自然光影','建築空間','敘事插畫','角色設計','海報排版','環境與生態','日常生活片段','產品造型','舞台場景','書籍封面','旅行速寫','抽象色彩','生活攝影構圖']};
@@ -70,7 +78,7 @@ function profileFor(ordinal,startDate){
  if(!Number.isSafeInteger(ordinal)||ordinal<0||ordinal>=300||!validDate(startDate))throw new Error('Choose an owned student ordinal and valid sample start date.');
  const student=cohort[ordinal],{family}=student,dateOfBirth=birthday(student,startDate),{displayName,firstName,lastName,fullName,localName,gender}=student;
  const contactFields=Object.fromEntries(['parentName','contact1Name','contact1Phone','contact1Email','contact2Name','contact2Phone','contact2Email','district','address','whatsApp','phone','mobile','billName'].map(key=>[key,family[key]]));
- return validatePerson({displayName,firstName,lastName,fullName,localName,gender,dateOfBirth,email:ordinal===0?'chloe.ho@example.test':`${firstName.toLowerCase()}.${lastName.toLowerCase()}.${pad(ordinal)}@example.test`,...contactFields,...education(ageAt(dateOfBirth,startDate),family),...learningInterests(ordinal,ageAt(dateOfBirth,startDate)),enrollmentDate:startDate,quitDate:null,occupation:'學生',referrer:['','朋友介紹','中心網站','社交平台','家長介紹'][family.index%5],promotion:family.index%4===0?null:false});
+ return validatePerson({displayName,firstName,lastName,fullName,localName,gender,dateOfBirth,email:ordinal===0?'chloe.ho@example.test':`${firstName.toLowerCase()}.${lastName.toLowerCase()}.${pad(ordinal)}@example.test`,...contactFields,...education(ageAt(dateOfBirth,startDate),family),...learningInterests(ordinal,ageAt(dateOfBirth,startDate)),enrollmentDate:registrationDate(student,startDate,dateOfBirth),quitDate:null,occupation:'學生',referrer:['','朋友介紹','中心網站','社交平台','家長介紹'][family.index%5],promotion:family.index%4===0?null:false});
 }
 export const relationalStudentProfile=(index,startDate)=>{if(!Number.isSafeInteger(index)||index<0||index>=299)throw new Error('Choose an owned student index.');return profileFor(index+1,startDate);};
 export const chloeStudentProfile=startDate=>profileFor(0,startDate);

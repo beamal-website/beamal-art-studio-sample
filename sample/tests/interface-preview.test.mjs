@@ -80,6 +80,54 @@ test('Escape while composing Chinese preserves the shared draft while normal Esc
  assert.equal(p.ui.isOpen,false);assert.equal(p.returns.length,1);assert.equal(p.returns[0].settings.restore,true);
 });
 
+test('the student-name launch shows readonly details of the exact selected session and returns its original ticket',()=>{
+ const p=canonicalRosterPreview();
+ p.facts.student.age={years:7,months:4,asOf:'2026-11-19'};
+ p.facts.student.balance={unit:'minutes',remaining:360,total:720};
+ assert.equal(p.ui.openSharedLesson('student',{sessionId:'actual-session',student:{displayName:'Forged name'}}),true);
+ assert.match(p.html,/Serena Lam/);assert.match(p.html,/Ceramic Study/);assert.match(p.html,/2026-11-19/);assert.match(p.html,/Student lesson details/);
+ assert.doesNotMatch(p.html,/<form|type="submit"|Forged name|Chloe|Preview complete/);
+ const initial=p.html;
+ for(const command of ['review','pending','final-save','final-confirm','submit'])p.ui.action({action:'ui-shared-lesson',uiCommand:command});
+ assert.equal(p.html,initial);
+ p.ui.action({action:'ui-shared-lesson',uiCommand:'close'});
+ assert.equal(p.returns.length,1);assert.equal(p.returns[0].value,p.ticket);assert.equal(p.returns[0].settings.restore,true);
+ p.ui.action({action:'ui-lesson',uiCommand:'launch',uiView:'student',uiId:'actual-session'});
+ assert.match(p.html,/Student lesson details/);
+});
+
+test('student lesson details refresh from the same source and close when the selected person or identity changes',()=>{
+ const p=canonicalRosterPreview();
+ assert.equal(p.ui.openSharedLesson('student',{sessionId:'missing-session'}),false);
+ p.setContext({role:'student'});assert.equal(p.ui.openSharedLesson('student',{sessionId:'actual-session'}),false);
+ p.setContext({role:'teacher'});assert.equal(p.ui.openSharedLesson('student',{sessionId:'actual-session'}),true);
+ p.facts.student.displayName='Updated same student';p.ui.refreshSharedLesson();assert.match(p.html,/Updated same student/);
+ p.setStatus('error');p.ui.refreshSharedLesson();assert.match(p.html,/Could not update lesson details/);
+ p.setStatus('ready');p.facts.student.id='a-different-child';p.ui.refreshSharedLesson();
+ assert.equal(p.ui.isOpen,false);assert.equal(p.html,'');assert.equal(p.returns.at(-1).settings.restore,false);
+});
+
+test('a background student-detail refresh preserves the expanded remark, summary focus and reading position',()=>{
+ let p,rendered='',controls=[],note,summary;
+ const body={scrollTop:175,scrollLeft:11};
+ const node=tagName=>({tagName,isConnected:true,disabled:false,dataset:{},focus(){dom.activeElement=this;}});
+ function mount(){
+  if(rendered===p.html)return;
+  for(const control of controls)control.isConnected=false;
+  rendered=p.html;if(!rendered){controls=[];note=null;summary=null;return;}
+  const header=node('BUTTON'),footer=node('BUTTON');summary=node('SUMMARY');
+  const key=rendered.match(/<details[^>]*data-slw-note="([^"]+)"/)?.[1];
+  note={tagName:'DETAILS',dataset:key?{slwNote:key}:{},open:false};controls=[header,summary,footer];
+ }
+ const dom={activeElement:null,querySelector:selector=>{mount();return selector.includes('.slw-body')?body:selector.includes('button:not(:disabled)')?controls[0]:null;},querySelectorAll:selector=>{mount();return selector.includes('details')?[note]:selector.includes('.slw-dialog')?controls.filter(control=>control.tagName!=='SUMMARY'||selector.includes('summary')):[];}};
+ p=canonicalRosterPreview({dom});p.facts.student.remark='Long canonical lesson remark. '.repeat(20);
+ p.ui.openSharedLesson('student',{sessionId:'actual-session'});note.open=true;summary.focus();
+ p.setStatus('error');p.ui.refreshSharedLesson();
+ assert.equal(note.open,true);assert.equal(dom.activeElement,summary);assert.equal(body.scrollTop,175);assert.equal(body.scrollLeft,11);
+ p.setStatus('ready');p.ui.refreshSharedLesson();assert.equal(note.open,true);assert.equal(dom.activeElement,summary);
+ p.ui.close();mount();p.ui.openSharedLesson('student',{sessionId:'actual-session'});assert.equal(note.open,false,'A new reading session must not inherit a closed view expansion');
+});
+
 test('shared People workflows use the loaded profile and never an unrelated lesson or family fixture',()=>{
  const person={id:'person-second',kind:'applicant',displayName:'另一位學生 Second Student',email:'second@example.test',phone:'23456789'};
  let current={t,role:'admin',sharedMode:true,sharedIdentity:'admin-A',peopleContext:{allowed:true,ready:true,personId:person.id,person}};

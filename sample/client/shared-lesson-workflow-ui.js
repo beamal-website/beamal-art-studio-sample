@@ -9,7 +9,7 @@ const escape=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<'
 const validDate=value=>typeof value==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(value)&&value>='0001-01-01'&&value<='9999-12-31'&&Number.isFinite(Date.parse(value+'T00:00:00Z'))&&new Date(value+'T00:00:00Z').toISOString().slice(0,10)===value;
 const validTime=value=>typeof value==='string'&&/^([01]\d|2[0-3]):[0-5]\d$/.test(value);
 const validDuration=(time,duration)=>validTime(time)&&Number.isSafeInteger(duration)&&duration>0&&duration<=1440-Number(time.slice(0,2))*60-Number(time.slice(3));
-const validSource=state=>['attendance','arrange'].includes(state?.view)&&id(state.student?.id)&&id(state.lesson?.id)&&id(state.lesson?.scheduleId)&&Number.isSafeInteger(state.lesson?.sequence)&&state.lesson.sequence>0&&validDate(state.lesson.date)&&validDuration(state.lesson.time,state.lesson.duration);
+const validSource=state=>['attendance','arrange','student'].includes(state?.view)&&id(state.student?.id)&&id(state.lesson?.id)&&id(state.lesson?.scheduleId)&&Number.isSafeInteger(state.lesson?.sequence)&&state.lesson.sequence>0&&validDate(state.lesson.date)&&validDuration(state.lesson.time,state.lesson.duration);
 const context=ctx=>({t:ctx?.t||((_zh,en)=>en),esc:ctx?.esc||escape});
 const sourceStatus=state=>!own(state,'sourceStatus')?'ready':['ready','loading','error'].includes(state.sourceStatus)?state.sourceStatus:'error';
 const availableSource=state=>state.availability?.ready===true&&!state.availability.loading&&!state.availability.error;
@@ -42,6 +42,8 @@ function attendanceError(draft){
  return '';
 }
 export function advanceSharedLessonWorkflow(state={},command,fields={}){
+ // Student details are a canonical read-only view, never an editable draft.
+ if(state.view==='student')return state;
  // Final operations are intentionally inert, including forged native submits.
  if(!['draft','review','back','select-slot','pending','filter-date'].includes(command))return state;
  if(!validSource(state))return {...state,step:'edit',draft:{},formError:'source-unavailable'};
@@ -73,6 +75,30 @@ function sourceContext(state,ctx){
  const {student,lesson}=state,{t,esc}=ctx;
  return `<section class="slw-context" aria-label="${esc(t('目前學生及課堂','Current student and lesson'))}" data-student-id="${esc(student.id)}" data-session-id="${esc(lesson.id)}"><strong>${value(student.displayName,ctx)}</strong><p>${value(lesson.courseName,ctx)}</p><p><time datetime="${esc(lesson.date)}">${esc(lesson.date)}</time> · ${esc(lesson.time)} · ${esc(lesson.duration)} ${t('分鐘','min')}</p><small>${t('老師：','Teacher: ')}${value(lesson.teacher,ctx)} · ${t('課室：','Room: ')}${value(lesson.room,ctx)}</small></section>`;
 }
+function studentAge(student,ctx){
+ const {t,esc}=ctx,age=student.age;
+ if(!age||!Number.isSafeInteger(age.years)||age.years<0||!Number.isSafeInteger(age.months)||age.months<0||age.months>11||!validDate(age.asOf))return t('未提供','Not provided');
+ return `${esc(t(`${age.years} 歲 ${age.months} 個月`,`${age.years} years ${age.months} months`))}<small class="slw-detail-as-of">${t('截至','As of')} <time datetime="${esc(age.asOf)}">${esc(age.asOf)}</time></small>`;
+}
+function studentBalance(student,ctx){
+ const {t,esc}=ctx,balance=student.balance;
+ if(!balance||!['minutes','visits'].includes(balance.unit)||typeof balance.remaining!=='number'||!Number.isFinite(balance.remaining)||balance.remaining<0)return t('未提供','Not provided');
+ const total=typeof balance.total==='number'&&Number.isFinite(balance.total)&&balance.total>=0?` / ${balance.total}`:'',unit=balance.unit==='minutes'?t('分鐘','minutes'):t('次','visits');
+ return `${esc(balance.remaining)}${esc(total)} ${unit}`;
+}
+function studentRemark(student,ctx){
+ const {t,esc}=ctx;
+ if(typeof student.remark!=='string')return t('未提供','Not provided');
+ if(student.remark==='')return t('尚無備註','No remark yet');
+ if(student.remark.length<=160)return esc(student.remark);
+ return `<details class="slw-long-note" data-slw-note="student-remark"><summary>${t('查看完整備註','Read full remark')}<span class="slw-note-excerpt">${esc(student.remark.slice(0,100))}…</span></summary><p>${esc(student.remark)}</p></details>`;
+}
+function studentDetails(state,ctx){
+ const {student}=state,{t,esc}=ctx,status=statuses.find(([key])=>key===student.attendance),sticker=stickers.find(([key])=>key===student.stickerColor);
+ const attendance=status?esc(t(status[1],status[2])):student.attendance==='unmarked'?t('尚未登記','Not marked'):t('未提供','Not provided');
+ const stickerMarkup=!sticker?t('未提供','Not provided'):sticker[0]==='none'?esc(t(sticker[1],sticker[2])):`<span class="slw-read-sticker slw-sticker-${sticker[0]}"><span class="slw-colour-dot" aria-hidden="true"></span>${esc(t(sticker[1],sticker[2]))}</span>`;
+ return `<dl class="slw-summary slw-student-summary"><div><dt>${t('年齡','Age')}</dt><dd>${studentAge(student,ctx)}</dd></div><div><dt>${t('剩餘額度','Remaining balance')}</dt><dd>${studentBalance(student,ctx)}</dd></div><div><dt>${t('本堂出席','Attendance')}</dt><dd>${attendance}</dd></div><div><dt>${t('本堂備註','Remark')}</dt><dd class="slw-note-value">${studentRemark(student,ctx)}</dd></div><div><dt>${t('貼紙','Sticker')}</dt><dd>${stickerMarkup}</dd></div></dl>`;
+}
 function attendanceForm(state,ctx){
  const {t,esc}=ctx,draft=attendanceDraft(state),invalid=state.formError==='attendance';
  return `<fieldset class="slw-fieldset"${invalid?' aria-invalid="true" aria-describedby="slw-form-error"':''}><legend>${t('本堂出席','Attendance for this lesson')}</legend><div class="slw-choices">${statuses.map(([status,zh,en])=>`<label class="slw-choice"><input type="radio" name="attendance" value="${status}" data-ui-command="draft"${draft.attendance===status?' checked':''} required><span>${esc(t(zh,en))}</span></label>`).join('')}</div></fieldset><label class="slw-field"><span>${t('本堂備註','Remark for this lesson')}</span><textarea name="remark" rows="4" maxlength="2000" data-ui-command="draft"${state.formError==='remark'?' aria-invalid="true" aria-describedby="slw-form-error"':''}>${esc(draft.remark)}</textarea></label><fieldset class="slw-fieldset"><legend>${t('彩色貼紙（可選）','Colour sticker (optional)')}</legend><div class="slw-stickers">${stickers.map(([colour,zh,en])=>`<label class="slw-sticker slw-sticker-${colour}"><input type="radio" name="sticker" value="${colour}" data-ui-command="draft"${draft.sticker===colour?' checked':''}><span class="slw-colour-dot" aria-hidden="true"></span><span>${esc(t(zh,en))}</span></label>`).join('')}</div></fieldset><input type="hidden" name="showRemark" value=""><label class="slw-check"><input type="checkbox" name="showRemark" value="yes" data-ui-command="draft"${draft.showRemark==='yes'?' checked':''}><span>${t('在時間表顯示這項備註與貼紙','Show this remark and sticker on the timetable')}</span></label>`;
@@ -81,7 +107,7 @@ function attendanceReview(state,ctx){
  const {t,esc}=ctx,draft=attendanceDraft(state),error=attendanceError(draft);
  if(error)return `<p class="slw-status" role="status">${t('出席資料暫未提供，請返回核對。','Attendance details are unavailable. Go back to review the form.')}</p>`;
  const status=statuses.find(([id])=>id===draft.attendance),sticker=stickers.find(([id])=>id===draft.sticker);
- const remark=text(draft.remark).length>160?`<details class="slw-long-note"><summary>${t('查看完整備註','Read full remark')}</summary><p>${esc(draft.remark)}</p></details>`:value(draft.remark,ctx);
+ const remark=text(draft.remark).length>160?`<details class="slw-long-note" data-slw-note="attendance-remark"><summary>${t('查看完整備註','Read full remark')}</summary><p>${esc(draft.remark)}</p></details>`:value(draft.remark,ctx);
  return `<dl class="slw-summary"><div><dt>${t('出席','Attendance')}</dt><dd>${esc(t(status[1],status[2]))}</dd></div><div><dt>${t('備註','Remark')}</dt><dd class="slw-note-value">${remark}</dd></div><div><dt>${t('貼紙','Sticker')}</dt><dd>${sticker?esc(t(sticker[1],sticker[2])):'—'}</dd></div><div><dt>${t('在時間表顯示','Show on timetable')}</dt><dd>${own(draft,'showRemark')?t(draft.showRemark==='yes'?'是':'否',draft.showRemark==='yes'?'Yes':'No'):'—'}</dd></div></dl>`;
 }
 function slotCard(slot,ctx,review=false,state={}){
@@ -106,11 +132,12 @@ function arrangementReview(state,ctx){
 }
 function formError(code,ctx){const {t}=ctx;return ({attendance:t('請選擇本堂出席狀態。','Choose an attendance status.'),remark:t('備註最多 2,000 字。','Remarks can contain up to 2,000 characters.'),sticker:t('請選擇有效的貼紙。','Choose a valid sticker.'),'remark-visibility':t('請重新核對時間表展示選項。','Review the timetable display option.'),'slot-unavailable':t('請選擇可用的補堂時段，或選擇 Pending Confirmation。','Choose an available replacement slot or Pending Confirmation.'),'source-unavailable':t('此學生課堂資料暫未提供。','This student lesson is unavailable.'),'source-not-ready':t('課堂資料尚未更新，請稍後再核對。','Wait for the lesson details to update before reviewing.')})[code]||'';}
 export function sharedLessonWorkflowMarkup(state={},suppliedContext={}){
- if(!['attendance','arrange'].includes(state.view))return '';
- const ctx=context(suppliedContext),{t,esc}=ctx,title=state.view==='attendance'?t('出席與備註','Attendance & remarks'):'Make Up This Class',valid=validSource(state),review=state.step==='review';
+ if(!['attendance','arrange','student'].includes(state.view))return '';
+ const ctx=context(suppliedContext),{t,esc}=ctx,readonly=state.view==='student',title=readonly?t('學生課堂資料','Student lesson details'):state.view==='attendance'?t('出席與備註','Attendance & remarks'):'Make Up This Class',valid=validSource(state),review=state.step==='review';
  const header=`<header class="slw-header"><h2 id="slw-title">${esc(title)}</h2>${button('close','×',ctx,{kind:'icon',extra:`aria-label="${esc(t('關閉','Close'))}"`})}</header>`;
  if(!valid)return `<div class="modal slw-modal" role="dialog" aria-modal="true" aria-labelledby="slw-title"><div class="dialog slw-dialog">${header}<div class="slw-body"><p class="slw-status" role="status">${t('此學生課堂資料暫未提供。','This student lesson is unavailable.')}</p></div><footer class="slw-footer">${button('close',t('關閉','Close'),ctx)}</footer></div></div>`;
- const status=sourceStatus(state),statusMarkup=status==='ready'?'':`<p id="slw-source-state" class="slw-source-state" role="${status==='error'?'alert':'status'}">${status==='loading'?t('正在更新課堂資料，你填寫的內容已保留。','Updating lesson details. Your entries are kept.'):t('未能更新課堂資料，你填寫的內容已保留。','Could not update lesson details. Your entries are kept.')}</p>`;
+ const status=sourceStatus(state),statusMarkup=status==='ready'?'':`<p id="slw-source-state" class="slw-source-state" role="${status==='error'?'alert':'status'}">${status==='loading'?(readonly?t('正在更新課堂資料。','Updating lesson details.'):t('正在更新課堂資料，你填寫的內容已保留。','Updating lesson details. Your entries are kept.')):(readonly?t('未能更新課堂資料。','Could not update lesson details.'):t('未能更新課堂資料，你填寫的內容已保留。','Could not update lesson details. Your entries are kept.'))}</p>`;
+ if(readonly)return `<div class="modal slw-modal" role="dialog" aria-modal="true" aria-labelledby="slw-title"><div class="dialog slw-dialog">${header}<div class="slw-content"><div class="slw-body">${sourceContext(state,ctx)}${statusMarkup}${studentDetails(state,ctx)}</div><footer class="slw-footer">${button('close',t('返回名冊','Back to student list'),ctx)}</footer></div></div></div>`;
  const error=formError(state.formError,ctx),contents=sourceContext(state,ctx)+statusMarkup+(state.view==='attendance'?(review?attendanceReview(state,ctx):attendanceForm(state,ctx)):(review?arrangementReview(state,ctx):arrangementForm(state,ctx)))+(error?`<p id="slw-form-error" class="slw-error" role="alert">${esc(error)}</p>`:'');
  const body=`<div class="slw-body">${contents}${review?`<p id="slw-save-note" class="slw-save-note">${t('尚未儲存。此功能的儲存操作暫未開放。','Changes have not been saved. Saving is not available yet.')}</p>`:''}</div>`;
  const footer=`<footer class="slw-footer">${review?button('back',t('返回修改','Back to edit'),ctx)+button(state.view==='attendance'?'final-save':'final-confirm',state.view==='attendance'?t('儲存','Save'):t('確認安排','Confirm arrangement'),ctx,{disabled:true,kind:'primary',extra:'aria-describedby="slw-save-note"'}):button('close',t('取消','Cancel'),ctx)+`<button type="submit" class="slw-button slw-primary" data-action="ui-shared-lesson" data-ui-command="review"${status!=='ready'?' disabled aria-describedby="slw-source-state"':''}>${t('核對','Review')}</button>`}</footer>`;

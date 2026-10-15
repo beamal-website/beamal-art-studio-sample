@@ -1067,3 +1067,16 @@
   font-size: 14px;
   white-space: nowrap;
 }
+
+/* Student names are aligned with the roster column and remain easy to tap. */
+.lesson-dialog .lesson-student-name {
+  min-height: 44px;
+  max-width: 100%;
+  margin: 0;
+  padding: 10px 0;
+  text-align: left;
+  font-weight: 600;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.lesson-dialog .lesson-student-name:enabled:hover { text-decoration: underline; }

@@ -35,6 +35,9 @@
 .slw-summary dt{color:var(--slw-muted)}.slw-summary dd{min-width:0;margin:0;overflow-wrap:anywhere}
 .slw-note-value,.slw-long-note p{white-space:pre-wrap}.slw-long-note summary{min-height:44px;line-height:1.8;padding:8px 0;cursor:pointer;color:var(--slw-teal)}
 .slw-long-note p{margin:8px 0 0}
+.slw-detail-as-of{display:block;margin-top:4px;font-size:12px;line-height:1.8;color:var(--slw-muted)}
+.slw-read-sticker{display:inline-flex;align-items:center;gap:8px;max-width:100%;overflow-wrap:anywhere}
+.slw-note-excerpt{display:block;margin-top:4px;color:var(--slw-muted);font-size:13px;line-height:1.8;white-space:pre-wrap;overflow-wrap:anywhere}
 .slw-status,.slw-save-note{margin:0;padding:14px 16px;border:1px solid var(--slw-line);border-radius:7px;background:#f2f5ee;color:var(--slw-muted);font-size:13px;line-height:1.8}
 .slw-save-note{margin-top:20px;background:transparent;border:0;padding:0}
 .slw-source-state{margin:0 0 20px;padding:12px 14px;border-left:3px solid #9db8a8;background:#eef3ee;color:var(--slw-muted);font-size:13px;line-height:1.8}

@@ -53,3 +53,33 @@ test('explicit blank remarks false visibility and the unmarked source state are 
 test('returned facts cannot mutate the source roster or schedule and do not carry unrelated business state',()=>{
  const m=fixture(),before=structuredClone(m);m.orders=[{paymentStatus:'paid'}];m.packageBalance=4;m.availability={ready:true,slots:[{id:'unverified'}]};const result=resolve(m,selected);result.facts.student.remark='Changed UI draft';result.facts.lesson.teacherIds.push('forged-teacher');assert.deepEqual(m.roster,before.roster);assert.deepEqual(m.record,before.record);assert.equal(result.facts.orders,undefined);assert.equal(result.facts.packageBalance,undefined);assert.deepEqual(result.facts.availability,{ready:false,slots:[]});
 });
+
+test('student lesson details preserve explicitly supplied age and course balance with their original units',()=>{
+ const source=fixture(),row=source.roster.students[1];
+ row.studentDetails={studentId:row.studentId,age:{years:7,months:4,asOf:'2026-10-23'},balance:{courseId:source.course.id,unit:'minutes',remaining:360,total:720}};
+ const result=resolve(source,selected);
+ assert.deepEqual(result.facts.student.age,{years:7,months:4,asOf:'2026-10-23'});
+ assert.deepEqual(result.facts.student.balance,{unit:'minutes',remaining:360,total:720});
+ result.facts.student.age.years=99;result.facts.student.balance.remaining=0;
+ assert.equal(row.studentDetails.age.years,7);assert.equal(row.studentDetails.balance.remaining,360);
+ row.studentDetails.balance={courseId:source.course.id,unit:'visits',remaining:2.5};
+ assert.deepEqual(resolve(source,selected).facts.student.balance,{unit:'visits',remaining:2.5});
+});
+
+test('unknown unrelated or malformed student details never become an age or remaining count',()=>{
+ const source=fixture(),row=source.roster.students[1];
+ const valid={studentId:row.studentId,age:{years:7,months:4,asOf:'2026-10-23'},balance:{courseId:source.course.id,unit:'minutes',remaining:360,total:720}};
+ for(const details of [undefined,{}, {...valid,studentId:'someone-else'}]){
+  row.studentDetails=details;
+  const student=resolve(source,{...selected,age:valid.age,balance:valid.balance}).facts.student;
+  assert.equal(Object.hasOwn(student,'age'),false);assert.equal(Object.hasOwn(student,'balance'),false);
+ }
+ for(const age of [{years:-1,months:0,asOf:'2026-10-23'},{years:7,months:12,asOf:'2026-10-23'},{years:7,months:4,asOf:'2026-02-30'},7]){
+  row.studentDetails={...valid,age};assert.equal(Object.hasOwn(resolve(source,selected).facts.student,'age'),false);
+ }
+ for(const balance of [{...valid.balance,courseId:'different-course'},{...valid.balance,unit:'lessons'},{...valid.balance,remaining:-1},{...valid.balance,remaining:Infinity},{...valid.balance,remaining:'360'}]){
+  row.studentDetails={...valid,balance};assert.equal(Object.hasOwn(resolve(source,selected).facts.student,'balance'),false);
+ }
+ row.studentDetails={...valid,balance:{courseId:source.course.id,unit:'minutes',remaining:0,total:null}};
+ assert.deepEqual(resolve(source,selected).facts.student.balance,{unit:'minutes',remaining:0});
+});

@@ -20,13 +20,16 @@ export function createInterfacePreview({context,showModal,repaint,dom=document,F
   const fresh=()=>{calendarCopyEpoch++;messageListReturn=null;messageComposeReturn=null;operations={data:getOperationsPreviewData(),today:context()?.today,query:'',status:'all',category:'all',accountingTab:'invoices',selectedThreadId:'thread-1',settingsTab:'general',dialog:null,notice:''};staff=staffInterfacePreviewState();student={data:getStudentPortalData(),section:'profile',requestFilter:'all',notificationFilter:'all',query:'',selectedStudentId:'child-1',dialog:null,notice:''};account=null;lesson=null;dataTools=null;overlay=null;sharedLesson=null;sharedLessonTicket=null;sharedLessonEditPosition=null;};
   fresh();
   const ctx=()=>{const current=context()||{};return {...current,esc:current.esc||(value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char])))};};
-  const sharedLessonControls=()=>[...dom.querySelectorAll('#modal-root .slw-dialog button,#modal-root .slw-dialog input,#modal-root .slw-dialog select,#modal-root .slw-dialog textarea')];
+  const sharedLessonControls=()=>[...dom.querySelectorAll('#modal-root .slw-dialog button,#modal-root .slw-dialog input,#modal-root .slw-dialog select,#modal-root .slw-dialog textarea,#modal-root .slw-dialog summary')];
+  const sharedLessonNotes=()=>[...dom.querySelectorAll('#modal-root .slw-dialog details[data-slw-note]')];
   const sharedLessonPosition=()=>{
     const active=dom.activeElement,body=dom.querySelector('#modal-root .slw-body');
-    return {top:body?.scrollTop||0,left:body?.scrollLeft||0,element:active,name:active?.name,tag:active?.tagName,index:sharedLessonControls().indexOf(active),start:active?.selectionStart,end:active?.selectionEnd};
+    return {top:body?.scrollTop||0,left:body?.scrollLeft||0,element:active,name:active?.name,tag:active?.tagName,index:sharedLessonControls().indexOf(active),start:active?.selectionStart,end:active?.selectionEnd,notes:sharedLessonNotes().filter(node=>node.dataset?.slwNote).map(node=>({key:node.dataset.slwNote,open:node.open===true}))};
   };
   const restoreSharedLessonPosition=position=>{
     if(!position)return;
+    const notes=new Map((position.notes||[]).map(note=>[note.key,note.open]));
+    for(const note of sharedLessonNotes())if(notes.has(note.dataset?.slwNote))note.open=notes.get(note.dataset.slwNote);
     const usable=node=>node&&node.isConnected!==false&&!node.disabled,controls=sharedLessonControls();
     const target=usable(position.element)?position.element:controls.find(node=>usable(node)&&position.name&&node.name===position.name&&node.tagName===position.tag)||controls[position.index];
     if(usable(target)){target.focus({preventScroll:true});if(typeof position.start==='number'&&typeof target.setSelectionRange==='function')try{target.setSelectionRange(position.start,position.end);}catch{}}
@@ -59,14 +62,14 @@ export function createInterfacePreview({context,showModal,repaint,dom=document,F
     }
     const facts=resolved.facts,original=sharedLesson;
     if(!facts||facts.identity!==current.sharedIdentity||facts.contextKey!==original.contextKey||facts.student?.id!==original.student.id||facts.lesson?.id!==original.lesson.id||facts.lesson.scheduleId!==original.lesson.scheduleId||facts.lesson.sequence!==original.lesson.sequence){discardSharedLesson();return 'invalid';}
-    sharedLesson={...original,...facts,view:original.view,step:original.step,draft:original.draft,sourceStatus:'ready',sourceError:'',capabilities:{review:true,save:false}};return 'ready';
+    sharedLesson={...original,...structuredClone(facts),view:original.view,step:original.step,draft:original.draft,sourceStatus:'ready',sourceError:'',capabilities:{review:true,save:false}};return 'ready';
   };
   const openSharedLesson=(view,{sessionId}={})=>{
     const current=ctx();
-    if(overlay||!['attendance','arrange'].includes(view)||!current.sharedMode||!['admin','teacher'].includes(current.role)||!current.sharedIdentity||!sessionId||typeof resolveSharedLesson!=='function'||typeof onCloseSharedLesson!=='function')return false;
+    if(overlay||!['student','attendance','arrange'].includes(view)||!current.sharedMode||!['admin','teacher'].includes(current.role)||!current.sharedIdentity||!sessionId||typeof resolveSharedLesson!=='function'||typeof onCloseSharedLesson!=='function')return false;
     const resolved=resolveSharedLesson({sessionId,opener:dom.activeElement}),facts=resolved?.facts;
     if(resolved?.status!=='ready'||!resolved.returnTicket||!facts||facts.identity!==current.sharedIdentity||facts.lesson?.id!==sessionId||!facts.student?.id||!facts.contextKey)return false;
-    sharedLesson={...facts,view,step:'edit',draft:{},sourceStatus:'ready',sourceError:'',capabilities:{review:true,save:false}};sharedLessonTicket=resolved.returnTicket;sharedLessonEditPosition=null;overlay='shared-lesson';returnFocus=null;redrawOverlay();return true;
+    sharedLesson={...structuredClone(facts),view,step:'edit',draft:{},sourceStatus:'ready',sourceError:'',capabilities:{review:true,save:false}};sharedLessonTicket=resolved.returnTicket;sharedLessonEditPosition=null;overlay='shared-lesson';returnFocus=null;redrawOverlay();return true;
   };
   const refreshSharedLesson=()=>{
     if(overlay!=='shared-lesson')return false;
@@ -439,9 +442,9 @@ export function createInterfacePreview({context,showModal,repaint,dom=document,F
   const openLesson=(view,facts={})=>{
     if(guardStudentRequest()!=='ready')return false;
     const current=ctx();
-    // These shared workflows do not yet have a verified per-student session
-    // source. Neither an ID nor caller-supplied facts can authorize a fixture.
-    if(current.sharedMode&&['attendance','arrange'].includes(view))return false;
+    // Shared roster views must enter through the canonical session resolver.
+    // Neither an ID nor caller-supplied facts can authorize a legacy fixture.
+    if(current.sharedMode&&['student','attendance','arrange'].includes(view))return false;
     if(facts.sharedPerson===true){
       const resolved=sharedPersonFacts(view,facts.personId);
       if(!resolved||view==='activation')return false;
@@ -554,7 +557,7 @@ export function createInterfacePreview({context,showModal,repaint,dom=document,F
   const action=(d,element)=>{
     if(d.action==='ui-shared-lesson')return advanceSharedLesson(d.uiCommand,{id:d.uiId});
     if(overlay==='shared-lesson'&&syncSharedLesson()==='invalid')return true;
-    if(d.action==='ui-lesson'&&d.uiCommand==='launch'&&ctx().sharedMode&&['attendance','arrange'].includes(d.uiView)){openSharedLesson(d.uiView,{sessionId:d.uiId});return true;}
+    if(d.action==='ui-lesson'&&d.uiCommand==='launch'&&ctx().sharedMode&&['student','attendance','arrange'].includes(d.uiView)){openSharedLesson(d.uiView,{sessionId:d.uiId});return true;}
     const requestStatus=guardStudentRequest();
     if(requestStatus!=='ready'){
       if(requestStatus==='loading'&&d.action==='ui-lesson'&&['close','close-dialog'].includes(d.uiCommand))close();

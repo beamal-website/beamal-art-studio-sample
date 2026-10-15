@@ -121,3 +121,58 @@ test('known canonical sticker and display preference initialize the editor while
   const unknown={...base(),student:{...base().student,...extra}},next=advance(unknown,'draft',{remark:'Typed'});assert.equal(Object.hasOwn(next.draft,'sticker'),false);assert.equal(Object.hasOwn(next.draft,'showRemark'),false);assert.doesNotMatch(markup(next,en),/name="sticker"[^>]*checked|type="checkbox" name="showRemark"[^>]*checked/);
  }
 });
+const detailValue=(html,label)=>html.match(new RegExp('<dt>'+label+'</dt><dd[^>]*>([\\s\\S]*?)</dd>'))?.[1];
+test('student lesson details show the exact canonical student and lesson read-only with only a return action',()=>{
+ const state=freeze({...base('student'),student:{...base().student,age:{years:6,months:2,asOf:'2026-11-02'},balance:{unit:'minutes',remaining:0,total:720},attendance:'late',stickerColor:'blue',contactEmail:'private@example.test',phone:'PRIVATE PHONE'},draft:{attendance:'present',remark:'FORGED DRAFT',sticker:'yellow'}}),html=markup(state,en);
+ assert.match(html,/Student lesson details/);assert.match(html,/Isla &lt;Second&gt;/);assert.match(html,/data-student-id="student-second"/);assert.match(html,/data-session-id="session-second"/);assert.match(html,/2026-11-02/);assert.match(html,/15:15/);assert.match(html,/Print &amp; colour/);
+ assert.equal(detailValue(html,'Attendance'),'Late');assert.match(detailValue(html,'Remark'),/Existing session note/);assert.match(detailValue(html,'Sticker'),/Blue/);
+ assert.doesNotMatch(html,/<form\b|<input\b|<textarea\b|type="submit"|data-ui-command="review"|final-save|not been saved|FORGED DRAFT|PRIVATE PHONE|private@example/);
+ const buttons=parsedActionTree(html).filter(node=>node.tag==='button');assert.equal(buttons.length,2);assert.ok(buttons.every(node=>node.attributes['data-ui-command']==='close'));assert.match(html,/Back to student list/);
+});
+test('student age is shown only from a complete explicit age snapshot including zero and its reference date',()=>{
+ const supplied=markup({...base('student'),student:{...base().student,age:{years:0,months:0,asOf:'2024-02-29'}}},en);assert.match(detailValue(supplied,'Age'),/0 years.*0 months/);assert.match(detailValue(supplied,'Age'),/2024-02-29/);
+ for(const age of [undefined,null,{years:6,months:2},{years:6,months:12,asOf:'2026-11-02'},{years:-1,months:0,asOf:'2026-11-02'},{years:'6',months:2,asOf:'2026-11-02'},{years:6.5,months:2,asOf:'2026-11-02'},{years:6,months:2,asOf:'2026-02-29'}]){
+  const html=markup({...base('student'),student:{...base().student,age,dateOfBirth:'2020-01-01'}},en);assert.equal(detailValue(html,'Age'),'Not provided');assert.doesNotMatch(html,/2020-01-01/);
+ }
+});
+test('remaining balance preserves minutes or visits and known zero without deriving lessons or inventing an unknown zero',()=>{
+ for(const [balance,expected] of [[{unit:'minutes',remaining:0,total:720},/0 \/ 720 minutes/],[{unit:'visits',remaining:0,total:4},/0 \/ 4 visits/],[{unit:'minutes',remaining:95},/95 minutes/],[{unit:'visits',remaining:2.5},/2\.5 visits/]]){
+  const html=markup({...base('student'),student:{...base().student,balance}},en);assert.match(detailValue(html,'Remaining balance'),expected);assert.doesNotMatch(html,/lessons remaining|1\.5 visits/);
+ }
+ for(const balance of [undefined,null,{}, {unit:'minutes',remaining:null},{unit:'minutes',remaining:'0'},{unit:'minutes',remaining:-1},{unit:'minutes',remaining:Infinity},{unit:'lessons',remaining:0},{remaining:0,total:4}]){
+  const html=markup({...base('student'),student:{...base().student,balance}},en);assert.equal(detailValue(html,'Remaining balance'),'Not provided');assert.doesNotMatch(html,/Infinity|NaN|0 minutes|0 visits/);
+ }
+ const invalidTotal=markup({...base('student'),student:{...base().student,balance:{unit:'minutes',remaining:95,total:Infinity}}},en);assert.equal(detailValue(invalidTotal,'Remaining balance'),'95 minutes');assert.doesNotMatch(invalidTotal,/Infinity|NaN/);
+});
+test('student attendance distinguishes every source status, unmarked and unknown while sticker never borrows draft values',()=>{
+ for(const [attendance,label] of [['present','Present'],['late','Late'],['absent','Absent'],['leave','Leave'],['sick','Sick'],['other','Other'],['unmarked','Not marked'],[undefined,'Not provided'],['invented','Not provided']]){
+  const html=markup({...base('student'),student:{...base().student,attendance},draft:{attendance:'present',sticker:'yellow'}},en);assert.equal(detailValue(html,'Attendance'),label);assert.equal(detailValue(html,'Sticker'),'Not provided');
+ }
+ assert.equal(detailValue(markup({...base('student'),student:{...base().student,stickerColor:'none'}},en),'Sticker'),'No sticker');
+});
+test('student remarks distinguish known blank from unknown and long private text is escaped and collapsible',()=>{
+ for(const [student,expected] of [[{id:'student-second',remark:''},'No remark yet'],[{id:'student-second'},'Not provided'],[{id:'student-second',remark:null},'Not provided']])assert.equal(detailValue(markup({...base('student'),student},en),'Remark'),expected);
+ const remark='<img src=x onerror="PRIVATE">'+('長篇備註 & <script>'.repeat(30)),html=markup({...base('student'),student:{...base().student,remark}},en),note=detailValue(html,'Remark');assert.match(note,/<details class="slw-long-note" data-slw-note="student-remark">/);assert.match(note,/<summary>/);assert.match(note,/Read full remark/);assert.match(note,/&lt;img/);assert.match(note,/&lt;script&gt;/);assert.doesNotMatch(html,/<img|<script/);
+});
+test('read-only student detail retains source facts during loading or failure without editable drafts or raw errors',()=>{
+ for(const sourceStatus of ['loading','error']){
+  const state=freeze({...base('student'),sourceStatus,sourceError:'PRIVATE SOURCE <script>',draft:{remark:'PRIVATE DRAFT'}}),html=markup(state,en);assert.match(html,sourceStatus==='loading'?/Updating lesson details/:/Could not update lesson details/);assert.match(html,/Existing session note/);assert.match(html,/Isla &lt;Second&gt;/);assert.doesNotMatch(html,/PRIVATE SOURCE|PRIVATE DRAFT|Your entries|<form\b|Review|Save/);
+  for(const command of ['draft','review','pending','select-slot','filter-date','back','final-save','submit'])assert.equal(advance(state,command,{remark:'Forged',attendance:'present'}),state);
+ }
+});
+test('student detail rejects invalid canonical context and supports a clean Chinese read-only view',()=>{
+ const html=markup(base('student'),zh);assert.match(html,/學生課堂資料/);assert.match(html,/返回名冊/);assert.match(html,/尚未登記/);assert.match(html,/年齡/);assert.match(html,/剩餘額度/);assert.doesNotMatch(html,/核對|儲存|未儲存/);
+ for(const patch of [{student:null},{student:{id:' '}},{lesson:{...base().lesson,sequence:0}},{lesson:{...base().lesson,date:'2026-02-31'}}]){const unavailable=markup({...base('student'),...patch},en);assert.match(unavailable,/unavailable/);assert.doesNotMatch(unavailable,/Isla|Print &amp; colour|Remaining balance|Chloe/);}
+});
+test('long remark disclosures have stable semantic identities across source updates rather than positional identities',()=>{
+ const long='A detailed lesson remark. '.repeat(12);
+ for(const [view,key] of [['student','student-remark'],['attendance','attendance-remark']]){
+  for(const remark of [long,'Changed background source. '+long]){
+   const state=view==='student'?{...base(view),student:{...base().student,remark}}:{...base(view),step:'review',draft:{attendance:'present',remark}},nodes=parsedActionTree(markup(state,en));
+   const notes=nodes.filter(node=>node.tag==='details'&&node.attributes['data-slw-note']===key);assert.equal(notes.length,1,'The '+view+' remark must be uniquely addressable without its order or text');
+   assert.ok(nodes.some(node=>node.tag==='summary'&&node.parent===notes[0]));assert.ok(nodes.some(node=>node.tag==='p'&&node.parent===notes[0]));
+   assert.equal(nodes.filter(node=>Object.hasOwn(node.attributes,'data-slw-note')).length,1);
+  }
+ }
+ const slots=parsedActionTree(markup(ready(),en));assert.equal(slots.filter(node=>Object.hasOwn(node.attributes,'data-slw-note')).length,0);
+});

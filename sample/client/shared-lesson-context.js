@@ -27,6 +27,14 @@ export function resolveSharedLessonContext(snapshot={},selection={}){
  if(typeof row.remark==='string')student.remark=row.remark;
  if(typeof row.stickerColor==='string'||row.stickerColor===null)student.stickerColor=row.stickerColor;
  if(typeof row.showRemark==='boolean')student.showRemark=row.showRemark;
+ const details=object(row.studentDetails)&&row.studentDetails.studentId===row.studentId?row.studentDetails:null;
+ const age=details?.age;
+ if(object(age)&&Number.isSafeInteger(age.years)&&age.years>=0&&Number.isInteger(age.months)&&age.months>=0&&age.months<12&&date(age.asOf))student.age={years:age.years,months:age.months,asOf:age.asOf};
+ const balance=details?.balance;
+ if(object(balance)&&balance.courseId===course.id&&['minutes','visits'].includes(balance.unit)&&Number.isFinite(balance.remaining)&&balance.remaining>=0){
+  student.balance={unit:balance.unit,remaining:balance.remaining};
+  if(Number.isFinite(balance.total)&&balance.total>=0)student.balance.total=balance.total;
+ }
  const item=record.item,lesson={id:row.id,scheduleId:item.id,sequence:record.sequence,sourceVersion:item.version,courseId:course.id,courseName:course.courseName,date:record.date,time:item.time,duration:item.duration,teacher:typeof item.teacher==='string'?item.teacher:'',room:typeof item.room==='string'?item.room:''};
  for(const key of ['teacherIds','roomIds'])if(Array.isArray(item[key])&&item[key].every(id))lesson[key]=[...item[key]];
  return {status:'ready',facts:{identity,contextKey,student,lesson,capabilities:{review:true,save:false},availability:{ready:false,slots:[]}}};

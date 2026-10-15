@@ -13,3 +13,13 @@ test('remaining all-lessons selection follows actual recurrence including moved 
 test('fee suggestions distinguish per-lesson, fixed monthly and package pricing',()=>{const lessons=[{date:'2026-10-16'},{date:'2026-10-23'},{date:'2026-11-06'}];assert.equal(suggestedOrderCents({pricingModel:'per-lesson',price:300},lessons),90000);assert.equal(suggestedOrderCents({pricingModel:'fixed-monthly',price:850,months:2},lessons),170000);assert.equal(suggestedOrderCents({pricingModel:'package',price:1200},lessons),120000);});
 
 test('retry draft retains the exact checked lessons and adjusted final amount',()=>{const html=enrollmentOrderEditorMarkup({occurrences:[{scheduleId:'s',sequence:1,date:'2026-10-16',time:'13:00',duration:60},{scheduleId:'s',sequence:2,date:'2026-10-23',time:'13:00',duration:60}],selectedLessonKeys:['s:2'],amountCents:28000},en);assert.match(html,/value="s:1" >/) ;assert.match(html,/value="s:2" checked/);assert.match(html,/value="280.00"/);assert.match(html,/Suggested amount/);});
+
+test('editor shows the current suggestion separately from an explicitly entered final amount including a cleared field',()=>{
+ for(const amountInput of ['123.45','']){const html=enrollmentOrderEditorMarkup({amountCents:12345,amountInput,amountEdited:true,suggestedAmountCents:60050},en);assert.match(html,new RegExp('name="amount"[^>]*value="'+amountInput.replace('.','\\.')+'"'));assert.match(html,/id="enrollment-order-amount-note"[^>]*aria-live="polite"/);assert.match(html,/Suggested amount:[\s\S]*data-enrollment-suggested-amount[^>]*>[^<]*600\.50/);assert.doesNotMatch(html,/NaN|Infinity/);}
+});
+
+test('fee suggestions remain finite for unavailable or invalid prices and actual dates',()=>{
+ for(const price of [undefined,'not a price',Infinity,-1,Number.MAX_VALUE])for(const pricingModel of ['monthly-lessons','fixed-monthly','package'])assert.equal(suggestedOrderCents({price,pricingModel},[{date:'2026-10-31'}]),0);
+ for(const date of [undefined,'invalid','2026-02-31'])assert.equal(suggestedOrderCents({price:300,pricingModel:'fixed-monthly'},[{date}]),0);
+ assert.equal(suggestedOrderCents({price:300.25,pricingModel:'monthly-lessons'},[{date:'2026-10-31'},{date:'2026-11-01'}]),60050);
+});

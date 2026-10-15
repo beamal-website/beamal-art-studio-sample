@@ -2805,6 +2805,60 @@ test('a roster enrollment editor receives its raw course name and escapes it onc
  assert.equal(a.read('enrollmentOverlay.draft.courseName'),courseName);assert.match(a.nodes['#modal-root'].innerHTML,/Studio &lt;spring&gt; &amp; &quot;friends&quot;/);assert.doesNotMatch(a.nodes['#modal-root'].innerHTML,/Studio <spring>|&amp;lt;spring/);assert.deepEqual(a.orders.writes,[]);
 });
 
+async function enrollmentPricingApp(pricingModel,price=300.25){
+ const a=await courseRosterOrderApp();await a.click({action:'orders-enroll'});a.ctx.pricingFees=[{id:'qa-fee',feeName:'Selected fee',pricingModel,price},{id:'other-fee',feeName:'Other fee',pricingModel,price:410.5}];a.set('enrollmentOverlay.draft.fees=pricingFees');
+ const form=sharedForm('enrollment-order-editor');form.values={studentId:'qa-child',feeId:'qa-fee',lessonScope:'single',lesson:['qa-scoped-series:2'],amount:'0.00'};
+ const control=(name,value)=>({name,value,form,isConnected:true,closest:selector=>['form','#enrollment-order-editor'].includes(selector)?form:null});
+ const amount=control('amount','0.00'),suggestion={textContent:''};form.querySelector=selector=>selector==='[name=amount]'?amount:form.submitButton;a.nodes['#enrollment-order-editor [name=amount]']=amount;a.nodes['#enrollment-order-editor [data-enrollment-suggested-amount]']=suggestion;
+ return {a,form,amount,suggestion,control,change(name,value){form.values[name]=value;a.change(name,value,control(name,value));}};
+}
+
+test('enrollment lesson checkboxes recalculate automatic monthly lesson prices without repainting or losing selection and focus',async()=>{
+ const {a,form,amount,suggestion,control,change}=await enrollmentPricingApp('monthly-lessons');change('lessonScope','all');
+ const body={scrollTop:247,scrollLeft:8};a.nodes['#enrollment-order-editor .enrollment-order-body']=body;let paints=0,html=a.nodes['#modal-root'].innerHTML;Object.defineProperty(a.nodes['#modal-root'],'innerHTML',{get:()=>html,set(value){paints++;html=value}});
+ const checkbox=control('lesson','qa-scoped-series:3');checkbox.checked=false;a.ctx.document.activeElement=checkbox;form.values.lesson=['qa-scoped-series:2'];a.input(checkbox);a.change('lesson',checkbox.value,checkbox);
+ assert.equal(a.read('enrollmentOverlay.draft.amountCents'),30025);assert.equal(amount.value,'300.25');assert.match(suggestion.textContent,/300\.25/);assert.deepEqual(a.read('enrollmentOverlay.draft.selectedLessonKeys'),['qa-scoped-series:2']);assert.equal(a.ctx.document.activeElement,checkbox);assert.equal(body.scrollTop,247);assert.equal(body.scrollLeft,8);assert.equal(paints,0,'Checking a lesson must leave the current checkbox and its scroll position intact');
+ form.values.lesson=[];a.change('lesson',checkbox.value,checkbox);assert.equal(a.read('enrollmentOverlay.draft.amountCents'),0);assert.equal(amount.value,'0.00');assert.deepEqual(a.read('enrollmentOverlay.draft.selectedLessonKeys'),[]);assert.equal(form.submitButton.disabled,true);await a.submit(form.id,form.values,form);assert.deepEqual(a.orders.writes,[]);assert.match(a.nodes['#enrollment-order-error'].textContent,/at least one lesson/);
+ form.values.lesson=['qa-scoped-series:2','qa-scoped-series:3'];a.change('lesson',checkbox.value,checkbox);assert.equal(a.read('enrollmentOverlay.draft.amountCents'),60050);assert.equal(amount.value,'600.50');assert.deepEqual(a.orders.writes,[]);
+});
+
+test('enrollment fixed monthly suggestions use only selected actual lesson dates across month boundaries',async()=>{
+ const {a,form,amount,suggestion,change}=await enrollmentPricingApp('fixed-monthly',850);a.ctx.monthBoundarySchedule=scopedScheduleRecord({count:5,exceptions:[{sequence:2,overrides:{date:'2026-10-31'}},{sequence:3,overrides:{date:'2026-11-01'}},{sequence:4,overrides:{date:'2026-11-30'}},{sequence:5,overrides:{date:'2026-12-01'}}]});a.set("enrollmentOverlay.draft.source=monthBoundarySchedule;enrollmentOverlay.draft.date='2026-10-31'");change('lessonScope','all');
+ assert.deepEqual(a.read('enrollmentOverlay.draft.occurrences.map(row=>row.date)'),['2026-10-31','2026-11-01','2026-11-30','2026-12-01']);
+ for(const [selected,expected] of [[['qa-scoped-series:3','qa-scoped-series:4'],'850.00'],[['qa-scoped-series:2','qa-scoped-series:3'],'1700.00'],[['qa-scoped-series:4','qa-scoped-series:5'],'1700.00'],[[],'0.00']]){change('lesson',selected);assert.equal(amount.value,expected);assert.equal(a.read('enrollmentOverlay.draft.amountCents'),Number(expected)*100);assert.deepEqual(a.read('enrollmentOverlay.draft.selectedLessonKeys'),selected);assert.doesNotMatch(suggestion.textContent,/NaN|Infinity/);}
+ assert.deepEqual(a.orders.writes,[]);
+});
+
+test('enrollment manual final amounts survive lesson and fee changes while the separate suggestion stays current',async()=>{
+ for(const entered of ['123.45','']){
+  const {a,form,amount,suggestion,control,change}=await enrollmentPricingApp('monthly-lessons');change('lessonScope','all');amount.value=entered;form.values.amount=entered;a.input(amount);
+  form.values.lesson=['qa-scoped-series:3'];a.change('lesson','qa-scoped-series:2',control('lesson','qa-scoped-series:2'));assert.equal(amount.value,entered);assert.match(suggestion.textContent,/300\.25/);assert.deepEqual(a.read('enrollmentOverlay.draft.selectedLessonKeys'),['qa-scoped-series:3']);
+  change('feeId','other-fee');assert.match(a.nodes['#modal-root'].innerHTML,new RegExp('name="amount"[^>]*value="'+entered.replace('.','\\.')+'"'));assert.match(a.nodes['#modal-root'].innerHTML,/Suggested amount:[\s\S]*410\.50/);assert.match(a.nodes['#modal-root'].innerHTML,/value="qa-scoped-series:2"\s*>/);assert.match(a.nodes['#modal-root'].innerHTML,/value="qa-scoped-series:3" checked/);assert.deepEqual(a.read('enrollmentOverlay.draft.selectedLessonKeys'),['qa-scoped-series:3']);assert.deepEqual(a.orders.writes,[]);
+ }
+});
+
+test('enrollment saves an explicitly entered final amount with only the remaining selected lesson',async()=>{
+ for(const pricingModel of ['monthly-lessons','fixed-monthly']){
+  const {a,form,amount,control,change}=await enrollmentPricingApp(pricingModel);change('lessonScope','all');amount.value='123.45';form.values.amount='123.45';a.input(amount);form.values.lesson=['qa-scoped-series:3'];a.change('lesson','qa-scoped-series:2',control('lesson','qa-scoped-series:2'));
+  await a.submit(form.id,form.values,form);assert.equal(a.orders.writes.length,1);assert.equal(a.orders.writes[0].payload.amountCents,12345);assert.deepEqual(a.orders.writes[0].payload.items[0].lessons,[{scheduleId:'qa-scoped-series',sequence:3,sourceVersion:1}]);
+ }
+});
+
+test('enrollment rejects a manually entered amount whose cents cannot be represented safely before sending any order',async()=>{
+ const {a,form,amount,control}=await enrollmentPricingApp('monthly-lessons');amount.value='1e100';form.values.amount=amount.value;a.input(amount);a.change('lesson','qa-scoped-series:2',control('lesson','qa-scoped-series:2'));assert.equal(amount.value,'1e100');
+ await a.submit(form.id,form.values,form);assert.deepEqual(a.orders.writes,[]);assert.match(a.nodes['#enrollment-order-error'].textContent,/valid amount/);assert.equal(a.read('enrollmentOverlay.kind'),'editor');assert.equal(a.read('enrollmentBusy'),false);
+});
+
+test('cancelling or changing identity discards an enrollment manual amount instead of carrying it to another draft',async()=>{
+ const {a,form,amount}=await enrollmentPricingApp('monthly-lessons');amount.value='123.45';form.values.amount='123.45';a.input(amount);await a.click({action:'orders-close'});assert.equal(a.read('enrollmentOverlay'),null);await a.click({action:'orders-enroll'});assert.equal(a.read('enrollmentOverlay.draft.amountEdited'),false);assert.equal(a.read('enrollmentOverlay.draft.amountCents'),30000);assert.equal(a.read('enrollmentOverlay.draft.amountInput'),'300.00');
+ a.set("applySharedUser({...authUser,id:'other-enrollment-admin'})");assert.equal(a.read('enrollmentOverlay'),null);assert.doesNotMatch(a.read('modal'),/123\.45/);assert.deepEqual(a.orders.writes,[]);
+});
+
+test('enrollment range changes retain unchecked existing lessons and automatically select only newly included lessons',async()=>{
+ const {a,form,amount,change}=await enrollmentPricingApp('monthly-lessons',300);change('lessonScope','all');change('lesson',[]);a.set("enrollmentOverlay.draft.source.endMode='forever'");form.values.lesson=[];form.values.lessonTo='2026-11-04';change('lessonTo','2026-11-04');
+ assert.deepEqual(a.read('enrollmentOverlay.draft.selectedLessonKeys'),['qa-scoped-series:4']);assert.match(a.nodes['#modal-root'].innerHTML,/name="amount"[^>]*value="300.00"/);assert.match(a.nodes['#modal-root'].innerHTML,/value="qa-scoped-series:2"\s*>/);assert.match(a.nodes['#modal-root'].innerHTML,/value="qa-scoped-series:3"\s*>/);assert.match(a.nodes['#modal-root'].innerHTML,/value="qa-scoped-series:4" checked/);
+});
+
 test('changing enrollment fee, lesson scope or end date preserves the focused control and scrolled form body',async()=>{
  for(const field of ['feeId','lessonScope','lessonTo']){
   const a=await courseRosterOrderApp();await a.click({action:'orders-enroll'});if(field==='lessonTo')a.set("enrollmentOverlay.draft.source.endMode='forever'");const form=sharedForm('enrollment-order-editor');form.values={studentId:'qa-child',feeId:'qa-fee',lessonScope:'all',lessonTo:field==='lessonTo'?'2026-11-04':''};const value=form.values[field],original={name:field,value,form,isConnected:true,closest:selector=>['form','#enrollment-order-editor'].includes(selector)?form:null};a.ctx.document.activeElement=original;

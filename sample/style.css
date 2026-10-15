@@ -1013,3 +1013,46 @@
 @media(max-width:600px){.portal-settings-tools{padding:20px 16px}.portal-settings-actions>*{flex:1 1 180px}}
 
 .portal-environment{display:block;color:var(--muted,#64716b);font-size:12px;line-height:1.5;margin:0 0 8px}
+
+
+/* Course directory: readable fee summaries and quiet sort controls. */
+.portal-course-page .portal-course-table table {
+  min-width: 1160px;
+  table-layout: fixed;
+}
+.portal-course-page .portal-course-table th:nth-child(1) { width: 48px; }
+.portal-course-page .portal-course-table th:nth-child(2) { width: 200px; }
+.portal-course-page .portal-course-table th:nth-child(3),
+.portal-course-page .portal-course-table th:nth-child(4) { width: 110px; }
+.portal-course-page .portal-course-table th:nth-child(5) { width: 88px; }
+.portal-course-page .portal-course-table th:nth-child(6) { width: 260px; }
+.portal-course-page .portal-course-table th:nth-child(7) { width: 110px; }
+.portal-course-page .portal-course-table th:nth-child(8) { width: 120px; }
+.portal-course-page .portal-course-table th,
+.portal-course-page .portal-course-table td {
+  padding: 16px 12px;
+  text-align: left;
+  vertical-align: middle;
+}
+.portal-course-page .portal-course-table .portal-select-cell { text-align: center; }
+.portal-course-page .portal-course-table .course-sort-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  box-shadow: none;
+  font: inherit;
+  text-align: left;
+}
+.portal-course-page .portal-course-table .course-sort-button:hover { color: var(--teal); }
+.portal-course-page .portal-course-table .course-sort-button:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 4px;
+}
+.portal-course-page .portal-course-table .course-sort-button > span { color: #687770; }
+.portal-course-page .portal-course-table td:nth-child(6) { overflow-wrap: break-word; }

@@ -1,0 +1,39 @@
+TAP version 13
+# Subtest: moving a package segment below the reading viewport reveals only the nearest focused control
+not ok 1 - moving a package segment below the reading viewport reveals only the nearest focused control
+  ---
+  duration_ms: 5.744708
+  type: 'test'
+  location: '/Users/yausiuhei/Documents/ChatGPT/Beamal Art studio solution/sample/tests/package-content-host.test.mjs:52:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+
+    undefined !== 1
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 1
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///Users/yausiuhei/Documents/ChatGPT/Beamal%20Art%20studio%20solution/sample/tests/package-content-host.test.mjs:53:256)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.start (node:internal/test_runner/test:944:17)
+    startSubtestAfterBootstrap (node:internal/test_runner/harness:296:17)
+  ...
+# Subtest: moving an already visible package segment keeps the viewport without an extra reveal scroll
+ok 2 - moving an already visible package segment keeps the viewport without an extra reveal scroll
+  ---
+  duration_ms: 0.944917
+  type: 'test'
+  ...
+1..2
+# tests 2
+# suites 0
+# pass 1
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 158.546458

@@ -1,0 +1,256 @@
+TAP version 13
+# Subtest: independent real admin package Fee overview has a reachable Package contents entry
+ok 1 - independent real admin package Fee overview has a reachable Package contents entry
+  ---
+  duration_ms: 247.6345
+  type: 'test'
+  ...
+# Subtest: independent real teacher package Fee overview has a reachable Package contents entry
+ok 2 - independent real teacher package Fee overview has a reachable Package contents entry
+  ---
+  duration_ms: 9.03075
+  type: 'test'
+  ...
+# Subtest: independent actual Admin and Teacher package entry is reachable from Fees catalogue and Course B with exact source and unknown saved contents
+ok 3 - independent actual Admin and Teacher package entry is reachable from Fees catalogue and Course B with exact source and unknown saved contents
+  ---
+  duration_ms: 332.412167
+  type: 'test'
+  ...
+# Subtest: independent add row order and delete-all read actual native fields and recover without generating course components or saving
+ok 4 - independent add row order and delete-all read actual native fields and recover without generating course components or saving
+  ---
+  duration_ms: 15.7075
+  type: 'test'
+  ...
+# Subtest: independent actual Review and form-submit preserve raw 60+30 duration and Back scroll without changing original package quota
+ok 5 - independent actual Review and form-submit preserve raw 60+30 duration and Back scroll without changing original package quota
+  ---
+  duration_ms: 17.417166
+  type: 'test'
+  ...
+# Subtest: independent invalid raw names minutes and empty components remain editable with visible error and no Review or persistence
+ok 6 - independent invalid raw names minutes and empty components remain editable with visible error and no Review or persistence
+  ---
+  duration_ms: 150.973375
+  type: 'test'
+  ...
+# Subtest: independent Cancel from details Edit or Review returns exact parent then fresh Course B or global opener with all positions and filters
+ok 7 - independent Cancel from details Edit or Review returns exact parent then fresh Course B or global opener with all positions and filters
+  ---
+  duration_ms: 85.784708
+  type: 'test'
+  ...
+# Subtest: independent same-name different package IDs keep snapshots and drafts separate across close and reopen
+ok 8 - independent same-name different package IDs keep snapshots and drafts separate across close and reopen
+  ---
+  duration_ms: 17.624541
+  type: 'test'
+  ...
+# Subtest: independent catalogue Fee version change keeps native draft blocks Review and explicit Reload rebases only exact saved context
+ok 9 - independent catalogue Fee version change keeps native draft blocks Review and explicit Reload rebases only exact saved context
+  ---
+  duration_ms: 9.753333
+  type: 'test'
+  ...
+# Subtest: independent source Course B relation removal or deletion cannot review or rebase into another related Course
+ok 10 - independent source Course B relation removal or deletion cannot review or rebase into another related Course
+  ---
+  duration_ms: 61.475
+  type: 'test'
+  ...
+# Subtest: independent unchanged catalogue poll and late actual history do not remount active native inputs or move selection scroll and focus
+ok 11 - independent unchanged catalogue poll and late actual history do not remount active native inputs or move selection scroll and focus
+  ---
+  duration_ms: 15.11175
+  type: 'test'
+  ...
+# Subtest: independent failed Reload remains error and keeps draft while pending disables actions but Close stays available
+ok 12 - independent failed Reload remains error and keeps draft while pending disables actions but Close stays available
+  ---
+  duration_ms: 10.22725
+  type: 'test'
+  ...
+# Subtest: independent pending Reload plus actual go Back role identity or access change cannot revive child after late success or failure
+ok 13 - independent pending Reload plus actual go Back role identity or access change cannot revive child after late success or failure
+  ---
+  duration_ms: 128.220042
+  type: 'test'
+  ...
+# Subtest: independent native keyboard body Tab both directions wrapping background recapture and IME Escape preserve owner until normal Escape
+ok 14 - independent native keyboard body Tab both directions wrapping background recapture and IME Escape preserve owner until normal Escape
+  ---
+  duration_ms: 33.359
+  type: 'test'
+  ...
+# Subtest: independent forged package command cannot replace current-price Edit or reach monthly Student anonymous or absent-source fee
+ok 15 - independent forged package command cannot replace current-price Edit or reach monthly Student anonymous or absent-source fee
+  ---
+  duration_ms: 25.171458
+  type: 'test'
+  ...
+# Subtest: independent Close during pending Reload and reopening same Fee cannot revive old draft or attach its completion to new child
+ok 16 - independent Close during pending Reload and reopening same Fee cannot revive old draft or attach its completion to new child
+  ---
+  duration_ms: 23.061375
+  type: 'test'
+  ...
+# Subtest: independent moving a non-first segment retains current editor scroll and focuses the moved stable component instead of the first row
+ok 17 - independent moving a non-first segment retains current editor scroll and focuses the moved stable component instead of the first row
+  ---
+  duration_ms: 8.826
+  type: 'test'
+  ...
+# Subtest: independent removing the middle segment retains current scroll and focuses the nearest surviving stable component
+ok 18 - independent removing the middle segment retains current scroll and focuses the nearest surviving stable component
+  ---
+  duration_ms: 16.904
+  type: 'test'
+  ...
+# Subtest: independent paid original 720-minute snapshot stays minutes selected count is separate and no derived remaining or twelve visits
+ok 19 - independent paid original 720-minute snapshot stays minutes selected count is separate and no derived remaining or twelve visits
+  ---
+  duration_ms: 2.017042
+  type: 'test'
+  ...
+# Subtest: independent unpaid unknown statuses use listed quota never purchased or activated even with originalPaid flags
+ok 20 - independent unpaid unknown statuses use listed quota never purchased or activated even with originalPaid flags
+  ---
+  duration_ms: 23.370292
+  type: 'test'
+  ...
+# Subtest: independent visits and legacy lessons retain quota unit while selected lesson durations never recalculate the original total
+ok 21 - independent visits and legacy lessons retain quota unit while selected lesson durations never recalculate the original total
+  ---
+  duration_ms: 1.084708
+  type: 'test'
+  ...
+# Subtest: independent known monthly modes are not applicable but unknown missing and malformed package snapshots stay not provided
+ok 22 - independent known monthly modes are not applicable but unknown missing and malformed package snapshots stay not provided
+  ---
+  duration_ms: 3.460167
+  type: 'test'
+  ...
+# Subtest: independent selected empty array is known zero whereas missing null or malformed lessons are unknown
+ok 23 - independent selected empty array is known zero whereas missing null or malformed lessons are unknown
+  ---
+  duration_ms: 0.30625
+  type: 'test'
+  ...
+# Subtest: independent fake balance validity components and currentFee cannot replace unavailable official snapshot fields
+ok 24 - independent fake balance validity components and currentFee cannot replace unavailable official snapshot fields
+  ---
+  duration_ms: 0.188208
+  type: 'test'
+  ...
+# Subtest: independent unknown snapshot cannot borrow current fee names or top-level package props and unsafe exact IDs are escaped
+ok 25 - independent unknown snapshot cannot borrow current fee names or top-level package props and unsafe exact IDs are escaped
+  ---
+  duration_ms: 1.062917
+  type: 'test'
+  ...
+# Subtest: independent separate same-name items keep original snapshots unmutated without cross-unit aggregation
+ok 26 - independent separate same-name items keep original snapshots unmutated without cross-unit aggregation
+  ---
+  duration_ms: 0.461959
+  type: 'test'
+  ...
+# Subtest: independent actual Order details embeds one exact snapshot summary per same-name item without aggregating units or another child
+ok 27 - independent actual Order details embeds one exact snapshot summary per same-name item without aggregating units or another child
+  ---
+  duration_ms: 37.816375
+  type: 'test'
+  ...
+# Subtest: independent actual unpaid Order details missing pricing has unknown quota even when current-fee fallback and selected dates look complete
+ok 28 - independent actual unpaid Order details missing pricing has unknown quota even when current-fee fallback and selected dates look complete
+  ---
+  duration_ms: 1.85825
+  type: 'test'
+  ...
+# Subtest: independent absent saved composition never infers linked courses or draft as stored contents even when supplied rows exist
+ok 29 - independent absent saved composition never infers linked courses or draft as stored contents even when supplied rows exist
+  ---
+  duration_ms: 1.156375
+  type: 'test'
+  ...
+# Subtest: independent two PDF-style variants and custom long names stay separate raw drafts while segment total never replaces saved package quota
+ok 30 - independent two PDF-style variants and custom long names stay separate raw drafts while segment total never replaces saved package quota
+  ---
+  duration_ms: 10.367584
+  type: 'test'
+  ...
+# Subtest: independent invalid or duplicate row identity duration and names reject full Review without dropping or normalizing raw rows
+ok 31 - independent invalid or duplicate row identity duration and names reject full Review without dropping or normalizing raw rows
+  ---
+  duration_ms: 3.622917
+  type: 'test'
+  ...
+# Subtest: independent Teacher forced details Student unknown roles hidden and non-package fee cannot become editable contents
+ok 32 - independent Teacher forced details Student unknown roles hidden and non-package fee cannot become editable contents
+  ---
+  duration_ms: 0.479791
+  type: 'test'
+  ...
+# Subtest: independent source error hides saved context keeps typed draft and actual Reload while loading disables every mutation but Close
+ok 33 - independent source error hides saved context keeps typed draft and actual Reload while loading disables every mutation but Close
+  ---
+  duration_ms: 5.672125
+  type: 'test'
+  ...
+# Subtest: independent raw unsafe Fee course row IDs names and errors are escaped without attribute or handler injection
+ok 34 - independent raw unsafe Fee course row IDs names and errors are escaped without attribute or handler injection
+  ---
+  duration_ms: 2.742583
+  type: 'test'
+  ...
+# Subtest: moving a package segment keeps current scroll and focuses its stable row after the actual renderer remount
+ok 35 - moving a package segment keeps current scroll and focuses its stable row after the actual renderer remount
+  ---
+  duration_ms: 24.222458
+  type: 'test'
+  ...
+# Subtest: removing a middle package segment keeps scroll and focuses the nearest surviving row
+ok 36 - removing a middle package segment keeps scroll and focuses the nearest surviving row
+  ---
+  duration_ms: 3.276208
+  type: 'test'
+  ...
+# Subtest: removing the last package segment keeps scroll and returns focus to Add content
+ok 37 - removing the last package segment keeps scroll and returns focus to Add content
+  ---
+  duration_ms: 0.973
+  type: 'test'
+  ...
+# Subtest: order details keyboard allows native body traversal and contains forward reverse or background focus
+ok 38 - order details keyboard allows native body traversal and contains forward reverse or background focus
+  ---
+  duration_ms: 1.769625
+  type: 'test'
+  ...
+# Subtest: order details composition Escape keeps its overlay and normal Escape closes it
+ok 39 - order details composition Escape keeps its overlay and normal Escape closes it
+  ---
+  duration_ms: 0.5355
+  type: 'test'
+  ...
+# Subtest: moving a package segment below the reading viewport reveals only the nearest focused control
+ok 40 - moving a package segment below the reading viewport reveals only the nearest focused control
+  ---
+  duration_ms: 1.017084
+  type: 'test'
+  ...
+# Subtest: moving an already visible package segment keeps the viewport without an extra reveal scroll
+ok 41 - moving an already visible package segment keeps the viewport without an extra reveal scroll
+  ---
+  duration_ms: 1.727
+  type: 'test'
+  ...
+1..41
+# tests 41
+# suites 0
+# pass 41
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1408.482792

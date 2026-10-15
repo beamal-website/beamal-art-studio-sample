@@ -1,0 +1,64 @@
+{
+  "date": "2026-10-16",
+  "head": "53f43dd5aa6b5a2287e1b67c2b88a318b0a504b7",
+  "status": "PASS within documented Stage A package/UI and Order details summary scope",
+  "files": {
+    "sample/src.js": "01d8c1b85701546416d64342580711cda51afee2825c0db6bc7d6bc1237d1874",
+    "sample/tests/package-content-host.test.mjs": "815da0b4c581b6bc5e812acd847c8c1bfa107e89fcbb939783b3cfd0ec9d92c6",
+    "sample/client/package-content-ui.js": "b0f4d71b6e93320d4ee4c9ba3dd185ae0f1fd50da4a8ba5deee6080ef47fbe14",
+    "sample/client/package-content-ui.css": "57fa0692b7948bb172ebdbd176f512d070ab66079d92ac48b1b8e42a2e60b346",
+    "sample/tests/package-content-ui.test.mjs": "7eaca69a82740ccad60bb855be0916d4d470f191fae84ac01fd6360e3e0ea192",
+    "sample/client/order-package-summary-ui.js": "05ff8256828d6573e05e744faae07da974df0d9675e5597612cf70ac950e67ab",
+    "sample/tests/order-package-summary-ui.test.mjs": "8a11ae9fb9e1bd6f7c5a2b37d682c218371716dea9ce4746d6356c0361763585",
+    "sample/client/enrollment-orders-ui.js": "56186ba86277b9f5ae855e50f5a97779dfa303d767c2c251f59609f68ca69bb4",
+    "sample/tests/enrollment-orders-ui.test.mjs": "985d54a820db1148c6d481df6d10d296ca8288725fac33142c14644214be0d4f",
+    "sample/client/fee-pricing-ui.js": "3fd972c60b3740d8b4bf8919da7823cffbe5f29a95c4f7adb39f41c83ada43f2",
+    "sample/tests/fee-pricing-ui.test.mjs": "1e36a41750cd0db898e0bddab3c32e4107349062a7ca8f39dd1af81e8d8641c2"
+  },
+  "reviewerArtifacts": {
+    "/tmp/beamal-package-independent-contract.md": "a4856de086a67657f7d74fb07e5055b727615adf85f58937cae9c3b2ad7d46c7",
+    "/tmp/beamal-package-independent-baseline-entry.mjs": "6989478e541750527f647828bd76bfaeaa71c7d887621d336fd664830a9be8c5",
+    "/tmp/beamal-package-independent-host-helper.mjs": "a22b62281c094a81fe8014d7db333f68600777e05ca66021d6c975981a19db24",
+    "/tmp/beamal-package-independent-host.mjs": "6c33e3ab7332092d7a63e4083835d35eb9212f68fb3fe3646d03e72b9225fc5f",
+    "/tmp/beamal-package-independent-pure.mjs": "f22639efbd998feab906e3db88c1eeeb24c9cddd099042247aef2fde9270b5a4",
+    "/tmp/beamal-package-independent-order-summary.mjs": "50dbe761a92a05af47a21d4a9626750481901fa61afb2b02c1d1de3e8d3d710c",
+    "/tmp/beamal-package-independent-final-39.log": "b76b91658b8d6637b6e093ee831513faf2c1dd75b4a64b000ae166f1094903b0",
+    "/tmp/beamal-package-independent-final-41.log": "a1c463cb35e30d28b4db541498f526d68dee3efeb685959fb5d46484a4520396",
+    "/tmp/beamal-package-independent-final-margin-41.log": "2b47122e4e2bebf54356efe2efeda040a56e172ec1bacc866488d93ecd861848"
+  },
+  "evidence": {
+    "genuineEntry2RED": "/tmp/beamal-package-independent-baseline-entry-red.log",
+    "genuineRowPosition2RED": "/tmp/beamal-package-independent-row-position-red.log",
+    "rowPosition2GREEN": "/tmp/beamal-package-independent-row-position-green.log",
+    "formalOrderKeyboard2RED": "/tmp/beamal-package-independent-formal-order-keyboard-red.log",
+    "final39GREEN": "/tmp/beamal-package-independent-final-39.log",
+    "geometry2BeforeFix": "/tmp/beamal-package-independent-focus-visible-red.log",
+    "final41GREEN": "/tmp/beamal-package-independent-final-41.log",
+    "finalMargin41GREEN": "/tmp/beamal-package-independent-final-margin-41.log"
+  },
+  "finalCases": {
+    "originalEntry": 2,
+    "host": 16,
+    "purePackage": 6,
+    "factualOrderSummaryIncludingActualDetails": 10,
+    "formalRepoHost": 7,
+    "total": 41,
+    "passed": 41,
+    "failed": 0
+  },
+  "authorizedRepoWrite": [
+    "sample/tests/package-content-host.test.mjs"
+  ],
+  "limits": [
+    "No independent browser/GUI/screenshots or live DB",
+    "No full project suite or build by this reviewer; Root owns both",
+    "Order snapshot summary integrated/verified in actual Order details only, not roster or Student My classes",
+    "Final package Save disabled; no persistence or formal composition-owner/balance policy acceptance"
+  ],
+  "cssFinalDelta": {
+    "scope": ".package-content-fields input",
+    "onlyDeclaration": "scroll-margin-block: 8px",
+    "inverseCSS_SHA256": "405be299eead4bcd199be3ab3558518663f5f62ed4405dfde9ca426ae32f8e91",
+    "sourceAndTestsUnchanged": true
+  }
+}

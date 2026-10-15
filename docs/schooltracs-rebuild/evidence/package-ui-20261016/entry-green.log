@@ -1,0 +1,148 @@
+TAP version 13
+# Subtest: package contents is reachable from the exact saved package for admin and teacher, without using course links as contents
+ok 1 - package contents is reachable from the exact saved package for admin and teacher, without using course links as contents
+  ---
+  duration_ms: 34.186625
+  type: 'test'
+  ...
+# Subtest: future price validation accepts service amount limits and real dates without inventing a backdate policy
+ok 2 - future price validation accepts service amount limits and real dates without inventing a backdate policy
+  ---
+  duration_ms: 1.253375
+  type: 'test'
+  ...
+# Subtest: future price validation rejects empty, exponent, nonfinite, out-of-range and fractional-cent amounts
+ok 3 - future price validation rejects empty, exponent, nonfinite, out-of-range and fractional-cent amounts
+  ---
+  duration_ms: 0.326375
+  type: 'test'
+  ...
+# Subtest: future price validation rejects impossible and incomplete dates and reports both fields
+ok 4 - future price validation rejects impossible and incomplete dates and reports both fields
+  ---
+  duration_ms: 0.123792
+  type: 'test'
+  ...
+# Subtest: validation preserves typed drafts and never mutates the input or saved fee
+ok 5 - validation preserves typed drafts and never mutates the input or saved fee
+  ---
+  duration_ms: 0.359375
+  type: 'test'
+  ...
+# Subtest: edit step provides an enabled Review and explicit labels without a false save or unverified pricing algorithm
+ok 6 - edit step provides an enabled Review and explicit labels without a false save or unverified pricing algorithm
+  ---
+  duration_ms: 0.357042
+  type: 'test'
+  ...
+# Subtest: review presents the exact saved fee and proposed draft with Back and disabled final saving
+ok 7 - review presents the exact saved fee and proposed draft with Back and disabled final saving
+  ---
+  duration_ms: 0.352375
+  type: 'test'
+  ...
+# Subtest: invalid review requests remain editable and show actionable errors; source errors keep drafts but stop review
+ok 8 - invalid review requests remain editable and show actionable errors; source errors keep drafts but stop review
+  ---
+  duration_ms: 0.990042
+  type: 'test'
+  ...
+# Subtest: pricing guard only permits a saved admin fee and renders translated escaped content
+ok 9 - pricing guard only permits a saved admin fee and renders translated escaped content
+  ---
+  duration_ms: 0.587833
+  type: 'test'
+  ...
+# Subtest: fee overview gives admin and teacher the same authoritative saved current details
+ok 10 - fee overview gives admin and teacher the same authoritative saved current details
+  ---
+  duration_ms: 0.466083
+  type: 'test'
+  ...
+# Subtest: overview distinguishes every pricing model, Minutes versus Visits, and disabled versus unknown settings
+ok 11 - overview distinguishes every pricing model, Minutes versus Visits, and disabled versus unknown settings
+  ---
+  duration_ms: 0.343125
+  type: 'test'
+  ...
+# Subtest: overview does not turn unavailable or invalid numeric data into zero or a plausible pricing model
+ok 12 - overview does not turn unavailable or invalid numeric data into zero or a plausible pricing model
+  ---
+  duration_ms: 0.219708
+  type: 'test'
+  ...
+# Subtest: admin recorded edits show actual recorded facts without claiming effective periods
+ok 13 - admin recorded edits show actual recorded facts without claiming effective periods
+  ---
+  duration_ms: 7.452583
+  type: 'test'
+  ...
+# Subtest: history states are distinct, retryable on error, and an empty response does not invent never-changed history
+ok 14 - history states are distinct, retryable on error, and an empty response does not invent never-changed history
+  ---
+  duration_ms: 0.337084
+  type: 'test'
+  ...
+# Subtest: teacher overview never renders supplied private history or staff events
+ok 15 - teacher overview never renders supplied private history or staff events
+  ---
+  duration_ms: 0.095208
+  type: 'test'
+  ...
+# Subtest: overview escapes fee, course and history fields in both languages and leaves sources unchanged
+ok 16 - overview escapes fee, course and history fields in both languages and leaves sources unchanged
+  ---
+  duration_ms: 0.292208
+  type: 'test'
+  ...
+# Subtest: unavailable overview sources hide previous fee and history facts while retaining a safe way out
+ok 17 - unavailable overview sources hide previous fee and history facts while retaining a safe way out
+  ---
+  duration_ms: 0.179667
+  type: 'test'
+  ...
+# Subtest: source-error pricing preserves an existing draft and offers reload without reviewing an invalid source
+ok 18 - source-error pricing preserves an existing draft and offers reload without reviewing an invalid source
+  ---
+  duration_ms: 0.180625
+  type: 'test'
+  ...
+# Subtest: missing historical prices and models stay unknown instead of borrowing the current fee
+ok 19 - missing historical prices and models stay unknown instead of borrowing the current fee
+  ---
+  duration_ms: 0.185208
+  type: 'test'
+  ...
+# Subtest: overview does not show internal identifiers when a customer fee code is missing
+ok 20 - overview does not show internal identifiers when a customer fee code is missing
+  ---
+  duration_ms: 0.157583
+  type: 'test'
+  ...
+# Subtest: recorded edit actions use understandable labels and malformed timestamps stay unavailable
+ok 21 - recorded edit actions use understandable labels and malformed timestamps stay unavailable
+  ---
+  duration_ms: 1.32225
+  type: 'test'
+  ...
+# Subtest: known saved and historical prices remain visible beyond the new-price input limits
+ok 22 - known saved and historical prices remain visible beyond the new-price input limits
+  ---
+  duration_ms: 1.185583
+  type: 'test'
+  ...
+# Subtest: both fee reading bodies provide a keyboard scroll stop
+ok 23 - both fee reading bodies provide a keyboard scroll stop
+  ---
+  duration_ms: 0.158083
+  type: 'test'
+  ...
+1..23
+# tests 23
+# suites 0
+# pass 23
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 174.309125

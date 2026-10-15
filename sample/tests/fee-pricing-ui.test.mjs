@@ -7,6 +7,17 @@ const values = {futurePrice: '950.50', effectiveDate: '2026-11-01'};
 const zh = {t: chinese => chinese};
 const render = options => feeUi.feePricingMarkup({fee, role: 'admin', courseNames: ['Drawing', 'Watercolour'], ...options});
 
+test('package contents is reachable from the exact saved package for admin and teacher, without using course links as contents',()=>{
+  for(const role of ['admin','teacher']){
+    const packageFee={...fee,pricingModel:'package',packageType:'minutes',packageTotal:720,courseIds:['drawing','interview']};
+    const markup=feeUi.feeOverviewMarkup({fee:packageFee,role,courseNames:['Drawing','Interview']});
+    assert.match(markup,/data-action="package-content-open"/);
+    assert.doesNotMatch(feeUi.feeOverviewMarkup({fee,role}),/data-action="package-content-open"/);
+    assert.doesNotMatch(feeUi.feeOverviewMarkup({fee:packageFee,role,sourceError:'Reload needed'}),/data-action="package-content-open"/);
+  }
+  assert.equal(feeUi.feeOverviewMarkup({fee:{...fee,pricingModel:'package'},role:'student'}),'');
+});
+
 test('future price validation accepts service amount limits and real dates without inventing a backdate policy', () => {
   for (const [amount, expected] of [['0.01', .01], ['.50', .5], ['850', 850], ['950.50', 950.5], ['1000000.00', 1_000_000]]) {
     const result = feeUi.validateFeePricingDraft({futurePrice: amount, effectiveDate: '2000-02-29'});

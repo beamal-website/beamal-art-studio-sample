@@ -1,0 +1,74 @@
+TAP version 13
+# Subtest: independent moving a non-first segment retains current editor scroll and focuses the moved stable component instead of the first row
+not ok 1 - independent moving a non-first segment retains current editor scroll and focuses the moved stable component instead of the first row
+  ---
+  duration_ms: 358.658792
+  type: 'test'
+  location: '/private/tmp/beamal-package-independent-host.mjs:66:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Move should preserve current reading position and focus its stable row
+    + actual - expected
+
+      {
+    +   focusComponent: 'op-1791950400000-savirsv7upb',
+    +   scroll: 0
+    -   focusComponent: 'op-1791950400000-0doacm84om2s',
+    -   scroll: 487
+      }
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    scroll: 487
+    focusComponent: 'op-1791950400000-0doacm84om2s'
+  actual:
+    scroll: 0
+    focusComponent: 'op-1791950400000-savirsv7upb'
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///private/tmp/beamal-package-independent-host.mjs:67:254)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+  ...
+# Subtest: independent removing the middle segment retains current scroll and focuses the nearest surviving stable component
+not ok 2 - independent removing the middle segment retains current scroll and focuses the nearest surviving stable component
+  ---
+  duration_ms: 14.986084
+  type: 'test'
+  location: '/private/tmp/beamal-package-independent-host.mjs:70:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Removal should keep place and focus the surviving adjacent row, not jump to row one
+    + actual - expected
+
+      {
+    +   focusComponent: 'op-1791950400000-mtkkeotc14a',
+    +   scroll: 0
+    -   focusComponent: 'op-1791950400000-lcetq2ohws',
+    -   scroll: 532
+      }
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    scroll: 532
+    focusComponent: 'op-1791950400000-lcetq2ohws'
+  actual:
+    scroll: 0
+    focusComponent: 'op-1791950400000-mtkkeotc14a'
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///private/tmp/beamal-package-independent-host.mjs:71:413)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+1..2
+# tests 2
+# suites 0
+# pass 0
+# fail 2
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 648.716875

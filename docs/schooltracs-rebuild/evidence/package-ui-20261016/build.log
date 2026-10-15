@@ -1,0 +1,26 @@
+
+> beamal-sample@1.0.0 build
+> vite build
+
+vite v7.3.6 building client environment for production...
+transforming...
+✓ 160 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                     0.67 kB │ gzip:   0.42 kB
+dist/attachment-preview.html                        2.83 kB │ gzip:   1.15 kB
+dist/assets/pdf.worker.min-Dkey6ZUl.mjs         1,321.31 kB
+dist/assets/attachmentPreview-53T82NiT.css          3.27 kB │ gzip:   1.22 kB
+dist/assets/main--K3I5yYZ.css                     405.44 kB │ gzip:  62.21 kB
+dist/assets/pdf.worker.min-OGYDhRwp.js              0.07 kB │ gzip:   0.09 kB
+dist/assets/modulepreload-polyfill-B5Qt9EMX.js      0.71 kB │ gzip:   0.40 kB
+dist/assets/pdf-preview-C_YqR63v.js                 2.31 kB │ gzip:   1.28 kB
+dist/assets/attachmentPreview-kDiWgJ0Q.js          11.70 kB │ gzip:   5.10 kB
+dist/assets/pdf-CL8ynlU4.js                       495.58 kB │ gzip: 151.29 kB
+dist/assets/main-Dk1Oz7Vt.js                    1,079.77 kB │ gzip: 327.60 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 33.50s

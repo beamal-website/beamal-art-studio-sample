@@ -1,0 +1,166 @@
+TAP version 13
+# Subtest: package contents is reachable from the exact saved package for admin and teacher, without using course links as contents
+not ok 1 - package contents is reachable from the exact saved package for admin and teacher, without using course links as contents
+  ---
+  duration_ms: 212.929417
+  type: 'test'
+  location: '/Users/yausiuhei/Documents/ChatGPT/Beamal Art studio solution/sample/tests/fee-pricing-ui.test.mjs:10:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /data-action="package-content-open"/. Input:
+
+    '<div class="modal create-course-modal fee-overview-modal" role="dialog" aria-modal="true" aria-labelledby="fee-overview-title"><div class="dialog create-course-dialog fee-overview-dialog"><header class="create-course-header fee-ui-header"><h2 id="fee-overview-title">Fee details</h2><button type="button" data-action="fee-overview-close" aria-label="Close">×</button></header><div class="fee-overview-body" tabindex="0"><section class="fee-ui-section"><h3>Term fee</h3><dl class="fee-ui-facts"><div><dt>Fee code</dt><dd>FE-001</dd></div><div><dt>Version</dt><dd>3</dd></div><div><dt>Pricing model</dt><dd>Fixed package</dd></div><div><dt>Saved current price</dt><dd>HK$850.00</dd></div><div><dt>Package total</dt><dd>720 minutes</dd></div><div><dt>Booking expiry (from invoice date)</dt><dd>3 months</dd></div><div><dt>Online Store</dt><dd>Hidden</dd></div></dl></section><section class="fee-ui-section"><h3>Saved linked courses</h3><ul class="fee-ui-courses"><li>Drawing</li><li>Interview</li></ul></section><section class="fee-ui-section fee-ui-recorded-edits"><h3>Recorded edits</h3><p class="fee-ui-note">Recorded times are edit times, not effective price periods.</p><p class="fee-ui-note">Recorded edits are not available.</p></section></div><footer class="create-course-footer fee-ui-footer"><button type="button" class="ghost" data-action="fee-overview-close">Close</button><button type="button" class="fee-ui-secondary" data-action="fee-overview-edit">Edit fee</button><button type="button" data-action="fee-overview-pricing">Schedule new pricing</button></footer></div></div>'
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: '<div class="modal create-course-modal fee-overview-modal" role="dialog" aria-modal="true" aria-labelledby="fee-overview-title"><div class="dialog create-course-dialog fee-overview-dialog"><header class="create-course-header fee-ui-header"><h2 id="fee-overview-title">Fee details</h2><button type="button" data-action="fee-overview-close" aria-label="Close">×</button></header><div class="fee-overview-body" tabindex="0"><section class="fee-ui-section"><h3>Term fee</h3><dl class="fee-ui-facts"><div><dt>Fee code</dt><dd>FE-001</dd></div><div><dt>Version</dt><dd>3</dd></div><div><dt>Pricing model</dt><dd>Fixed package</dd></div><div><dt>Saved current price</dt><dd>HK$850.00</dd></div><div><dt>Package total</dt><dd>720 minutes</dd></div><div><dt>Booking expiry (from invoice date)</dt><dd>3 months</dd></div><div><dt>Online Store</dt><dd>Hidden</dd></div></dl></section><section class="fee-ui-section"><h3>Saved linked courses</h3><ul class="fee-ui-courses"><li>Drawing</li><li>Interview</li></ul></section><section class="fee-ui-section fee-ui-recorded-edits"><h3>Recorded edits</h3><p class="fee-ui-note">Recorded times are edit times, not effective price periods.</p><p class="fee-ui-note">Recorded edits are not available.</p></section></div><footer class="create-course-footer fee-ui-footer"><button type="button" class="ghost" data-action="fee-overview-close">Close</button><button type="button" class="fee-ui-secondary" data-action="fee-overview-edit">Edit fee</button><button type="button" data-action="fee-overview-pricing">Schedule new pricing</button></footer></div></div>'
+  operator: 'match'
+  stack: |-
+    TestContext.<anonymous> (file:///Users/yausiuhei/Documents/ChatGPT/Beamal%20Art%20studio%20solution/sample/tests/fee-pricing-ui.test.mjs:14:12)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.start (node:internal/test_runner/test:944:17)
+    startSubtestAfterBootstrap (node:internal/test_runner/harness:296:17)
+  ...
+# Subtest: future price validation accepts service amount limits and real dates without inventing a backdate policy
+ok 2 - future price validation accepts service amount limits and real dates without inventing a backdate policy
+  ---
+  duration_ms: 2.08875
+  type: 'test'
+  ...
+# Subtest: future price validation rejects empty, exponent, nonfinite, out-of-range and fractional-cent amounts
+ok 3 - future price validation rejects empty, exponent, nonfinite, out-of-range and fractional-cent amounts
+  ---
+  duration_ms: 0.581875
+  type: 'test'
+  ...
+# Subtest: future price validation rejects impossible and incomplete dates and reports both fields
+ok 4 - future price validation rejects impossible and incomplete dates and reports both fields
+  ---
+  duration_ms: 0.270667
+  type: 'test'
+  ...
+# Subtest: validation preserves typed drafts and never mutates the input or saved fee
+ok 5 - validation preserves typed drafts and never mutates the input or saved fee
+  ---
+  duration_ms: 0.985209
+  type: 'test'
+  ...
+# Subtest: edit step provides an enabled Review and explicit labels without a false save or unverified pricing algorithm
+ok 6 - edit step provides an enabled Review and explicit labels without a false save or unverified pricing algorithm
+  ---
+  duration_ms: 1.369
+  type: 'test'
+  ...
+# Subtest: review presents the exact saved fee and proposed draft with Back and disabled final saving
+ok 7 - review presents the exact saved fee and proposed draft with Back and disabled final saving
+  ---
+  duration_ms: 0.933375
+  type: 'test'
+  ...
+# Subtest: invalid review requests remain editable and show actionable errors; source errors keep drafts but stop review
+ok 8 - invalid review requests remain editable and show actionable errors; source errors keep drafts but stop review
+  ---
+  duration_ms: 2.294916
+  type: 'test'
+  ...
+# Subtest: pricing guard only permits a saved admin fee and renders translated escaped content
+ok 9 - pricing guard only permits a saved admin fee and renders translated escaped content
+  ---
+  duration_ms: 2.102125
+  type: 'test'
+  ...
+# Subtest: fee overview gives admin and teacher the same authoritative saved current details
+ok 10 - fee overview gives admin and teacher the same authoritative saved current details
+  ---
+  duration_ms: 2.104417
+  type: 'test'
+  ...
+# Subtest: overview distinguishes every pricing model, Minutes versus Visits, and disabled versus unknown settings
+ok 11 - overview distinguishes every pricing model, Minutes versus Visits, and disabled versus unknown settings
+  ---
+  duration_ms: 2.495084
+  type: 'test'
+  ...
+# Subtest: overview does not turn unavailable or invalid numeric data into zero or a plausible pricing model
+ok 12 - overview does not turn unavailable or invalid numeric data into zero or a plausible pricing model
+  ---
+  duration_ms: 1.382209
+  type: 'test'
+  ...
+# Subtest: admin recorded edits show actual recorded facts without claiming effective periods
+ok 13 - admin recorded edits show actual recorded facts without claiming effective periods
+  ---
+  duration_ms: 103.794959
+  type: 'test'
+  ...
+# Subtest: history states are distinct, retryable on error, and an empty response does not invent never-changed history
+ok 14 - history states are distinct, retryable on error, and an empty response does not invent never-changed history
+  ---
+  duration_ms: 0.384875
+  type: 'test'
+  ...
+# Subtest: teacher overview never renders supplied private history or staff events
+ok 15 - teacher overview never renders supplied private history or staff events
+  ---
+  duration_ms: 0.189458
+  type: 'test'
+  ...
+# Subtest: overview escapes fee, course and history fields in both languages and leaves sources unchanged
+ok 16 - overview escapes fee, course and history fields in both languages and leaves sources unchanged
+  ---
+  duration_ms: 1.156542
+  type: 'test'
+  ...
+# Subtest: unavailable overview sources hide previous fee and history facts while retaining a safe way out
+ok 17 - unavailable overview sources hide previous fee and history facts while retaining a safe way out
+  ---
+  duration_ms: 1.065542
+  type: 'test'
+  ...
+# Subtest: source-error pricing preserves an existing draft and offers reload without reviewing an invalid source
+ok 18 - source-error pricing preserves an existing draft and offers reload without reviewing an invalid source
+  ---
+  duration_ms: 0.538209
+  type: 'test'
+  ...
+# Subtest: missing historical prices and models stay unknown instead of borrowing the current fee
+ok 19 - missing historical prices and models stay unknown instead of borrowing the current fee
+  ---
+  duration_ms: 1.03625
+  type: 'test'
+  ...
+# Subtest: overview does not show internal identifiers when a customer fee code is missing
+ok 20 - overview does not show internal identifiers when a customer fee code is missing
+  ---
+  duration_ms: 0.352792
+  type: 'test'
+  ...
+# Subtest: recorded edit actions use understandable labels and malformed timestamps stay unavailable
+ok 21 - recorded edit actions use understandable labels and malformed timestamps stay unavailable
+  ---
+  duration_ms: 3.388417
+  type: 'test'
+  ...
+# Subtest: known saved and historical prices remain visible beyond the new-price input limits
+ok 22 - known saved and historical prices remain visible beyond the new-price input limits
+  ---
+  duration_ms: 0.796166
+  type: 'test'
+  ...
+# Subtest: both fee reading bodies provide a keyboard scroll stop
+ok 23 - both fee reading bodies provide a keyboard scroll stop
+  ---
+  duration_ms: 0.293417
+  type: 'test'
+  ...
+1..23
+# tests 23
+# suites 0
+# pass 22
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 512.121708

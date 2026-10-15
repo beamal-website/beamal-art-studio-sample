@@ -1,0 +1,80 @@
+TAP version 13
+# Subtest: moving a package segment keeps current scroll and focuses its stable row after the actual renderer remount
+ok 1 - moving a package segment keeps current scroll and focuses its stable row after the actual renderer remount
+  ---
+  duration_ms: 4.571292
+  type: 'test'
+  ...
+# Subtest: removing a middle package segment keeps scroll and focuses the nearest surviving row
+ok 2 - removing a middle package segment keeps scroll and focuses the nearest surviving row
+  ---
+  duration_ms: 1.273042
+  type: 'test'
+  ...
+# Subtest: removing the last package segment keeps scroll and returns focus to Add content
+ok 3 - removing the last package segment keeps scroll and returns focus to Add content
+  ---
+  duration_ms: 0.426375
+  type: 'test'
+  ...
+# Subtest: order details keyboard allows native body traversal and contains forward reverse or background focus
+not ok 4 - order details keyboard allows native body traversal and contains forward reverse or background focus
+  ---
+  duration_ms: 1.200542
+  type: 'test'
+  location: '/Users/yausiuhei/Documents/ChatGPT/Beamal Art studio solution/sample/tests/package-content-host.test.mjs:44:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Reading body must be recognized so native Tab can reach footer
+
+    true !== false
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: false
+  actual: true
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///Users/yausiuhei/Documents/ChatGPT/Beamal%20Art%20studio%20solution/sample/tests/package-content-host.test.mjs:45:147)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: order details composition Escape keeps its overlay and normal Escape closes it
+not ok 5 - order details composition Escape keeps its overlay and normal Escape closes it
+  ---
+  duration_ms: 0.530583
+  type: 'test'
+  location: '/Users/yausiuhei/Documents/ChatGPT/Beamal Art studio solution/sample/tests/package-content-host.test.mjs:47:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+
+    1 !== 0
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 0
+  actual: 1
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///Users/yausiuhei/Documents/ChatGPT/Beamal%20Art%20studio%20solution/sample/tests/package-content-host.test.mjs:48:80)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 3
+# fail 2
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 87.233583

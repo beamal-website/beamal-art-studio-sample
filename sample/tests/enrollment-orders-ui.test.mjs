@@ -23,3 +23,26 @@ test('fee suggestions remain finite for unavailable or invalid prices and actual
  for(const date of [undefined,'invalid','2026-02-31'])assert.equal(suggestedOrderCents({price:300,pricingModel:'fixed-monthly'},[{date}]),0);
  assert.equal(suggestedOrderCents({price:300.25,pricingModel:'monthly-lessons'},[{date:'2026-10-31'},{date:'2026-11-01'}]),60050);
 });
+
+test('order package summaries show each exact paid snapshot before its selected lessons without using order totals as balances',()=>{
+ const first={...order.items[0],courseId:'course-A',feeId:'fee-A',feeName:'Same package',pricing:{pricingModel:'package',packageType:'minutes',packageTotal:720}},second={...order.items[0],courseId:'course-B',feeId:'fee-B',feeName:'Same package',pricing:{pricingModel:'package',packageType:'visits',packageTotal:8}};
+ const html=enrollmentOrderDetailsMarkup({...order,paymentStatus:'paid',purchasedLessons:99,items:[first,second]},{role:'student'},en),summaries=[...html.matchAll(/<dl\b[^>]*data-order-package-summary[^>]*>[\s\S]*?<\/dl>/g)].map(match=>match[0]);
+ assert.equal(summaries.length,2);assert.match(summaries[0],/data-fee-id="fee-A"/);assert.match(summaries[0],/Original purchased quota[\s\S]*720 minutes/);assert.match(summaries[1],/data-fee-id="fee-B"/);assert.match(summaries[1],/Original purchased quota[\s\S]*8 visits/);
+ for(const summary of summaries){assert.match(summary,/Selected lessons on this order[\s\S]*1 lesson/);assert.match(summary,/Remaining balance<\/dt><dd>Not provided/);assert.doesNotMatch(summary,/99|719|719 minutes/);}
+ assert.ok(html.indexOf('data-order-package-summary')<html.indexOf('class="enrollment-order-lessons"'));assert.match(html,/order as placed/);assert.doesNotMatch(html,/orders-confirm-payment|orders-send|orders-respond/);
+});
+
+test('order package summaries distinguish unpaid quota and known zero selected lessons while keeping existing administrator actions',()=>{
+ const item={...order.items[0],lessons:[],pricing:{pricingModel:'package',packageType:'lessons',packageTotal:12}},html=enrollmentOrderDetailsMarkup({...order,orderStatus:'draft',paymentStatus:'draft',purchasedLessons:45,items:[item]},{role:'admin'},en);
+ assert.match(html,/Quota on this order<\/dt><dd>12 visits/);assert.match(html,/Selected lessons on this order<\/dt><dd>0 lessons/);assert.doesNotMatch(html,/Original purchased quota|Remaining balance<\/dt><dd>0/);assert.match(html,/data-action="orders-send"/);assert.match(html,/data-action="ui-order-document"/);
+});
+
+test('order package summaries do not manufacture quota from monthly prices lesson dates or current fee objects',()=>{
+ const item={...order.items[0],pricing:{pricingModel:'fixed-monthly',months:3,price:850},currentFee:{pricingModel:'package',packageType:'visits',packageTotal:88}},html=enrollmentOrderDetailsMarkup({...order,items:[item]},{role:'teacher'},en);
+ assert.match(html,/Quota on this order<\/dt><dd>Not applicable/);assert.match(html,/Validity period<\/dt><dd>Not provided/);assert.match(html,/Package contents<\/dt><dd>Not provided/);assert.doesNotMatch(html,/88 visits|orders-send|orders-confirm-payment|orders-respond/);
+});
+
+test('order details scrolling summary is keyboard focusable without making each package summary a separate tab stop',()=>{
+ const html=enrollmentOrderDetailsMarkup({...order,items:[{...order.items[0],pricing:{pricingModel:'package',packageType:'visits',packageTotal:8}}]},{role:'student'},en);
+ assert.match(html,/<div class="enrollment-order-summary"[^>]*tabindex="0"/);assert.doesNotMatch(html,/<dl\b[^>]*tabindex=/);assert.doesNotMatch(html,/<ol\b[^>]*tabindex=/);
+});

@@ -1,0 +1,75 @@
+{
+  "date": "2026-10-16",
+  "readOnlyHead": "0c3a92974123a5d16194e081fa54b180837a693e",
+  "status": "limited-pass",
+  "unresolvedBlockers": [],
+  "originalHostGroups": 18,
+  "passed": 18,
+  "failed": 0,
+  "cancelled": 0,
+  "skipped": 0,
+  "baselineOriginalGroups": 3,
+  "baselineOriginalFailed": 3,
+  "baselineSourceSHA256": "1f91aa8c90867ddaadf09081a5728b2339ccd8bf7da4ff10396d5599d1fa229d",
+  "sourceSHA256": {
+    "sample/src.js": "785b92be52727cfe0eec58c6da7cef4ac4afa52689d4f5d8d6d5fa94be126e20",
+    "sample/tests/flows.test.mjs": "32ad7a6a085d2321e5e88f025ff2ec772b6a1b2c152ce59e4de449daa71eca05",
+    "sample/client/lesson-attendance-badge.js": "aa0f16f3e72bd8e6ae22b4e0006eca6b03827c58d9b46178a088dfbc555a214c",
+    "sample/client/lesson-attendance-badge.css": "7a0134221f33c756841ac045a9524e68228457b5afac41ce2be37ad0f6e49724",
+    "sample/tests/lesson-attendance-badge.test.mjs": "eca71f596d10f70aa159a5d8cdbbf1d552d5ef39d66cd5484160a2231f7981dd"
+  },
+  "script": "/tmp/beamal-tt-student-summary-independent.mjs",
+  "scriptSHA256": "040b7be11e7092078efbe693c7e2329202985528422dea20cdd2b918cf9ee769",
+  "log": "/tmp/beamal-tt-student-summary-independent-final-18-v2.log",
+  "report": "/tmp/beamal-timetable-student-summary-independent-review.md",
+  "liveBrowser": false,
+  "realDatabase": false,
+  "fullSuiteOrBuild": false,
+  "freeze": true,
+  "priorFreezeSourceSHA256": {
+    "sample/src.js": "731daa891a67b0d82baf468f1a7851464483afd825d8d992a1c197680d3963e1",
+    "sample/tests/flows.test.mjs": "b16b63ebfb614c8dadc3d6eaaf8cfa879b07afc0033b84e20ff8d5e71c77b37e",
+    "sample/client/lesson-attendance-badge.js": "aa0f16f3e72bd8e6ae22b4e0006eca6b03827c58d9b46178a088dfbc555a214c",
+    "sample/client/lesson-attendance-badge.css": "aff61d1e7d8845b0ea0fcf902df5c63b6685b467f18e67bd0f6c9cf03dc3bc78",
+    "sample/tests/lesson-attendance-badge.test.mjs": "eca71f596d10f70aa159a5d8cdbbf1d552d5ef39d66cd5484160a2231f7981dd"
+  },
+  "previousFreezeLog": "/tmp/beamal-tt-student-summary-independent-final-18.log",
+  "postFreezeChangesVerifiedByInverseHash": {
+    "srcAgeEnglishSingularPluralOnly": true,
+    "flowsOneFreshBatchSingularAssertionOnly": true,
+    "badgeCssFourActionDeclarationsOnly": true
+  },
+  "extraPluralProbe": "/tmp/beamal-tt-student-summary-plural-independent.log",
+  "extraPluralCombinations": 5,
+  "screenshotOnlyReview": true,
+  "screenshots": {
+    "docs/schooltracs-rebuild/evidence/student-summary-20261016/card-1280-en.jpg": {
+      "sha256": "85c6acc9b320b2191a48728ea193c6c11f7e44e9e0714b8ab661be9d58d0085d",
+      "dimensions": "1280x900"
+    },
+    "docs/schooltracs-rebuild/evidence/student-summary-20261016/roster-390-en.jpg": {
+      "sha256": "c898eadde1a2056e95996a06455d7500db31ed949b4591dfb78f1519c2423bb8",
+      "dimensions": "390x844"
+    },
+    "docs/schooltracs-rebuild/evidence/student-summary-20261016/roster-390-zh.jpg": {
+      "sha256": "b6b598fa125d2064c23cd57d7a59dd3841d943909370364ceb79696adaee7498",
+      "dimensions": "390x844"
+    },
+    "docs/schooltracs-rebuild/evidence/student-summary-20261016/roster-768-en.jpg": {
+      "sha256": "03373bfaf638acb52c8c388b99031dbe6a378113255be2af0e1dd3932a5a72e9",
+      "dimensions": "768x1024"
+    },
+    "docs/schooltracs-rebuild/evidence/student-summary-20261016/roster-768-zh.jpg": {
+      "sha256": "70889a7160099e94d94476a132039847d778d6f091221deb8fe6634ee7fdd04d",
+      "dimensions": "768x1024"
+    },
+    "docs/schooltracs-rebuild/evidence/student-summary-20261016/roster-1280-en.jpg": {
+      "sha256": "fb6ffa582205010e1275c898170c2e4a72e5e4bc5a486a1319df4091903e93d2",
+      "dimensions": "1280x900"
+    },
+    "docs/schooltracs-rebuild/evidence/student-summary-20261016/roster-1280-zh.jpg": {
+      "sha256": "bc748ed7432c56d7510d29d6477833788b0196f62769166c3cab94e64a6290d2",
+      "dimensions": "1280x900"
+    }
+  }
+}

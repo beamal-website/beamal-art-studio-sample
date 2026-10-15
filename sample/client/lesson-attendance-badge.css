@@ -1,0 +1,53 @@
+.lesson-attendance-badge {
+  --lesson-attendance-ink: #526a60;
+  --lesson-attendance-surface: #eef0e9;
+  display: inline-block;
+  box-sizing: border-box;
+  max-width: 100%;
+  padding: 4px 8px;
+  border: 1px solid #d9ddd2;
+  border-radius: 3px;
+  background: var(--lesson-attendance-surface);
+  color: var(--lesson-attendance-ink);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+  text-align: start;
+  vertical-align: middle;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.lesson-attendance-badge-present {
+  --lesson-attendance-ink: #215c5d;
+  --lesson-attendance-surface: #e4f1ed;
+}
+
+.lesson-attendance-badge-late {
+  --lesson-attendance-ink: #73531c;
+  --lesson-attendance-surface: #f4ecd9;
+}
+
+.lesson-attendance-badge-absent {
+  --lesson-attendance-ink: #8a3a2c;
+  --lesson-attendance-surface: #f7e8e2;
+}
+
+.lesson-attendance-badge-leave {
+  --lesson-attendance-ink: #465e8a;
+  --lesson-attendance-surface: #eaf0f7;
+}
+
+.lesson-attendance-badge-sick {
+  --lesson-attendance-ink: #6d4c78;
+  --lesson-attendance-surface: #f1eaf3;
+}
+
+.lesson-students-table .lesson-attendance-badge + button {
+  display: block;
+  margin-top: 8px;
+  min-height: 44px;
+  min-width: 44px;
+  padding-inline: 8px;
+  white-space: nowrap;
+}

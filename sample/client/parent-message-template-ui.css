@@ -1,0 +1,68 @@
+.pmt-modal { box-sizing: border-box; padding: 16px; grid-template-columns: minmax(0, 1fr); }
+.pmt-modal .pmt-dialog {
+  --pmt-ink: #253d3b; --pmt-muted: #526a60; --pmt-line: #d9e0d4; --pmt-paper: #fffdf8;
+  display: flex; flex-direction: column; width: min(780px, 100%); max-width: 100%; min-width: 0;
+  height: min(880px, calc(100dvh - 32px)); max-height: calc(100dvh - 32px); padding: 0;
+  overflow: hidden; border: 1px solid var(--pmt-line); border-radius: 10px;
+  background: var(--pmt-paper); color: var(--pmt-ink); box-shadow: 0 20px 64px #1b34272b;
+}
+.pmt-dialog * { box-sizing: border-box; }
+.pmt-header, .pmt-footer { display: flex; flex: none; align-items: center; gap: 12px; padding: 20px 24px; }
+.pmt-header { justify-content: space-between; border-bottom: 1px solid var(--pmt-line); }
+.pmt-header h2 { min-width: 0; margin: 0; font-size: 23px; line-height: 1.4; overflow-wrap: anywhere; }
+.pmt-dialog :is(#template-editor, .pmt-content) { display: flex; flex: 1; flex-direction: column; min-height: 0; min-width: 0; margin: 0; overflow: hidden; }
+.pmt-body { flex: 1; min-height: 0; min-width: 0; padding: 24px; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; scroll-padding-block: 8px; }
+.pmt-private, .pmt-note { margin: 0 0 20px; color: var(--pmt-muted); font-size: 13px; line-height: 1.8; overflow-wrap: anywhere; }
+.pmt-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+.pmt-tabs .pmt-button[aria-pressed="true"] { background: var(--teal, #27777b); border-color: var(--teal, #27777b); color: #fff; }
+.pmt-search { display: grid; gap: 8px; min-width: 0; margin: 0 0 20px; }
+.pmt-search > label { font-size: 14px; line-height: 1.6; }
+.pmt-search > div { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.pmt-search input { flex: 1; width: 100%; min-width: 0; min-height: 44px; margin: 0; padding: 10px 12px; border: 1px solid #bdcbc1; border-radius: 6px; background: #fffefa; color: var(--pmt-ink); font: inherit; font-size: 16px; }
+.pmt-search .pmt-button { flex: none; }
+.pmt-new { display: flex; justify-content: flex-end; margin-bottom: 20px; }
+.pmt-list { display: grid; gap: 16px; margin: 0; padding: 0; list-style: none; }
+.pmt-card { min-width: 0; padding: 18px; border: 1px solid var(--pmt-line); border-radius: 7px; background: #fffefa; }
+.pmt-card h3 { min-width: 0; margin: 0 0 8px; font-size: 17px; line-height: 1.7; overflow-wrap: anywhere; }
+.pmt-excerpt { margin: 0 0 16px; color: var(--pmt-muted); font-size: 14px; line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; }
+.pmt-card-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.pmt-field { display: grid; gap: 8px; min-width: 0; margin: 0 0 24px; font-size: 14px; line-height: 1.6; }
+.pmt-field :is(input, textarea) { width: 100%; max-width: 100%; min-width: 0; min-height: 44px; margin: 0; padding: 11px 12px; border: 1px solid #bdcbc1; border-radius: 6px; background: #fffefa; color: var(--pmt-ink); font: inherit; font-size: 16px; line-height: 1.7; scroll-margin-block: 8px; }
+.pmt-field textarea { min-height: 200px; resize: vertical; }
+.pmt-field [aria-invalid="true"] { border-color: #a75d42; }
+.pmt-field :is(input, textarea):disabled, .pmt-search input:disabled { background: #ecefe7; color: #63776e; }
+.pmt-review, .pmt-current { min-width: 0; margin: 0 0 24px; }
+.pmt-review h3, .pmt-current h3 { margin: 0 0 16px; font-size: 18px; line-height: 1.6; overflow-wrap: anywhere; }
+.pmt-review h4 { margin: 0 0 12px; font-size: 16px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
+.pmt-message-text { min-width: 0; margin: 0 0 16px; padding: 16px; border: 1px solid var(--pmt-line); border-radius: 7px; background: #fffefa; font-size: 15px; line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; }
+.pmt-current .pmt-message-text { background: #f2f4ed; }
+.pmt-replace { margin: 0; padding: 12px 14px; border-left: 3px solid #a88c4d; background: #f6f0df; color: #6b5731; font-size: 14px; line-height: 1.8; overflow-wrap: anywhere; }
+.pmt-source, .pmt-empty { margin: 0 0 20px; color: var(--pmt-muted); font-size: 14px; line-height: 1.8; overflow-wrap: anywhere; }
+.pmt-retry { margin-top: 20px; }
+.pmt-error, .pmt-ack { flex: none; margin: 16px 24px 0; padding: 12px 14px; border: 1px solid #d8b7a9; border-radius: 6px; background: #fbf0e9; color: #8a432c; font-size: 13px; line-height: 1.8; overflow-wrap: anywhere; }
+.pmt-error[hidden] { display: none; }
+.pmt-ack { border-color: #bfd0bd; background: #edf4e9; color: #3f6746; }
+.pmt-footer { justify-content: flex-end; flex-wrap: wrap; border-top: 1px solid var(--pmt-line); background: var(--pmt-paper); }
+.pmt-dialog .pmt-button { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; max-width: 100%; margin: 0; padding: 10px 16px; border: 1px solid #bdcbc1; border-radius: 6px; background: #fffefa; color: var(--teal, #27777b); box-shadow: none; font: inherit; font-size: 14px; font-weight: 600; line-height: 1.5; text-align: center; white-space: normal; overflow-wrap: anywhere; cursor: pointer; touch-action: manipulation; }
+.pmt-dialog .pmt-primary { border-color: var(--teal, #27777b); background: var(--teal, #27777b); color: #fff; }
+.pmt-header .pmt-button { flex: 0 0 44px; width: 44px; padding: 0; border-color: transparent; background: transparent; color: var(--pmt-muted); font-size: 28px; font-weight: 400; }
+.pmt-dialog .pmt-button:disabled { border-color: var(--pmt-line); background: #ecefe7; color: #687770; cursor: not-allowed; }
+.pmt-dialog :is(button, input, textarea):focus-visible { outline: 2px solid var(--teal, #27777b); outline-offset: 3px; }
+.pmt-body:focus-visible, .pmt-error:focus, .pmt-ack:focus { outline: 2px solid var(--teal, #27777b); outline-offset: -4px; }
+.pmt-pagination { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+.pmt-pagination span { min-width: 0; color: var(--pmt-muted); font-size: 13px; line-height: 1.8; overflow-wrap: anywhere; }
+.lpm-template-entry { display: flex; justify-content: flex-end; margin: 0 0 8px; }
+@media (max-width: 600px) {
+  .pmt-modal { padding: 12px; }
+  .pmt-modal .pmt-dialog { height: calc(100dvh - 24px); max-height: calc(100dvh - 24px); }
+  .pmt-header { padding: 16px; gap: 8px; }
+  .pmt-header h2 { font-size: 20px; }
+  .pmt-body { padding: 20px 16px; }
+  .pmt-error, .pmt-ack { margin: 12px 16px 0; }
+  .pmt-footer { padding: 12px 16px; }
+  .pmt-footer .pmt-button { flex: 1 1 120px; }
+  .pmt-card { padding: 16px; }
+  .pmt-card-actions .pmt-button { flex: 1 1 110px; }
+  .pmt-pagination .pmt-button { flex: 1 1 110px; }
+  .pmt-pagination span { flex: 1 0 100%; order: 1; text-align: center; }
+}

@@ -126,3 +126,10 @@ test('an in-progress context Reload cannot offer another active Retry even when 
 test('an initial context failure shows its reason once rather than duplicating the same alert inside the reading body', () => {
   const html = dialog(model({context: null, contextStatus: 'error'}), en); assert.equal((html.match(/Could not load lesson contacts/g) || []).length, 1); assert.ok(action(html, 'parent-message-retry')); assert.doesNotMatch(html, /<textarea|No contacts/);
 });
+
+test('the optional template chooser entry appears only in a ready editable composer and never replaces the draft by rendering', () => {
+  const state = model({templatesAvailable: true}), before = JSON.stringify(state), html = dialog(state, en); assert.ok(action(html, 'parent-message-template')); assert.equal(disabled(action(html, 'parent-message-template')), false); assert.match(html, /Choose template/); assert.match(html, /  Please bring your sketchbook\.\n請帶素描本。  /); assert.equal(JSON.stringify(state), before);
+  const baseline = dialog(model(), en); for (const templatesAvailable of [false, undefined, 'true', 1]) assert.equal(dialog(model({templatesAvailable}), en), baseline);
+  for (const patch of [{busy: true}, {stale: true}, {unconfirmed: true}, {contextStatus: 'loading'}, {contextStatus: 'error'}]) assert.ok(disabled(action(dialog({...state, ...patch}, en), 'parent-message-template')));
+  for (const patch of [{step: 'preview'}, {step: 'saved', ack: receipt()}, {context: null}]) assert.equal(action(dialog({...state, ...patch}, en), 'parent-message-template'), undefined);
+});

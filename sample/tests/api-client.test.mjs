@@ -23,6 +23,16 @@ test('course lifecycle requests preserve version, authenticated headers and oper
 });
 
 const identity = name => ({ id: `fictional-${name}`, email: `${name}@example.test`, displayName: `Fictional ${name}`, role: 'admin' });
+test('parent template SDK keeps exact raw text versions status query and each operation retry key',async t=>{
+ const wire=network(t),client=createApiClient();await login(client,wire,'B');const id='template / 範本',base='/api/parent-message-templates',path=base+'/'+encodeURIComponent(id);
+ wire.reply(url=>{const query=new URL(url,'http://local.test');assert.equal(query.pathname,base);for(const [key,value]of Object.entries({q:'家長',page:'2',pageSize:'10',status:'all',since:'revision'}))assert.equal(query.searchParams.get(key),value);assert.equal(query.searchParams.has('role'),false);},{records:[],total:0});await client.parentMessageTemplates({q:'家長',page:2,pageSize:10,status:'all',role:'admin'},'revision');
+ wire.reply(path,{template:{id,version:1}});await client.parentMessageTemplate(id);const input={title:' 原文 ',body:' Dear {name}\n '};wire.reply(base,{template:{id,version:1}},201);await client.createParentMessageTemplate(input,'create-key');let call=wire.calls.at(-1);assert.deepEqual(JSON.parse(call.body),input);assert.equal(call.headers.get('Idempotency-Key'),'create-key');
+ wire.reply(path,{template:{id,version:2}});await client.updateParentMessageTemplate(id,{version:1,...input},'edit-key');call=wire.calls.at(-1);assert.equal(call.method,'PATCH');assert.deepEqual(JSON.parse(call.body),{version:1,...input});assert.equal(call.headers.get('X-CSRF-Token'),'csrf-fictional-B');
+ for(const [action,method]of [['archive','archiveParentMessageTemplate'],['restore','restoreParentMessageTemplate']]){wire.reply(path+'/'+action,{template:{id}});await client[method](id,2,action+'-key');call=wire.calls.at(-1);assert.equal(call.method,'POST');assert.deepEqual(JSON.parse(call.body),{version:2});assert.equal(call.headers.get('Idempotency-Key'),action+'-key');}
+});
+test('parent template SDK discards a late private library after account change',async t=>{
+ const wire=network(t),client=createApiClient();await login(client,wire,'A');const wait=wire.pending('/api/parent-message-templates'),old=observe(client.parentMessageTemplates());await login(client,wire,'B');wait.resolve(response({records:[{body:'Private old templates'}]}));superseded(await old);
+});
 test('parent messaging SDK encodes exact session input and authenticated retry while inbox queries omit caller identities',async t=>{
  const wire=network(t),client=createApiClient();await login(client,wire,'B');const id='session / 學生',prefix='/api/student-sessions/'+encodeURIComponent(id);
  wire.reply(prefix+'/parent-message-context',{context:{sessionId:id,revision:'context-proof'}});await client.parentMessageContext(id);let call=wire.calls.at(-1);assert.equal(call.method,'GET');assert.equal(call.body,undefined);

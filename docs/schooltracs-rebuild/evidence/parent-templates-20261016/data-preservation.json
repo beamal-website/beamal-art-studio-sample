@@ -1,0 +1,41 @@
+{
+  "original": {
+    "oldTables": 52,
+    "changedOldTables": [],
+    "newTables": {
+      "parent_message_template_audit_log": 0,
+      "parent_message_templates": 0
+    },
+    "integrity": "ok"
+  },
+  "gui": {
+    "oldTables": 52,
+    "changedOldTables": [
+      {
+        "table": "idempotent_creates",
+        "beforeRows": 35,
+        "afterRows": 41
+      },
+      {
+        "table": "lesson_parent_message_audit_log",
+        "beforeRows": 1,
+        "afterRows": 2
+      },
+      {
+        "table": "lesson_parent_messages",
+        "beforeRows": 1,
+        "afterRows": 2
+      },
+      {
+        "table": "sessions",
+        "beforeRows": 5,
+        "afterRows": 5
+      }
+    ],
+    "newTables": {
+      "parent_message_template_audit_log": 5,
+      "parent_message_templates": 2
+    },
+    "integrity": "ok"
+  }
+}

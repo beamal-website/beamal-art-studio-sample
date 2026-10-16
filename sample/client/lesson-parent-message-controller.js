@@ -5,13 +5,13 @@ const id=value=>typeof value==='string'&&!!value.trim()&&value.length<=200;
 const timestamp=value=>typeof value==='string'&&/^\d{4}-\d{2}-\d{2}T/.test(value)&&Number.isFinite(Date.parse(value));
 const messageRecord=row=>!!row&&['id','sessionId','studentId','senderId','recipientUserId'].every(key=>id(row[key]))&&['studentName','senderName','recipientName','courseName','date','time','body'].every(key=>typeof row[key]==='string')&&row.body.trim()&&row.body.length<=2000&&timestamp(row.createdAt)&&row.channel==='app-test';
 
-export function createLessonParentMessaging({api,scope,resolve,current,onOpen,onClose,paint,onInboxChange=()=>{},onAuth=()=>{},onNotice=()=>{},copy,key=()=>crypto.randomUUID(),dom=document,Form=FormData,t=(_zh,en)=>en,esc,markup=parentMessageMarkup,inboxMarkup=parentMessageInboxMarkup}){
+export function createLessonParentMessaging({api,scope,resolve,current,onOpen,onClose,paint,onInboxChange=()=>{},onAuth=()=>{},onNotice=()=>{},copy,openTemplatePicker,key=()=>crypto.randomUUID(),dom=document,Form=FormData,t=(_zh,en)=>en,esc,markup=parentMessageMarkup,inboxMarkup=parentMessageInboxMarkup}){
  let state=null,inbox={identity:'',status:'idle',records:[],total:null,page:1,pageSize:25,revision:'',error:''},inboxJob=null;
  const scopeNow=()=>scope()||{};
  const owns=owner=>!!owner&&state===owner&&owner.identity===scopeNow().identity&&['admin','teacher'].includes(scopeNow().role)&&current(owner.ticket);
  const controls=()=>[...dom.querySelectorAll('.lpm-dialog button:not(:disabled),.lpm-dialog input:not(:disabled),.lpm-dialog textarea:not(:disabled),.lpm-dialog a[href],#lpm-body')];
  const capture=()=>{
-  if(!state)return null;const node=dom.activeElement,body=dom.querySelector('#lpm-body');
+  if(!state||state.pickerOpen)return null;const node=dom.activeElement,body=dom.querySelector('#lpm-body');
   if(state.step==='edit'&&!state.busy&&!state.unconfirmed){const form=dom.querySelector('#lpm-form');if(form){const fields=Object.fromEntries(new Form(form));if(typeof fields.message==='string')state.draft.message=fields.message;if(['app','whatsapp'].includes(fields.channel))state.draft.channel=fields.channel;}}
   return {name:node?.name,radioValue:node?.type==='radio'?node.value:null,action:node?.dataset?.action,top:body?.scrollTop||0,start:node?.selectionStart,end:node?.selectionEnd};
  };
@@ -20,7 +20,7 @@ export function createLessonParentMessaging({api,scope,resolve,current,onOpen,on
   target?.focus?.({preventScroll:true});if(typeof position.start==='number'&&target?.setSelectionRange)try{target.setSelectionRange(position.start,position.end);}catch{}
   const body=dom.querySelector('#lpm-body');if(body)body.scrollTop=position.top;
  };
- const draw=(position=capture())=>{if(!state)return;paint(markup(state,{t,esc}));restore(position);};
+ const draw=(position=capture())=>{if(!state||state.pickerOpen)return;paint(markup(state,{t,esc}));restore(position);};
  const discard=({restore:back=false,draw:clear=true,notify=true}={})=>{const old=state;state=null;if(old){if(clear)paint('');if(notify)onClose(old.ticket,{restore:back});}};
  const ownership=()=>{if(state&&!owns(state))discard({restore:false});return !!state;};
  const validContext=(value,owner)=>{
@@ -47,7 +47,7 @@ export function createLessonParentMessaging({api,scope,resolve,current,onOpen,on
  const open=async(sessionId,opener)=>{
   if(state||!id(sessionId)||!['admin','teacher'].includes(scopeNow().role))return false;
   const resolved=resolve({sessionId,opener});if(resolved?.status!=='ready'||!resolved.returnTicket||resolved.facts?.lesson?.id!==sessionId||!id(resolved.facts?.student?.id))return false;
-  state={sessionId,ticket:resolved.returnTicket,facts:clone(resolved.facts),identity:scopeNow().identity,context:null,contextStatus:'loading',step:'edit',draft:{channel:'app',message:''},busy:false,unconfirmed:false,stale:false,error:'',ack:null,operation:null,read:null};
+  state={sessionId,ticket:resolved.returnTicket,facts:clone(resolved.facts),identity:scopeNow().identity,context:null,contextStatus:'loading',step:'edit',draft:{channel:'app',message:''},templatesAvailable:typeof openTemplatePicker==='function',pickerOpen:false,busy:false,unconfirmed:false,stale:false,error:'',ack:null,operation:null,read:null};
   onOpen(state.ticket);draw(null);dom.querySelector('.lpm-dialog [data-action="parent-message-close"]')?.focus?.();await readContext();return true;
  };
  const input=target=>{
@@ -76,6 +76,10 @@ export function createLessonParentMessaging({api,scope,resolve,current,onOpen,on
  };
  const command=async(action)=>{
   if(!ownership())return false;if(state.busy)return true;
+  if(action==='parent-message-template'&&state.step==='edit'&&state.contextStatus==='ready'&&!state.stale&&!state.unconfirmed&&typeof openTemplatePicker==='function'){
+   const owner=state,position=capture();owner.pickerOpen=true;
+   try{const opened=await openTemplatePicker({currentMessage:owner.draft.message,guard:()=>owns(owner),onSelect:record=>{if(owns(owner)&&typeof record?.body==='string'&&record.body.trim()&&record.body.length<=2000){owner.draft.message=record.body;owner.error='';}},onClose:()=>{if(owns(owner)){owner.pickerOpen=false;draw(null);restore(position);dom.querySelector('#lpm-message')?.focus?.({preventScroll:true});}}});if(!opened&&owns(owner)){owner.pickerOpen=false;draw(position);}}catch{if(owns(owner)){owner.pickerOpen=false;owner.error=t('未能開啟範本，已填訊息保留。','Could not open templates. Your message is kept.');draw(position);}}return true;
+  }
   if(action==='parent-message-close'){discard({restore:true});return true;}
   if(action==='parent-message-send'){await send();return true;}
   if(state.unconfirmed)return true;

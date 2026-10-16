@@ -112,5 +112,25 @@ export function createAvailableSlotStore({database,transaction,accessControl,cla
     const policy=settings(),range=publicRange(policy,{from,days}),all=facts(),courses=publicCourseDTOs(all,policy),slots=all.filter(slot=>published(slot,policy)&&slot.date>=range.from&&slot.date<=range.to&&publicUseVisible(slot,policy)).sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time)||a.courseId.localeCompare(b.courseId)||a.id.localeCompare(b.id)).map(slot=>publicSlot(slot,policy)),revision=hash({policy,courses,slots,...range});
     return since===revision?{revision,unchanged:true,...range}:{revision,courses,slots,...range};
   },'read');
-  return {scopeFacts:facts,list,get,create,update,settings:actorId=>{administrator(actorId);return settings();},updateSettings,publicCourses,publicDetail,publicTimetable};
+  // Internal Trial orchestration uses the existing publication and reservation
+  // facts under the caller's outer write transaction, never a second quota.
+  const reservePublicTrial=({courseId,slotId,from,days,revision})=>transaction(()=>{
+    const current=facts().find(slot=>slot.id===slotId),policy=settings();
+    if(!current||current.courseId!==courseId||!published(current,policy))throw new ApplicationError(409,'TRIAL_SOURCE_UNAVAILABLE','This trial time is no longer available.');
+    if(current.trialEnabled!==true||!Number.isSafeInteger(current.trialCapacity)||current.trialCapacity<1)throw new ApplicationError(409,'TRIAL_SOURCE_UNAVAILABLE','This time is not open for trial applications.');
+    if(!Number.isSafeInteger(current.trialRemaining)||current.trialRemaining<1)throw new ApplicationError(409,'TRIAL_FULL','This trial time is full.');
+    const detail=publicDetail(courseId,{from,days});
+    if(detail.revision!==revision||!detail.slots.some(slot=>slot.id===slotId&&slot.courseId===courseId&&slot.trialVisible===true))throw new ApplicationError(409,'TRIAL_SOURCE_CHANGED','This trial time changed. Review it again before submitting.');
+    const reservationId=randomUUID(),identity=sourceIdentity(current);
+    database.prepare("INSERT INTO availability_reservations(id,slot_id,kind,state,source_identity) VALUES (?,?,'trial','held',?)").run(reservationId,slotId,identity);
+    const visible=detail.slots.find(slot=>slot.id===slotId);
+    return {reservationId,sourceIdentity:identity,slot:{...Object.fromEntries(['id','courseId','date','time','duration','teacherNames','roomNames'].map(field=>[field,visible[field]])),courseName:detail.course.courseName}};
+  });
+  const releaseTrialReservation=({reservationId,slotId,sourceIdentity:identity})=>transaction(()=>{
+    const held=database.prepare('SELECT * FROM availability_reservations WHERE id=?').get(reservationId);
+    if(!held||held.slot_id!==slotId||held.kind!=='trial'||held.state!=='held'||held.source_identity!==identity)throw new ApplicationError(409,'TRIAL_RESERVATION_CHANGED','This trial reservation changed. Reload the request.');
+    const result=database.prepare("UPDATE availability_reservations SET state='released' WHERE id=? AND state='held'").run(reservationId);
+    if(result.changes!==1)throw new ApplicationError(409,'TRIAL_RESERVATION_CHANGED','This trial reservation changed. Reload the request.');
+  });
+  return {scopeFacts:facts,list,get,create,update,settings:actorId=>{administrator(actorId);return settings();},updateSettings,publicCourses,publicDetail,publicTimetable,reservePublicTrial,releaseTrialReservation};
 }

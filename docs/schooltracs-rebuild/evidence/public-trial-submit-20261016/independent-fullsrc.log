@@ -1,0 +1,88 @@
+TAP version 13
+# Subtest: independent fullsrc queue second page detail Back restores original row focus and scroll
+ok 1 - independent fullsrc queue second page detail Back restores original row focus and scroll
+  ---
+  duration_ms: 108.563875
+  type: 'test'
+  ...
+# Subtest: independent fullsrc navigation suppresses late private detail and stale response cannot revive overlay
+ok 2 - independent fullsrc navigation suppresses late private detail and stale response cannot revive overlay
+  ---
+  duration_ms: 3.700291
+  type: 'test'
+  ...
+# Subtest: independent fullsrc lost rejection Back cannot change immutable target and revoked identity ignores late ACK
+ok 3 - independent fullsrc lost rejection Back cannot change immutable target and revoked identity ignores late ACK
+  ---
+  duration_ms: 4.681125
+  type: 'test'
+  ...
+# Subtest: independent fullsrc rejection Back keeps same record and current source error removes contacts
+ok 4 - independent fullsrc rejection Back keeps same record and current source error removes contacts
+  ---
+  duration_ms: 4.176583
+  type: 'test'
+  ...
+# Subtest: independent fullsrc Back restores same paged queue scroll and request button after reading detail
+ok 5 - independent fullsrc Back restores same paged queue scroll and request button after reading detail
+  ---
+  duration_ms: 5.622875
+  type: 'test'
+  ...
+# Subtest: independent fullsrc native FormData review raw input then successful exact submit and no double request
+ok 6 - independent fullsrc native FormData review raw input then successful exact submit and no double request
+  ---
+  duration_ms: 6.848292
+  type: 'test'
+  ...
+# Subtest: independent fullsrc production-null native review never sends even forged submit
+ok 7 - independent fullsrc production-null native review never sends even forged submit
+  ---
+  duration_ms: 4.767666
+  type: 'test'
+  ...
+# Subtest: independent fullsrc public late ACK after actual route navigation cannot revive success
+ok 8 - independent fullsrc public late ACK after actual route navigation cannot revive success
+  ---
+  duration_ms: 4.15975
+  type: 'test'
+  ...
+# Subtest: independent real modal DOM known unchanged poll never replaces controls focus or scroll
+ok 9 - independent real modal DOM known unchanged poll never replaces controls focus or scroll
+  ---
+  duration_ms: 3.623583
+  type: 'test'
+  ...
+# Subtest: independent fullsrc stale pending GET after Reject ACK cannot rewind committed state or repaint stale controls
+ok 10 - independent fullsrc stale pending GET after Reject ACK cannot rewind committed state or repaint stale controls
+  ---
+  duration_ms: 5.701417
+  type: 'test'
+  ...
+# Subtest: independent unchanged Trial work poll does not replace the surrounding Course workspace controls
+ok 11 - independent unchanged Trial work poll does not replace the surrounding Course workspace controls
+  ---
+  duration_ms: 4.031875
+  type: 'test'
+  ...
+# Subtest: independent Trial work error and recovery still repaint their changed source state
+ok 12 - independent Trial work error and recovery still repaint their changed source state
+  ---
+  duration_ms: 4.1135
+  type: 'test'
+  ...
+# Subtest: independent actual polling does not fetch hidden work on Course screens but fetches the visible Teacher homepage
+ok 13 - independent actual polling does not fetch hidden work on Course screens but fetches the visible Teacher homepage
+  ---
+  duration_ms: 4.918667
+  type: 'test'
+  ...
+1..13
+# tests 13
+# suites 0
+# pass 13
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 454.278209

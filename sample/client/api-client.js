@@ -107,6 +107,17 @@ export function createApiClient() {
       return request(`/public/timetable${query.size ? '?' + query : ''}`);
     },
     publicCourses: (revision = '') => request(`/public/courses${revision ? '?since=' + encodeURIComponent(revision) : ''}`),
+    publicTrialPolicy: () => request('/public/trial-form-policy'),
+    submitPublicTrial: (input, operationKey) => request('/public/trial-applications', { method: 'POST', body: input, idempotencyKey: operationKey }),
+    trialApplications(query = {}, revision = '') {
+      const params = new URLSearchParams();
+      for (const key of ['personId','status','page','pageSize']) if (query[key] !== undefined && query[key] !== '') params.set(key,String(query[key]));
+      if (revision) params.set('since',revision);
+      return request('/trial-applications' + (params.size ? '?' + params : ''));
+    },
+    trialApplication: id => request('/trial-applications/' + encodeURIComponent(id)),
+    trialWork: (revision = '') => request('/trial-applications/work' + (revision ? '?since=' + encodeURIComponent(revision) : '')),
+    rejectTrialApplication: (id, version, operationKey) => request('/trial-applications/' + encodeURIComponent(id) + '/reject', { method:'POST',body:{version},idempotencyKey:operationKey }),
     publicCourseDetails(id, from, revision = '', days) {
       const query = new URLSearchParams();
       if (from) query.set('from', from);

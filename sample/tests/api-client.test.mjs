@@ -23,6 +23,17 @@ test('course lifecycle requests preserve version, authenticated headers and oper
 });
 
 const identity = name => ({ id: `fictional-${name}`, email: `${name}@example.test`, displayName: `Fictional ${name}`, role: 'admin' });
+test('Trial SDK keeps anonymous submit payload and retry key exact and encodes scoped request reads and rejection',async t=>{
+ const wire=network(t),client=createApiClient(),key='b5d580e6-e2fc-4d0d-8894-09fde9e222af',input={courseId:'course',slotId:'slot',from:'2026-10-19',days:7,revision:'proof',applicant:{localName:'陳欣悅',remark:' <raw>\n '}};
+ wire.reply('/api/public/trial-form-policy',{policy:null});assert.deepEqual(await client.publicTrialPolicy(),{policy:null});
+ for(let i=0;i<2;i++){wire.reply('/api/public/trial-applications',{reference:'TR-123',outcome:'received'},201);await client.submitPublicTrial(input,key);const call=wire.calls.at(-1);assert.equal(call.method,'POST');assert.deepEqual(JSON.parse(call.body),input);assert.equal(call.headers.get('Idempotency-Key'),key);}
+ await login(client,wire,'B');
+ wire.reply(path=>{const url=new URL(path,'http://localhost');assert.equal(url.pathname,'/api/trial-applications');assert.equal(url.searchParams.get('personId'),'person / 二');assert.equal(url.searchParams.get('page'),'2');assert.equal(url.searchParams.get('since'),'revision');assert.equal(url.searchParams.has('email'),false);},{records:[],total:0});
+ await client.trialApplications({personId:'person / 二',page:2,pageSize:25,email:'ignored'},'revision');
+ const path='/api/trial-applications/'+encodeURIComponent('request / 二');wire.reply(path,{application:{id:'request / 二'}});await client.trialApplication('request / 二');
+ wire.reply('/api/trial-applications/work?since=old',{revision:'new',pendingTotal:0});await client.trialWork('old');
+ wire.reply(path+'/reject',{application:{id:'request / 二',status:'rejected'}});await client.rejectTrialApplication('request / 二',3,'reject-key');const call=wire.calls.at(-1);assert.deepEqual(JSON.parse(call.body),{version:3});assert.equal(call.method,'POST');assert.equal(call.headers.get('Idempotency-Key'),'reject-key');assert.equal(call.headers.get('X-CSRF-Token'),'csrf-fictional-B');
+});
 const session = name => ({ user: identity(name), csrfToken: `csrf-fictional-${name}` });
 const response = (data, status = 200) => ({ ok: status >= 200 && status < 300, status, json: async () => data });
 const deferred = () => { let resolve; const promise = new Promise(accept => { resolve = accept; }); return { promise, resolve }; };

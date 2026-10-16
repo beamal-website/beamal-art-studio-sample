@@ -59,7 +59,7 @@ export function availabilityDetailMarkup({ slot = null, canEdit = false, canEdit
 }
 
 const courseMeta = (course, esc) => [course?.category, course?.level].filter(value => typeof value === 'string' && value.trim()).map(esc).join(' · ');
-export const publicNotice = (t, esc) => `<p class="availability-public-notice" role="status">${esc(t('試堂申請暫未開放。', 'Trial applications are not yet open.'))}</p>`;
+export const publicNotice = (t, esc) => `<p class="availability-public-notice" role="status">${esc(t('提交試課申請後，請等候老師聯絡。', 'After submitting a trial application, please wait for a teacher to contact you.'))}</p>`;
 const publicFailure = (error, t, esc, prefix = 'availability-public') => `<div class="availability-error-state"><p class="availability-error" role="alert">${esc(error)}</p><button type="button" class="ghost" data-action="${prefix}-refresh">${esc(t('重新載入', 'Reload'))}</button></div>`;
 
 export function publicCourseDirectoryMarkup({ courses = [], loading = false, error = '' } = {}, { t, esc }) {

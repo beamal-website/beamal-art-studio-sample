@@ -61,11 +61,29 @@ export function createPeopleStore({database,transaction}) {
     CREATE INDEX IF NOT EXISTS people_kind_created ON people(kind,created_at,id);
     CREATE TABLE IF NOT EXISTS person_audit_log (
       id INTEGER PRIMARY KEY AUTOINCREMENT,person_id TEXT NOT NULL REFERENCES people(id),
-      actor_id TEXT NOT NULL REFERENCES users(id),actor_name TEXT NOT NULL,
+      actor_id TEXT REFERENCES users(id),actor_name TEXT NOT NULL,
       action TEXT NOT NULL,version INTEGER NOT NULL,snapshot TEXT NOT NULL,created_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS person_audit_person ON person_audit_log(person_id,id);
   `);
+  // Public form submissions have no user account. Preserve every old audit row,
+  // index, trigger and AUTOINCREMENT high-water mark when removing NOT NULL.
+  if(database.prepare('PRAGMA table_info(person_audit_log)').all().find(column=>column.name==='actor_id')?.notnull)transaction(()=>{
+    const objects=database.prepare("SELECT sql FROM sqlite_master WHERE tbl_name='person_audit_log' AND type IN ('index','trigger') AND sql IS NOT NULL").all();
+    const sequence=database.prepare("SELECT seq FROM sqlite_sequence WHERE name='person_audit_log'").get()?.seq??0;
+    database.exec(`CREATE TABLE person_audit_log_nullable (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,person_id TEXT NOT NULL REFERENCES people(id),
+      actor_id TEXT REFERENCES users(id),actor_name TEXT NOT NULL,
+      action TEXT NOT NULL,version INTEGER NOT NULL,snapshot TEXT NOT NULL,created_at TEXT NOT NULL
+    );
+    INSERT INTO person_audit_log_nullable SELECT * FROM person_audit_log;
+    DROP TABLE person_audit_log;
+    ALTER TABLE person_audit_log_nullable RENAME TO person_audit_log;`);
+    for(const object of objects)database.exec(object.sql);
+    const current=database.prepare("SELECT seq FROM sqlite_sequence WHERE name='person_audit_log'").get();
+    if(current)database.prepare("UPDATE sqlite_sequence SET seq=? WHERE name='person_audit_log'").run(Math.max(sequence,current.seq));
+    else database.prepare('INSERT INTO sqlite_sequence(name,seq) VALUES (?,?)').run('person_audit_log',sequence);
+  });
   const administrator=actorId=>{const actor=database.prepare('SELECT id,display_name,role FROM users WHERE id=?').get(actorId);if(actor?.role!=='admin')throw new ApplicationError(403,'ROLE_FORBIDDEN','Only an administrator can access profiles until explicit profile permissions are available.');return actor;};
   const defaults={...Object.fromEntries(Object.keys(textLimits).map(key=>[key,''])),...Object.fromEntries(dateFields.map(key=>[key,null])),promotion:null};
   const dto=row=>{
@@ -86,11 +104,15 @@ export function createPeopleStore({database,transaction}) {
     const people=database.prepare(`${select} ${where} ORDER BY ${column} ${order},people.id ASC LIMIT ? OFFSET ?`).all(...params,pageSize,(page-1)*pageSize).map(dto);
     return {revision,people,page,pageSize,total};
   },'read');
-  const create=(input,actorId)=>transaction(()=>{
-    const actor=administrator(actorId),profile=validatePerson(input),id=randomUUID(),now=new Date().toISOString();
+  const insertApplicant=(input,actor,action)=>{
+    const profile=validatePerson(input),id=randomUUID(),now=new Date().toISOString();
     database.prepare("INSERT INTO people(id,kind,display_name,profile,search_text,version,created_at,updated_at) VALUES (?,'applicant',?,?,?,1,?,?)").run(id,profile.displayName,JSON.stringify(profile),searchText(profile),now,now);
-    const person=dto(record(id));audit(actor,'person.create',person);return person;
-  });
+    const person=dto(record(id));audit(actor,action,person);return person;
+  };
+  const create=(input,actorId)=>transaction(()=>insertApplicant(input,administrator(actorId),'person.create'));
+  // Internal orchestration helpers, never general anonymous profile endpoints.
+  const createPublicApplicant=input=>transaction(()=>insertApplicant(input,{id:null,display_name:'Public trial form'},'person.public-create'));
+  const profileForTrial=id=>dto(record(id));
   const update=(id,input,actorId)=>transaction(()=>{
     const actor=administrator(actorId),patch=validatePerson(input,{update:true}),current=dto(record(id));
     if(!current)throw new ApplicationError(404,'PERSON_NOT_FOUND','Profile was not found.');
@@ -104,5 +126,5 @@ export function createPeopleStore({database,transaction}) {
     administrator(actorId);if(!record(id))throw new ApplicationError(404,'PERSON_NOT_FOUND','Profile was not found.');
     return database.prepare('SELECT * FROM person_audit_log WHERE person_id=? ORDER BY id').all(id).map(row=>({id:row.id,action:row.action,version:row.version,actor:{id:row.actor_id,displayName:row.actor_name},createdAt:row.created_at,snapshot:JSON.parse(row.snapshot)}));
   },'read');
-  return {list,get,create,update,history};
+  return {list,get,create,update,history,createPublicApplicant,profileForTrial};
 }

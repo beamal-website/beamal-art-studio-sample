@@ -16,6 +16,7 @@ import { createClassTypeStore } from './class-types.mjs';
 import { createEnrollmentOrderStore } from './enrollment-orders.mjs';
 import { createStaffPersonalProfileStore } from './staff-personal-profiles.mjs';
 import { createLessonNoteStore } from './lesson-notes.mjs';
+import { createTrialApplicationStore } from './trial-applications.mjs';
 
 const publicUser = row => row ? { id: row.id, email: row.email, displayName: row.display_name, role: row.role } : null;
 const pricingKeys = ['feeName', 'pricingModel', 'price', 'months', 'duration', 'packageType', 'packageTotal', 'bookingExpiry', 'onlineStore'];
@@ -36,7 +37,7 @@ const historyPricing = snapshot => {
   return result;
 };
 
-export async function createStore({ databasePath = ':memory:', seedUsers = [], seedCourses = [], attachmentsDir } = {}) {
+export async function createStore({ databasePath = ':memory:', seedUsers = [], seedCourses = [], attachmentsDir, trialFormPolicy = null } = {}) {
   if (databasePath !== ':memory:') mkdirSync(dirname(databasePath), { recursive: true, mode: 0o700 });
   const database = new DatabaseSync(databasePath);
   if (databasePath !== ':memory:') chmodSync(databasePath, 0o600);
@@ -386,7 +387,7 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
       createCourse(validateCourse(input), null, seed.id);
     }
   } catch (error) { database.close(); throw error; }
-  let materials, attachments, schedules, schedulingResources, accessControl, people, availableSlots, classCapacityStatuses, enrollmentOrders, staffPersonalProfiles, lessonNotes;
+  let materials, attachments, schedules, schedulingResources, accessControl, people, availableSlots, classCapacityStatuses, enrollmentOrders, staffPersonalProfiles, lessonNotes, trialApplications;
   try {
     attachments = await createAttachmentStore({ database, transaction, directory: attachmentsDir || (databasePath === ':memory:' ? undefined : `${resolve(databasePath)}.attachments`) });
     schedulingResources = createSchedulingResourceStore({ database, transaction });
@@ -398,13 +399,14 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
     people = createPeopleStore({ database, transaction });
     classCapacityStatuses = createClassCapacityStatusStore({ database, transaction, accessControl });
     availableSlots = createAvailableSlotStore({ database, transaction, accessControl, classCapacityStatuses });
+    trialApplications = createTrialApplicationStore({ database, transaction, availableSlots, people, accessControl, trialFormPolicy });
     accessControl.setSlotSource(() => availableSlots.scopeFacts());
     enrollmentOrders = createEnrollmentOrderStore({ database, transaction, schedules, resources: schedulingResources, accessControl, getCourse, getFee });
     classCapacityStatuses.setOccupancySource?.(enrollmentOrders.occupied);
   }
   catch (error) { await attachments?.close(); database.close(); throw error; }
   return {
-    listCourses, getCourse, createCourse, updateCourse, deleteCourse: (id, version, actor) => changeCourseDeletion(id, version, actor), restoreCourse: (id, version, actor) => changeCourseDeletion(id, version, actor, true), listFees, getFee, createFee, updateFee, createOnce, mutateOnce, catalogSnapshot, materials, attachments, schedules, schedulingResources, accessControl, people, availableSlots, classCapacityStatuses, classTypes, enrollmentOrders, staffPersonalProfiles, lessonNotes,
+    listCourses, getCourse, createCourse, updateCourse, deleteCourse: (id, version, actor) => changeCourseDeletion(id, version, actor), restoreCourse: (id, version, actor) => changeCourseDeletion(id, version, actor, true), listFees, getFee, createFee, updateFee, createOnce, mutateOnce, catalogSnapshot, materials, attachments, schedules, schedulingResources, accessControl, people, availableSlots, classCapacityStatuses, classTypes, enrollmentOrders, staffPersonalProfiles, lessonNotes, trialApplications,
     listUsers: () => database.prepare('SELECT * FROM users ORDER BY email').all().map(publicUser),
     userByEmail: email => database.prepare('SELECT * FROM users WHERE email = ?').get(email),
     publicUser,

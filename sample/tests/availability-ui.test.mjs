@@ -192,7 +192,7 @@ test('public details navigates seven days and only displays real slot ids and qu
   assert.equal((html.match(/data-availability-date="/g) || []).length, 7);
   assert.match(html, /data-availability-slot-id="slot-a"/);
   assert.match(html, /2 places remaining/);
-  assert.match(html, /Trial applications are not yet open/);
+  assert.match(html, /After submitting a trial application, please wait for a teacher to contact you/);
   assert.doesNotMatch(html, /Private note|private-person-a|totalCapacity|1234|API|SQLite|data-go="\/join|data-action="pay/);
 });
 
@@ -267,7 +267,7 @@ test('public course names and teacher names are escaped in both languages', () =
     assert.match(html, /&lt;Teacher&gt;/);
     assert.match(html, /&lt;Room&gt;/);
     assert.doesNotMatch(html, /<Course>|<Teacher>|<Room>/);
-    assert.match(html, language === 'en' ? /Trial applications are not yet open/ : /試堂申請暫未開放/);
+    assert.match(html, language === 'en' ? /After submitting a trial application, please wait for a teacher to contact you/ : /提交試課申請後，請等候老師聯絡/);
   }
 });
 

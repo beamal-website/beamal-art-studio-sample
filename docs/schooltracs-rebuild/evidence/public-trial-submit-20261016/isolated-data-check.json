@@ -1,0 +1,50 @@
+{
+  "integrity": "ok",
+  "changedExisting": {
+    "availability_reservations": {
+      "before": 0,
+      "after": 2
+    },
+    "idempotent_creates": {
+      "before": 30,
+      "after": 31
+    },
+    "people": {
+      "before": 300,
+      "after": 302
+    },
+    "person_audit_log": {
+      "before": 300,
+      "after": 302
+    },
+    "sessions": {
+      "before": 5,
+      "after": 4
+    }
+  },
+  "added": {
+    "public_trial_receipts": 2,
+    "trial_application_events": 3,
+    "trial_applications": 2
+  },
+  "applicationStates": [
+    [
+      "pending",
+      1
+    ],
+    [
+      "rejected",
+      1
+    ]
+  ],
+  "reservationStates": [
+    [
+      "held",
+      1
+    ],
+    [
+      "released",
+      1
+    ]
+  ]
+}

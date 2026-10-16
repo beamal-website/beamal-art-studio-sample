@@ -39,9 +39,22 @@
 .public-trial-summary dt { color: var(--pt-muted); }
 .public-trial-summary dd { min-width: 0; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .public-trial-summary small { display: block; margin-top: 4px; color: var(--pt-muted); font-size: 12px; }
+.public-trial-dialog .public-trial-submit-error { flex: none; margin: 16px 24px 0; }
+.public-trial-dialog .public-trial-submit-error[hidden] { display: none; }
+.public-trial-dialog :is(#public-trial-body, #public-trial-success):focus-visible { outline: 2px solid var(--teal, #27777b); outline-offset: -4px; }
+.public-trial-dialog #public-trial-body { scroll-padding-block: 8px; }
+.public-trial-field-hint { color: var(--pt-muted); font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
+.public-trial-required { color: #8a432c; }
+.public-trial-field :is(input, select, textarea):disabled { background: #ecefe7; color: #63776e; cursor: wait; }
+.public-trial-received { padding: 20px; border: 1px solid #bdcbc1; border-radius: 7px; background: #eef3ee; line-height: 1.8; overflow-wrap: anywhere; }
+.public-trial-received p { margin: 0 0 16px; }
+.public-trial-received dl { margin: 0; }
+.public-trial-received dt { color: var(--pt-muted); font-size: 13px; }
+.public-trial-received dd { margin: 4px 0 0; font-weight: 600; }
 @media (max-width: 600px) {
   .public-trial-modal { padding: 12px; }
   .public-trial-modal .public-trial-dialog { height: calc(100dvh - 24px); max-height: calc(100dvh - 24px); }
+  .public-trial-dialog .public-trial-submit-error { margin: 12px 16px 0; }
   .public-trial-header { padding: 16px; gap: 8px; }
   .public-trial-header h2 { font-size: 20px; }
   .public-trial-body { padding: 20px 16px; }

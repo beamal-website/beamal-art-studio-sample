@@ -1,0 +1,11 @@
+{
+  "oldTables": 44,
+  "newTables": 47,
+  "changedExisting": [],
+  "added": {
+    "public_trial_receipts": 0,
+    "trial_application_events": 0,
+    "trial_applications": 0
+  },
+  "integrity": "ok"
+}

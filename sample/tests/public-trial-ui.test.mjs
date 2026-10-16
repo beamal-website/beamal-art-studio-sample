@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createPublicTrialDraft, advancePublicTrial, publicTrialMarkup } from '../client/public-trial-ui.js';
+import * as trialUI from '../client/public-trial-ui.js';
+const { createPublicTrialDraft, advancePublicTrial, publicTrialMarkup, publicTrialCanSubmit }=trialUI;
 
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 const ui = language => ({ t: (zh, en) => language === 'en' ? en : zh, esc });
@@ -106,4 +107,34 @@ test('public and typed names and notes are escaped in both languages without exp
     assert.match(html, /&lt;script&gt;course&lt;\/script&gt;/); assert.match(html, /&lt;Teacher&gt;/); assert.match(html, /&lt;Name&gt;/); assert.match(html, /&lt;\/dd&gt;&lt;script&gt;note&lt;\/script&gt;/);
     assert.doesNotMatch(html, /<script>|<Teacher>|<Name>|PRIVATE_|private-student|private-excluded/); assert.match(html, language === 'en' ? /Review trial details/ : /核對試課資料/);
   }
+});
+
+const submitting=(policy='name-whatsapp')=>advancePublicTrial({...createPublicTrialDraft({course,slot,today:'2026-10-15',policy}),capabilities:{submit:true}},'review',fields);
+test('real submission requires a named explicit policy capability valid Review and a ready public source',()=>{
+ assert.equal(create().policy,null);for(const policy of ['name-birth-whatsapp','name-whatsapp','name-contact']){const state=submitting(policy),html=publicTrialMarkup(state,ui('en'));assert.equal(state.step,'review');assert.equal(publicTrialCanSubmit(state),true);assert.doesNotMatch(button(html,'submit'),/disabled/);assert.doesNotMatch(html,/applications are not yet open/);assert.match(html,/not been submitted/);}
+ for(const patch of [{policy:null},{policy:'constructor'},{capabilities:{submit:'true'}},{capabilities:{submit:false}},{step:'details'},{sourceStatus:'loading'},{sourceStatus:'error'},{sourceStatus:'unavailable'},{busy:true},{stale:true},{draft:{...fields,email:'invalid'}}])assert.equal(publicTrialCanSubmit({...submitting(),...patch}),false,JSON.stringify(patch));
+});
+test('each explicit required-field policy validates only its agreed name birth and contact requirements and keeps raw strings',()=>{
+ const ready=policy=>({...createPublicTrialDraft({course,slot,today:'2026-10-15',policy}),capabilities:{submit:true}});
+ for(const policy of ['name-birth-whatsapp','name-whatsapp','name-contact']){const rejected=advancePublicTrial(ready(policy),'review',{});assert.equal(rejected.step,'details');assert.equal(rejected.error,'name-required');assert.match(publicTrialMarkup(rejected,ui('zh')),/姓名/);}
+ assert.equal(advancePublicTrial(ready('name-birth-whatsapp'),'review',{localName:'甲',whatsapp:' 123 '}).error,'birth-required');assert.equal(advancePublicTrial(ready('name-whatsapp'),'review',{fullName:' Name '}).error,'whatsapp-required');assert.equal(advancePublicTrial(ready('name-contact'),'review',{fullName:' Name '}).error,'contact-required');
+ for(const contact of [{email:' parent@example.test '},{whatsapp:' +852 1234 '}]){const state=advancePublicTrial(ready('name-contact'),'review',{localName:' 甲 ',...contact});assert.equal(state.step,'review');assert.equal(state.draft.localName,' 甲 ');}
+ assert.equal(advancePublicTrial({...ready('name-birth-whatsapp'),capabilities:{submit:false}},'review',{}).step,'review');assert.equal(advancePublicTrial(ready('name-whatsapp'),'review',{...fields,whatsapp:'x'.repeat(81)}).error,'length');assert.equal(advancePublicTrial(ready('name-whatsapp'),'review',{...fields,whatsapp:'x'.repeat(80)}).step,'review');
+});
+test('busy public submission locks native fields all exits and reducer commands without changing its payload',()=>{
+ for(const step of ['details','review']){const state={...submitting(),step,busy:true},before=JSON.stringify(state),html=publicTrialMarkup(state,ui('en'));assert.match(html,/aria-busy="true"/);for(const node of html.match(/<button\b[^>]*>/g)||[])assert.match(node,/\sdisabled(?:\s|>)/);if(step==='details')for(const node of html.match(/<(?:input|select|textarea)\b[^>]*>/g)||[])assert.match(node,/\sdisabled(?:\s|>)/);else assert.match(html,/Submitting/);for(const command of ['draft','review','back','submit','complete'])assert.equal(advancePublicTrial(state,command,{fullName:'Overwritten'}),state);assert.equal(JSON.stringify(state),before);}
+});
+test('uncertain submission permits same-payload retry despite its own now-full source without manufacturing success',()=>{
+ const state={...submitting(),uncertain:true,sourceStatus:'unavailable',sourceMessage:'This time is no longer available.',slot:{...submitting().slot,trialRemaining:0,trialStatus:'full'}};assert.equal(publicTrialCanSubmit(state),true);const html=publicTrialMarkup(state,ui('en'));assert.match(html,/not been confirmed/);assert.match(html,/Retry submission/);assert.doesNotMatch(button(html,'submit'),/disabled/);assert.match(button(html,'back'),/disabled/);assert.doesNotMatch(button(html,'close'),/disabled/);assert.doesNotMatch(html,/Please choose another time|Application received/);for(const command of ['draft','review','back','submit','complete'])assert.equal(advancePublicTrial(state,command,fields),state);assert.equal(publicTrialCanSubmit({...state,policy:null}),false);
+});
+test('only the host acknowledgement renders a received application with a safe reference and no booking payment or student claims',()=>{
+ const state={...submitting(),sourceStatus:'unavailable',submission:{reference:'TR-<second>',outcome:'received'}},before=JSON.stringify(state),html=publicTrialMarkup(state,ui('en'));assert.match(html,/Application received/);assert.match(html,/TR-&lt;second&gt;/);assert.match(html,/contact you/);assert.doesNotMatch(html,/data-command="submit"|data-command="back"|<form\b|<input\b|Confirmed booking|Payment confirmed|Converted to student/);assert.match(html,/id="public-trial-body"[^>]*tabindex="0"/);assert.ok(button(html,'close'));assert.equal(publicTrialCanSubmit(state),false);for(const command of ['draft','review','back','submit','complete'])assert.equal(advancePublicTrial(state,command,{}),state);assert.equal(JSON.stringify(state),before);
+ for(const submission of [null,{reference:'',outcome:'received'},{reference:'TR-1',outcome:'confirmed'},{reference:'x'.repeat(101),outcome:'received'}])assert.doesNotMatch(publicTrialMarkup({...submitting(),step:'success',submission},ui('en')),/Application received/);
+});
+test('submission errors are escaped focusable feedback outside the reading body and preserve every raw value',()=>{
+ const state={...submitting(),submitError:'Could not submit <script>private</script> & retry.'},before=JSON.stringify(state),html=publicTrialMarkup(state,ui('en'));assert.match(html,/id="public-trial-submit-error"[^>]*role="alert"[^>]*tabindex="-1"/);assert.match(html,/Could not submit &lt;script&gt;private&lt;\/script&gt; &amp; retry/);assert.doesNotMatch(html,/<script>/);assert.ok(html.indexOf('id="public-trial-submit-error"')<html.indexOf('id="public-trial-body"'));assert.equal(JSON.stringify(state),before);assert.match(publicTrialMarkup(submitting(),ui('en')),/id="public-trial-submit-error"[^>]*hidden/);
+});
+test('explicit required policies explain either-name and either-contact choices while default optional fields remain unchanged',()=>{
+ const details=policy=>publicTrialMarkup({...submitting(policy),step:'details'},ui('en')),birth=details('name-birth-whatsapp');assert.match(birth,/<input[^>]*name="dateOfBirth"[^>]*aria-required="true"/);assert.match(birth,/<input[^>]*name="whatsapp"[^>]*aria-required="true"/);assert.match(birth,/Chinese or English name/);assert.match(details('name-contact'),/WhatsApp number or email/);assert.doesNotMatch(details('name-whatsapp'),/<input[^>]*name="dateOfBirth"[^>]*aria-required="true"/);assert.doesNotMatch(publicTrialMarkup(create(),ui('en')),/aria-required="true"|public-trial-name-hint/);
+ const success=publicTrialMarkup({...submitting(),submission:{reference:'TR-123',outcome:'received'}},ui('en'));assert.match(success,/id="public-trial-success"[^>]*tabindex="-1"/);assert.match(success,/<button[^>]*data-command="close"[^>]*aria-label="Close"/);
 });

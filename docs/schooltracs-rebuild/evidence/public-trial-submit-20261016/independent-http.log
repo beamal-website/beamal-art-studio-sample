@@ -1,0 +1,60 @@
+TAP version 13
+# (node:36316) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: independent production gate has no new profile hold work history or enrollment side effects
+ok 1 - independent production gate has no new profile hold work history or enrollment side effects
+  ---
+  duration_ms: 745.726583
+  type: 'test'
+  ...
+# Subtest: independent concurrent last seat, receipt replay, reject exactly one hold and revoke replay privilege
+ok 2 - independent concurrent last seat, receipt replay, reject exactly one hold and revoke replay privilege
+  ---
+  duration_ms: 588.79075
+  type: 'test'
+  ...
+# Subtest: independent linked assignment handoff uses current exact teacher rather than historical slot names
+ok 3 - independent linked assignment handoff uses current exact teacher rather than historical slot names
+  ---
+  duration_ms: 663.604958
+  type: 'test'
+  ...
+# Subtest: independent delayed-body revocation cannot reject with privilege captured before body await
+ok 4 - independent delayed-body revocation cannot reject with privilege captured before body await
+  ---
+  duration_ms: 625.217625
+  type: 'test'
+  ...
+# Subtest: independent failure after person and hold creation rolls every new business row back
+ok 5 - independent failure after person and hold creation rolls every new business row back
+  ---
+  duration_ms: 606.130666
+  type: 'test'
+  ...
+# Subtest: independent restart preserves a lost historical receipt even with production policy now closed
+ok 6 - independent restart preserves a lost historical receipt even with production policy now closed
+  ---
+  duration_ms: 664.442875
+  type: 'test'
+  ...
+# Subtest: independent real SDK malformed 201 after committed HTTP must keep immutable uncertain retry
+ok 7 - independent real SDK malformed 201 after committed HTTP must keep immutable uncertain retry
+  ---
+  duration_ms: 614.609834
+  type: 'test'
+  ...
+# Subtest: independent reject event failure rolls released quota and request version back, retry commits once
+ok 8 - independent reject event failure rolls released quota and request version back, retry commits once
+  ---
+  duration_ms: 590.859625
+  type: 'test'
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 8
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 5270.033958

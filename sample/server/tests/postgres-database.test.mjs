@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {replacePlaceholders,translateSql} from '../postgres-database.mjs';
+import {EventEmitter} from 'node:events';
+import {replacePlaceholders,translateSql,waitForPostgresWorker} from '../postgres-database.mjs';
 
 test('PostgreSQL adapter translates SQLite startup and mutation statements',()=>{
  assert.equal(translateSql('PRAGMA foreign_keys = ON'),'');
@@ -18,4 +19,18 @@ test('PostgreSQL parameter conversion leaves question marks inside SQL strings a
  const expected=`SELECT $1, '?', "?" -- ?
 , $2`;
  assert.equal(replacePlaceholders(source),expected);
+});
+
+test('PostgreSQL worker readiness accepts a successful startup message',async()=>{
+ const worker=new EventEmitter();
+ const ready=waitForPostgresWorker(worker);
+ worker.emit('message',{ready:true});
+ await ready;
+});
+
+test('PostgreSQL worker readiness forwards connection errors',async()=>{
+ const worker=new EventEmitter();
+ const ready=waitForPostgresWorker(worker);
+ worker.emit('message',{ready:false,error:{message:'password authentication failed',code:'28P01'}});
+ await assert.rejects(ready,{message:'password authentication failed',code:'28P01'});
 });

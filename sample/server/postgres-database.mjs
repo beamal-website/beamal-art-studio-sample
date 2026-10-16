@@ -49,10 +49,22 @@ function statements(source){
  if(current.trim())result.push(current.trim());return result;
 }
 
+export function waitForPostgresWorker(worker){
+ return new Promise((resolve,reject)=>{
+  const failed=error=>reject(error);
+  worker.once('error',failed);
+  worker.once('message',message=>{
+   worker.off('error',failed);
+   if(message.ready){resolve();return;}
+   reject(Object.assign(new Error(message.error?.message||'Could not connect to PostgreSQL.'),{code:message.error?.code}));
+  });
+ });
+}
+
 export async function createPostgresDatabase(connectionString){
  if(typeof connectionString!=='string'||!/^postgres(?:ql)?:\/\//i.test(connectionString))throw new TypeError('DATABASE_URL must be a PostgreSQL connection string.');
  const channel=new MessageChannel(),worker=new Worker(new URL('./postgres-database-worker.mjs',import.meta.url),{workerData:{connectionString,port:channel.port2},transferList:[channel.port2]});
- try{const ready=await new Promise((resolve,reject)=>{const failed=error=>reject(error);worker.once('error',failed);worker.once('message',message=>{worker.off('error',failed);message.ready?resolve():reject(Object.assign(new Error(message.error?.message||'Could not connect to PostgreSQL.'),{code:message.error?.code}));});});if(!ready)throw new Error('PostgreSQL worker did not start.');}
+ try{await waitForPostgresWorker(worker);}
  catch(error){channel.port1.close();await worker.terminate();throw error;}
  let requestId=0,closed=false;
  const send=(action,sql='',values=[])=>{

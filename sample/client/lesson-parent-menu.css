@@ -1,0 +1,8 @@
+.lesson-student-actions { display:flex; align-items:flex-start; gap:12px; }
+.lesson-student-actions > .lesson-student-name { flex:1; min-width:0; }
+.lesson-parent-menu { flex:0 0 auto; max-width:240px; }
+.lesson-parent-menu summary { display:flex; align-items:center; justify-content:center; min-width:44px; min-height:44px; border:1px solid #d9ddd2; border-radius:6px; cursor:pointer; font-size:24px; list-style:none; }
+.lesson-parent-menu summary::-webkit-details-marker { display:none; }
+.lesson-parent-menu summary:focus-visible { outline:3px solid #a58a3b; outline-offset:2px; }
+.lesson-parent-menu > div { display:grid; gap:4px; padding:8px 0; }
+.lesson-parent-menu > div button { min-height:44px; white-space:normal; overflow-wrap:anywhere; text-align:left; }

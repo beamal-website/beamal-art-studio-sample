@@ -222,11 +222,30 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
       const studentAttendanceMatch = /^\/api\/student-sessions\/([^/]+)\/attendance$/.exec(pathname);
       const pendingArrangementMatch = /^\/api\/student-sessions\/([^/]+)\/(arrangement|pending-arrangement)$/.exec(pathname);
       const lessonNoteMatch = /^\/api\/schedules\/([^/]+)\/occurrences\/([^/]+)\/note$/.exec(pathname);
+      const parentMessageContextMatch = /^\/api\/student-sessions\/([^/]+)\/parent-message-context$/.exec(pathname);
+      const parentMessageMatch = /^\/api\/student-sessions\/([^/]+)\/parent-messages$/.exec(pathname);
       const enrollmentQuery = allowed => {
         for (const [key,value] of requestUrl.searchParams) if (!allowed.includes(key) || value.length > 200 || requestUrl.searchParams.getAll(key).length !== 1) throw new ApplicationError(400,'INVALID_QUERY','Choose supported enrollment query parameters.');
         return Object.fromEntries(requestUrl.searchParams);
       };
       const trialApplicationMatch = /^\/api\/trial-applications\/([^/]+)$/.exec(pathname);
+      if(parentMessageContextMatch && request.method==='GET'){
+        const session=requireSession(request);enrollmentQuery([]);
+        json(response,200,{context:store.lessonParentMessages.context(decodeId(parentMessageContextMatch[1]),session.user)});return;
+      }
+      if(parentMessageMatch && request.method==='POST'){
+        const session=requireMutation(request);enrollmentQuery([]);
+        const id=decodeId(parentMessageMatch[1]),input=await body(request),key=idempotencyKey(request);
+        // A paused body or lost acknowledgement must not replay private data to
+        // a sender whose current responsibility, source or recipient changed.
+        store.lessonParentMessages.authorizeSend(id,input,session.user);
+        const result=store.mutateOnce({userId:session.user.id,route:'POST /api/student-sessions/'+encodeURIComponent(id)+'/parent-messages',key,payloadHash:payloadHash(input),status:201},()=>({message:store.lessonParentMessages.send(id,input,session.user)}));
+        json(response,result.status,result.body);return;
+      }
+      if(pathname==='/api/parent-messages/inbox' && request.method==='GET'){
+        const session=requireSession(request),query=enrollmentQuery(['page','pageSize','since']);
+        json(response,200,store.lessonParentMessages.inbox(query,session.user));return;
+      }
       const trialRejectMatch = /^\/api\/trial-applications\/([^/]+)\/reject$/.exec(pathname);
       if (pathname === '/api/public/trial-form-policy' && request.method === 'GET') {
         enrollmentQuery([]);json(response,200,store.trialApplications.policy());return;
@@ -635,7 +654,7 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
         json(response, 200, store.updateFee(id, fee, version, session.user.id, true)); return;
       }
       if (pathname === '/api' || pathname.startsWith('/api/')) {
-        const known = packageContentsMatch || pendingArrangementMatch || pathname === '/api/pending-arrangements' || trialApplicationMatch || trialRejectMatch || ['/api/public/trial-form-policy','/api/public/trial-applications','/api/trial-applications','/api/trial-applications/work'].includes(pathname) || studentLinkMatch || orderMatch || orderActionMatch || studentRosterMatch || lessonNoteMatch || match || feeMatch || courseMaterialMatch || materialMatch || uploadMatch || attachmentMatch || scheduleMatch || occurrenceMatch || courseLifecycleMatch || schedulingResourceMatch || personMatch || personHistoryMatch || teacherLinkMatch || accessGrantMatch || availableSlotMatch || publicCourseMatch || capacityStatusMatch || classTypeMatch || ['/api/student-account-links', '/api/student/profile', '/api/student/timetable', '/api/timetable/filter-facts', '/api/staff/personal-profiles', '/api/orders', '/api/class-types', '/api/class-capacity-statuses', '/api/available-slots', '/api/availability-public-settings', '/api/public/courses', '/api/public/timetable', '/api/people', '/api/access-control', '/api/access-control/grants', '/api/health', '/api/auth/session', '/api/auth/login', '/api/auth/logout', '/api/courses', '/api/fees', '/api/catalog', '/api/schedules', '/api/scheduling-resources'].includes(pathname);
+        const known = parentMessageContextMatch || parentMessageMatch || pathname === '/api/parent-messages/inbox' || packageContentsMatch || pendingArrangementMatch || pathname === '/api/pending-arrangements' || trialApplicationMatch || trialRejectMatch || ['/api/public/trial-form-policy','/api/public/trial-applications','/api/trial-applications','/api/trial-applications/work'].includes(pathname) || studentLinkMatch || orderMatch || orderActionMatch || studentRosterMatch || lessonNoteMatch || match || feeMatch || courseMaterialMatch || materialMatch || uploadMatch || attachmentMatch || scheduleMatch || occurrenceMatch || courseLifecycleMatch || schedulingResourceMatch || personMatch || personHistoryMatch || teacherLinkMatch || accessGrantMatch || availableSlotMatch || publicCourseMatch || capacityStatusMatch || classTypeMatch || ['/api/student-account-links', '/api/student/profile', '/api/student/timetable', '/api/timetable/filter-facts', '/api/staff/personal-profiles', '/api/orders', '/api/class-types', '/api/class-capacity-statuses', '/api/available-slots', '/api/availability-public-settings', '/api/public/courses', '/api/public/timetable', '/api/people', '/api/access-control', '/api/access-control/grants', '/api/health', '/api/auth/session', '/api/auth/login', '/api/auth/logout', '/api/courses', '/api/fees', '/api/catalog', '/api/schedules', '/api/scheduling-resources'].includes(pathname);
         throw new ApplicationError(known ? 405 : 404, known ? 'METHOD_NOT_ALLOWED' : 'NOT_FOUND', 'API route or method is not available.');
       }
       await serveStatic(request, response, pathname);

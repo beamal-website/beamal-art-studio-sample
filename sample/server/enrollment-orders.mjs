@@ -211,6 +211,15 @@ export function createEnrollmentOrderStore({database,transaction,schedules,resou
   return {actor,row,occurrence};
  };
  const authorizeAttendance=(id,user)=>transaction(()=>{const {row,occurrence}=attendanceTarget(id,user);return sessionDTO(row,occurrence,true);},'read');
+ const authorizedParentMessageContext=(id,user)=>transaction(()=>{
+  const {actor,row,occurrence}=attendanceTarget(id,user),person=database.prepare("SELECT profile,version FROM people WHERE id=? AND kind='student'").get(row.student_id),sender=database.prepare('SELECT id,display_name FROM users WHERE id=?').get(actor.id),course=getCourse(occurrence.item.course);
+  let profile={};try{const value=JSON.parse(person.profile);if(plain(value))profile=value;}catch{}
+  const number=typeof profile.whatsApp==='string'&&profile.whatsApp.length<=80?profile.whatsApp.trim():'',parentName=typeof profile.parentName==='string'&&profile.parentName.length<=200?profile.parentName:'';
+  const link=database.prepare("SELECT links.user_id,links.version,users.display_name FROM student_account_links AS links JOIN users ON users.id=links.user_id AND users.role='student' WHERE links.student_id=?").get(row.student_id);
+  const teachers=resources.getMany(occurrence.item.teacherIds||[]).filter(resource=>resource.kind==='teacher'),teacherById=new Map(teachers.map(resource=>[resource.id,resource]));
+  const context={sessionId:row.id,studentId:row.student_id,studentName:row.display_name,courseId:course.id,courseName:course.courseName,date:occurrence.date,time:occurrence.item.time,duration:occurrence.item.duration,teacherNames:(occurrence.item.teacherIds||[]).map(resourceId=>teacherById.get(resourceId)?.displayName||''),sender:{id:sender.id,displayName:sender.display_name},whatsApp:number?{name:parentName,number}:null,appRecipient:link?{userId:link.user_id,displayName:link.display_name}:null};
+  return {...context,revision:hash({context,sessionVersion:row.session_version,sourceVersion:occurrence.item.version,personVersion:person.version,linkVersion:link?.version??null,courseVersion:course.version,teacherVersions:teachers.map(resource=>[resource.id,resource.version])})};
+ },'read');
  const saveAttendance=(id,input,user)=>transaction(()=>{
   const {actor,row,occurrence}=attendanceTarget(id,user);
   if(!plain(input))fail(400,'INVALID_STUDENT_ATTENDANCE','Attendance must be a JSON object.');
@@ -364,5 +373,5 @@ export function createEnrollmentOrderStore({database,transaction,schedules,resou
   const revision=hash({scope:scope?.revision??actor,from,to,facts,profiles:[...versions].sort(([a],[b])=>a.localeCompare(b)),sources:sorted.map(entry=>[entry.fact.scheduleId,entry.fact.sequence,entry.fact.date,entry.sourceVersion])});
   return since===revision?{revision,unchanged:true}:{revision,facts};
  },'read');
- return {managementSnapshot,setAccountLink,studentProfile,create,list,get,authorize:authorizedOrder,authorizeAttendance,saveAttendance,getArrangement,authorizePendingArrangement,savePendingArrangement,pendingArrangementWork,send,respond,confirmPayment,occupied,timetable,roster,filterFacts,audit:()=>database.prepare('SELECT * FROM enrollment_order_audit_log ORDER BY id').all().map(row=>({...row,snapshot:JSON.parse(row.snapshot)})),sales:()=>database.prepare('SELECT * FROM enrollment_sales ORDER BY created_at,id').all().map(row=>({id:row.id,orderId:row.order_id,studentId:row.student_id,amountCents:row.amount_cents,actorId:row.actor_id,createdAt:row.created_at}))};
+ return {managementSnapshot,setAccountLink,studentProfile,create,list,get,authorize:authorizedOrder,authorizeAttendance,saveAttendance,authorizedParentMessageContext,getArrangement,authorizePendingArrangement,savePendingArrangement,pendingArrangementWork,send,respond,confirmPayment,occupied,timetable,roster,filterFacts,audit:()=>database.prepare('SELECT * FROM enrollment_order_audit_log ORDER BY id').all().map(row=>({...row,snapshot:JSON.parse(row.snapshot)})),sales:()=>database.prepare('SELECT * FROM enrollment_sales ORDER BY created_at,id').all().map(row=>({id:row.id,orderId:row.order_id,studentId:row.student_id,amountCents:row.amount_cents,actorId:row.actor_id,createdAt:row.created_at}))};
 }

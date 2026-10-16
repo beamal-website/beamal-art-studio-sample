@@ -23,6 +23,16 @@ test('course lifecycle requests preserve version, authenticated headers and oper
 });
 
 const identity = name => ({ id: `fictional-${name}`, email: `${name}@example.test`, displayName: `Fictional ${name}`, role: 'admin' });
+test('parent messaging SDK encodes exact session input and authenticated retry while inbox queries omit caller identities',async t=>{
+ const wire=network(t),client=createApiClient();await login(client,wire,'B');const id='session / 學生',prefix='/api/student-sessions/'+encodeURIComponent(id);
+ wire.reply(prefix+'/parent-message-context',{context:{sessionId:id,revision:'context-proof'}});await client.parentMessageContext(id);let call=wire.calls.at(-1);assert.equal(call.method,'GET');assert.equal(call.body,undefined);
+ const input={revision:'context-proof',message:' Raw <message>\n '};wire.reply(prefix+'/parent-messages',{message:{id:'saved-message'}},201);await client.sendParentMessage(id,input,'message-retry');call=wire.calls.at(-1);assert.equal(call.method,'POST');assert.deepEqual(JSON.parse(call.body),input);assert.equal(call.headers.get('Idempotency-Key'),'message-retry');assert.equal(call.headers.get('X-CSRF-Token'),'csrf-fictional-B');assert.equal(call.credentials,'same-origin');
+ wire.reply(path=>{const url=new URL(path,'http://local.test');assert.equal(url.pathname,'/api/parent-messages/inbox');assert.equal(url.searchParams.get('page'),'2');assert.equal(url.searchParams.get('pageSize'),'10');assert.equal(url.searchParams.get('since'),'revision');assert.equal(url.searchParams.has('userId'),false);},{records:[],total:0});await client.parentMessagesInbox({page:2,pageSize:10,userId:'forged-user'},'revision');
+});
+test('parent messaging SDK rejects late private responses after a different account becomes current',async t=>{
+ const wire=network(t),client=createApiClient();await login(client,wire,'A');const wait=wire.pending('/api/student-sessions/session-A/parent-message-context'),old=observe(client.parentMessageContext('session-A'));await login(client,wire,'B');wait.resolve(response({context:{whatsApp:{number:'Private A contact'}}}));superseded(await old);
+ const inbox=wire.pending('/api/parent-messages/inbox'),pending=observe(client.parentMessagesInbox());client.invalidateSession();inbox.resolve(response({records:[{body:'Private B message'}]}));superseded(await pending);
+});
 test('package contents SDK preserves exact ordered metadata versions and authenticated retry identity',async t=>{
  const wire=network(t),client=createApiClient();await login(client,wire,'B');const id='fee / 課包',path='/api/fees/'+encodeURIComponent(id)+'/package-contents',contents={feeId:id,feeVersion:4,version:0,components:[],updatedAt:null};
  wire.reply(path,{contents});assert.deepEqual(await client.packageContents(id),{contents});let call=wire.calls.at(-1);assert.equal(call.method,'GET');assert.equal(call.body,undefined);assert.equal(call.headers.has('X-CSRF-Token'),false);

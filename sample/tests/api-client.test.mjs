@@ -2,6 +2,33 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createApiClient, ApiError } from '../client/api-client.js';
 
+test('public catalog loads the online-store course projection with optional revision',async t=>{
+ const wire=network(t),client=createApiClient(),courses=[{id:'public-course',courseName:'Published course',category:'Art',level:'Beginner'}];
+ wire.reply('/api/public/catalog?since=old-revision',{revision:'new-revision',courses});
+ assert.deepEqual(await client.publicCatalog('old-revision'),{revision:'new-revision',courses});
+ const call=wire.calls.at(-1);assert.equal(call.method,'GET');assert.equal(call.credentials,'same-origin');assert.equal(call.headers.get('X-CSRF-Token'),null);
+});
+
+test('trial applications submit only form data to the public same-origin API',async t=>{
+ const wire=network(t),client=createApiClient(),application={courseId:'public-course',courseName:'Published course',studentNameZh:'中文學生',studentNameEn:'Student Name',birthDate:'2019-05-01',school:'School',referrerName:'Referrer',interestedTimeslot:'Weekend afternoon',whatsappNumber:'+852 1234 5678',email:'parent@example.test',parentName:'Parent'};
+ wire.reply('/api/trial-applications',{application:{id:'application-id',status:'new',createdAt:'2026-10-16T10:00:00.000Z'}},201);
+ assert.equal((await client.createTrialApplication(application)).application.id,'application-id');
+ const call=wire.calls.at(-1);assert.equal(call.method,'POST');assert.equal(call.credentials,'same-origin');assert.deepEqual(JSON.parse(call.body),application);assert.equal(call.headers.get('X-CSRF-Token'),'');
+});
+
+test('public trial times loads every available slot for an encoded course and revision',async t=>{
+ const wire=network(t),client=createApiClient(),slots=[{id:'slot-a',date:'2026-10-24',time:'14:00',trialRemaining:2}];
+ wire.reply('/api/public/courses/course%20one/trial-times?since=old-revision',{revision:'new-revision',slots});
+ assert.deepEqual(await client.publicTrialTimes('course one','old-revision'),{revision:'new-revision',slots});
+ const call=wire.calls.at(-1);assert.equal(call.method,'GET');assert.equal(call.credentials,'same-origin');assert.equal(call.headers.get('X-CSRF-Token'),null);
+});
+
+test('configured remote API base sends requests to Render with cross-origin cookies',async t=>{
+ const wire=network(t),base='https://beamal-api.onrender.com';wire.reply(base+'/api/auth/login',session('remote'));const client=createApiClient({baseUrl:base+'/'});
+ assert.deepEqual((await client.login('remote@example.test','FictionalPassword-remote')).user,identity('remote'));
+ const call=wire.calls.at(-1);assert.equal(call.path,base+'/api/auth/login');assert.equal(call.credentials,'include');
+});
+
 test('course lifecycle requests preserve version, authenticated headers and operation keys without resending course or fee data',async t=>{
  const wire=network(t),client=createApiClient();await login(client,wire,'B');
  const current={id:'fictional-course / 一',version:7,courseName:'Preserved course',fees:[{price:300}]},path='/api/courses/'+encodeURIComponent(current.id),deleted={...current,version:8,deletedAt:'2026-10-14T02:00:00Z'};

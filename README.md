@@ -69,6 +69,8 @@ npm run api --prefix sample
 
 此時可開啟 `http://127.0.0.1:5180/login`。公開部署需要持久資料儲存、HTTPS 及明確允許的網址；本機測試成功不等於已部署。
 
+Vercel／Render／Supabase 分離部署及 SQLite 匯入步驟見 [部署指南](docs/deployment-vercel-render-supabase.md) 與根目錄的 [Render Blueprint](render.yaml)。目前尚未連接雲端 Supabase；匯入需要在本機安全設定 `DATABASE_URL` 後自行執行。教材附件原始檔不在 SQLite 內，須另行搬移至 Render 持久磁碟。
+
 ## 驗證
 
 ```sh

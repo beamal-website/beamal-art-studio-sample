@@ -19,6 +19,20 @@ async function catalog(client,since){
  return response.body;
 }
 
+test('anonymous public catalog syncs only online-store course names and metadata',async t=>{
+ const app=await fixture(t),anonymous=app.client(),first=await anonymous.request('/api/public/catalog');
+ assert.equal(first.status,200,first.text);assert.deepEqual(first.body.courses.map(row=>row.id),['public-course']);
+ assert.deepEqual(first.body.courses[0],{id:'public-course',courseName:'Published art',category:'Art',level:'Beginner'});noCredentials(first);
+ const admin=app.client();await admin.login();
+ const visible=await admin.request('/api/courses',{method:'POST',body:course({courseName:'Published from admin',onlineStore:true})});assert.equal(visible.status,201,visible.text);
+ const privateCourse=await admin.request('/api/courses',{method:'POST',body:course({courseName:'Internal from admin',onlineStore:false})});assert.equal(privateCourse.status,201,privateCourse.text);
+ const updated=await anonymous.request('/api/public/catalog?since='+encodeURIComponent(first.body.revision));
+ assert.equal(updated.status,200,updated.text);assert.notEqual(updated.body.revision,first.body.revision);
+ assert.ok(updated.body.courses.some(row=>row.id===visible.body.course.id));assert.ok(!updated.body.courses.some(row=>row.id===privateCourse.body.course.id));
+ assert.ok(updated.body.courses.every(row=>!Object.hasOwn(row,'price')&&!Object.hasOwn(row,'feeIds')&&!Object.hasOwn(row,'fees')));noCredentials(updated);
+ const unchanged=await anonymous.request('/api/public/catalog?since='+encodeURIComponent(updated.body.revision));assert.deepEqual(unchanged.body,{revision:updated.body.revision,unchanged:true});
+});
+
 test('catalog authentication and role scope agree with existing course and fee DTOs without nested pricing duplication',async t=>{
  const app=await fixture(t),anonymous=app.client();error(await anonymous.request('/api/catalog'),401);
  const admin=app.client();await admin.login();await grantTeacherAccess(app,admin,{courses:['public-course','private-course']});

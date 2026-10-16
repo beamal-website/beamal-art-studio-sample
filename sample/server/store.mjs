@@ -15,6 +15,8 @@ import { createClassCapacityStatusStore } from './class-capacity-status.mjs';
 import { createClassTypeStore } from './class-types.mjs';
 import { createEnrollmentOrderStore } from './enrollment-orders.mjs';
 import { createStaffPersonalProfileStore } from './staff-personal-profiles.mjs';
+import { createTrialApplicationStore } from './trial-applications.mjs';
+import { createPostgresDatabase } from './postgres-database.mjs';
 
 const publicUser = row => row ? { id: row.id, email: row.email, displayName: row.display_name, role: row.role } : null;
 const pricingKeys = ['feeName', 'pricingModel', 'price', 'months', 'duration', 'packageType', 'packageTotal', 'bookingExpiry', 'onlineStore'];
@@ -23,10 +25,11 @@ const pricing = record => Object.fromEntries(pricingKeys.filter(key => Object.ha
 const nameKey = name => name.trim().toLowerCase();
 const deletion = row => row.deleted_at ? { deletedAt: row.deleted_at } : {};
 
-export async function createStore({ databasePath = ':memory:', seedUsers = [], seedCourses = [], attachmentsDir } = {}) {
-  if (databasePath !== ':memory:') mkdirSync(dirname(databasePath), { recursive: true, mode: 0o700 });
-  const database = new DatabaseSync(databasePath);
-  if (databasePath !== ':memory:') chmodSync(databasePath, 0o600);
+export async function createStore({ databasePath = ':memory:', databaseUrl = process.env.DATABASE_URL || '', seedUsers = [], seedCourses = [], attachmentsDir } = {}) {
+  const postgres=!!databaseUrl;
+  if (!postgres&&databasePath !== ':memory:') mkdirSync(dirname(databasePath), { recursive: true, mode: 0o700 });
+  const database = postgres ? await createPostgresDatabase(databaseUrl) : new DatabaseSync(databasePath);
+  if (!postgres&&databasePath !== ':memory:') chmodSync(databasePath, 0o600);
   database.exec(`
     PRAGMA foreign_keys = ON;
     PRAGMA busy_timeout = 5000;
@@ -356,7 +359,7 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
       createCourse(validateCourse(input), null, seed.id);
     }
   } catch (error) { database.close(); throw error; }
-  let materials, attachments, schedules, schedulingResources, accessControl, people, availableSlots, classCapacityStatuses, enrollmentOrders, staffPersonalProfiles;
+  let materials, attachments, schedules, schedulingResources, accessControl, people, availableSlots, classCapacityStatuses, enrollmentOrders, staffPersonalProfiles, trialApplications;
   try {
     attachments = await createAttachmentStore({ database, transaction, directory: attachmentsDir || (databasePath === ':memory:' ? undefined : `${resolve(databasePath)}.attachments`) });
     schedulingResources = createSchedulingResourceStore({ database, transaction });
@@ -365,6 +368,7 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
     staffPersonalProfiles = createStaffPersonalProfileStore({ database, transaction, resources: schedulingResources, accessControl });
     materials = createMaterialStore({ database, transaction, attachments, accessControl });
     people = createPeopleStore({ database, transaction });
+    trialApplications = createTrialApplicationStore({ database, transaction });
     classCapacityStatuses = createClassCapacityStatusStore({ database, transaction, accessControl });
     availableSlots = createAvailableSlotStore({ database, transaction, accessControl, classCapacityStatuses });
     accessControl.setSlotSource(() => availableSlots.scopeFacts());
@@ -373,7 +377,7 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
   }
   catch (error) { await attachments?.close(); database.close(); throw error; }
   return {
-    listCourses, getCourse, createCourse, updateCourse, deleteCourse: (id, version, actor) => changeCourseDeletion(id, version, actor), restoreCourse: (id, version, actor) => changeCourseDeletion(id, version, actor, true), listFees, getFee, createFee, updateFee, createOnce, mutateOnce, catalogSnapshot, materials, attachments, schedules, schedulingResources, accessControl, people, availableSlots, classCapacityStatuses, classTypes, enrollmentOrders, staffPersonalProfiles,
+    listCourses, getCourse, createCourse, updateCourse, deleteCourse: (id, version, actor) => changeCourseDeletion(id, version, actor), restoreCourse: (id, version, actor) => changeCourseDeletion(id, version, actor, true), listFees, getFee, createFee, updateFee, createOnce, mutateOnce, catalogSnapshot, materials, attachments, schedules, schedulingResources, accessControl, people, availableSlots, classCapacityStatuses, classTypes, enrollmentOrders, staffPersonalProfiles, trialApplications,
     listUsers: () => database.prepare('SELECT * FROM users ORDER BY email').all().map(publicUser),
     userByEmail: email => database.prepare('SELECT * FROM users WHERE email = ?').get(email),
     publicUser,

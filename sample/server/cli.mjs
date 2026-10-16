@@ -10,13 +10,16 @@ const dataDir = resolve(process.env.BEAMAL_DATA_DIR || resolve(sampleDir, '.data
 const databasePath = resolve(process.env.BEAMAL_DATABASE_PATH || resolve(dataDir, 'beamal.sqlite'));
 const accountPath = resolve(dataDir, 'bootstrap-accounts.json');
 const host = process.env.BEAMAL_HOST || '127.0.0.1';
-const port = Number(process.env.BEAMAL_PORT || 5180);
+const port = Number(process.env.BEAMAL_PORT || process.env.PORT || 5180);
+const postgresMode = Boolean(process.env.DATABASE_URL);
 if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error('BEAMAL_PORT must be a valid port number.');
 await mkdir(dataDir, { recursive: true, mode: 0o700 });
 
 let accounts = [], bootstrapNewAccounts = false;
 const accountExists = await stat(accountPath).then(() => true).catch(() => false);
-if (accountExists) {
+if (postgresMode) {
+  accounts = [];
+} else if (accountExists) {
   const saved = JSON.parse(await readFile(accountPath, 'utf8'));
   if (!Array.isArray(saved.accounts)) throw new Error('Bootstrap account file is invalid.');
   accounts = saved.accounts;
@@ -44,7 +47,7 @@ const seedCourses = [
 ].map(course => ({ ...course, category: 'Fictional test course', level: '', pricingModel: 'package', packageType: 'visits', packageTotal: 4, bookingExpiry: null, onlineStore: true }));
 const staticDir = resolve(process.env.BEAMAL_STATIC_DIR || resolve(sampleDir, 'dist'));
 const options = {
-  databasePath, seedUsers: accounts, seedCourses, staticDir,
+  databasePath, databaseUrl:process.env.DATABASE_URL||'', seedUsers: accounts, seedCourses:postgresMode?[]:seedCourses, staticDir,
   secureCookies: process.env.BEAMAL_SECURE_COOKIES === 'true',
 };
 if (process.env.BEAMAL_ALLOWED_ORIGINS) options.allowedOrigins = process.env.BEAMAL_ALLOWED_ORIGINS.split(',').map(value => value.trim()).filter(Boolean);

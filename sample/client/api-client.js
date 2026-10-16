@@ -11,7 +11,8 @@ export class ApiError extends Error {
 
 // Only explicit operations are sent to the service. The browser's legacy
 // state is never uploaded wholesale, so another user's work cannot be reset.
-export function createApiClient() {
+export function createApiClient({ baseUrl = import.meta.env?.VITE_BEAMAL_API_BASE_URL || '' } = {}) {
+  const apiBaseUrl=String(baseUrl).replace(/\/+$/,'');
   let csrfToken = '', cookieCsrfToken = '', identityKey = '';
   let authEpoch = 0, authMutation = Promise.resolve();
   const superseded = () => new ApiError('The signed-in account changed.', 0, 'AUTH_SUPERSEDED');
@@ -32,9 +33,9 @@ export function createApiClient() {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
     try {
-      const response = await fetch(`/api${path}`, {
+      const response = await fetch(`${apiBaseUrl}/api${path}`, {
         method,
-        credentials: 'same-origin',
+        credentials: apiBaseUrl ? 'include' : 'same-origin',
         signal: controller.signal,
         headers: {
           Accept: 'application/json',
@@ -99,6 +100,11 @@ export function createApiClient() {
       });
     },
     publicCourses: (revision = '') => request(`/public/courses${revision ? '?since=' + encodeURIComponent(revision) : ''}`),
+    publicCatalog: (revision = '') => request(`/public/catalog${revision ? '?since=' + encodeURIComponent(revision) : ''}`),
+    publicTrialTimes: (courseId, revision = '') => request(`/public/courses/${encodeURIComponent(courseId)}/trial-times${revision ? '?since=' + encodeURIComponent(revision) : ''}`),
+    publicTrialTimes: (courseId, revision = '') => request(`/public/courses/${encodeURIComponent(courseId)}/trial-times${revision ? '?since=' + encodeURIComponent(revision) : ''}`),
+    createTrialApplication: application => request('/trial-applications', { method: 'POST', body: application }),
+    publicCatalog: (revision = '') => request(`/public/catalog${revision ? '?since=' + encodeURIComponent(revision) : ''}`),
     publicCourseDetails(id, from, revision = '') {
       const query = new URLSearchParams();
       if (from) query.set('from', from);

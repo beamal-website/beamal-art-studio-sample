@@ -1,0 +1,40 @@
+{
+  "user": {
+    "tables": 44,
+    "existingTablesChanged": [],
+    "changedTableCounts": {},
+    "addedTables": {
+      "lesson_note_audit_log": {
+        "count": 0
+      },
+      "lesson_notes": {
+        "count": 0
+      }
+    }
+  },
+  "gui": {
+    "tables": 44,
+    "existingTablesChanged": [
+      "idempotent_creates",
+      "sessions"
+    ],
+    "changedTableCounts": {
+      "idempotent_creates": {
+        "before": 27,
+        "after": 30
+      },
+      "sessions": {
+        "before": 5,
+        "after": 5
+      }
+    },
+    "addedTables": {
+      "lesson_note_audit_log": {
+        "count": 3
+      },
+      "lesson_notes": {
+        "count": 1
+      }
+    }
+  }
+}

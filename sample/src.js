@@ -1277,7 +1277,7 @@ async function refreshLessonStudents({paint=true}={}){
  catch(error){if(generation!==enrollmentGeneration||dataEpoch!==enrollmentDataEpoch||error.code==='AUTH_SUPERSEDED')return;lessonStudentCaches.set(key,{scheduleId:record.item.id,sequence:record.sequence,students:[],ready:false,error:enrollmentError(error)});interfacePreview?.refreshSharedLesson?.();repaint();}})();lessonStudentReads.set(key,pending);try{await pending;}finally{if(lessonStudentReads.get(key)===pending)lessonStudentReads.delete(key);}
 }
 
-function ensureSharedPolling(){if(!sharedMode||sharedPollingStarted)return;sharedPollingStarted=true;const refresh=async()=>{if(publicTrialOverlay)await refreshPublicTrialSource();else if(isPublicAvailabilityView())await refreshPublicAvailability();if(await refreshSharedSession())await Promise.all([isAvailabilityView()?refreshSharedAvailability():Promise.resolve(),isPeopleView()?(accountPersonId()?refreshPersonProfile(accountPersonId()):refreshSharedPeople()):Promise.resolve(),refreshSharedCourses(),refreshActiveMaterials(),refreshSharedSchedules(),isTimetableFilterFactsView()?refreshTimetableFilterFacts():Promise.resolve(),isSharedStaffView()?refreshSharedStaffProfiles():Promise.resolve(),isClassStatusView()?refreshClassCapacityStatuses():Promise.resolve(),classTypesEnabled()?refreshSharedClassTypes():Promise.resolve(),teacherAccessManager||isSharedStaffView()?refreshTeacherAccess():Promise.resolve(),isEnrollmentView()?refreshEnrollmentOrders():Promise.resolve(),authUser?.role==='student'?refreshStudentTimetable():Promise.resolve(),(selectedTimetableLesson||sharedLessonReturn)&&!enrollmentOverlay?refreshLessonStudents():Promise.resolve()]);};window.setInterval(refresh,5000);window.addEventListener('focus',refresh);}
+function ensureSharedPolling(){if(!sharedMode||sharedPollingStarted)return;sharedPollingStarted=true;const refresh=async()=>{if(publicTrialOverlay)await refreshPublicTrialSource();else if(isPublicAvailabilityView())await refreshPublicAvailability();if(await refreshSharedSession())await Promise.all([timetableNoteDraft?.kind==='lesson'?readTimetableNote({poll:true}):Promise.resolve(),isAvailabilityView()?refreshSharedAvailability():Promise.resolve(),isPeopleView()?(accountPersonId()?refreshPersonProfile(accountPersonId()):refreshSharedPeople()):Promise.resolve(),refreshSharedCourses(),refreshActiveMaterials(),refreshSharedSchedules(),isTimetableFilterFactsView()?refreshTimetableFilterFacts():Promise.resolve(),isSharedStaffView()?refreshSharedStaffProfiles():Promise.resolve(),isClassStatusView()?refreshClassCapacityStatuses():Promise.resolve(),classTypesEnabled()?refreshSharedClassTypes():Promise.resolve(),teacherAccessManager||isSharedStaffView()?refreshTeacherAccess():Promise.resolve(),isEnrollmentView()?refreshEnrollmentOrders():Promise.resolve(),authUser?.role==='student'?refreshStudentTimetable():Promise.resolve(),(selectedTimetableLesson||sharedLessonReturn)&&!enrollmentOverlay?refreshLessonStudents():Promise.resolve()]);};window.setInterval(refresh,5000);window.addEventListener('focus',refresh);}
 async function initialiseSharedService(){
  if(!sharedClient)return;
  let generation=sharedGeneration,discarded=false;
@@ -1793,8 +1793,8 @@ function portalCourseDetail(id){if(!allCourseIds().includes(id))return `<section
 function handleCourseDetailAction(action){if(role!=='teacher')return;if(action==='course-back-source'){backFromCourseDetail();return;}let id=accountCourseId();if(!allCourseIds().includes(id))return;if(action==='course-add-schedule'){if(courseSettingsFor(id)?.deletedAt)return;openSchedule('',{course:id,startDate:courseDetailMonth.getFullYear()===new Date().getFullYear()&&courseDetailMonth.getMonth()===new Date().getMonth()?localToday():timetableDateKey(courseDetailMonth)});return}if(['course-month-prev','course-month-next'].includes(action)){courseDetailMonth=new Date(courseDetailMonth.getFullYear(),courseDetailMonth.getMonth()+(action==='course-month-next'?1:-1),1);render()}}
 const timetableDateKey=date=>`${String(date.getFullYear()).padStart(4,'0')}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
 const timetableSettingsKey='beamal-timetable-view-v1';
-// UI-stage internal-note drafts. No note persistence or business mutation is
-// performed here; schedule remarks and student-visible moreInfo stay separate.
+// Internal occurrence notes have their own shared record and version.
+// Date drafts, schedule remarks and student-visible moreInfo remain separate.
 let timetableNoteDraft=null,timetableNoteReturn=null;
 function timetableNoteIdentity(){return sharedMode?sessionIdentityKey(authUser):role;}
 function timetableNoteLocation(){return JSON.stringify([path(),tab,accountCourseId(),courseDetailTab,timetableDate,timetableView,timetableViewSettings.rangeDays,accountCourseId()?timetableDateKey(courseDetailMonth):'']);}
@@ -1823,7 +1823,7 @@ function drawTimetableNote(focus='text'){
  if(!timetableNoteContextCurrent()){discardTimetableNote();renderModal();return;}
  if(timetableNoteDraft.kind==='lesson'){const record=timetableNoteLessonRecord(timetableNoteDraft);timetableNoteDraft.courseName=rawCourseName(record.item.course);timetableNoteDraft.time=record.item.time;}
  modal=timetableNoteDialogMarkup(timetableNoteDraft,{t,esc});renderModal();
- const target=focus==='text'?'#tt-note-text':focus==='back'?'[data-action="tt-note-back"]':'[data-action="tt-note-close"]';document.querySelector(target)?.focus({preventScroll:true});
+ const target=focus==='text'?'#tt-note-text':focus==='back'?'[data-action="tt-note-back"]':'[data-action="tt-note-close"]';const control=document.querySelector(target);(control&&!control.disabled?control:document.querySelector('.tt-note-body'))?.focus({preventScroll:true});
  if(timetableNoteDraft.stage==='edit'&&focus==='text')restoreTimetableNoteEditor();
 }
 function openTimetableNote(data){
@@ -1834,13 +1834,14 @@ function openTimetableNote(data){
   const sequence=typeof data.sequence==='string'&&/^[1-9]\d*$/.test(data.sequence)?Number(data.sequence):data.sequence;
   const record=timetableNoteLessonRecord({kind:'lesson',scheduleId:data.scheduleId,sequence,date:data.date});
   if(!record||!selectedTimetableLesson||selectedTimetableLesson.id!==record.item.id||selectedTimetableLesson.date!==record.date||selectedTimetableLesson.sequence!==record.sequence)return;
-  draft={kind:'lesson',scheduleId:record.item.id,sequence:record.sequence,date:record.date,courseName:rawCourseName(record.item.course),time:record.item.time,draft:{text:''},stage:'edit'};
+  draft={kind:'lesson',scheduleId:record.item.id,sequence:record.sequence,courseId:record.item.course,sourceVersion:record.item.version,date:record.date,courseName:rawCourseName(record.item.course),time:record.item.time,draft:{text:''},stage:'edit'};
+  if(sharedMode&&typeof sharedClient?.lessonNote==='function'&&typeof sharedClient?.saveLessonNote==='function'){draft.sourceStatus='loading';draft.capabilities={save:false};}
  }else return;
  const opener=document.activeElement,origin=draft.kind==='lesson'?rememberEnrollmentLessonOrigin(opener):null;
  timetableNoteReturn={identity:timetableNoteIdentity(),location:timetableNoteLocation(),opener:{element:opener,dataset:{...opener?.dataset}},origin,grids:[...(document.querySelectorAll?.('.tt-grid-scroll')||[])].map(node=>({top:node.scrollTop,left:node.scrollLeft})),sidebar:document.querySelector('.tt-sidebar')?.scrollTop||0,x:window.scrollX||0,y:window.scrollY||0};
- timetableNoteDraft=draft;lessonMenuOpen=false;drawTimetableNote();
+ timetableNoteDraft=draft;lessonMenuOpen=false;drawTimetableNote();if(draft.sourceStatus==='loading')return readTimetableNote();
 }
-function updateTimetableNoteDraft(target){if(!timetableNoteDraft||timetableNoteDraft.stage!=='edit'||!target?.closest?.('#tt-note-form')||target.name!=='text')return false;timetableNoteDraft.draft.text=String(target.value??'');timetableNoteDraft.error='';return true;}
+function updateTimetableNoteDraft(target){if(!timetableNoteDraft||timetableNoteDraft.stage!=='edit'||timetableNoteDraft.busy||timetableNoteDraft.sourceStatus&&timetableNoteDraft.sourceStatus!=='ready'&&!(timetableNoteDraft.sourceStatus==='error'&&timetableNoteDraft.note?.canWrite===true)||timetableNoteDraft.note?.canWrite===false||!target?.closest?.('#tt-note-form')||target.name!=='text')return false;timetableNoteDraft.draft.text=String(target.value??'');timetableNoteDraft.error='';return true;}
 function rememberTimetableNoteEditor(){
  if(!timetableNoteReturn)return;
  const body=document.querySelector('.tt-note-body'),input=document.querySelector('#tt-note-text');
@@ -1853,7 +1854,7 @@ function restoreTimetableNoteEditor(){
  if(body){body.scrollTop=view.bodyTop;body.scrollLeft=view.bodyLeft;}
 }
 function reviewTimetableNote(form){
- if(!timetableNoteDraft||timetableNoteDraft.stage!=='edit')return;
+ if(!timetableNoteDraft||timetableNoteDraft.stage!=='edit'||timetableNoteDraft.busy||timetableNoteDraft.stale||timetableNoteDraft.sourceStatus&&timetableNoteDraft.sourceStatus!=='ready'||timetableNoteDraft.note?.canWrite===false)return;
  if(!timetableNoteContextCurrent()){discardTimetableNote();renderModal();return;}
  rememberTimetableNoteEditor();
  const values=Object.fromEntries(new FormData(form));if(Object.hasOwn(values,'text'))timetableNoteDraft.draft.text=String(values.text??'');
@@ -1861,6 +1862,7 @@ function reviewTimetableNote(form){
  timetableNoteDraft.stage='review';drawTimetableNote('back');
 }
 function closeTimetableNote(){
+ if(timetableNoteDraft?.busy)return;
  const saved=timetableNoteReturn,current=timetableNoteContextCurrent();clearTimetableNoteIdentity();if(!saved)return;
  if(saved.origin&&current&&enrollmentLessonOriginCurrent(saved.origin)){
   selectedTimetableLesson={...saved.origin.selection};courseLessonReturn=saved.origin.courseReturn;lessonDetailTab=saved.origin.lessonTab;lessonMenuOpen=false;modal=lessonDetailMarkup();renderModal();restoreLessonView(saved.origin.view,true);return;
@@ -1872,17 +1874,63 @@ function closeTimetableNote(){
 }
 function handleTimetableNoteAction(action,data){
  if(action==='tt-note-open'){openTimetableNote(data);return;}
- if(!timetableNoteDraft)return;
+ if(!timetableNoteDraft||timetableNoteDraft.busy)return;
  if(!timetableNoteContextCurrent()){discardTimetableNote();renderModal();return;}
+ if(action==='tt-note-retry'){readTimetableNote();return;}
+ if(action==='tt-note-save'){return saveTimetableNote();}
  if(action==='tt-note-close'||action==='tt-note-cancel'){closeTimetableNote();return;}
- if(action==='tt-note-back'&&timetableNoteDraft.stage==='review'){timetableNoteDraft.stage='edit';timetableNoteDraft.error='';drawTimetableNote();}
- // tt-note-save is deliberately inert, including a forged event/submission.
+ if(action==='tt-note-back'&&timetableNoteDraft.stage==='review'){timetableNoteDraft.stage='edit';timetableNoteDraft.error='';timetableNoteDraft.saveError='';timetableNoteDraft.operationKey=null;timetableNoteDraft.unconfirmed=false;drawTimetableNote();}
 }
 function timetableNoteKeyboard(event){
- if(!timetableNoteDraft)return false;if(event.isComposing||event.keyCode===229)return true;
+ if(!timetableNoteDraft)return false;if(event.isComposing||event.keyCode===229)return true;if(timetableNoteDraft.busy&&event.key==='Escape'){event.preventDefault();return true;}
  if(event.key==='Escape'){event.preventDefault();handleTimetableNoteAction(timetableNoteDraft.stage==='review'?'tt-note-back':'tt-note-close',{});return true;}
- if(event.key==='Tab'){const controls=[...(document.querySelectorAll?.('.tt-note-dialog button:not(:disabled),.tt-note-dialog textarea:not(:disabled)')||[])].filter(control=>!control.closest?.('[hidden]')),first=controls[0],last=controls.at(-1);if(!controls.includes(document.activeElement)||event.shiftKey&&document.activeElement===first||!event.shiftKey&&document.activeElement===last){event.preventDefault();((event.shiftKey?last:first)||document.querySelector('.tt-note-dialog'))?.focus();}return true;}
+ if(event.key==='Tab'){const controls=[...(document.querySelectorAll?.('.tt-note-dialog button:not(:disabled),.tt-note-dialog textarea:not(:disabled),.tt-note-body[tabindex]')||[])].filter(control=>!control.closest?.('[hidden]')),first=controls[0],last=controls.at(-1);if(!controls.includes(document.activeElement)||event.shiftKey&&document.activeElement===first||!event.shiftKey&&document.activeElement===last){event.preventDefault();((event.shiftKey?last:first)||document.querySelector('.tt-note-dialog'))?.focus();}return true;}
  return true;
+}
+
+function validTimetableNoteResult(note,state){
+ return !!note&&note.scheduleId===state.scheduleId&&note.sequence===state.sequence&&note.courseId===state.courseId&&note.date===state.date&&note.time===state.time&&note.sourceVersion===state.sourceVersion&&Number.isSafeInteger(note.version)&&note.version>=0&&typeof note.text==='string'&&note.text.length<=2000&&typeof note.canWrite==='boolean'&&(note.version===0?note.text===''&&note.updatedAt===null:typeof note.updatedAt==='string'&&Number.isFinite(Date.parse(note.updatedAt)));
+}
+async function readTimetableNote({poll=false}={}){
+ const state=timetableNoteDraft;if(!state||state.kind!=='lesson'||!state.sourceStatus||!timetableNoteContextCurrent()||typeof sharedClient?.lessonNote!=='function')return;
+ if(state.readPromise)return state.readPromise;
+ const current=()=>timetableNoteDraft===state&&timetableNoteContextCurrent();
+ const pending=(async()=>{try{
+  const result=await sharedClient.lessonNote(state.scheduleId,state.sequence);if(!current())return;
+  const record=timetableNoteLessonRecord(state);if(!record||record.item.version!==state.sourceVersion){state.stale=true;drawTimetableNote('close');return;}
+  if(!validTimetableNoteResult(result?.note,state))throw new Error('Invalid lesson note response');
+  const note=result.note,first=!state.note,changed=state.note&&(state.note.version!==note.version||state.note.text!==note.text);
+  const redraw=first||state.sourceStatus!=='ready'||!!state.readError||(!state.stale&&changed&&!state.busy&&!state.unconfirmed)||state.note?.canWrite!==note.canWrite;
+  if(first){state.note=note;state.draft.text=note.text;}
+  else if(!note.canWrite){state.note=note;}
+  else if(changed&&!state.busy&&!state.unconfirmed)state.stale=true;
+  state.capabilities={save:note.canWrite};state.sourceStatus='ready';state.readError='';
+  if(redraw){const keepInput=state.stage==='edit'&&document.activeElement?.id==='tt-note-text'&&note.canWrite;rememberTimetableNoteEditor();drawTimetableNote(note.canWrite&&(!poll||keepInput)?'text':'close');}
+ }catch(error){if(!current()||error.code==='AUTH_SUPERSEDED')return;
+  if(error.status===401){discardTimetableNote();applySharedUser(null);go('/login');return;}
+  if([403,404].includes(error.status)){discardTimetableNote();renderModal();if(error.status===403)await refreshSharedSession();return;}
+  const changed=state.sourceStatus!=='error';state.sourceStatus='error';state.readError=t('未能讀取課堂備忘，請重試。','Could not load the lesson note. Please retry.');state.capabilities={save:false};
+  if(changed){const keepInput=state.stage==='edit'&&document.activeElement?.id==='tt-note-text'&&state.note?.canWrite===true;rememberTimetableNoteEditor();drawTimetableNote(keepInput?'text':'close');}
+ }})();state.readPromise=pending;try{await pending}finally{if(state.readPromise===pending)state.readPromise=null;}
+}
+async function saveTimetableNote(){
+ const state=timetableNoteDraft;if(!state||state.kind!=='lesson'||state.stage!=='review'||state.busy||state.stale||state.sourceStatus!=='ready'||state.capabilities?.save!==true||state.note?.canWrite!==true||!timetableNoteContextCurrent()||validateTimetableNoteDraft(state)||typeof sharedClient?.saveLessonNote!=='function')return;
+ const record=timetableNoteLessonRecord(state);if(!record||record.item.version!==state.sourceVersion){state.stale=true;drawTimetableNote('back');return;}
+ const fields={version:state.note.version,sourceVersion:state.sourceVersion,text:state.draft.text};
+ state.operationKey ||= typeof crypto!=='undefined'&&crypto.randomUUID?crypto.randomUUID():'lesson-note-'+Date.now()+'-'+Math.random().toString(36).slice(2);
+ state.busy=true;state.saveError='';drawTimetableNote('close');
+ const current=()=>timetableNoteDraft===state&&timetableNoteContextCurrent();
+ try{
+  const result=await sharedClient.saveLessonNote(state.scheduleId,state.sequence,fields,state.operationKey);if(!current())return;
+  const latest=timetableNoteLessonRecord(state);if(!latest||latest.item.version!==state.sourceVersion)throw Object.assign(new Error('The lesson changed.'),{status:409});
+  if(!validTimetableNoteResult(result?.note,state)||result.note.version!==fields.version+1||result.note.text!==fields.text||result.note.canWrite!==true)throw new Error('Could not confirm the saved lesson note.');
+  state.busy=false;closeTimetableNote();toast(t('課堂備忘已儲存','Lesson note saved'));
+ }catch(error){if(!current()||error.code==='AUTH_SUPERSEDED')return;
+  state.busy=false;if(error.status===401){discardTimetableNote();applySharedUser(null);go('/login');return;}
+  if(error.status===403){discardTimetableNote();renderModal();await refreshSharedSession();return;}
+  state.unconfirmed=!error.status||error.code==='service_unavailable'&&error.status>=200&&error.status<300;
+  state.stale=state.stale||[404,409].includes(error.status);state.saveError=state.stale?t('課堂或備忘已更新，已填內容保留。請重新開啟核對。','The lesson or note changed. Your entries are kept; reopen to review the latest record.'):t('未能儲存，已填內容保留，請重試。','Could not save. Your entries are kept; please retry.');drawTimetableNote('close');const errorNode=document.querySelector('#tt-note-save-error');errorNode?.focus({preventScroll:true});errorNode?.scrollIntoView?.({block:'nearest'});
+ }
 }
 
 function timetablePreferenceKey(){return sharedMode&&authUser?.id?timetableSettingsKey+':'+authUser.id:timetableSettingsKey}

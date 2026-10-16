@@ -1,0 +1,77 @@
+{
+  "scope": "Internal single occurrence lesson notes; Date notes remain drafts",
+  "files": {
+    "sample/client/api-client.js": "4ec7f5acac7cceff78d661f2ce6f7350b07435940b5cac3fcb6f18547327cce4",
+    "sample/client/timetable-notes-ui.css": "6a91815c89a18b7f15906e2a245828fe12d6438b98cb2dcdec876a3d7053266a",
+    "sample/client/timetable-notes-ui.js": "4a0261c46b723ac2ef34d66646bdc0dc2c37a2b40d754335d13b26be0887e5be",
+    "sample/server/app.mjs": "fe53ca0c6a171fdf4ba5f2991f8f8c1bd8356e0fc6a01c76190c56fc4eecd994",
+    "sample/server/store.mjs": "91bafb2399d53ddd40c08a9e8c2314f8afa9fa882dc53ab523233fd71ba1ae1b",
+    "sample/server/lesson-notes.mjs": "d466ff318cebbf0baf8b012a84bd8900370fa15845278041139ce69d1e60b04f",
+    "sample/server/tests/lesson-notes.test.mjs": "b8f9d587c4090f50410c8e18aa046e0f1b5486add524b43ba2a39d213a6ea16a",
+    "sample/src.js": "4269b00055249172c480802b78582acd557091b9dca9ca81718e2fef53354a38",
+    "sample/tests/api-client.test.mjs": "37a36381afbf0990f11811721af410cdf8ca8e92a006c473610470c89159cdb1",
+    "sample/tests/timetable-notes-ui.test.mjs": "b167bfeb8334dab057e54a7293e3662a9a946426d3bc31c9bb802f255b1c6b1b",
+    "sample/tests/lesson-note-save-host.test.mjs": "d9b345ea86a3e91abd96b499f3d094000eb87ffc7b9ec5cfbd7e8bf901398268"
+  },
+  "validation": {
+    "workspaceTests": {
+      "passed": 1678,
+      "failed": 0,
+      "skipped": 0,
+      "durationMs": 49205.316542,
+      "includesPreExistingUntrackedStaffTests": 15,
+      "cleanIndexCandidateRun": false
+    },
+    "build": {
+      "passed": true,
+      "durationSeconds": 3.65,
+      "existingLargeChunkWarning": true
+    },
+    "serverCases": 14,
+    "pureUiCases": 21,
+    "hostCases": 12,
+    "independentFullControllerAndSdkCases": 13
+  },
+  "gui": {
+    "roles": [
+      "admin",
+      "teacher",
+      "student"
+    ],
+    "widths": [
+      390,
+      768,
+      1280
+    ],
+    "locales": [
+      "zh",
+      "en"
+    ],
+    "courseToTimetableSharedNote": true,
+    "teacherObservedAdminChangeAfterRestart": true,
+    "isolatedWrites": 3,
+    "isolatedNoteTuples": 1,
+    "otherOccurrenceUnchanged": true,
+    "privateNoteHiddenFromStudent": true,
+    "getOnly503FaultInTemporaryIsolatedLauncher": {
+      "initialDraftLength": 590,
+      "selectionStart": 588,
+      "selectionEnd": 589,
+      "selectionDirection": "backward",
+      "inputScrollTop": 1033,
+      "bodyScrollTop": 0,
+      "sameDraftAndPositionDuringFailure": true,
+      "continuedLocalDraftWhileReviewDisabled": true,
+      "sameDraftAndPositionAfterRecovery": true,
+      "cancelDidNotPersistDraft": true,
+      "faultRemovedAndNormalServiceRestarted": true
+    },
+    "hiddenRetryCssFixedAndVisuallyVerified": true,
+    "originalUserRestored": true
+  },
+  "completion": {
+    "courseAndTimetableComplete": false,
+    "ultimateGoalComplete": false,
+    "schooltracsFreshLiveParityClaim": false
+  }
+}

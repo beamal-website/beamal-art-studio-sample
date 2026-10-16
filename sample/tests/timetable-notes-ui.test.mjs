@@ -44,3 +44,49 @@ test('date and lesson launchers are small native icon controls with complete acc
 test('review invalid text cannot expose an enabled final submit or claim any storage action happened',()=>{
  for(const m of [{...date(),stage:'review',draft:{text:''}},{...lesson(),stage:'review',draft:{text:'z'.repeat(2001)}}]){const html=dialog(m,en);assert.match(html,/role="alert"/);assert.match(html,/data-action="tt-note-save"[^>]*disabled/);assert.doesNotMatch(html,/Saved|No notes|No records/);}
 });
+
+const serviceLesson=(extra={})=>({...lesson(),courseId:'course-exact',sourceVersion:7,sourceStatus:'ready',capabilities:{save:true},note:{scheduleId:'schedule-exact',sequence:3,courseId:'course-exact',date:'2026-10-16',time:'13:20',sourceVersion:7,version:0,text:'',updatedAt:null,canWrite:true},...extra});
+const action=(html,name)=>html.match(new RegExp('<button\\b[^>]*data-action="'+name+'"[^>]*>'))?.[0];
+const disabled=button=>!!button&&/\sdisabled(?:\s|>)/.test(button);
+test('an exact ready writable lesson enables only its valid Review Save without claiming it has saved',()=>{
+ const model=serviceLesson({stage:'review'}),before=JSON.stringify(model),html=dialog(model,en);assert.ok(action(html,'tt-note-save'));assert.equal(disabled(action(html,'tt-note-save')),false);assert.match(action(html,'tt-note-save'),/type="button"/);assert.match(html,/This note has not been saved/);assert.doesNotMatch(html,/Note saved|Saved successfully/);assert.match(html,/id="tt-note-body"[^>]*tabindex="0"/);assert.equal(JSON.stringify(model),before);
+});
+test('date and legacy lesson drafts never gain persistence from a capability or a forged note object',()=>{
+ for(const model of [{...date(),...serviceLesson(),kind:'date',stage:'review'},{...lesson(),capabilities:{save:true},stage:'review'}])assert.ok(disabled(action(dialog(model,en),'tt-note-save')));
+ for(const save of [undefined,false,1,'true',null]){const html=dialog(serviceLesson({capabilities:{save},stage:'review'}),en);assert.ok(!action(html,'tt-note-save')||disabled(action(html,'tt-note-save')));}
+});
+test('invalid or mismatched persisted note facts never expose another lesson text or enable Save',()=>{
+ const base=serviceLesson(),notes=[null,{...base.note,scheduleId:'different'},{...base.note,sequence:4},{...base.note,courseId:'different'},{...base.note,date:'2026-10-17'},{...base.note,time:'13:30'},{...base.note,sourceVersion:6},{...base.note,version:-1},{...base.note,version:'1'},{...base.note,sourceVersion:0},{...base.note,updatedAt:'not-a-date',version:1},{...base.note,canWrite:'true'},{...base.note,text:null}];
+ for(const note of notes){const html=dialog({...base,note:note&&{...note,text:note.text===null?null:'UNRELATED PRIVATE NOTE'},stage:'review'},en);assert.ok(!action(html,'tt-note-save')||disabled(action(html,'tt-note-save')));assert.doesNotMatch(html,/UNRELATED PRIVATE NOTE/);assert.match(html,/unavailable|Could not load/);}
+});
+test('only an existing validated lesson note may be cleared and Review explicitly describes clearing it',()=>{
+ const initial=serviceLesson({draft:{text:''}});assert.equal(validate(initial),'text');assert.ok(disabled(action(dialog({...initial,stage:'review'},en),'tt-note-save')));
+ const existing=serviceLesson({draft:{text:''},note:{...initial.note,version:2,text:'Original note',updatedAt:'2026-10-16T01:02:03.000Z'}}),before=JSON.stringify(existing);assert.equal(validate(existing),'');const html=dialog({...existing,stage:'review'},en);assert.match(html,/clear|removed/i);assert.equal(disabled(action(html,'tt-note-save')),false);assert.match(dialog({...existing,stage:'review'},zh),/清空/);assert.equal(JSON.stringify(existing),before);
+ assert.equal(validate({...existing,draft:{text:'  \n  '}}),'');assert.equal(validate({...existing,draft:{text:'a'.repeat(2001)}}),'length');assert.equal(validate({...existing,draft:{text:null}}),'text');
+});
+test('a read-only grant shows only authoritative note content and Close without an editable draft or Review',()=>{
+ const base=serviceLesson(),model={...base,draft:{text:'UNSAVED FORGED DRAFT'},note:{...base.note,version:2,text:'Canonical <saved> note',updatedAt:'2026-10-16T01:02:03.000Z',canWrite:false}},html=dialog(model,en);assert.match(html,/Canonical &lt;saved&gt; note/);assert.doesNotMatch(html,/UNSAVED FORGED DRAFT|<textarea|<form\b|data-action="tt-note-save"|data-action="tt-note-back"|>Review</);assert.match(html,/read.only/i);assert.ok(action(html,'tt-note-close'));assert.doesNotMatch(html,/course-exact|schedule-exact/);
+});
+test('loading and failed note reads distinguish unknown content from an empty note and provide retry',()=>{
+ for(const sourceStatus of ['loading','error']){const model=serviceLesson({sourceStatus,note:null,readError:'PRIVATE SQL STACK'}),html=dialog(model,en);assert.match(html,/Watercolour exploration|2026-10-16/);assert.match(html,sourceStatus==='loading'?/Loading/:/Could not load/);assert.doesNotMatch(html,/<textarea|No note yet|PRIVATE SQL STACK/);assert.ok(action(html,'tt-note-retry'));assert.ok(!action(html,'tt-note-save')||disabled(action(html,'tt-note-save')));}
+ const base=serviceLesson(),html=dialog({...base,sourceStatus:'error',draft:{text:'Native raw\n草稿'}},en);assert.match(html,/Native raw\n草稿/);assert.match(html,/<textarea/);assert.ok(disabled(html.match(/<button\b[^>]*id="tt-note-review"[^>]*>/)?.[0]));
+});
+test('busy lesson notes lock native controls and all exits while keeping raw input and reporting saving',()=>{
+ for(const stage of ['edit','review']){const model=serviceLesson({busy:true,stage,draft:{text:' Keep\n原文 '}}),before=JSON.stringify(model),html=dialog(model,en);assert.match(html,/<form[^>]*aria-busy="true"/);const buttons=html.match(/<button\b[^>]*>/g)||[];assert.ok(buttons.length>=3);assert.ok(buttons.every(disabled));if(stage==='edit')assert.match(html,/<textarea[^>]*disabled/);else assert.match(html,/Saving/);assert.match(html,/ Keep\n原文 /);assert.equal(JSON.stringify(model),before);}
+});
+test('stale and failed Saves keep exact drafts with focused escaped feedback and safe Back Close controls',()=>{
+ const base=serviceLesson({stage:'review'}),stale={...base,stale:true,saveError:'Generic retry message'},html=dialog(stale,en);assert.match(html,/changed|reopen/);assert.ok(disabled(action(html,'tt-note-save')));assert.equal(disabled(action(html,'tt-note-back')),false);assert.equal(disabled(action(html,'tt-note-close')),false);assert.match(html,/id="tt-note-save-error"[^>]*role="alert"[^>]*tabindex="-1"/);assert.ok(html.indexOf('id="tt-note-save-error"')<html.indexOf('id="tt-note-body"'));
+ const failed=dialog({...base,saveError:'Could not save <script>private</script> & retry.'},en);assert.match(failed,/Could not save &lt;script&gt;private&lt;\/script&gt; &amp; retry/);assert.doesNotMatch(failed,/<script>/);assert.equal(disabled(action(failed,'tt-note-save')),false);assert.match(dialog(base,en),/id="tt-note-save-error"[^>]*hidden/);assert.equal(base.draft.text,lesson().draft.text);
+});
+test('temporary loss of the save capability retains the writable draft while loading disables its textarea',()=>{
+ for(const sourceStatus of ['loading']){
+  const model=serviceLesson({sourceStatus,capabilities:{save:false},draft:{text:' Original native\n中文草稿 '}}),before=JSON.stringify(model),html=dialog(model,en);assert.match(html,/ Original native\n中文草稿 /);assert.match(html,/<form[^>]*id="tt-note-form"/);assert.match(html,/<textarea[^>]*disabled/);assert.ok(disabled(html.match(/<button\b[^>]*id="tt-note-review"[^>]*>/)?.[0]));assert.doesNotMatch(html,/This note is read-only|No note yet/);assert.equal(disabled(action(html,'tt-note-close')),false);assert.equal(JSON.stringify(model),before);
+ }
+});
+test('a stale writable note retains the raw draft when save capability is temporarily false without treating it as a read-only grant',()=>{
+ const model=serviceLesson({stage:'review',stale:true,capabilities:{save:false},draft:{text:'New unsaved text\n第二行'}}),before=JSON.stringify(model),html=dialog(model,en);assert.match(html,/New unsaved text\n第二行/);assert.match(html,/changed/);assert.doesNotMatch(html,/This note is read-only|No note yet/);assert.ok(disabled(action(html,'tt-note-save')));assert.equal(disabled(action(html,'tt-note-back')),false);assert.equal(disabled(action(html,'tt-note-close')),false);assert.match(dialog({...model,stage:'edit'},en),/<textarea[^>]*>New unsaved text\n第二行<\/textarea>/);assert.equal(JSON.stringify(model),before);
+});
+test('a known writable note remains locally editable after a failed poll without allowing Review Save or unauthorized editing',()=>{
+ const model=serviceLesson({sourceStatus:'error',capabilities:{save:false},draft:{text:' Original native\n可續寫草稿 '}}),before=JSON.stringify(model),html=dialog(model,en),textarea=html.match(/<textarea\b[^>]*>/)?.[0];assert.ok(textarea);assert.equal(disabled(textarea),false);assert.match(html,/ Original native\n可續寫草稿 /);assert.match(html,/Could not update/);assert.ok(disabled(html.match(/<button\b[^>]*id="tt-note-review"[^>]*>/)?.[0]));assert.ok(disabled(action(dialog({...model,stage:'review'},en),'tt-note-save')));assert.equal(JSON.stringify(model),before);
+ assert.match(dialog({...model,busy:true},en),/<textarea[^>]*disabled/);for(const sourceStatus of ['loading','error'])assert.doesNotMatch(dialog({...model,sourceStatus,note:null},en),/<form\b|<textarea|No note yet/);assert.doesNotMatch(dialog({...model,note:{...model.note,canWrite:false}},en),/<textarea|<form\b|可續寫草稿/);
+});

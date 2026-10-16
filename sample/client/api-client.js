@@ -77,6 +77,8 @@ export function createApiClient() {
     courses: () => request('/courses'),
     fees: () => request('/fees'),
     feeHistory: id => request(`/fees/${encodeURIComponent(id)}/history`),
+    packageContents: id => request(`/fees/${encodeURIComponent(id)}/package-contents`),
+    savePackageContents: (id,input,operationKey) => request(`/fees/${encodeURIComponent(id)}/package-contents`, {method:'PATCH',body:{version:input.version,feeVersion:input.feeVersion,components:input.components},idempotencyKey:operationKey}),
     availability(range, revision = '') {
       const query = new URLSearchParams();
       for (const key of ['from', 'to', 'courseId']) if (range?.[key]) query.set(key, range[key]);

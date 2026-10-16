@@ -241,6 +241,11 @@
   display: none;
 }
 
+.package-content-save-error {
+  flex: 0 0 auto;
+  margin: 16px 24px 0;
+}
+
 .package-content-field-error {
   margin: 0;
   color: #913b2e;
@@ -328,6 +333,7 @@
 .package-content-dialog button:focus-visible,
 .package-content-dialog input:focus-visible,
 .package-content-body:focus-visible,
+.package-content-saved:focus,
 .package-content-error:focus {
   outline: 3px solid #b79232;
   outline-offset: 3px;
@@ -338,6 +344,10 @@
   .package-content-body,
   .package-content-footer {
     padding: 16px;
+  }
+
+  .package-content-save-error {
+    margin: 16px 16px 0;
   }
 
   .package-content-context > dl,

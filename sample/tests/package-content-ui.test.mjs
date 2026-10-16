@@ -99,7 +99,7 @@ test('review renders ordered draft segments and duration separately from the sav
   assert.match(html, /90 minutes/);
   assert.match(html, /1080 minutes/);
   assert.match(html, /data-action="package-content-back"/);
-  assert.match(html, /<button type="submit"[^>]*disabled[^>]*>Save contents<\/button>/);
+  assert.match(html, /<button type="button"[^>]*data-action="package-content-save"[^>]*disabled[^>]*>Save contents<\/button>/);
   assert.match(html, /Contents have not been saved/);
   assert.doesNotMatch(html, /Saved successfully|Contents saved|remaining|12 visits|12 lessons|name="packageComponentName"/i);
 });
@@ -168,4 +168,93 @@ test('source-error recovery can reload without exposing old source details and l
   for (const action of ['refresh', 'add', 'remove', 'up', 'down', 'review']) assert.match(loading, new RegExp(`data-action="package-content-${action}"[^>]*disabled`));
   assert.match(loading, /data-action="package-content-close"[^>]*>Cancel<\/button>/);
   assert.doesNotMatch(loading, /data-action="package-content-close"[^>]*disabled/);
+});
+
+const savedContents = (patch = {}) => ({feeId: fee.id, feeVersion: fee.version, version: 3, components: components.map(row => ({...row, minutes: Number(row.minutes)})), updatedAt: '2026-10-16T12:30:00.000Z', ...patch});
+const readyState = (patch = {}) => ({...state, contentStatus: 'ready', savedContents: savedContents(), ...patch});
+const actionTag = (html, action) => html.match(new RegExp('<button\\b[^>]*data-action="'+action+'"[^>]*>'))?.[0];
+
+test('real saved contents show exact ordered segments and their own duration while quota remains unchanged', () => {
+  const source = readyState({step: 'details', components: [{id: 'private-draft', name: 'UNSAVED DRAFT', minutes: '900'}], savedContents: savedContents({components: [savedContents().components[1], savedContents().components[0]]})}), before = JSON.stringify(source), html = packageContentMarkup(source);
+  assert.ok(html.indexOf('data-component-id="interview"') < html.indexOf('data-component-id="junior"'));
+  assert.match(html, /Saved contents/); assert.match(html, /90 minutes/); assert.match(html, /1080 minutes/);
+  assert.doesNotMatch(html, /Contents have not been provided|UNSAVED DRAFT|900 minutes|remaining|lessons left/i);
+  assert.ok(actionTag(html, 'package-content-edit')); assert.equal(JSON.stringify(source), before);
+});
+
+test('only ready exact current Fee contents distinguish a genuine empty record from loading error and malformed data', () => {
+  const empty = packageContentMarkup(readyState({savedContents: savedContents({version: 0, components: [], updatedAt: null})}));
+  assert.match(empty, /No contents have been set/); assert.doesNotMatch(empty, /Could not load|Loading contents|>90 minutes<|>0 minutes</);
+  for (const contentStatus of ['loading', 'error']) {
+    const html = packageContentMarkup(readyState({contentStatus}));
+    assert.match(html, contentStatus === 'loading' ? /Loading contents/ : /Could not load contents/);
+    assert.doesNotMatch(html, /No contents have been set|Contents have not been provided|90 minutes/);
+    assert.equal(actionTag(html, 'package-content-edit'), undefined);
+    assert.ok(actionTag(html, 'package-content-close')); if (contentStatus === 'error') assert.ok(actionTag(html, 'package-content-refresh'));
+  }
+  for (const saved of [null, savedContents({feeId: 'same-name-other-fee'}), savedContents({feeVersion: fee.version + 1}), savedContents({version: -1}), savedContents({version: '3'}), savedContents({components: null}), savedContents({updatedAt: null}), savedContents({components: [{id: 'one', name: 'INVALID CANONICAL', minutes: '60'}]})]) {
+    const html = packageContentMarkup(readyState({savedContents: saved})); assert.match(html, /Could not load contents/); assert.doesNotMatch(html, /No contents have been set|90 minutes|INVALID CANONICAL/); assert.equal(actionTag(html, 'package-content-edit'), undefined);
+  }
+});
+
+test('explicit ready matching contents enable the host Save action only for a valid Admin Review', () => {
+  const source = readyState({step: 'review'}), before = JSON.stringify(source), html = packageContentMarkup(source), save = actionTag(html, 'package-content-save');
+  assert.ok(save); assert.match(save, /type="button"/); assert.doesNotMatch(save, /disabled/); assert.match(html, /data-step="review"/); assert.doesNotMatch(html, /Saving contents is not available yet/);
+  for (const patch of [{contentStatus: 'loading'}, {contentStatus: 'error'}, {contentStatus: undefined}, {stale: true}, {sourceError: 'Fee relation changed'}, {saving: true}, {savedContents: savedContents({feeVersion: 99})}, {components: [{id: 'one', name: '', minutes: '0'}]}]) {
+    const blocked = packageContentMarkup({...source, ...patch}), save = actionTag(blocked, 'package-content-save'); assert.ok(!save || /disabled/.test(save), JSON.stringify(patch)); assert.doesNotMatch(blocked, /id="package-content-saved"/);
+  }
+  const teacher = packageContentMarkup({...source, role: 'teacher'}); assert.match(teacher, /90 minutes/); assert.equal(actionTag(teacher, 'package-content-save'), undefined); assert.equal(actionTag(teacher, 'package-content-edit'), undefined); assert.doesNotMatch(teacher, /packageComponentName/); assert.equal(JSON.stringify(source), before);
+});
+
+test('a saved confirmation needs the host ACK with matching Fee versions order and exact draft contents', () => {
+  const source = readyState({step: 'saved', saveAck: savedContents()}), before = JSON.stringify(source);
+  for (const context of [{}, zh]) {
+    const html = packageContentMarkup(source, context); assert.match(html, /id="package-content-saved"[^>]*role="status"[^>]*tabindex="-1"/); assert.match(html, /Contents saved|內容已儲存/); assert.ok(actionTag(html, 'package-content-details')); assert.ok(actionTag(html, 'package-content-edit')); assert.doesNotMatch(html, /Contents have not been saved|package-content-save"|packageComponentName/);
+  }
+  for (const saveAck of [undefined, null, savedContents({feeId: 'other-fee'}), savedContents({feeVersion: 1}), savedContents({version: 0}), savedContents({version: 4}), savedContents({components: [...savedContents().components].reverse()}), savedContents({components: [{...savedContents().components[0], name: 'Other contents'}, savedContents().components[1]]})]) assert.doesNotMatch(packageContentMarkup({...source, saveAck}), /id="package-content-saved"|Contents saved/);
+  assert.doesNotMatch(packageContentMarkup({...source, components: [{id: 'new', name: 'New draft', minutes: '2'}]}), /id="package-content-saved"|Contents saved/); assert.equal(JSON.stringify(source), before);
+});
+
+test('saving locks closing and mutations while an unconfirmed result retries identical contents without allowing Back', () => {
+  const source = readyState({step: 'review', saving: true}), html = packageContentMarkup(source); assert.match(html, /aria-busy="true"/);
+  for (const action of ['package-content-close', 'package-content-back', 'package-content-save']) assert.match(actionTag(html, action), /disabled/);
+  const editing = packageContentMarkup({...source, step: 'edit'}); assert.match(editing, /name="packageComponentName"[^>]*disabled/); assert.match(editing, /name="packageComponentMinutes"[^>]*disabled/);
+  for (const action of ['package-content-add', 'package-content-up', 'package-content-down', 'package-content-remove', 'package-content-review']) assert.match(actionTag(editing, action), /disabled/);
+  const uncertain = packageContentMarkup(readyState({step: 'review', contentStatus: 'error', unconfirmed: true})); assert.match(uncertain, /has not been confirmed/); assert.doesNotMatch(actionTag(uncertain, 'package-content-save'), /disabled/); assert.match(actionTag(uncertain, 'package-content-back'), /disabled/); assert.doesNotMatch(actionTag(uncertain, 'package-content-close'), /disabled/); assert.match(uncertain, /90 minutes/);
+  const stale = packageContentMarkup(readyState({step: 'review', contentStatus: 'error', unconfirmed: true, stale: true})); assert.match(actionTag(stale, 'package-content-save'), /disabled/); assert.match(stale, /changed/); assert.doesNotMatch(stale, /id="package-content-saved"/);
+});
+
+test('save failure feedback is visible focusable and escaped without losing raw content or enabling an invalid retry', () => {
+  const source = readyState({step: 'review', saveError: 'Could not save <script> & retry.', components: [{id: 'raw', name: '  保留\n<name>  ', minutes: '060'}]}), before = JSON.stringify(source), html = packageContentMarkup(source);
+  assert.match(html, /id="package-content-save-error"[^>]*role="alert"[^>]*tabindex="-1"/); assert.match(html, /Could not save &lt;script&gt; &amp; retry/); assert.doesNotMatch(html, /<script>/); assert.match(html, /保留\n&lt;name&gt;/); assert.doesNotMatch(actionTag(html, 'package-content-save'), /disabled/); assert.equal(JSON.stringify(source), before);
+  const editing = packageContentMarkup({...source, step: 'edit', contentStatus: 'error'}); assert.match(editing, /value="  保留\n&lt;name&gt;  "/); assert.match(editing, /value="060"/); assert.match(actionTag(editing, 'package-content-review'), /disabled/);
+});
+
+test('new save limits allow exactly 50 segments and 200 raw name characters without imposing a quota conversion', () => {
+  const rows = Array.from({length: 50}, (_, index) => ({id: `row-${index}`, name: '長'.repeat(200), minutes: '1440'}));
+  assert.equal(validatePackageContentDraft({components: rows}).valid, true); assert.equal(validatePackageContentDraft({components: rows}).totalMinutes, 72000);
+  const tooMany = validatePackageContentDraft({components: [...rows, {id: 'row-50', name: '51', minutes: '1'}]}); assert.equal(tooMany.valid, false); assert.equal(tooMany.errors.components, 'limit'); assert.equal(tooMany.totalMinutes, null);
+  const tooLong = validatePackageContentDraft({components: [{id: 'one', name: '長'.repeat(201), minutes: '1'}]}); assert.equal(tooLong.valid, false); assert.equal(tooLong.errors.rows[0].name, 'length');
+  const html = packageContentMarkup(readyState({step: 'edit', components: rows})); assert.match(html, /name="packageComponentName"[^>]*maxlength="200"/); assert.match(actionTag(html, 'package-content-add'), /disabled/);
+});
+
+test('a known save conflict exposes an enabled Reload and focusable explanation while preserving the Review draft', () => {
+  const source = readyState({step: 'review', stale: true, saveError: 'Someone changed these contents. Reload to check them.', sourceError: ''}), before = JSON.stringify(source), html = packageContentMarkup(source);
+  assert.match(html, /data-step="review"/); assert.match(html, /id="package-content-save-error"[^>]*role="alert"[^>]*tabindex="-1"[^>]*>Someone changed these contents/);
+  assert.ok(actionTag(html, 'package-content-refresh')); assert.doesNotMatch(actionTag(html, 'package-content-refresh'), /disabled/); assert.match(actionTag(html, 'package-content-save'), /disabled/); assert.match(html, /90 minutes/); assert.equal(JSON.stringify(source), before);
+  assert.match(packageContentMarkup({...source, saveError: ''}), /have changed/);
+});
+
+test('clearing an existing saved package is explicit in Review but an unset empty package cannot be saved', () => {
+  assert.deepEqual(validatePackageContentDraft({components: [], allowEmpty: true}), {valid: true, components: [], errors: {}, totalMinutes: 0});
+  assert.equal(validatePackageContentDraft({components: [], allowEmpty: 'true'}).valid, false); assert.equal(validatePackageContentDraft({components: null, allowEmpty: true}).valid, false);
+  const source = readyState({step: 'review', components: []}), html = packageContentMarkup(source);
+  assert.match(html, /data-step="review"/); assert.match(html, /All saved contents will be cleared/); assert.doesNotMatch(actionTag(html, 'package-content-save'), /disabled/); assert.doesNotMatch(html, />0 minutes<|0 visits|Remaining balance/); assert.match(html, /1080 minutes/);
+  const empty = packageContentMarkup({...source, savedContents: savedContents({version: 0, components: [], updatedAt: null})}); assert.match(empty, /data-step="edit"/); assert.equal(actionTag(empty, 'package-content-save'), undefined);
+  const ack = savedContents({version: 4, components: []}), saved = packageContentMarkup({...source, step: 'saved', savedContents: ack, saveAck: ack}); assert.match(saved, /id="package-content-saved"/); assert.match(saved, /All saved contents have been cleared/); assert.doesNotMatch(saved, />0 minutes<|Contents have not been saved/);
+});
+
+test('component IDs follow the same 200-character boundary as the service without trimming or replacing them', () => {
+  assert.equal(validatePackageContentDraft({components: [{id: 'x'.repeat(200), name: 'Segment', minutes: '1'}]}).valid, true);
+  const result = validatePackageContentDraft({components: [{id: 'x'.repeat(201), name: 'Segment', minutes: '1'}]}); assert.equal(result.valid, false); assert.equal(result.errors.rows[0].id, 'id'); assert.equal(result.components[0].id.length, 201);
 });

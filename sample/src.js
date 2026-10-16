@@ -1638,7 +1638,7 @@ async function reloadFeePricing(){
 }
 function refreshFeeReadSurfaces(){
  if(feePricingReturn&&feeReadContextCurrent(feePricingReturn)&&!feePricingReturn.loading){const error=feePricingSourceError(feePricingReturn);if(error!==feePricingReturn.sourceError){feePricingReturn.sourceError=error;if(error)feePricingReturn.step='edit';renderFeePricing();}}
- if(packageContentReturn&&packageContentContextCurrent(packageContentReturn)&&!packageContentReturn.loading){const error=packageContentSourceError(packageContentReturn);if(error!==packageContentReturn.sourceError){packageContentReturn.sourceError=error;if(error&&packageContentReturn.step==='review')packageContentReturn.step='edit';renderPackageContent();}}
+ if(packageContentReturn&&packageContentContextCurrent(packageContentReturn)&&!packageContentReturn.loading&&!packageContentReturn.saving&&!packageContentReturn.unconfirmed&&packageContentReturn.contentStatus==='ready'){const error=packageContentSourceError(packageContentReturn);if(error!==packageContentReturn.sourceError){packageContentReturn.sourceError=error;if(error&&packageContentReturn.step==='review')packageContentReturn.step='edit';renderPackageContent();}}
  if(feeOverview&&!feeOverview.editor&&!feePricingReturn&&!packageContentReturn)renderFeeOverview();
 }
 function closeFeePricing(){
@@ -1655,7 +1655,7 @@ function feePricingKeyboard(event){
  if(feeOverview&&!feeOverview.editor){if(event.key==='Escape'){event.preventDefault();closeFeeOverview();return true;}if(event.key==='Tab'){const controls=[...(document.querySelectorAll?.('.fee-overview-dialog button:not(:disabled),.fee-overview-body')||[])],first=controls[0],last=controls.at(-1);if(!controls.includes(document.activeElement)||event.shiftKey&&document.activeElement===first||!event.shiftKey&&document.activeElement===last){event.preventDefault();(event.shiftKey?last:first)?.focus();}}return true;}
  return false;
 }
-// Package composition is a local editing draft until its saving contract is confirmed.
+// Package segments are saved separately from fee prices, quota and attendance.
 // Course applicability is not evidence that all linked courses are components.
 function packageContentContextCurrent(state){return feeReadContextCurrent(state)&&feeOverview===state.owner&&state.parent?.isConnected!==false;}
 function packageContentSourceError(state){
@@ -1667,9 +1667,9 @@ function openPackageContent(){
  if(!sharedMode||!feeReadContextCurrent(owner)||owner.editor||feePricingReturn||packageContentReturn||courseSaving)return;
  const fee=sharedFees.find(row=>row.id===owner.feeId),parent=document.querySelector('.fee-overview-dialog')?.closest('.modal');
  if(!fee||fee.pricingModel!=='package'||feeReadSourceError(fee)||!parent)return;
- const state={owner,parent,feeId:fee.id,fee:JSON.parse(JSON.stringify(fee)),sourceCourseId:owner.sourceCourseId||'',courseNames:feeLinkedCourseNames(fee),identity:courseUiIdentity(),location:scheduleEditorViewContext(),step:'details',components:[],error:'',sourceError:'',loading:false,editScroll:0};
+ const state={owner,parent,feeId:fee.id,fee:JSON.parse(JSON.stringify(fee)),sourceCourseId:owner.sourceCourseId||'',courseNames:feeLinkedCourseNames(fee),identity:courseUiIdentity(),location:scheduleEditorViewContext(),step:'details',components:[],savedContents:null,contentStatus:'loading',saving:false,unconfirmed:false,saveAck:null,error:'',sourceError:'',loading:false,editScroll:0};
  state.sourceError=packageContentSourceError(state);packageContentReturn=state;owner.scrollTop=document.querySelector('.fee-overview-body')?.scrollTop||0;parent.inert=true;parent.setAttribute('aria-hidden','true');
- document.querySelector('#modal-root').insertAdjacentHTML('beforeend',packageContentMarkup({...state,role:authUser.role},{t,esc}));document.querySelector('.package-content-modal [data-action="package-content-close"]')?.focus();
+ document.querySelector('#modal-root').insertAdjacentHTML('beforeend',packageContentMarkup({...state,role:authUser.role},{t,esc}));document.querySelector('.package-content-modal [data-action="package-content-close"]')?.focus();void reloadPackageContent({initial:true});
 }
 function renderPackageContent(focus='preserve'){
  const state=packageContentReturn;if(!packageContentContextCurrent(state)){discardFeeEditorNavigation();renderModal();return;}
@@ -1680,42 +1680,76 @@ function renderPackageContent(focus='preserve'){
 }
 function packageContentInput(target){
  const state=packageContentReturn;if(!state||!target?.closest?.('#package-content-editor')||!['packageComponentName','packageComponentMinutes'].includes(target.name))return false;
- if(!packageContentContextCurrent(state)||authUser?.role!=='admin'||state.step!=='edit'||state.loading)return true;
+ if(!packageContentContextCurrent(state)||authUser?.role!=='admin'||state.step!=='edit'||state.loading||state.saving||state.unconfirmed)return true;
  const row=state.components.find(row=>row.id===target.dataset.componentId);if(row)row[target.name==='packageComponentName'?'name':'minutes']=String(target.value??'');return true;
 }
 function readPackageContentInputs(form){for(const node of form?.querySelectorAll?.('[name=packageComponentName],[name=packageComponentMinutes]')||[])packageContentInput(node);}
+function checkedPackageContentDraft(state){return validatePackageContentDraft({components:state.components,allowEmpty:state.savedContents?.version>0});}
 function editPackageContent(){
- const state=packageContentReturn;if(!packageContentContextCurrent(state)||authUser?.role!=='admin'||state.loading||state.step!=='details')return;
+ const state=packageContentReturn;if(!packageContentContextCurrent(state)||authUser?.role!=='admin'||state.loading||state.saving||state.unconfirmed||!['details','saved'].includes(state.step)||state.contentStatus!=='ready'||!validPackageContents(state.savedContents,state))return;
  state.sourceError=packageContentSourceError(state);if(state.sourceError){renderPackageContent('error');return;}
- state.components=[{id:newOperationKey(),name:'',minutes:''}];state.step='edit';state.error='';renderPackageContent('edit');
+ state.components=state.savedContents.components.length?state.savedContents.components.map(row=>({...row,minutes:String(row.minutes)})):[{id:newOperationKey(),name:'',minutes:''}];state.operation=null;state.saveAck=null;state.saveError='';state.step='edit';state.error='';renderPackageContent('edit');
 }
 function reviewPackageContent(form){
- const state=packageContentReturn;if(!packageContentContextCurrent(state)||authUser?.role!=='admin'||state.loading||state.step!=='edit')return;
+ const state=packageContentReturn;if(!packageContentContextCurrent(state)||authUser?.role!=='admin'||state.loading||state.saving||state.unconfirmed||state.step!=='edit')return;
  readPackageContentInputs(form);state.editScroll=document.querySelector('#package-content-body')?.scrollTop||0;
- const result=validatePackageContentDraft({components:state.components});state.sourceError=packageContentSourceError(state);state.error=result.valid?'':t('請填寫每項內容及 1 至 1440 分鐘的整數時長。','Enter each content name and a whole-number duration of 1 to 1440 minutes.');
+ const result=checkedPackageContentDraft(state);state.sourceError=packageContentSourceError(state);if(state.contentStatus!=='ready'||!validPackageContents(state.savedContents,state)){renderPackageContent('error');return;}state.error=result.valid?'':t('請核對內容名稱及每項時長（1 至 1440 分鐘）。','Check the content names and each duration (1 to 1440 minutes).');
  if(state.error||state.sourceError){renderPackageContent('error');return;}state.step='review';renderPackageContent('review');
 }
 function changePackageContent(action,id){
- const state=packageContentReturn;if(!packageContentContextCurrent(state)||authUser?.role!=='admin'||state.loading||state.step!=='edit')return;
+ const state=packageContentReturn;if(!packageContentContextCurrent(state)||authUser?.role!=='admin'||state.loading||state.saving||state.unconfirmed||state.step!=='edit')return;
  readPackageContentInputs(document.querySelector('#package-content-editor'));const index=state.components.findIndex(row=>row.id===id);
- if(action==='package-content-add'){const row={id:newOperationKey(),name:'',minutes:''};state.components.push(row);renderPackageContent();[...document.querySelectorAll('#package-content-editor [name=packageComponentName]')].find(node=>node.dataset.componentId===row.id)?.focus();return;}
+ if(action==='package-content-add'){if(state.components.length>=50)return;const row={id:newOperationKey(),name:'',minutes:''};state.components.push(row);renderPackageContent();[...document.querySelectorAll('#package-content-editor [name=packageComponentName]')].find(node=>node.dataset.componentId===row.id)?.focus();return;}
  if(index<0)return;if(action==='package-content-remove'){state.components.splice(index,1);}else{const target=index+(action==='package-content-up'?-1:action==='package-content-down'?1:0);if(target===index||target<0||target>=state.components.length)return;[state.components[index],state.components[target]]=[state.components[target],state.components[index]];}
  state.error='';renderPackageContent();const focusId=action==='package-content-remove'?state.components[Math.min(index,state.components.length-1)]?.id:id;const target=[...document.querySelectorAll('#package-content-editor [name=packageComponentName]')].find(node=>node.dataset.componentId===focusId);const control=target||document.querySelector('[data-action="package-content-add"]');control?.focus({preventScroll:true});const bounds=control?.getBoundingClientRect?.(),viewport=document.querySelector('#package-content-body')?.getBoundingClientRect?.();if(bounds&&viewport&&(bounds.top<viewport.top||bounds.bottom>viewport.bottom))control.scrollIntoView?.({block:'nearest',inline:'nearest'});
 }
-function backPackageContent(){const state=packageContentReturn;if(!packageContentContextCurrent(state)||authUser?.role!=='admin'||state.loading||state.step!=='review')return;state.step='edit';state.error='';renderPackageContent('edit');}
+function backPackageContent(){const state=packageContentReturn;if(!packageContentContextCurrent(state)||authUser?.role!=='admin'||state.loading||state.saving||state.unconfirmed||state.step!=='review')return;state.operation=null;state.step='edit';state.error='';renderPackageContent('edit');}
 function closePackageContent(){
- const state=packageContentReturn;if(!state)return;
+ const state=packageContentReturn;if(!state||state.saving)return;
  if(!packageContentContextCurrent(state)){discardFeeEditorNavigation();renderModal();return;}
  document.querySelector('.package-content-modal')?.remove();packageContentReturn=null;state.parent.inert=false;state.parent.removeAttribute('aria-hidden');renderFeeOverview();document.querySelector('[data-action="package-content-open"]')?.focus({preventScroll:true});
 }
-async function reloadPackageContent(){
- const state=packageContentReturn;if(!packageContentContextCurrent(state)||state.loading)return;state.loading=true;state.sourceError=t('正在讀取最新課包資料…','Loading the latest package details…');if(state.step==='review')state.step='edit';renderPackageContent();
- try{await refreshSharedCourses({paint:false});if(packageContentReturn!==state||!packageContentContextCurrent(state))return;const fee=sharedFees.find(row=>row.id===state.feeId);if(fee)state.fee=JSON.parse(JSON.stringify(fee));state.courseNames=feeLinkedCourseNames(fee);state.sourceError=packageContentSourceError(state);}
- catch(error){if(packageContentReturn!==state||!packageContentContextCurrent(state))return;state.sourceError=t('未能讀取最新課包資料。已填內容保留，請重試。','Could not load the latest package details. Your entries are kept; try again.');if(error.status===401){applySharedUser(null);go('/login');return;}if(error.status===403)await refreshSharedSession();}
- finally{if(packageContentReturn===state&&packageContentContextCurrent(state)){state.loading=false;renderPackageContent();}}
+function validPackageContents(value,state){
+ if(!value||value.feeId!==state.feeId||value.feeVersion!==state.fee.version||!Number.isSafeInteger(value.version)||value.version<0||!Array.isArray(value.components)||value.components.length>50)return false;
+ if(value.version===0)return value.components.length===0&&value.updatedAt===null;
+ return typeof value.updatedAt==='string'&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(value.updatedAt)&&Number.isFinite(Date.parse(value.updatedAt))&&(!value.components.length||value.components.every(row=>Number.isSafeInteger(row?.minutes))&&validatePackageContentDraft({components:value.components}).valid);
 }
+async function reloadPackageContent({initial=false}={}){
+ const state=packageContentReturn;if(!packageContentContextCurrent(state)||state.loading||state.saving||state.unconfirmed)return;
+ const read={};state.read=read;state.loading=true;state.contentStatus='loading';state.saveError='';state.sourceError='';if(state.step==='review')state.step='edit';renderPackageContent();
+ const current=()=>packageContentReturn===state&&packageContentContextCurrent(state)&&state.read===read;
+ try{
+  if(!initial)await refreshSharedCourses({paint:false});if(!current())return;
+  const fee=sharedFees.find(row=>row.id===state.feeId);if(fee)state.fee=JSON.parse(JSON.stringify(fee));state.courseNames=feeLinkedCourseNames(fee);state.sourceError=packageContentSourceError(state);if(state.sourceError)throw new Error('Fee unavailable');
+  const result=await sharedClient.packageContents(state.feeId);if(!current())return;
+  if(!validPackageContents(result?.contents,state))throw new Error('Invalid package contents response');
+  state.savedContents=JSON.parse(JSON.stringify(result.contents));state.contentStatus='ready';state.stale=false;state.operation=null;state.saveAck=null;state.sourceError=packageContentSourceError(state);
+ }catch(error){
+  if(!current())return;state.contentStatus='error';state.sourceError=t('未能讀取最新課包內容。已填內容保留，請重試。','Could not load the latest package contents. Your entries are kept; try again.');
+  if(error.status===401){applySharedUser(null);go('/login');return;}if(error.status===403)await refreshSharedSession();
+ }finally{if(current()){state.loading=false;state.read=null;renderPackageContent();}}
+}
+async function savePackageContent(){
+ const state=packageContentReturn;if(!packageContentContextCurrent(state)||authUser?.role!=='admin'||state.saving||state.loading||state.stale||state.step!=='review')return;
+ if(!state.unconfirmed&&(state.contentStatus!=='ready'||!validPackageContents(state.savedContents,state)||packageContentSourceError(state))){state.sourceError=packageContentSourceError(state)||t('請先重新讀取課包內容。','Reload the package contents first.');renderPackageContent('error');return;}
+ const checked=checkedPackageContentDraft(state);if(!checked.valid)return;
+ state.operation ||= {key:newOperationKey(),payload:{version:state.savedContents.version,feeVersion:state.fee.version,components:checked.components.map(row=>({id:row.id,name:row.name,minutes:Number(row.minutes)}))}};
+ const operation=state.operation,job={};state.saveJob=job;state.saving=true;state.saveError='';state.sourceError='';renderPackageContent();
+ const current=()=>packageContentReturn===state&&packageContentContextCurrent(state)&&state.saveJob===job;
+ try{
+  const result=await sharedClient.savePackageContents(state.feeId,operation.payload,operation.key);if(!current())return;
+  const saved=result?.contents;
+  if(!validPackageContents(saved,state)||saved.version!==operation.payload.version+1||saved.components.length!==operation.payload.components.length||saved.components.some((row,index)=>['id','name','minutes'].some(key=>row[key]!==operation.payload.components[index][key])))throw new Error('Unconfirmed package contents response');
+  state.savedContents=JSON.parse(JSON.stringify(saved));state.saveAck=JSON.parse(JSON.stringify(saved));state.unconfirmed=false;state.stale=false;state.contentStatus='ready';state.step='saved';state.operation=null;
+ }catch(error){
+  if(!current())return;state.unconfirmed=!error.status||error.status>=500||error.code==='service_unavailable'&&error.status>=200&&error.status<300;state.stale=error.status===409;
+  state.saveError=state.stale?t('課包內容已更新。已填內容保留，請重新讀取後再核對。','Package contents changed. Your entries are kept; reload before reviewing again.'):state.unconfirmed?t('未能確認儲存結果。請重試同一份內容。','The saved result could not be confirmed. Retry the same contents.'):t('未能儲存。已填內容保留，請重試。','Could not save. Your entries are kept; try again.');
+  if(error.status===401){applySharedUser(null);go('/login');return;}if(error.status===403)await refreshSharedSession();
+ }finally{if(current()){state.saving=false;state.saveJob=null;renderPackageContent();document.querySelector(state.step==='saved'?'#package-content-saved':'#package-content-save-error')?.focus({preventScroll:true});}}
+}
+function packageContentDetails(){const state=packageContentReturn;if(!packageContentContextCurrent(state)||state.saving||state.unconfirmed||state.step!=='saved')return;state.step='details';state.saveAck=null;renderPackageContent();}
 function handlePackageContentAction(action,data){
- if(action==='package-content-open')openPackageContent();else if(action==='package-content-edit')editPackageContent();else if(action==='package-content-review')reviewPackageContent(document.querySelector('#package-content-editor'));else if(action==='package-content-back')backPackageContent();else if(action==='package-content-close')closePackageContent();else if(action==='package-content-refresh')void reloadPackageContent();else if(['package-content-add','package-content-remove','package-content-up','package-content-down'].includes(action))changePackageContent(action,data.componentId);
+ if(action==='package-content-open')openPackageContent();else if(action==='package-content-edit')editPackageContent();else if(action==='package-content-save')void savePackageContent();else if(action==='package-content-details')packageContentDetails();else if(action==='package-content-review')reviewPackageContent(document.querySelector('#package-content-editor'));else if(action==='package-content-back')backPackageContent();else if(action==='package-content-close')closePackageContent();else if(action==='package-content-refresh')void reloadPackageContent();else if(['package-content-add','package-content-remove','package-content-up','package-content-down'].includes(action))changePackageContent(action,data.componentId);
 }
 function packageContentKeyboard(event){
  if(!packageContentReturn)return false;if(event.isComposing||event.keyCode===229)return true;

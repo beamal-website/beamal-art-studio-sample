@@ -23,6 +23,16 @@ test('course lifecycle requests preserve version, authenticated headers and oper
 });
 
 const identity = name => ({ id: `fictional-${name}`, email: `${name}@example.test`, displayName: `Fictional ${name}`, role: 'admin' });
+test('package contents SDK preserves exact ordered metadata versions and authenticated retry identity',async t=>{
+ const wire=network(t),client=createApiClient();await login(client,wire,'B');const id='fee / 課包',path='/api/fees/'+encodeURIComponent(id)+'/package-contents',contents={feeId:id,feeVersion:4,version:0,components:[],updatedAt:null};
+ wire.reply(path,{contents});assert.deepEqual(await client.packageContents(id),{contents});let call=wire.calls.at(-1);assert.equal(call.method,'GET');assert.equal(call.body,undefined);assert.equal(call.headers.has('X-CSRF-Token'),false);
+ const input={version:0,feeVersion:4,components:[{id:'interview',name:' 原文 <Interview>\n ',minutes:15},{id:'class-a',name:'Class A',minutes:60}]};
+ wire.reply(path,{contents:{...contents,version:1,components:input.components}});await client.savePackageContents(id,input,'package-retry-key');call=wire.calls.at(-1);assert.equal(call.method,'PATCH');assert.deepEqual(JSON.parse(call.body),input);assert.equal(call.credentials,'same-origin');assert.equal(call.headers.get('X-CSRF-Token'),'csrf-fictional-B');assert.equal(call.headers.get('Idempotency-Key'),'package-retry-key');
+});
+test('package contents SDK discards private responses after identity change and forwards version conflicts',async t=>{
+ const wire=network(t),client=createApiClient();await login(client,wire,'A');const wait=wire.pending('/api/fees/private-A/package-contents'),old=observe(client.packageContents('private-A'));await login(client,wire,'B');wait.resolve(response({contents:{components:[{name:'Private A'}]}}));superseded(await old);
+ wire.reply('/api/fees/private-B/package-contents',{error:{code:'VERSION_CONFLICT',message:'Reload package contents.'}},409);await assert.rejects(client.savePackageContents('private-B',{version:0,feeVersion:1,components:[]},'same-key'),failure=>failure instanceof ApiError&&failure.status===409&&failure.code==='VERSION_CONFLICT');
+});
 test('Trial SDK keeps anonymous submit payload and retry key exact and encodes scoped request reads and rejection',async t=>{
  const wire=network(t),client=createApiClient(),key='b5d580e6-e2fc-4d0d-8894-09fde9e222af',input={courseId:'course',slotId:'slot',from:'2026-10-19',days:7,revision:'proof',applicant:{localName:'陳欣悅',remark:' <raw>\n '}};
  wire.reply('/api/public/trial-form-policy',{policy:null});assert.deepEqual(await client.publicTrialPolicy(),{policy:null});

@@ -1,0 +1,70 @@
+TAP version 13
+# Subtest: independent actual home task enters exact outside-window resolver and real controller then returns same task
+ok 1 - independent actual home task enters exact outside-window resolver and real controller then returns same task
+  ---
+  duration_ms: 172.002
+  type: 'test'
+  ...
+# Subtest: independent actual home launch ignores late mismatched or revoked private sources
+ok 2 - independent actual home launch ignores late mismatched or revoked private sources
+  ---
+  duration_ms: 44.892167
+  type: 'test'
+  ...
+# Subtest: independent actual roster pending save changes only exact arrangement and keeps attendance then returns original roster
+ok 3 - independent actual roster pending save changes only exact arrangement and keeps attendance then returns original roster
+  ---
+  duration_ms: 16.345584
+  type: 'test'
+  ...
+# Subtest: independent lost pending ACK and failing source poll retry exact immutable payload key without fake success
+ok 4 - independent lost pending ACK and failing source poll retry exact immutable payload key without fake success
+  ---
+  duration_ms: 10.029834
+  type: 'test'
+  ...
+# Subtest: independent actual pending busy ignores close double submit and late identity ACK
+ok 5 - independent actual pending busy ignores close double submit and late identity ACK
+  ---
+  duration_ms: 8.887834
+  type: 'test'
+  ...
+# Subtest: independent actual wrong ACK tuple or stale canonical source never yields saved Pending
+ok 6 - independent actual wrong ACK tuple or stale canonical source never yields saved Pending
+  ---
+  duration_ms: 28.572292
+  type: 'test'
+  ...
+# Subtest: independent an older empty work read cannot be adopted as current after successful Pending creates its task
+ok 7 - independent an older empty work read cannot be adopted as current after successful Pending creates its task
+  ---
+  duration_ms: 10.012
+  type: 'test'
+  ...
+# Subtest: independent work cancel finds exact newly rendered task when original native opener was removed
+ok 8 - independent work cancel finds exact newly rendered task when original native opener was removed
+  ---
+  duration_ms: 12.054083
+  type: 'test'
+  ...
+# Subtest: independent native form submit dispatches Pending while ignoring forged canonical fields and attendance
+ok 9 - independent native form submit dispatches Pending while ignoring forged canonical fields and attendance
+  ---
+  duration_ms: 7.457917
+  type: 'test'
+  ...
+# Subtest: independent actual Work Pending cancel leaves global logout reachable and navigates to login
+ok 10 - independent actual Work Pending cancel leaves global logout reachable and navigates to login
+  ---
+  duration_ms: 9.640542
+  type: 'test'
+  ...
+1..10
+# tests 10
+# suites 0
+# pass 10
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 495.551333

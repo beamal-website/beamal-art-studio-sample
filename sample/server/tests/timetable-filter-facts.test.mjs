@@ -79,7 +79,7 @@ test('filter facts enforce an inclusive 62-day real date range and reject duplic
 });
 
 test('legacy duplicate paid seats are deduplicated by student identity without merging same-name people',async t=>{
- const app=await setup(t);await paid(app,'child-a');await paid(app,'child-b');app.inspection.exec('CREATE TABLE legacy_sessions AS SELECT * FROM student_sessions; DROP TABLE student_sessions; ALTER TABLE legacy_sessions RENAME TO student_sessions;');app.inspection.exec("INSERT INTO student_sessions(id,student_id,schedule_id,sequence,order_id,attendance,created_at) SELECT 'duplicate-legacy-session',student_id,schedule_id,sequence,order_id,attendance,created_at FROM student_sessions WHERE student_id='child-a'");
+ const app=await setup(t);await paid(app,'child-a');await paid(app,'child-b');app.inspection.exec('CREATE TABLE legacy_sessions AS SELECT * FROM student_sessions; DROP TABLE student_sessions; ALTER TABLE legacy_sessions RENAME TO student_sessions; CREATE UNIQUE INDEX legacy_session_identity ON student_sessions(id);');app.inspection.exec("INSERT INTO student_sessions(id,student_id,schedule_id,sequence,order_id,attendance,created_at) SELECT 'duplicate-legacy-session',student_id,schedule_id,sequence,order_id,attendance,created_at FROM student_sessions WHERE student_id='child-a'");
  const result=await get(app);assert.deepEqual(result.facts[0].students.map(row=>row.id),['child-a','child-b']);
 });
 

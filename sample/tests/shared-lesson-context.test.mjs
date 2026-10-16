@@ -89,3 +89,12 @@ test('attendance saving requires the canonical service permission and matching s
  const ready=resolve(source,selected);assert.equal(ready.facts.capabilities.save,true);assert.equal(ready.facts.lesson.sessionVersion,2);
  for(const fields of [{version:0},{version:'2'},{sourceVersion:source.record.item.version+1},{canRecordAttendance:false},{canRecordAttendance:'true'}]){const changed=structuredClone(source);Object.assign(changed.roster.students[1],fields);assert.equal(resolve(changed,selected).facts.capabilities.save,false);}
 });
+
+test('pending arrangement capability requires an explicitly checked independent state and current paid source versions',()=>{
+ const source=fixture(),row=source.roster.students[1];Object.assign(row,{version:2,sourceVersion:4,canSetPending:true,arrangement:{status:null,version:0,createdAt:null,updatedAt:null}});
+ const facts=resolve(source,selected).facts;assert.equal(facts.capabilities.savePending,true);assert.deepEqual(facts.arrangement,row.arrangement);assert.equal(facts.student.attendance,'unmarked');
+ for(const change of [{arrangement:undefined},{arrangement:{status:null,version:1}},{arrangement:{status:'pending',version:0}},{arrangement:{status:'confirmed',version:1}},{canSetPending:false},{sourceVersion:3},{version:0}]){
+  const other=structuredClone(source);Object.assign(other.roster.students[1],change);assert.notEqual(resolve(other,selected).facts.capabilities.savePending,true);
+ }
+ row.arrangement={status:'pending',version:1,createdAt:'2026-10-16T00:00:00Z',updatedAt:'2026-10-16T00:00:00Z'};const pending=resolve(source,selected).facts;assert.deepEqual(pending.arrangement,row.arrangement);pending.arrangement.status=null;assert.equal(row.arrangement.status,'pending');
+});

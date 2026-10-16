@@ -11,6 +11,26 @@ function canonicalRosterPreview(options={}){
  return {...p,get html(){return p.html;},get modalWrites(){return p.modalWrites;},ticket,returns,reads,facts,setContext:value=>{current={...current,...value};},setStatus:value=>{status=value;}};
 }
 
+function pendingPreview(write){
+ const calls=[];let p;p=canonicalRosterPreview({onSaveSharedPending:async(payload,options)=>{calls.push({payload,options});return write?write(payload,options):{arrangement:{sessionId:'actual-session',studentId:'actual-person',scheduleId:'actual-schedule',sequence:7,courseId:'actual-course',sourceVersion:3,sessionVersion:2,version:1,status:'pending'}};}});
+ Object.assign(p.facts.lesson,{sessionVersion:2});p.facts.arrangement={version:0,status:null,createdAt:null,updatedAt:null};p.facts.capabilities.savePending=true;return {...p,calls,get html(){return p.html;},get modalWrites(){return p.modalWrites;}};
+}
+
+test('saving a pending arrangement sends only exact opened versions and only a matching ACK can display saved state',async()=>{
+ const p=pendingPreview();p.ui.openSharedLesson('arrange',{sessionId:'actual-session'});p.ui.action({action:'ui-shared-lesson',uiCommand:'pending'});await p.ui.action({action:'ui-shared-lesson',uiCommand:'save-pending'});
+ assert.equal(p.calls.length,1);assert.deepEqual(p.calls[0].payload,{sessionId:'actual-session',version:0,sessionVersion:2,sourceVersion:3});assert.ok(p.calls[0].options.operationKey);assert.equal(p.calls[0].options.returnTicket,p.ticket);assert.match(p.html,/id="slw-pending-saved"/);assert.doesNotMatch(p.html,/Arrangement confirmed|Paid Receipt/);p.ui.action({action:'ui-shared-lesson',uiCommand:'continue-arrange'});assert.doesNotMatch(p.html,/id="slw-pending-saved"/);p.ui.close();assert.equal(p.returns.at(-1).settings.restore,true);
+});
+
+test('pending uncertain retries retain the exact operation after a poll observes the server commit',async()=>{
+ let attempts=0;const p=pendingPreview(async()=>{if(!attempts++)throw Object.assign(new Error('Lost reply'),{status:201,code:'service_unavailable'});return {arrangement:{sessionId:'actual-session',studentId:'actual-person',scheduleId:'actual-schedule',sequence:7,courseId:'actual-course',sourceVersion:3,sessionVersion:2,version:1,status:'pending'}};});
+ p.ui.openSharedLesson('arrange',{sessionId:'actual-session'});p.ui.action({action:'ui-shared-lesson',uiCommand:'pending'});await p.ui.action({action:'ui-shared-lesson',uiCommand:'save-pending'});p.facts.arrangement={status:'pending',version:1};p.ui.refreshSharedLesson();p.ui.action({action:'ui-shared-lesson',uiCommand:'back'});await p.ui.action({action:'ui-shared-lesson',uiCommand:'save-pending'});
+ assert.equal(p.calls.length,2);assert.deepEqual(p.calls[0].payload,p.calls[1].payload);assert.equal(p.calls[0].options.operationKey,p.calls[1].options.operationKey);assert.match(p.html,/id="slw-pending-saved"/);
+});
+
+test('late pending acknowledgements after identity changes cannot reopen a private dialog or show success',async()=>{
+ let finish;const p=pendingPreview(()=>new Promise(resolve=>finish=resolve));p.ui.openSharedLesson('arrange',{sessionId:'actual-session'});p.ui.action({action:'ui-shared-lesson',uiCommand:'pending'});const pending=p.ui.action({action:'ui-shared-lesson',uiCommand:'save-pending'});assert.equal(p.calls.length,1);p.setContext({sharedIdentity:'different-user'});p.ui.refreshSharedLesson();finish({arrangement:{sessionId:'actual-session',studentId:'actual-person',scheduleId:'actual-schedule',sequence:7,courseId:'actual-course',sourceVersion:3,sessionVersion:2,version:1,status:'pending'}});await pending;assert.equal(p.ui.isOpen,false);assert.doesNotMatch(p.html,/slw-pending-saved/);
+});
+
 test('shared roster attendance and arrangements use only the resolved person and occurrence and never claim a preview save',()=>{
  const p=canonicalRosterPreview();
  assert.equal(typeof p.ui.openSharedLesson,'function');

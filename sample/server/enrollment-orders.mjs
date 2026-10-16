@@ -63,6 +63,10 @@ export function createEnrollmentOrderStore({database,transaction,schedules,resou
    action TEXT NOT NULL,target_id TEXT NOT NULL,version INTEGER NOT NULL,
    snapshot TEXT NOT NULL,created_at TEXT NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS student_session_arrangements(
+   session_id TEXT PRIMARY KEY REFERENCES student_sessions(id),status TEXT NOT NULL CHECK(status='pending'),
+   version INTEGER NOT NULL CHECK(version>0),snapshot TEXT NOT NULL,created_at TEXT NOT NULL,updated_at TEXT NOT NULL
+  );
  `);
  transaction(()=>{
   const columns=new Set(database.prepare('PRAGMA table_info(student_sessions)').all().map(column=>column.name));
@@ -123,12 +127,82 @@ export function createEnrollmentOrderStore({database,transaction,schedules,resou
   return occurrence;
  };
  const paidSession=id=>validId(id)?database.prepare("SELECT sessions.*,people.display_name FROM student_sessions AS sessions JOIN enrollment_orders AS orders ON orders.id=sessions.order_id AND orders.student_id=sessions.student_id JOIN people ON people.id=sessions.student_id AND people.kind='student' WHERE sessions.id=? AND orders.payment_status='paid'").get(id):null;
+ const arrangementRecord=id=>database.prepare('SELECT * FROM student_session_arrangements WHERE session_id=?').get(id);
+ const arrangementState=id=>{
+  const row=arrangementRecord(id);
+  return {status:row?.status??null,version:row?.version??0,createdAt:row?.created_at??null,updatedAt:row?.updated_at??null};
+ };
  const canRecordAttendance=(actor,occurrence)=>actor.role==='admin'||actor.role==='teacher'&&(occurrence.item.teacherIds||[]).some(id=>accessControl.ownTeacherResourceIds(actor).includes(id));
  const sessionDTO=(row,occurrence,canRecord)=>({
   id:row.id,studentId:row.student_id,displayName:row.display_name,scheduleId:row.schedule_id,sequence:row.sequence,courseId:occurrence.item.course,orderId:row.order_id,paymentStatus:'paid',
   attendance:[...attendanceValues,'unmarked'].includes(row.attendance)?row.attendance:null,version:row.session_version,sourceVersion:occurrence.item.version,
   remark:typeof row.remark==='string'?row.remark:null,stickerColor:stickerValues.includes(row.sticker_color)?row.sticker_color:null,showRemark:row.show_remark===1?true:row.show_remark===0?false:null,updatedAt:row.updated_at??null,canRecordAttendance:canRecord,
+  arrangement:arrangementState(row.id),canSetPending:canRecord,
  });
+ const pendingSession=id=>validId(id)?database.prepare('SELECT sessions.*,people.display_name,people.kind AS person_kind,orders.student_id AS order_student_id,orders.payment_status FROM student_sessions AS sessions LEFT JOIN enrollment_orders AS orders ON orders.id=sessions.order_id LEFT JOIN people ON people.id=sessions.student_id WHERE sessions.id=?').get(id):null;
+ const pendingSource=(row,saved)=>{
+  const schedule=schedules.get(row.schedule_id),course=schedule&&getCourse(schedule.course);
+  // Resolve canonical assignments even when a source is canceled/deleted, only
+  // for read authority/history. Such a source is never writable.
+  const occurrence=schedule?scheduleOccurrence({...schedule,activityDeleted:false},row.sequence,{includeCancelled:true}):null;
+  const unavailableReason=row.payment_status!=='paid'||row.order_student_id!==row.student_id?'STUDENT_SESSION_UNPAID':row.person_kind!=='student'?'STUDENT_NOT_FORMAL':!schedule?'SCHEDULE_NOT_FOUND':!course?'COURSE_NOT_FOUND':course.deletedAt?'COURSE_DELETED':schedule.activityDeleted?'SCHEDULE_DELETED':!occurrence?'OCCURRENCE_NOT_FOUND':occurrence.cancelled?'LESSON_CANCELLED':null;
+  let snapshot={};if(saved)try{const parsed=JSON.parse(saved.snapshot);if(plain(parsed))snapshot=parsed;}catch{}
+  const field=(name,value)=>unavailableReason!==null&&Object.hasOwn(snapshot,name)?snapshot[name]:value!==undefined&&value!==null?value:snapshot[name]??null;
+  const resourceFacts={};
+  for(const [key,kind]of[['teacher','teacher'],['room','room']]){
+   const ids=Array.isArray(occurrence?.item[key+'Ids'])?[...occurrence.item[key+'Ids']]:null;
+   const known=new Map(ids?resources.getMany(ids).filter(resource=>resource.kind===kind).map(resource=>[resource.id,resource.displayName]):[]);
+   resourceFacts[key+'Ids']=field(key+'Ids',ids)??[];resourceFacts[key+'Names']=field(key+'Names',ids?.map(id=>known.get(id)||''))??[];
+  }
+  return {occurrence,sourceAvailable:unavailableReason===null,unavailableReason,sourceVersion:occurrence?.item.version??null,
+   courseId:field('courseId',occurrence?.item.course??schedule?.course),courseName:field('courseName',course?.courseName),date:field('date',occurrence?.date),time:field('time',occurrence?.item.time),duration:field('duration',occurrence?.item.duration),...resourceFacts};
+ };
+ const pendingTarget=(id,user)=>{
+  const actor=requireRole(user,['admin','teacher']),row=pendingSession(id),saved=validId(id)?arrangementRecord(id):null;
+  if(!row)fail(404,'STUDENT_SESSION_NOT_FOUND','The paid student lesson was not found.');
+  const source=pendingSource(row,saved);
+  if(actor.role==='teacher'&&(!source.occurrence||!canRecordAttendance(actor,source.occurrence)))fail(403,'ROLE_FORBIDDEN','Only the current responsible teacher or an administrator may manage this arrangement.');
+  if(!saved&&!source.sourceAvailable)fail(404,'STUDENT_SESSION_NOT_FOUND','The active paid student lesson was not found.');
+  return {actor,row,saved,source};
+ };
+ const pendingDTO=({row,saved,source})=>({
+  sessionId:row.id,studentId:row.student_id,displayName:row.display_name??'',scheduleId:row.schedule_id,sequence:row.sequence,
+  courseId:source.courseId,courseName:source.courseName,date:source.date,time:source.time,duration:source.duration,orderId:row.order_id,
+  teacherIds:source.teacherIds,roomIds:source.roomIds,teacherNames:source.teacherNames,roomNames:source.roomNames,
+  sessionVersion:row.session_version,sourceVersion:source.sourceVersion,version:saved?.version??0,status:saved?.status??null,
+  createdAt:saved?.created_at??null,updatedAt:saved?.updated_at??null,sourceAvailable:source.sourceAvailable,unavailableReason:source.unavailableReason,canSetPending:source.sourceAvailable,
+ });
+ const getArrangement=(id,user)=>transaction(()=>pendingDTO(pendingTarget(id,user)),'read');
+ const authorizePendingArrangement=(id,user)=>getArrangement(id,user);
+ const savePendingArrangement=(id,input,user)=>transaction(()=>{
+  const target=pendingTarget(id,user),{actor,row,saved,source}=target;
+  if(!plain(input)||Object.keys(input).some(field=>!['version','sessionVersion','sourceVersion'].includes(field)))fail(400,'INVALID_STUDENT_ARRANGEMENT','Provide only the arrangement, student session and lesson versions.');
+  if(!Number.isSafeInteger(input.version)||input.version<0)fail(409,'VERSION_REQUIRED','Include the current arrangement version, or zero for a new arrangement.');
+  if(!Number.isSafeInteger(input.sessionVersion)||input.sessionVersion<1)fail(409,'SESSION_VERSION_REQUIRED','Include the current student lesson version.');
+  if(!Number.isSafeInteger(input.sourceVersion)||input.sourceVersion<1)fail(409,'SOURCE_VERSION_REQUIRED','Include the current source lesson version.');
+  if(!source.sourceAvailable)fail(409,'ARRANGEMENT_SOURCE_UNAVAILABLE','The original paid lesson is no longer active.');
+  if(input.sessionVersion!==row.session_version)fail(409,'SESSION_VERSION_CONFLICT','The student lesson changed. Reload it before saving.');
+  if(input.sourceVersion!==source.sourceVersion)fail(409,'SOURCE_VERSION_CONFLICT','The source lesson changed. Reload it before saving.');
+  if(input.version!==(saved?.version??0))fail(409,'VERSION_CONFLICT','The arrangement changed. Reload it before saving.');
+  if(saved)return pendingDTO(target);
+  const snapshot=Object.fromEntries(['courseId','courseName','date','time','duration','teacherIds','roomIds','teacherNames','roomNames'].map(field=>[field,source[field]])),now=new Date().toISOString();
+  database.prepare("INSERT INTO student_session_arrangements(session_id,status,version,snapshot,created_at,updated_at) VALUES (?,'pending',1,?,?,?)").run(id,JSON.stringify(snapshot),now,now);
+  const result=pendingDTO({...target,saved:arrangementRecord(id)});audit(actor,'student-session.arrangement.pending',id,result);return result;
+ });
+ const pendingArrangementWork=(user,query={})=>transaction(()=>{
+  const actor=requireRole(user,['admin','teacher']);
+  if(!plain(query)||Object.keys(query).some(field=>!['since','page','pageSize'].includes(field)))fail(400,'INVALID_STUDENT_ARRANGEMENT_QUERY','Choose supported pending arrangement query parameters.');
+  const since=query.since===undefined?'':query.since;
+  if(typeof since!=='string'||since.length>200)fail(400,'INVALID_STUDENT_ARRANGEMENT_QUERY','Choose a valid pending work revision.');
+  const positive=(value,fallback)=>{const raw=String(value===undefined?fallback:value);if(!/^[1-9]\d*$/.test(raw)||!Number.isSafeInteger(Number(raw)))fail(400,'INVALID_STUDENT_ARRANGEMENT_QUERY','Choose positive whole-number pages.');return Number(raw);};
+  const page=positive(query.page,1),pageSize=positive(query.pageSize,25);
+  if(pageSize>100||!Number.isSafeInteger((page-1)*pageSize))fail(400,'INVALID_STUDENT_ARRANGEMENT_QUERY','Use at most 100 arrangements per page.');
+  const all=[];for(const saved of database.prepare("SELECT * FROM student_session_arrangements WHERE status='pending' ORDER BY created_at DESC,session_id").all()){
+   try{all.push(pendingDTO(pendingTarget(saved.session_id,actor)));}catch(error){if(actor.role==='teacher'&&error instanceof ApplicationError&&[403,404].includes(error.status))continue;throw error;}
+  }
+  const total=all.length,records=all.slice((page-1)*pageSize,page*pageSize),revision=hash({actor:actor.id,role:actor.role,page,pageSize,total,records});
+  return since===revision?{revision,unchanged:true,total,page,pageSize}:{revision,records,total,page,pageSize};
+ },'read');
  const attendanceTarget=(id,user)=>{
   const actor=requireRole(user,['admin','teacher']),row=paidSession(id);let occurrence;
   if(!row)fail(404,'STUDENT_SESSION_NOT_FOUND','The active paid student lesson was not found.');
@@ -246,7 +320,8 @@ export function createEnrollmentOrderStore({database,transaction,schedules,resou
    try{occurrence=currentOccurrence(row.schedule_id,row.sequence);}catch(error){if(error instanceof ApplicationError&&error.code==='ORDER_LESSON_UNAVAILABLE')continue;throw error;}
    if(occurrence.date<from||occurrence.date>to)continue;
    const item=occurrence.item,course=getCourse(item.course),teachers=resources.getMany(item.teacherIds||[]).filter(resource=>resource.kind==='teacher').map(resource=>({id:resource.id,displayName:resource.displayName,color:resource.representativeColor||item.color||'#27777b'})),rooms=resources.getMany(item.roomIds||[]).filter(resource=>resource.kind==='room').map(resource=>({id:resource.id,displayName:resource.displayName}));
-   lessons.push({id:row.id,studentId:row.student_id,studentName:names.get(row.student_id),scheduleId:row.schedule_id,sequence:row.sequence,courseId:item.course,courseName:course.courseName,date:occurrence.date,time:item.time,duration:item.duration,teachers,rooms,attendance:[...attendanceValues,'unmarked'].includes(row.attendance)?row.attendance:null,version:row.session_version,orderId:row.order_id});
+   const pending=arrangementState(row.id);
+   lessons.push({id:row.id,studentId:row.student_id,studentName:names.get(row.student_id),scheduleId:row.schedule_id,sequence:row.sequence,courseId:item.course,courseName:course.courseName,date:occurrence.date,time:item.time,duration:item.duration,teachers,rooms,attendance:[...attendanceValues,'unmarked'].includes(row.attendance)?row.attendance:null,version:row.session_version,orderId:row.order_id,arrangement:{status:pending.status,version:pending.version}});
   }
   lessons.sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time)||a.id.localeCompare(b.id));
   const revision=hash({userId:identity(user).id,from,to,students,lessons});return since===revision?{revision,unchanged:true}:{revision,students,lessons};
@@ -289,5 +364,5 @@ export function createEnrollmentOrderStore({database,transaction,schedules,resou
   const revision=hash({scope:scope?.revision??actor,from,to,facts,profiles:[...versions].sort(([a],[b])=>a.localeCompare(b)),sources:sorted.map(entry=>[entry.fact.scheduleId,entry.fact.sequence,entry.fact.date,entry.sourceVersion])});
   return since===revision?{revision,unchanged:true}:{revision,facts};
  },'read');
- return {managementSnapshot,setAccountLink,studentProfile,create,list,get,authorize:authorizedOrder,authorizeAttendance,saveAttendance,send,respond,confirmPayment,occupied,timetable,roster,filterFacts,audit:()=>database.prepare('SELECT * FROM enrollment_order_audit_log ORDER BY id').all().map(row=>({...row,snapshot:JSON.parse(row.snapshot)})),sales:()=>database.prepare('SELECT * FROM enrollment_sales ORDER BY created_at,id').all().map(row=>({id:row.id,orderId:row.order_id,studentId:row.student_id,amountCents:row.amount_cents,actorId:row.actor_id,createdAt:row.created_at}))};
+ return {managementSnapshot,setAccountLink,studentProfile,create,list,get,authorize:authorizedOrder,authorizeAttendance,saveAttendance,getArrangement,authorizePendingArrangement,savePendingArrangement,pendingArrangementWork,send,respond,confirmPayment,occupied,timetable,roster,filterFacts,audit:()=>database.prepare('SELECT * FROM enrollment_order_audit_log ORDER BY id').all().map(row=>({...row,snapshot:JSON.parse(row.snapshot)})),sales:()=>database.prepare('SELECT * FROM enrollment_sales ORDER BY created_at,id').all().map(row=>({id:row.id,orderId:row.order_id,studentId:row.student_id,amountCents:row.amount_cents,actorId:row.actor_id,createdAt:row.created_at}))};
 }

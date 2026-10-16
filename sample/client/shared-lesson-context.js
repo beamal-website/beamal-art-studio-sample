@@ -38,5 +38,8 @@ export function resolveSharedLessonContext(snapshot={},selection={}){
  const item=record.item,lesson={id:row.id,scheduleId:item.id,sequence:record.sequence,sourceVersion:item.version,courseId:course.id,courseName:course.courseName,date:record.date,time:item.time,duration:item.duration,teacher:typeof item.teacher==='string'?item.teacher:'',room:typeof item.room==='string'?item.room:''};
  if(positive(row.version))lesson.sessionVersion=row.version;
  for(const key of ['teacherIds','roomIds'])if(Array.isArray(item[key])&&item[key].every(id))lesson[key]=[...item[key]];
- return {status:'ready',facts:{identity,contextKey,student,lesson,capabilities:{review:true,save:row.canRecordAttendance===true&&positive(row.version)&&row.sourceVersion===item.version},availability:{ready:false,slots:[]}}};
+ const arrangement=row.arrangement,known=object(arrangement)&&(arrangement.status===null&&arrangement.version===0||arrangement.status==='pending'&&positive(arrangement.version));
+ const capabilities={review:true,save:row.canRecordAttendance===true&&positive(row.version)&&row.sourceVersion===item.version};
+ if(known)capabilities.savePending=row.canSetPending===true&&positive(row.version)&&row.sourceVersion===item.version;
+ return {status:'ready',facts:{identity,contextKey,student,lesson,...(known?{arrangement:{status:arrangement.status,version:arrangement.version,createdAt:arrangement.createdAt??null,updatedAt:arrangement.updatedAt??null}}:{}),capabilities,availability:{ready:false,slots:[]}}};
 }

@@ -430,3 +430,10 @@ test('single lesson memo reads and patches encoded occurrence identity with raw 
  wire.reply(path,{note:{version:0,text:''}});await client.lessonNote('schedule / 二',7);assert.equal(wire.calls.at(-1).method,'GET');assert.equal(wire.calls.at(-1).body,undefined);
  for(let i=0;i<2;i++){wire.reply(path,{note:{version:1,text:fields.text}});await client.saveLessonNote('schedule / 二',7,fields,'same-note-key');const call=wire.calls.at(-1);assert.equal(call.method,'PATCH');assert.deepEqual(JSON.parse(call.body),fields);assert.equal(call.headers.get('X-CSRF-Token'),'csrf-fictional-B');assert.equal(call.headers.get('Idempotency-Key'),'same-note-key');}
 });
+
+test('pending arrangements use exact session references independent versions and the same retry key',async t=>{
+ const wire=network(t),client=createApiClient();await login(client,wire,'B');const id='session / 二',path='/api/student-sessions/'+encodeURIComponent(id),fields={version:0,sessionVersion:2,sourceVersion:7};
+ wire.reply(path+'/arrangement',{arrangement:{sessionId:id,status:null,version:0}});await client.pendingArrangement(id);assert.equal(wire.calls.at(-1).method,'GET');
+ wire.reply('/api/pending-arrangements?page=2&pageSize=10&since=work+%2F+rev',{revision:'new',records:[],total:0,page:2,pageSize:10});await client.pendingArrangementWork({page:2,pageSize:10},'work / rev');assert.equal(wire.calls.at(-1).method,'GET');
+ for(let n=0;n<2;n++){wire.reply(path+'/pending-arrangement',{arrangement:{sessionId:id,status:'pending',version:1}});await client.savePendingArrangement(id,fields,'pending-retry');const call=wire.calls.at(-1);assert.deepEqual(JSON.parse(call.body),fields);assert.equal(call.method,'PATCH');assert.equal(call.headers.get('Idempotency-Key'),'pending-retry');assert.equal(call.headers.get('X-CSRF-Token'),'csrf-fictional-B');}
+});

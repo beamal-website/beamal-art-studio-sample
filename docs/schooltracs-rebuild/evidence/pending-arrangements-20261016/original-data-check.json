@@ -1,0 +1,9 @@
+{
+  "integrity": "ok",
+  "oldTables": 47,
+  "newTables": 48,
+  "changedExisting": {},
+  "added": {
+    "student_session_arrangements": 0
+  }
+}

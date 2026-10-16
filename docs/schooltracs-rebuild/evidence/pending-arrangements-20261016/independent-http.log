@@ -1,0 +1,54 @@
+TAP version 13
+# (node:49055) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: independent HTTP exact second same-name pupil persists one task with every prior business row unchanged
+ok 1 - independent HTTP exact second same-name pupil persists one task with every prior business row unchanged
+  ---
+  duration_ms: 1030.04475
+  type: 'test'
+  ...
+# Subtest: independent HTTP source methods roles strict versions and read grant cannot masquerade as pending write authority
+ok 2 - independent HTTP source methods roles strict versions and read grant cannot masquerade as pending write authority
+  ---
+  duration_ms: 742.385
+  type: 'test'
+  ...
+# Subtest: independent current assignment moves task visibility while receipt replay after body-await revocation is forbidden
+ok 3 - independent current assignment moves task visibility while receipt replay after body-await revocation is forbidden
+  ---
+  duration_ms: 815.861583
+  type: 'test'
+  ...
+# Subtest: independent concurrent initial writes and audit failure preserve one arrangement and no half task
+ok 4 - independent concurrent initial writes and audit failure preserve one arrangement and no half task
+  ---
+  duration_ms: 739.635791
+  type: 'test'
+  ...
+# Subtest: independent SDK exact path body key credentials and late identity policy remain intact
+ok 5 - independent SDK exact path body key credentials and late identity policy remain intact
+  ---
+  duration_ms: 1.060584
+  type: 'test'
+  ...
+# Subtest: independent Pending preserves nonempty existing Trial and rescheduling holds while the original formal class remains full
+ok 6 - independent Pending preserves nonempty existing Trial and rescheduling holds while the original formal class remains full
+  ---
+  duration_ms: 1108.392333
+  type: 'test'
+  ...
+# Subtest: independent unpaid session cannot become Pending and a saved cancelled original retains unavailable history instead of disappearing
+ok 7 - independent unpaid session cannot become Pending and a saved cancelled original retains unavailable history instead of disappearing
+  ---
+  duration_ms: 867.064583
+  type: 'test'
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 7
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 5456.021792

@@ -220,6 +220,7 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
       const orderActionMatch = /^\/api\/orders\/([^/]+)\/(send|respond|confirm-payment)$/.exec(pathname);
       const studentRosterMatch = /^\/api\/schedules\/([^/]+)\/occurrences\/([^/]+)\/students$/.exec(pathname);
       const studentAttendanceMatch = /^\/api\/student-sessions\/([^/]+)\/attendance$/.exec(pathname);
+      const pendingArrangementMatch = /^\/api\/student-sessions\/([^/]+)\/(arrangement|pending-arrangement)$/.exec(pathname);
       const lessonNoteMatch = /^\/api\/schedules\/([^/]+)\/occurrences\/([^/]+)\/note$/.exec(pathname);
       const enrollmentQuery = allowed => {
         for (const [key,value] of requestUrl.searchParams) if (!allowed.includes(key) || value.length > 200 || requestUrl.searchParams.getAll(key).length !== 1) throw new ApplicationError(400,'INVALID_QUERY','Choose supported enrollment query parameters.');
@@ -301,6 +302,19 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
         store.enrollmentOrders.authorize(id,session.user);
         const result=store.mutateOnce({userId:session.user.id,route:'POST /api/orders/'+encodeURIComponent(id)+'/'+action,key,payloadHash:payloadHash(input),status:200},()=>({order:store.enrollmentOrders[method](id,input,session.user)}));
         json(response,result.status,result.body); return;
+      }
+      if (pathname === '/api/pending-arrangements' && request.method === 'GET') {
+        const session=requireSession(request),query=enrollmentQuery(['since','page','pageSize']);
+        json(response,200,store.enrollmentOrders.pendingArrangementWork(session.user,query));return;
+      }
+      if (pendingArrangementMatch && (pendingArrangementMatch[2]==='arrangement'&&request.method==='GET'||pendingArrangementMatch[2]==='pending-arrangement'&&request.method==='PATCH')) {
+        const session=request.method==='GET'?requireSession(request):requireMutation(request),id=decodeId(pendingArrangementMatch[1]);enrollmentQuery([]);
+        if(!['admin','teacher'].includes(session.user.role))throw new ApplicationError(403,'ROLE_FORBIDDEN','This role cannot manage class arrangements.');
+        if(request.method==='GET'){json(response,200,{arrangement:store.enrollmentOrders.getArrangement(id,session.user)});return;}
+        const input=await body(request),key=idempotencyKey(request);
+        store.enrollmentOrders.authorizePendingArrangement(id,session.user);
+        const result=store.mutateOnce({userId:session.user.id,route:'PATCH /api/student-sessions/'+encodeURIComponent(id)+'/pending-arrangement',key,payloadHash:payloadHash(input),status:200},()=>({arrangement:store.enrollmentOrders.savePendingArrangement(id,input,session.user)}));
+        json(response,result.status,result.body);return;
       }
       if (studentAttendanceMatch && request.method === 'PATCH') {
         const session=requireMutation(request),id=decodeId(studentAttendanceMatch[1]);enrollmentQuery([]);
@@ -610,7 +624,7 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
         json(response, 200, store.updateFee(id, fee, version, session.user.id, true)); return;
       }
       if (pathname === '/api' || pathname.startsWith('/api/')) {
-        const known = trialApplicationMatch || trialRejectMatch || ['/api/public/trial-form-policy','/api/public/trial-applications','/api/trial-applications','/api/trial-applications/work'].includes(pathname) || studentLinkMatch || orderMatch || orderActionMatch || studentRosterMatch || lessonNoteMatch || match || feeMatch || courseMaterialMatch || materialMatch || uploadMatch || attachmentMatch || scheduleMatch || occurrenceMatch || courseLifecycleMatch || schedulingResourceMatch || personMatch || personHistoryMatch || teacherLinkMatch || accessGrantMatch || availableSlotMatch || publicCourseMatch || capacityStatusMatch || classTypeMatch || ['/api/student-account-links', '/api/student/profile', '/api/student/timetable', '/api/timetable/filter-facts', '/api/staff/personal-profiles', '/api/orders', '/api/class-types', '/api/class-capacity-statuses', '/api/available-slots', '/api/availability-public-settings', '/api/public/courses', '/api/public/timetable', '/api/people', '/api/access-control', '/api/access-control/grants', '/api/health', '/api/auth/session', '/api/auth/login', '/api/auth/logout', '/api/courses', '/api/fees', '/api/catalog', '/api/schedules', '/api/scheduling-resources'].includes(pathname);
+        const known = pendingArrangementMatch || pathname === '/api/pending-arrangements' || trialApplicationMatch || trialRejectMatch || ['/api/public/trial-form-policy','/api/public/trial-applications','/api/trial-applications','/api/trial-applications/work'].includes(pathname) || studentLinkMatch || orderMatch || orderActionMatch || studentRosterMatch || lessonNoteMatch || match || feeMatch || courseMaterialMatch || materialMatch || uploadMatch || attachmentMatch || scheduleMatch || occurrenceMatch || courseLifecycleMatch || schedulingResourceMatch || personMatch || personHistoryMatch || teacherLinkMatch || accessGrantMatch || availableSlotMatch || publicCourseMatch || capacityStatusMatch || classTypeMatch || ['/api/student-account-links', '/api/student/profile', '/api/student/timetable', '/api/timetable/filter-facts', '/api/staff/personal-profiles', '/api/orders', '/api/class-types', '/api/class-capacity-statuses', '/api/available-slots', '/api/availability-public-settings', '/api/public/courses', '/api/public/timetable', '/api/people', '/api/access-control', '/api/access-control/grants', '/api/health', '/api/auth/session', '/api/auth/login', '/api/auth/logout', '/api/courses', '/api/fees', '/api/catalog', '/api/schedules', '/api/scheduling-resources'].includes(pathname);
         throw new ApplicationError(known ? 405 : 404, known ? 'METHOD_NOT_ALLOWED' : 'NOT_FOUND', 'API route or method is not available.');
       }
       await serveStatic(request, response, pathname);

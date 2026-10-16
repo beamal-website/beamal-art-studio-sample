@@ -45,6 +45,8 @@
 .trial-request-dialog .trial-request-error { flex: none; margin: 16px 24px 0; padding: 12px 14px; border: 1px solid #dfc4b8; border-radius: 6px; background: #fbf0e9; color: #8a432c; font-size: 14px; line-height: 1.8; overflow-wrap: anywhere; }
 .trial-request-dialog .trial-request-error[hidden] { display: none; }
 .trial-work-card { min-width: 0; margin: 0; padding: 24px; border: 1px solid #d9e0d4; border-radius: 10px; background: #fffdf8; color: #253d3b; }
+.teaching-work-groups { display: grid; gap: 20px; min-width: 0; }
+.trial-work-card nav { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
 .trial-work-card header { position: static; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin: 0 0 16px; padding: 0; border: 0; background: transparent; box-shadow: none; }
 .trial-work-card h2 { min-width: 0; margin: 0; font-size: 20px; line-height: 1.5; overflow-wrap: anywhere; }
 .trial-work-card :is(button, summary) { min-height: 44px; min-width: 44px; max-width: 100%; line-height: 1.6; white-space: normal; overflow-wrap: anywhere; touch-action: manipulation; }

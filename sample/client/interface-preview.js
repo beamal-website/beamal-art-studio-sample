@@ -15,8 +15,8 @@ import {staffSharedState} from './staff-shared-adapter.js';
 
 // Presentation drafts are deliberately separate from shared business records.
 // No API client, browser storage, account changes or message delivery lives here.
-export function createInterfacePreview({context,showModal,cacheModal=()=>{},repaint,dom=document,Form=FormData,sharedSnapshot,onOpenStaffLesson,onEditStaff,onManageStaffAccess,onRetryStaff,onCopyCalendarSharing,resolveSharedLesson,onCloseSharedLesson,onSaveSharedAttendance}) {
-  let sharedAttendanceJob=null;
+export function createInterfacePreview({context,showModal,cacheModal=()=>{},repaint,dom=document,Form=FormData,sharedSnapshot,onOpenStaffLesson,onEditStaff,onManageStaffAccess,onRetryStaff,onCopyCalendarSharing,resolveSharedLesson,onCloseSharedLesson,onSaveSharedAttendance,onSaveSharedPending}) {
+  let sharedAttendanceJob=null,sharedPendingJob=null;
   let productOwner=null,productEditPosition=null,productDetailPosition=null,productListReturn=null,productSourceProvided=false,productRendering=false;
   let operations,staff,student,documentPreview=null,account=null,lesson=null,dataTools=null,overlay=null,returnFocus=null,accountingReturns=[],accountingListReturn=null,messageListReturn=null,messageComposeReturn=null,staffReturn=null,staffManagementSection='directory',staffHrReturn=null,staffHrContext='',staffHrPositions=[],calendarCopyEpoch=0,sharedLesson=null,sharedLessonTicket=null,sharedLessonEditPosition=null;
   const fresh=()=>{productOwner=null;productEditPosition=null;productDetailPosition=null;productListReturn=null;productSourceProvided=false;calendarCopyEpoch++;messageListReturn=null;messageComposeReturn=null;operations={data:getOperationsPreviewData(),today:context()?.today,query:'',status:'all',category:'all',accountingTab:'invoices',selectedThreadId:'thread-1',settingsTab:'general',dialog:null,notice:''};staff=staffInterfacePreviewState();student={data:getStudentPortalData(),section:'profile',requestFilter:'all',notificationFilter:'all',query:'',selectedStudentId:'child-1',dialog:null,notice:''};account=null;lesson=null;dataTools=null;overlay=null;sharedLesson=null;sharedLessonTicket=null;sharedLessonEditPosition=null;};
@@ -105,7 +105,7 @@ export function createInterfacePreview({context,showModal,cacheModal=()=>{},repa
   };
   const discardSharedLesson=({restore=false,draw=true}={})=>{
     const ticket=sharedLessonTicket;
-    sharedLesson=null;sharedLessonTicket=null;sharedLessonEditPosition=null;sharedAttendanceJob=null;
+    sharedLesson=null;sharedLessonTicket=null;sharedLessonEditPosition=null;sharedAttendanceJob=null;sharedPendingJob=null;
     if(overlay==='shared-lesson')overlay=null;
     if(draw){returnFocus=null;showModal('');}
     if(ticket&&typeof onCloseSharedLesson==='function')onCloseSharedLesson(ticket,{restore});
@@ -125,15 +125,16 @@ export function createInterfacePreview({context,showModal,cacheModal=()=>{},repa
     const facts=resolved.facts,original=sharedLesson;
     if(!facts||facts.identity!==current.sharedIdentity||facts.contextKey!==original.contextKey||facts.student?.id!==original.student.id||facts.lesson?.id!==original.lesson.id||facts.lesson.scheduleId!==original.lesson.scheduleId||facts.lesson.sequence!==original.lesson.sequence){discardSharedLesson();return 'invalid';}
     const changed=original.attendanceBase&&(original.attendanceBase.version!==facts.lesson.sessionVersion||original.attendanceBase.sourceVersion!==facts.lesson.sourceVersion);
-    const stale=original.stale||!!(original.view==='attendance'&&changed&&!original.busy&&!original.unconfirmed);
-    sharedLesson={...original,...structuredClone(facts),view:original.view,step:original.step,draft:original.draft,sourceStatus:'ready',sourceError:'',stale,capabilities:{review:true,save:facts.capabilities?.save===true&&typeof onSaveSharedAttendance==='function'}};return 'ready';
+    const pendingChanged=original.pendingBase&&(original.pendingBase.version!==facts.arrangement?.version||original.pendingBase.sessionVersion!==facts.lesson.sessionVersion||original.pendingBase.sourceVersion!==facts.lesson.sourceVersion);
+    const stale=original.stale||!!((original.view==='attendance'&&changed||original.view==='arrange'&&pendingChanged&&original.step!=='saved')&&!original.busy&&!original.unconfirmed);
+    sharedLesson={...original,...structuredClone(facts),view:original.view,step:original.step,draft:original.draft,sourceStatus:'ready',sourceError:'',stale,capabilities:{review:true,save:facts.capabilities?.save===true&&typeof onSaveSharedAttendance==='function',savePending:facts.capabilities?.savePending===true&&typeof onSaveSharedPending==='function'}};return 'ready';
   };
   const openSharedLesson=(view,{sessionId}={})=>{
     const current=ctx();
     if(overlay||!['student','attendance','arrange'].includes(view)||!current.sharedMode||!['admin','teacher'].includes(current.role)||!current.sharedIdentity||!sessionId||typeof resolveSharedLesson!=='function'||typeof onCloseSharedLesson!=='function')return false;
     const resolved=resolveSharedLesson({sessionId,opener:dom.activeElement}),facts=resolved?.facts;
     if(resolved?.status!=='ready'||!resolved.returnTicket||!facts||facts.identity!==current.sharedIdentity||facts.lesson?.id!==sessionId||!facts.student?.id||!facts.contextKey)return false;
-    sharedLesson={...structuredClone(facts),view,step:'edit',draft:{},sourceStatus:'ready',sourceError:'',attendanceBase:{version:facts.lesson.sessionVersion,sourceVersion:facts.lesson.sourceVersion},capabilities:{review:true,save:facts.capabilities?.save===true&&typeof onSaveSharedAttendance==='function'}};sharedLessonTicket=resolved.returnTicket;sharedLessonEditPosition=null;overlay='shared-lesson';returnFocus=null;redrawOverlay();return true;
+    sharedLesson={...structuredClone(facts),view,step:'edit',draft:{},sourceStatus:'ready',sourceError:'',attendanceBase:{version:facts.lesson.sessionVersion,sourceVersion:facts.lesson.sourceVersion},pendingBase:{version:facts.arrangement?.version,sessionVersion:facts.lesson.sessionVersion,sourceVersion:facts.lesson.sourceVersion},capabilities:{review:true,save:facts.capabilities?.save===true&&typeof onSaveSharedAttendance==='function',savePending:facts.capabilities?.savePending===true&&typeof onSaveSharedPending==='function'}};sharedLessonTicket=resolved.returnTicket;sharedLessonEditPosition=null;overlay='shared-lesson';returnFocus=null;redrawOverlay();return true;
   };
   const refreshSharedLesson=()=>{
     if(overlay!=='shared-lesson')return false;
@@ -147,6 +148,8 @@ export function createInterfacePreview({context,showModal,cacheModal=()=>{},repa
     if(sharedLesson.busy)return true;
     if(command==='close'){discardSharedLesson({restore:true});return true;}
     if(command==='save')return saveSharedAttendance();
+    if(command==='save-pending')return saveSharedPending();
+    if(sharedLesson.unconfirmed&&!['close'].includes(command))return true;
     if(status!=='ready'&&!['draft','back'].includes(command)){redrawOverlay();return true;}
     if(form)captureSharedLessonDraft(form);
     if(command==='review'){
@@ -181,6 +184,29 @@ export function createInterfacePreview({context,showModal,cacheModal=()=>{},repa
       sharedLesson={...sharedLesson,busy:false,unconfirmed:!error.status||error.code==='service_unavailable'&&error.status>=200&&error.status<300,stale:sharedLesson.stale||error.status===409,saveError:error.status===409?ctx().t('出席資料已更新，已填內容保留。請重新開啟核對。','Attendance details changed. Your entries are kept; reopen to review the latest record.'):ctx().t('未能儲存，已填內容保留，請重試。','Could not save. Your entries are kept; please retry.')};
       redrawOverlay();dom.querySelector('#slw-save-error')?.focus({preventScroll:true});
     }finally{if(sharedAttendanceJob===job)sharedAttendanceJob=null;}
+    return true;
+  };
+  const saveSharedPending=async()=>{
+    if(!sharedLesson||sharedLesson.view!=='arrange'||sharedLesson.step!=='review'||sharedLesson.draft?.arrangement!=='pending'||sharedLesson.busy||sharedLesson.stale||typeof onSaveSharedPending!=='function')return true;
+    const state=sharedLesson,base=state.pendingBase;
+    if(!state.unconfirmed&&(state.sourceStatus!=='ready'||state.capabilities?.savePending!==true||state.arrangement?.status==='pending'))return true;
+    if(!Number.isSafeInteger(base?.version)||base.version<0||!Number.isSafeInteger(base.sessionVersion)||base.sessionVersion<1||!Number.isSafeInteger(base.sourceVersion)||base.sourceVersion<1)return true;
+    state.pendingOperation ||= {payload:Object.freeze({sessionId:state.lesson.id,version:base.version,sessionVersion:base.sessionVersion,sourceVersion:base.sourceVersion}),key:typeof crypto!=='undefined'&&crypto.randomUUID?crypto.randomUUID():'pending-'+Date.now()+'-'+Math.random().toString(36).slice(2)};
+    const operation=state.pendingOperation,job={ticket:sharedLessonTicket,identity:state.identity,contextKey:state.contextKey};sharedPendingJob=job;sharedLesson={...state,busy:true,saveError:''};redrawOverlay();
+    const current=()=>sharedPendingJob===job&&overlay==='shared-lesson'&&sharedLessonTicket===job.ticket&&sharedLesson?.identity===ctx().sharedIdentity&&sharedLesson.contextKey===job.contextKey;
+    try{
+      const result=await onSaveSharedPending(operation.payload,{returnTicket:job.ticket,operationKey:operation.key});
+      if(!current()||syncSharedLesson({capture:false})==='invalid')return true;
+      const saved=result?.arrangement,expected=base.version===0?1:base.version;
+      if(!saved||saved.sessionId!==state.lesson.id||saved.studentId!==state.student.id||saved.scheduleId!==state.lesson.scheduleId||saved.sequence!==state.lesson.sequence||saved.courseId!==state.lesson.courseId||saved.sourceVersion!==base.sourceVersion||saved.sessionVersion!==base.sessionVersion||saved.version!==expected||saved.status!=='pending')throw new Error('Unconfirmed pending arrangement response.');
+      sharedLesson={...sharedLesson,busy:false,unconfirmed:false,stale:false,saveError:'',step:'saved',arrangement:{status:'pending',version:saved.version,createdAt:saved.createdAt??null,updatedAt:saved.updatedAt??null},pendingBase:{version:saved.version,sessionVersion:saved.sessionVersion,sourceVersion:saved.sourceVersion},pendingConfirmation:{sessionId:saved.sessionId,studentId:saved.studentId,status:'pending',version:saved.version}};
+      redrawOverlay();dom.querySelector('#slw-pending-saved')?.focus({preventScroll:true});
+    }catch(error){
+      if(!current())return true;
+      const uncertain=!error.status||error.status>=500||error.code==='service_unavailable'&&error.status>=200&&error.status<300;
+      sharedLesson={...sharedLesson,busy:false,unconfirmed:uncertain,stale:sharedLesson.stale||error.status===409,saveError:error.status===409?ctx().t('課堂資料已更新，請重新開啟核對。','Lesson details changed. Reopen to review the latest record.'):uncertain?ctx().t('未能確認儲存結果，請重試同一安排。','The saved result could not be confirmed. Retry the same arrangement.'):ctx().t('未能儲存，請重新核對課堂資料。','Could not save. Review the lesson details again.')};
+      redrawOverlay();dom.querySelector('#slw-save-error')?.focus({preventScroll:true});
+    }finally{if(sharedPendingJob===job)sharedPendingJob=null;}
     return true;
   };
   const sharedPersonFacts=(view,personId)=>{
@@ -831,7 +857,7 @@ export function createInterfacePreview({context,showModal,cacheModal=()=>{},repa
     if(form.id==='ui-operations-form'&&productDialog(operations.dialog)&&!syncProductSource())return true;
     const values=new Form(form),fields=Object.fromEntries(values);
     if(form.id==='ui-operations-form'&&(fields.formSection==='products'||String(fields.formKind||'').includes('product'))&&(!syncProductSource()||overlay!=='operations'||!productDialog(operations.dialog)))return true;
-    if(form.id==='shared-lesson-workflow-form')return advanceSharedLesson(sharedLesson?.view==='attendance'&&sharedLesson?.step==='review'?'save':'review',fields,form);
+    if(form.id==='shared-lesson-workflow-form')return advanceSharedLesson(sharedLesson?.step==='review'?(sharedLesson.view==='attendance'?'save':sharedLesson.draft?.arrangement==='pending'?'save-pending':'review'):'review',fields,form);
     if(guardStudentRequest(form.id==='ui-lesson-form'?fields:undefined)!=='ready')return true;
     if(hrKinds.some(kind=>form.id===hrModules[kind].formId)){
       const kind=hrKinds.find(key=>form.id===hrModules[key].formId);

@@ -1,0 +1,24 @@
+{
+  "integrity": "ok",
+  "oldTables": 47,
+  "newTables": 48,
+  "changedExisting": {
+    "enrollment_order_audit_log": {
+      "before": 12,
+      "after": 14
+    },
+    "idempotent_creates": {
+      "before": 31,
+      "after": 33
+    },
+    "sessions": {
+      "before": 5,
+      "after": 4
+    }
+  },
+  "added": {
+    "student_session_arrangements": 2
+  },
+  "savedArrangementCount": 2,
+  "pendingAuditCount": 2
+}

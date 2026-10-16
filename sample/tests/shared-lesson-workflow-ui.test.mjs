@@ -20,8 +20,8 @@ test('attendance review and Back retain the draft without changing canonical rec
  const html=markup(review,en);assert.match(html,/Only this session/);assert.match(html,/Absent/);assert.match(html,/data-ui-command="final-save"[^>]*disabled/);assert.match(html,/not been saved/);
  const back=advance(review,'back');assert.equal(back.step,'edit');assert.deepEqual(back.draft,review.draft);assert.match(markup(back,en),/value="absent"[^>]*\bchecked/);
 });
-test('required attendance and bounded remarks validate locally while preserving raw drafts and checkbox clearing',()=>{
- let state=advance(base(),'review',{remark:'Keep this note'});assert.equal(state.step,'edit');assert.ok(state.formError);assert.match(markup(state,en),/role="alert"/);assert.equal(state.draft.remark,'Keep this note');
+test('unchanged unmarked attendance and bounded remarks validate locally while preserving raw drafts and checkbox clearing',()=>{
+ let state=advance(base(),'review',{remark:'Existing session note'});assert.equal(state.step,'edit');assert.ok(state.formError);assert.match(markup(state,en),/role="alert"/);assert.equal(state.draft.remark,'Existing session note');
  state=advance(base(),'review',{attendance:'invented',remark:'x'.repeat(2001),sticker:'secret'});assert.equal(state.step,'edit');assert.equal(state.draft.remark.length,2001);
  state=advance({...base(),draft:{attendance:'late',showRemark:'yes'}},'review',{attendance:'late',remark:''});assert.equal(state.step,'review');assert.equal(state.draft.showRemark,'');assert.equal(state.draft.remark,'');
 });
@@ -31,7 +31,7 @@ test('draft updates cannot overwrite the source student lesson view or capabilit
 });
 test('forged final operations never produce completion or mutate business facts even when save capability is forged true',()=>{
  const state=freeze({...base(),step:'review',draft:{attendance:'present'},capabilities:{save:true}}),before=JSON.stringify(state);
- for(const command of ['final-save','final-confirm','save','confirm','submit','save-preview','confirm-preview','approve','assign']){const next=advance(state,command,{attendance:'absent',step:'complete'});assert.equal(JSON.stringify(next),before);assert.doesNotMatch(markup(next,en),/Preview complete|Successfully|has been updated|Saved successfully/);assert.match(markup(next,en),/data-ui-command="final-save"[^>]*disabled/);}
+ for(const command of ['final-save','final-confirm','save','confirm','submit','save-preview','confirm-preview','approve','assign']){const next=advance(state,command,{attendance:'absent',step:'complete'});assert.equal(JSON.stringify(next),before);assert.doesNotMatch(markup(next,en),/Preview complete|Successfully|has been updated|Saved successfully/);assert.match(markup(next,en),/data-ui-command="save"[^>]*disabled/);}
 });
 test('missing or malformed canonical session cannot render an unrelated default or accept a draft',()=>{
  assert.equal(markup({view:'unknown'},en),'');
@@ -99,7 +99,7 @@ function parsedActionTree(html){
  for(const match of html.matchAll(/<(\/?)([a-z][a-z0-9-]*)\b([^>]*)>/gi)){
   const [,closing,tag,raw]=match;
   if(closing){const index=stack.findLastIndex(node=>node.tag===tag);if(index>=0)stack.splice(index);continue;}
-  const attributes=Object.fromEntries([...raw.matchAll(/([\w-]+)="([^"]*)"/g)].map(([,key,value])=>[key,value])),node={tag,attributes,parent:stack.at(-1),closestAction(){for(let node=this;node;node=node.parent)if(Object.hasOwn(node.attributes,'data-action'))return node;return null;}};
+  const attributes=Object.fromEntries([...raw.matchAll(/([\w-]+)(?:="([^"]*)")?/g)].map(([,key,value])=>[key,value??''])),node={tag,attributes,parent:stack.at(-1),closestAction(){for(let node=this;node;node=node.parent)if(Object.hasOwn(node.attributes,'data-action'))return node;return null;}};
   nodes.push(node);if(!voidTags.has(tag))stack.push(node);
  }
  return nodes;
@@ -175,4 +175,50 @@ test('long remark disclosures have stable semantic identities across source upda
   }
  }
  const slots=parsedActionTree(markup(ready(),en));assert.equal(slots.filter(node=>Object.hasOwn(node.attributes,'data-slw-note')).length,0);
+});
+
+function savableAttendance(){return advance({...base(),sourceStatus:'ready',capabilities:{save:true}},'review',{attendance:'sick',remark:' Keep this note\n第二行 ',sticker:'blue',showRemark:'yes'});}
+function commandNode(html,command){return parsedActionTree(html).find(node=>node.tag==='button'&&node.attributes['data-ui-command']===command);}
+test('an explicit attendance save capability enables only a valid ready Review and keeps final writes in the host',()=>{
+ const state=freeze(savableAttendance()),html=markup(state,en),save=commandNode(html,'save');assert.ok(save);assert.equal(Object.hasOwn(save.attributes,'disabled'),false);assert.match(html,/id="shared-lesson-workflow-form"[^>]*data-ui-command="save"/);assert.match(html,/id="slw-body"[^>]*tabindex="0"/);assert.match(html,/have not been saved/);assert.doesNotMatch(html,/Saving is not available yet|Saved successfully|has been saved\./);
+ assert.equal(advance(state,'save',{attendance:'present',remark:'FORGED',step:'complete'}),state);assert.equal(state.draft.attendance,'sick');assert.equal(state.student.attendance,'unmarked');
+});
+test('attendance save rejects missing readiness malformed capability invalid draft stale source and busy state',()=>{
+ const state=savableAttendance();
+ for(const patch of [{sourceStatus:undefined},{sourceStatus:null},{sourceStatus:'loading'},{sourceStatus:'error'},{stale:true},{busy:true},{draft:{...state.draft,attendance:'unmarked'}},{draft:{...state.draft,remark:'x'.repeat(2001)}},{draft:{...state.draft,sticker:'unknown'}},{draft:{...state.draft,showRemark:'true'}}]){const save=commandNode(markup({...state,...patch},en),'save');assert.ok(save);assert.equal(Object.hasOwn(save.attributes,'disabled'),true,JSON.stringify(patch));}
+ for(const save of [undefined,false,1,'true',null]){const html=markup({...state,capabilities:{save}},en);assert.equal(commandNode(html,'save'),undefined);assert.ok(Object.hasOwn(commandNode(html,'final-save').attributes,'disabled'));}
+ const arranged=markup({...advance(base('arrange'),'pending'),sourceStatus:'ready',capabilities:{save:true}},en);assert.equal(commandNode(arranged,'save'),undefined);assert.ok(Object.hasOwn(commandNode(arranged,'final-confirm').attributes,'disabled'));assert.doesNotMatch(markup({...base('student'),capabilities:{save:true}},en),/data-ui-command="save"/);
+});
+test('busy attendance shows a busy form and locks Close Back Review and Save without changing the draft',()=>{
+ for(const step of ['edit','review']){const state=freeze({...savableAttendance(),step,busy:true}),html=markup(state,en);assert.match(html,/id="shared-lesson-workflow-form"[^>]*aria-busy="true"/);const buttons=parsedActionTree(html).filter(node=>node.tag==='button');assert.ok(buttons.length>=3);assert.ok(buttons.every(node=>Object.hasOwn(node.attributes,'disabled')));if(step==='review')assert.match(html,/Saving/);for(const command of ['draft','review','back','save'])assert.equal(advance(state,command,{attendance:'absent',remark:'Replace while saving'}),state);assert.equal(state.draft.attendance,'sick');}
+});
+test('attendance save errors are escaped focusable visible feedback outside the bounded reading body',()=>{
+ const state=freeze({...savableAttendance(),saveError:'Could not save. Keep <script>this</script> & retry.'}),html=markup(state,en),nodes=parsedActionTree(html),error=nodes.find(node=>node.attributes.id==='slw-save-error');assert.ok(error);assert.equal(error.attributes.role,'alert');assert.equal(error.attributes.tabindex,'-1');assert.equal(Object.hasOwn(error.attributes,'hidden'),false);assert.match(html,/Keep &lt;script&gt;this&lt;\/script&gt; &amp; retry/);assert.doesNotMatch(html,/<script>/);assert.ok(html.indexOf('id="slw-save-error"')<html.indexOf('id="slw-body"'));assert.equal(state.draft.remark,' Keep this note\n第二行 ');
+ const clean=parsedActionTree(markup(savableAttendance(),en)).find(node=>node.attributes.id==='slw-save-error');assert.ok(clean);assert.ok(Object.hasOwn(clean.attributes,'hidden'));
+});
+test('stale attendance explains changed information and blocks Review Save while preserving Back and Close',()=>{
+ const state=freeze({...savableAttendance(),stale:true});for(const locale of [en,zh]){const html=markup(state,locale),error=parsedActionTree(html).find(node=>node.attributes.id==='slw-save-error');assert.equal(Object.hasOwn(error.attributes,'hidden'),false);assert.match(html,/changed|已更新/);assert.ok(Object.hasOwn(commandNode(html,'save').attributes,'disabled'));assert.equal(Object.hasOwn(commandNode(html,'back').attributes,'disabled'),false);assert.equal(Object.hasOwn(commandNode(html,'close').attributes,'disabled'),false);}
+ const editing=advance(state,'back');assert.equal(editing.step,'edit');assert.deepEqual(editing.draft,state.draft);assert.ok(Object.hasOwn(commandNode(markup(editing,en),'review').attributes,'disabled'));const rejected=advance(editing,'review',{attendance:'present',remark:'New draft'});assert.equal(rejected.step,'edit');assert.ok(rejected.formError);assert.equal(rejected.draft.remark,'New draft');assert.equal(state.draft.attendance,'sick');
+});
+test('an unmarked student can review changed annotations without inventing an attendance status',()=>{
+ const source=freeze({...base(),sourceStatus:'ready',capabilities:{save:true}}),before=JSON.stringify(source);
+ for(const fields of [{remark:' A new note\n第二行 '},{remark:''},{sticker:'blue'},{sticker:'none'},{showRemark:'yes'}]){
+  const review=advance(source,'review',fields);assert.equal(review.step,'review',JSON.stringify(fields));assert.equal(review.draft.attendance,'');assert.equal(review.student.attendance,'unmarked');const html=markup(review,en);assert.equal(detailValue(html,'Attendance'),'Not marked');assert.doesNotMatch(html,/<dd>Present<\/dd>/);assert.equal(Object.hasOwn(commandNode(html,'save').attributes,'disabled'),false);assert.deepEqual(advance(review,'back').draft,review.draft);assert.equal(advance(review,'save'),review);
+ }
+ const visible={...source,student:{...source.student,showRemark:true}},hidden=advance(visible,'review',{showRemark:''});assert.equal(hidden.step,'review');assert.equal(hidden.draft.showRemark,'');assert.equal(detailValue(markup(hidden,zh),'出席'),'尚未登記');assert.equal(JSON.stringify(source),before);assert.match(markup(source,en),/<form[^>]*\bnovalidate/);assert.doesNotMatch(markup(source,en),/<input[^>]*name="attendance"[^>]*\brequired/);assert.match(markup({...source,student:{...source.student,attendance:'present'}},en),/<input[^>]*name="attendance"[^>]*\brequired/);
+});
+test('annotation-only review requires known unmarked attendance and a real change to an annotation',()=>{
+ const source={...base(),sourceStatus:'ready',capabilities:{save:true},student:{...base().student,stickerColor:'blue',showRemark:false}};
+ for(const fields of [{},{remark:'Existing session note'},{sticker:'blue'},{showRemark:''},{attendance:'unmarked',remark:'Changed note'}]){const next=advance(source,'review',fields);assert.equal(next.step,'edit',JSON.stringify(fields));assert.equal(next.formError,'attendance');}
+ for(const attendance of [undefined,null,'unknown','present','absent']){const next=advance({...source,student:{...source.student,attendance}},'review',{attendance:'',remark:'Changed note'});assert.equal(next.step,'edit');assert.equal(next.formError,'attendance');}
+});
+test('annotation-only review still validates raw notes sticker and visibility without mutating the canonical source',()=>{
+ const source=freeze({...base(),sourceStatus:'ready',capabilities:{save:true}});
+ for(const [fields,error] of [[{remark:'x'.repeat(2001)},'remark'],[{remark:'Changed',sticker:'invalid'},'sticker'],[{remark:'Changed',showRemark:'true'},'remark-visibility']]){const next=advance(source,'review',fields);assert.equal(next.step,'edit');assert.equal(next.formError,error);assert.equal(next.student,source.student);assert.equal(next.draft.remark,fields.remark);}
+ const review=advance(source,'review',{remark:'Changed'}),stale={...review,stale:true};assert.ok(Object.hasOwn(commandNode(markup(stale,en),'save').attributes,'disabled'));assert.equal(advance({...review,sourceStatus:'error'},'review',{remark:'Another change'}).formError,'source-not-ready');
+});
+test('stale attendance with revoked save capability explains changed details instead of claiming saving is not available yet',()=>{
+ const state=freeze({...savableAttendance(),stale:true,capabilities:{save:false}}),before=JSON.stringify(state);
+ for(const locale of [en,zh]){const html=markup(state,locale),error=parsedActionTree(html).find(node=>node.attributes.id==='slw-save-error');assert.equal(Object.hasOwn(error.attributes,'hidden'),false);assert.match(html,/details changed|出席資料已更新/);assert.match(html,/have not been saved|尚未儲存/);assert.doesNotMatch(html,/Saving is not available yet|儲存操作暫未開放/);assert.ok(Object.hasOwn(commandNode(html,'final-save').attributes,'disabled'));assert.equal(Object.hasOwn(commandNode(html,'back').attributes,'disabled'),false);assert.equal(Object.hasOwn(commandNode(html,'close').attributes,'disabled'),false);}
+ assert.equal(JSON.stringify(state),before);assert.match(markup({...state,stale:false},en),/Saving is not available yet/);assert.match(markup({...advance(base('arrange'),'pending'),stale:true},en),/Saving is not available yet/);
 });

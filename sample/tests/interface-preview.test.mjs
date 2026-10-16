@@ -1036,3 +1036,30 @@ test('shared public trial cannot enter the legacy account fixture without the ca
  assert.equal(p.ui.openAccount('trial-application'),false);assert.equal(p.html,'');
  p.ui.action({action:'ui-account-actions',uiCommand:'launch',uiView:'trial-application',uiCourseId:'arbitrary',uiId:'arbitrary-slot'});assert.equal(p.html,'');
 });
+
+function recordableAttendancePreview(write){
+ const calls=[];const p=canonicalRosterPreview({onSaveSharedAttendance:async(...args)=>{calls.push(args);return write(...args);}});p.facts.capabilities.save=true;p.facts.lesson.sessionVersion=1;
+ p.ui.openSharedLesson('attendance',{sessionId:'actual-session'});p.ui.submit({id:'shared-lesson-workflow-form',values:{attendance:'sick',remark:' 原文\n<keep> ',sticker:'blue',showRemark:'yes'}});
+ return {...p,get html(){return p.html;},get modalWrites(){return p.modalWrites;},calls};
+}
+const attendanceAck=payload=>({session:{id:payload.sessionId,studentId:'actual-person',scheduleId:'actual-schedule',sequence:7,courseId:'actual-course',version:2,sourceVersion:3,attendance:payload.attendance,remark:payload.remark,stickerColor:payload.sticker,showRemark:payload.showRemark}});
+test('a verified shared attendance review calls the host once and returns the exact lesson only after acknowledgement',async()=>{
+ const p=recordableAttendancePreview(async payload=>attendanceAck(payload));await p.ui.action({action:'ui-shared-lesson',uiCommand:'save'});assert.equal(p.calls.length,1);assert.deepEqual(p.calls[0][0],{sessionId:'actual-session',version:1,sourceVersion:3,attendance:'sick',remark:' 原文\n<keep> ',sticker:'blue',showRemark:true});assert.equal(p.calls[0][1].returnTicket,p.ticket);assert.ok(p.calls[0][1].operationKey);assert.equal(p.ui.isOpen,false);assert.equal(p.returns.at(-1).settings.restore,true);
+});
+test('pending shared attendance blocks repeated save Back Close and Escape, then preserves the draft after a connection failure',async()=>{
+ let reject;const gate=new Promise((_yes,no)=>reject=no),p=recordableAttendancePreview(()=>gate),pending=p.ui.action({action:'ui-shared-lesson',uiCommand:'save'});await p.ui.action({action:'ui-shared-lesson',uiCommand:'save'});p.ui.action({action:'ui-shared-lesson',uiCommand:'back'});p.ui.close();p.ui.keyboard({key:'Escape',preventDefault(){}});assert.equal(p.ui.isOpen,true);assert.equal(p.calls.length,1);reject(new Error('offline'));await pending;assert.match(p.html,/原文/);assert.match(p.html,/offline|Could not/);assert.equal(p.returns.length,0);
+});
+test('shared attendance rejects known competing versions and wrong acknowledgements without a false successful return',async()=>{
+ const p=recordableAttendancePreview(async payload=>attendanceAck(payload));p.facts.lesson.sessionVersion=2;p.ui.refreshSharedLesson();await p.ui.action({action:'ui-shared-lesson',uiCommand:'save'});assert.equal(p.calls.length,0);assert.equal(p.ui.isOpen,true);assert.match(p.html,/changed/);
+ const bad=recordableAttendancePreview(async payload=>({session:{...attendanceAck(payload).session,id:'different-session'}}));await bad.ui.action({action:'ui-shared-lesson',uiCommand:'save'});assert.equal(bad.ui.isOpen,true);assert.equal(bad.returns.length,0);
+});
+test('late shared attendance acknowledgement cannot return to a different identity or route ticket',async()=>{
+ let finish;const gate=new Promise(yes=>finish=yes),p=recordableAttendancePreview(()=>gate),pending=p.ui.action({action:'ui-shared-lesson',uiCommand:'save'});p.setContext({sharedIdentity:'another-account'});p.ui.refreshSharedLesson();finish(attendanceAck(p.calls[0]?.[0]||{}));await pending;assert.equal(p.ui.isOpen,false);assert.ok(p.returns.every(row=>row.settings.restore===false));
+});
+
+test('an annotation-only save keeps canonical unmarked attendance and does not invent a Present write',async()=>{
+ const calls=[],p=canonicalRosterPreview({onSaveSharedAttendance:async(payload,options)=>{calls.push({payload,options});return {session:{...attendanceAck(payload).session,attendance:'unmarked'}};}});p.facts.capabilities.save=true;p.facts.lesson.sessionVersion=1;p.ui.openSharedLesson('attendance',{sessionId:'actual-session'});p.ui.submit({id:'shared-lesson-workflow-form',values:{remark:'Only a note',sticker:'blue',showRemark:'yes'}});assert.match(p.html,/Not marked/);await p.ui.action({action:'ui-shared-lesson',uiCommand:'save'});assert.equal(calls.length,1);assert.equal(Object.hasOwn(calls[0].payload,'attendance'),false);assert.equal(p.ui.isOpen,false);
+});
+test('lost attendance acknowledgement retries the original versions and key after a poll sees the committed row',async()=>{
+ let count=0;const p=recordableAttendancePreview(async payload=>{if(++count===1)throw Object.assign(new Error('truncated'),{status:200,code:'service_unavailable'});return attendanceAck(payload);});await p.ui.action({action:'ui-shared-lesson',uiCommand:'save'});p.facts.lesson.sessionVersion=2;p.ui.refreshSharedLesson();await p.ui.action({action:'ui-shared-lesson',uiCommand:'save'});assert.equal(p.calls.length,2);assert.deepEqual(p.calls[0][0],p.calls[1][0]);assert.equal(p.calls[0][1].operationKey,p.calls[1][1].operationKey);assert.equal(p.ui.isOpen,false);
+});

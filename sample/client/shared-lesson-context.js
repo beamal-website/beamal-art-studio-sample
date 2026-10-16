@@ -36,6 +36,7 @@ export function resolveSharedLessonContext(snapshot={},selection={}){
   if(Number.isFinite(balance.total)&&balance.total>=0)student.balance.total=balance.total;
  }
  const item=record.item,lesson={id:row.id,scheduleId:item.id,sequence:record.sequence,sourceVersion:item.version,courseId:course.id,courseName:course.courseName,date:record.date,time:item.time,duration:item.duration,teacher:typeof item.teacher==='string'?item.teacher:'',room:typeof item.room==='string'?item.room:''};
+ if(positive(row.version))lesson.sessionVersion=row.version;
  for(const key of ['teacherIds','roomIds'])if(Array.isArray(item[key])&&item[key].every(id))lesson[key]=[...item[key]];
- return {status:'ready',facts:{identity,contextKey,student,lesson,capabilities:{review:true,save:false},availability:{ready:false,slots:[]}}};
+ return {status:'ready',facts:{identity,contextKey,student,lesson,capabilities:{review:true,save:row.canRecordAttendance===true&&positive(row.version)&&row.sourceVersion===item.version},availability:{ready:false,slots:[]}}};
 }

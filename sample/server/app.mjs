@@ -211,6 +211,7 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
       const orderMatch = /^\/api\/orders\/([^/]+)$/.exec(pathname);
       const orderActionMatch = /^\/api\/orders\/([^/]+)\/(send|respond|confirm-payment)$/.exec(pathname);
       const studentRosterMatch = /^\/api\/schedules\/([^/]+)\/occurrences\/([^/]+)\/students$/.exec(pathname);
+      const studentAttendanceMatch = /^\/api\/student-sessions\/([^/]+)\/attendance$/.exec(pathname);
       const enrollmentQuery = allowed => {
         for (const [key,value] of requestUrl.searchParams) if (!allowed.includes(key) || value.length > 200 || requestUrl.searchParams.getAll(key).length !== 1) throw new ApplicationError(400,'INVALID_QUERY','Choose supported enrollment query parameters.');
         return Object.fromEntries(requestUrl.searchParams);
@@ -260,6 +261,15 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
         store.enrollmentOrders.authorize(id,session.user);
         const result=store.mutateOnce({userId:session.user.id,route:'POST /api/orders/'+encodeURIComponent(id)+'/'+action,key,payloadHash:payloadHash(input),status:200},()=>({order:store.enrollmentOrders[method](id,input,session.user)}));
         json(response,result.status,result.body); return;
+      }
+      if (studentAttendanceMatch && request.method === 'PATCH') {
+        const session=requireMutation(request),id=decodeId(studentAttendanceMatch[1]);enrollmentQuery([]);
+        if(!['admin','teacher'].includes(session.user.role))throw new ApplicationError(403,'ROLE_FORBIDDEN','This role cannot record attendance.');
+        const input=await body(request),key=idempotencyKey(request);
+        // Recheck the current responsible teacher even for a cached retry.
+        store.enrollmentOrders.authorizeAttendance(id,session.user);
+        const result=store.mutateOnce({userId:session.user.id,route:'PATCH /api/student-sessions/'+encodeURIComponent(id)+'/attendance',key,payloadHash:payloadHash(input),status:200},()=>({session:store.enrollmentOrders.saveAttendance(id,input,session.user)}));
+        json(response,result.status,result.body);return;
       }
       if (studentRosterMatch && request.method === 'GET') {
         const session=requireSession(request); enrollmentQuery([]);const id=decodeId(studentRosterMatch[1]),sequenceText=decodeId(studentRosterMatch[2]),sequence=Number(sequenceText);

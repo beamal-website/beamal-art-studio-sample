@@ -1134,3 +1134,7 @@
 .portal-content .tt-note-icon,.lesson-header-actions .tt-note-icon{min-width:44px;width:44px;height:44px;min-height:44px;margin:0;padding:0;background:transparent;color:var(--teal);box-shadow:none}
 .lesson-header-actions:has(.tt-note-icon){flex-wrap:wrap;gap:8px}
 @media print{.tt-grid-heading.tt-note-date-heading{height:36px}.tt-note-month-heading{min-height:30px}}
+
+/* Per-student markers are separate from the teacher's lesson colour. */
+.lesson-student-sticker{display:inline-block;flex:none;width:10px;height:10px;margin-inline-end:6px;vertical-align:baseline;border:1px solid #253d3b55;border-radius:50%;background:var(--student-sticker)}
+.tt-list-student-note{display:block;max-width:32rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;line-height:1.6;color:var(--slw-muted,#687770)}

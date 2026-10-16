@@ -1,0 +1,63 @@
+{
+  "scope": "Student-session attendance and annotations; courses/timetable only",
+  "files": {
+    "sample/client/api-client.js": "a1bb189d62e194dcc81c50b279756d3bbdd3499f68cc43d111833426d1c0a7c5",
+    "sample/client/enrollment-orders-ui.js": "19706a7adcb9bc6fec9e6243b891b39d6a3f1594b95c1302e7d5c1933bd3ad61",
+    "sample/client/interface-preview.js": "e4dfea6951d59075e996279aaa15c7cca17ae56891387fe11d42cb22fa04edc9",
+    "sample/client/shared-lesson-context.js": "ad28ca890387d6082c8386f99f1df5b5c3a854dd81669716bf00ca2a3d0a389a",
+    "sample/client/shared-lesson-workflow-ui.js": "0f85450e06df40dc0b2144f1419f8ddf0f343caa12e9f7ab32b336007db63eff",
+    "sample/server/app.mjs": "90cac40c48a01f1de42346e9c57ba60d6f8dde1bba9b2ebade77c7d9cafc34c1",
+    "sample/server/enrollment-orders.mjs": "4711d7bd7615801e1dd1a261be421034844aef4eaf8ca105bd8b80d639783e78",
+    "sample/server/tests/timetable-filter-facts.test.mjs": "9199cf610ba9655ada041835d957f69ca3345d72fdbcbb86a2d82f0725449d84",
+    "sample/src.js": "4819695b57a5500fdff1f9cd645ebfd6758d172b744553585858fec0b33691fd",
+    "sample/style.css": "b04d02372dd7186c22e3e34090b01382e9aaff42a4dc79ca0bb402bb838754d9",
+    "sample/tests/api-client.test.mjs": "7197ce2ebeb9d6b8bea8b9f8c4c9743a5c0f597d34a5211c0e5ac1125e9e29e3",
+    "sample/tests/enrollment-orders-ui.test.mjs": "781fb71d69904b7b1b81ca232654fae0cd40f7eb859eb417ca8f5f7d8b8d855c",
+    "sample/tests/interface-preview.test.mjs": "ed9486d45d435e4a1e2e914b9470d45af998912bba36358a4a780adf34b6b3ef",
+    "sample/tests/shared-lesson-context.test.mjs": "ce55870f91680f82b79d081cbae2fae268e4999cb2de340d4f77a684d0b25f38",
+    "sample/tests/shared-lesson-workflow-ui.test.mjs": "ef6836e9c1119df9de9165cd0a150860e56f4cf8f6e3814f397053461f42535c",
+    "sample/server/tests/student-session-attendance.test.mjs": "1fb99179f619558756d51d55a56a4c052404c845637b62b0dc3922163bc24dfd",
+    "sample/tests/session-attendance-host.test.mjs": "d7b4900f64c0d7f4ed365de34a7cbf75b43b8786cc7400580b452f7c61eba20e"
+  },
+  "validation": {
+    "workspaceTests": {
+      "passed": 1640,
+      "failed": 0,
+      "skipped": 0,
+      "durationMs": 48369.301417,
+      "includesPreExistingUntrackedStaffTests": 15,
+      "cleanIndexCandidateRun": false
+    },
+    "build": {
+      "passed": true,
+      "durationSeconds": 2.92,
+      "existingLargeChunkWarning": true
+    },
+    "independentHostCases": 11,
+    "backendHttpCases": 12,
+    "pureUiCases": 35,
+    "hostRegressionCases": 7
+  },
+  "live": {
+    "isolatedServiceRestarted": true,
+    "originalServiceRestarted": true,
+    "originalLegacyFieldsChanged": [],
+    "originalNewColumnsOnlyDefaultValues": true,
+    "rolesInspected": [
+      "admin",
+      "teacher",
+      "student"
+    ],
+    "viewportWidths": [
+      390,
+      768,
+      1280
+    ],
+    "locales": [
+      "zh",
+      "en"
+    ],
+    "schooltracsLiveParityClaim": false,
+    "reference": "PDF/Notion snapshots and official help, live Chrome unavailable"
+  }
+}

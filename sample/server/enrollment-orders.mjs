@@ -8,6 +8,8 @@ const fail=(status,code,message)=>{throw new ApplicationError(status,code,messag
 const invalid=message=>fail(400,'INVALID_ENROLLMENT_ORDER',message);
 const key=(scheduleId,sequence)=>JSON.stringify([scheduleId,sequence]);
 const validId=value=>typeof value==='string'&&value.length>0&&value.length<=200;
+const attendanceValues=['present','late','absent','leave','sick','other'];
+const stickerValues=['none','yellow','green','blue','pink'];
 const validDate=value=>typeof value==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(value)&&value>='0001-01-01'&&value<='9999-12-31'&&Number.isFinite(Date.parse(value+'T00:00:00Z'))&&new Date(value+'T00:00:00Z').toISOString().slice(0,10)===value;
 function validateTimetableQuery(input,maximumDays){
  if(!plain(input)||Object.keys(input).some(field=>!['from','to','since'].includes(field)))invalid('Only a date range and revision may be queried.');
@@ -62,6 +64,16 @@ export function createEnrollmentOrderStore({database,transaction,schedules,resou
    snapshot TEXT NOT NULL,created_at TEXT NOT NULL
   );
  `);
+ transaction(()=>{
+  const columns=new Set(database.prepare('PRAGMA table_info(student_sessions)').all().map(column=>column.name));
+  for(const [name,definition]of [
+   ['session_version','INTEGER NOT NULL DEFAULT 1 CHECK(session_version>0)'],
+   ['remark','TEXT'],
+   ['sticker_color',"TEXT CHECK(sticker_color IS NULL OR sticker_color IN ('none','yellow','green','blue','pink'))"],
+   ['show_remark','INTEGER CHECK(show_remark IS NULL OR show_remark IN (0,1))'],
+   ['updated_at','TEXT'],
+  ])if(!columns.has(name))database.exec(`ALTER TABLE student_sessions ADD COLUMN ${name} ${definition}`);
+ });
  const identity=user=>database.prepare('SELECT id,role FROM users WHERE id=?').get(typeof user==='string'?user:user?.id||'');
  const requireRole=(user,roles)=>{const person=identity(user);if(!person||!roles.includes(person.role))fail(403,'ROLE_FORBIDDEN','This account is not permitted to perform this action.');return person;};
  const administrator=user=>requireRole(user,['admin']);
@@ -110,6 +122,34 @@ export function createEnrollmentOrderStore({database,transaction,schedules,resou
   if(!occurrence)fail(409,'ORDER_LESSON_UNAVAILABLE','A selected lesson is no longer active. Create a new order with current lessons.');
   return occurrence;
  };
+ const paidSession=id=>validId(id)?database.prepare("SELECT sessions.*,people.display_name FROM student_sessions AS sessions JOIN enrollment_orders AS orders ON orders.id=sessions.order_id AND orders.student_id=sessions.student_id JOIN people ON people.id=sessions.student_id AND people.kind='student' WHERE sessions.id=? AND orders.payment_status='paid'").get(id):null;
+ const canRecordAttendance=(actor,occurrence)=>actor.role==='admin'||actor.role==='teacher'&&(occurrence.item.teacherIds||[]).some(id=>accessControl.ownTeacherResourceIds(actor).includes(id));
+ const sessionDTO=(row,occurrence,canRecord)=>({
+  id:row.id,studentId:row.student_id,displayName:row.display_name,scheduleId:row.schedule_id,sequence:row.sequence,courseId:occurrence.item.course,orderId:row.order_id,paymentStatus:'paid',
+  attendance:[...attendanceValues,'unmarked'].includes(row.attendance)?row.attendance:null,version:row.session_version,sourceVersion:occurrence.item.version,
+  remark:typeof row.remark==='string'?row.remark:null,stickerColor:stickerValues.includes(row.sticker_color)?row.sticker_color:null,showRemark:row.show_remark===1?true:row.show_remark===0?false:null,updatedAt:row.updated_at??null,canRecordAttendance:canRecord,
+ });
+ const attendanceTarget=(id,user)=>{
+  const actor=requireRole(user,['admin','teacher']),row=paidSession(id);let occurrence;
+  if(!row)fail(404,'STUDENT_SESSION_NOT_FOUND','The active paid student lesson was not found.');
+  try{occurrence=currentOccurrence(row.schedule_id,row.sequence);}catch(error){if(error instanceof ApplicationError&&error.code==='ORDER_LESSON_UNAVAILABLE')fail(404,'STUDENT_SESSION_NOT_FOUND','The active paid student lesson was not found.');throw error;}
+  if(!canRecordAttendance(actor,occurrence))fail(403,'ROLE_FORBIDDEN','Only the current responsible teacher or an administrator can record this attendance.');
+  return {actor,row,occurrence};
+ };
+ const authorizeAttendance=(id,user)=>transaction(()=>{const {row,occurrence}=attendanceTarget(id,user);return sessionDTO(row,occurrence,true);},'read');
+ const saveAttendance=(id,input,user)=>transaction(()=>{
+  const {actor,row,occurrence}=attendanceTarget(id,user);
+  if(!plain(input))fail(400,'INVALID_STUDENT_ATTENDANCE','Attendance must be a JSON object.');
+  if(!Number.isSafeInteger(input.version)||input.version<1)fail(409,'VERSION_REQUIRED','Reload the student lesson and include its current version.');
+  if(!Number.isSafeInteger(input.sourceVersion)||input.sourceVersion<1)fail(409,'SOURCE_VERSION_REQUIRED','Reload the lesson and include its current source version.');
+  if(Object.keys(input).some(field=>!['version','sourceVersion','attendance','remark','sticker','showRemark'].includes(field))||!['attendance','remark','sticker','showRemark'].some(field=>Object.hasOwn(input,field))||Object.hasOwn(input,'attendance')&&!attendanceValues.includes(input.attendance)||Object.hasOwn(input,'remark')&&(typeof input.remark!=='string'||input.remark.length>2000)||Object.hasOwn(input,'sticker')&&!stickerValues.includes(input.sticker)||Object.hasOwn(input,'showRemark')&&typeof input.showRemark!=='boolean')fail(400,'INVALID_STUDENT_ATTENDANCE','Provide attendance or a lesson annotation. Remarks may contain at most 2000 characters; sticker and timetable display settings must be valid.');
+  if(input.version!==row.session_version)fail(409,'VERSION_CONFLICT','This student attendance changed. Reload it before saving.');
+  if(input.sourceVersion!==occurrence.item.version)fail(409,'SOURCE_VERSION_CONFLICT','This lesson changed. Reload it before saving attendance.');
+  const now=new Date().toISOString(),attendance=Object.hasOwn(input,'attendance')?input.attendance:row.attendance,remark=Object.hasOwn(input,'remark')?input.remark:row.remark,sticker=Object.hasOwn(input,'sticker')?input.sticker:row.sticker_color,showRemark=Object.hasOwn(input,'showRemark')?Number(input.showRemark):row.show_remark;
+  const changed=database.prepare('UPDATE student_sessions SET attendance=?,remark=?,sticker_color=?,show_remark=?,session_version=session_version+1,updated_at=? WHERE id=? AND session_version=?').run(attendance,remark,sticker,showRemark,now,id,input.version);
+  if(changed.changes!==1)fail(409,'VERSION_CONFLICT','This student attendance changed. Reload it before saving.');
+  const session=sessionDTO(paidSession(id),occurrence,true);audit(actor,'student-session.attendance',id,session);return session;
+ });
  const canRead=(order,actor,scope)=>{
   if(actor.role==='admin')return true;
   if(actor.role==='student')return order.orderStatus!=='draft'&&ownsStudent(order.studentId,actor.id);
@@ -206,7 +246,7 @@ export function createEnrollmentOrderStore({database,transaction,schedules,resou
    try{occurrence=currentOccurrence(row.schedule_id,row.sequence);}catch(error){if(error instanceof ApplicationError&&error.code==='ORDER_LESSON_UNAVAILABLE')continue;throw error;}
    if(occurrence.date<from||occurrence.date>to)continue;
    const item=occurrence.item,course=getCourse(item.course),teachers=resources.getMany(item.teacherIds||[]).filter(resource=>resource.kind==='teacher').map(resource=>({id:resource.id,displayName:resource.displayName,color:resource.representativeColor||item.color||'#27777b'})),rooms=resources.getMany(item.roomIds||[]).filter(resource=>resource.kind==='room').map(resource=>({id:resource.id,displayName:resource.displayName}));
-   lessons.push({id:row.id,studentId:row.student_id,studentName:names.get(row.student_id),scheduleId:row.schedule_id,sequence:row.sequence,courseId:item.course,courseName:course.courseName,date:occurrence.date,time:item.time,duration:item.duration,teachers,rooms,attendance:row.attendance,orderId:row.order_id});
+   lessons.push({id:row.id,studentId:row.student_id,studentName:names.get(row.student_id),scheduleId:row.schedule_id,sequence:row.sequence,courseId:item.course,courseName:course.courseName,date:occurrence.date,time:item.time,duration:item.duration,teachers,rooms,attendance:[...attendanceValues,'unmarked'].includes(row.attendance)?row.attendance:null,version:row.session_version,orderId:row.order_id});
   }
   lessons.sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time)||a.id.localeCompare(b.id));
   const revision=hash({userId:identity(user).id,from,to,students,lessons});return since===revision?{revision,unchanged:true}:{revision,students,lessons};
@@ -215,7 +255,8 @@ export function createEnrollmentOrderStore({database,transaction,schedules,resou
   const actor=requireRole(user,['admin','teacher']);let occurrence;
   try{occurrence=currentOccurrence(scheduleId,sequence);}catch(error){if(error instanceof ApplicationError&&error.code==='ORDER_LESSON_UNAVAILABLE')fail(404,'LESSON_NOT_FOUND','The active authorized lesson was not found.');throw error;}
   if(actor.role==='teacher'&&!accessControl.scopeFor(actor).permits(occurrence))fail(404,'LESSON_NOT_FOUND','The authorized lesson was not found.');
-  const students=database.prepare("SELECT sessions.*,people.display_name FROM student_sessions AS sessions JOIN enrollment_orders AS orders ON orders.id=sessions.order_id JOIN people ON people.id=sessions.student_id WHERE sessions.schedule_id=? AND sessions.sequence=? AND orders.payment_status='paid' ORDER BY people.display_name,sessions.id").all(scheduleId,sequence).map(row=>({id:row.id,studentId:row.student_id,displayName:row.display_name,orderId:row.order_id,paymentStatus:'paid',attendance:row.attendance,remark:''}));
+  const canRecord=canRecordAttendance(actor,occurrence);
+  const students=database.prepare("SELECT sessions.*,people.display_name FROM student_sessions AS sessions JOIN enrollment_orders AS orders ON orders.id=sessions.order_id AND orders.student_id=sessions.student_id JOIN people ON people.id=sessions.student_id AND people.kind='student' WHERE sessions.schedule_id=? AND sessions.sequence=? AND orders.payment_status='paid' ORDER BY people.display_name,sessions.id").all(scheduleId,sequence).map(row=>sessionDTO(row,occurrence,canRecord));
   return {students,occupied:students.length,capacity:occurrence.item.capacity??null};
  },'read');
  const filterFacts=(user,input)=>transaction(()=>{
@@ -232,13 +273,14 @@ export function createEnrollmentOrderStore({database,transaction,schedules,resou
   // Never expose family/contact fields in the filter-facts projection.
   for(let offset=0;offset<values.length;offset+=200){
    const chunk=values.slice(offset,offset+200),where=chunk.map(()=>'(sessions.schedule_id=? AND sessions.sequence=?)').join(' OR '),parameters=chunk.flatMap(row=>[row.fact.scheduleId,row.fact.sequence]);
-   const rows=database.prepare(`SELECT sessions.schedule_id,sessions.sequence,people.id,people.display_name,people.profile,people.version FROM student_sessions AS sessions JOIN enrollment_orders AS orders ON orders.id=sessions.order_id JOIN people ON people.id=sessions.student_id WHERE orders.payment_status='paid' AND people.kind='student' AND (${where}) ORDER BY people.id,sessions.id`).all(...parameters);
+   const rows=database.prepare(`SELECT sessions.schedule_id,sessions.sequence,sessions.remark AS lesson_remark,sessions.sticker_color,sessions.show_remark,people.id,people.display_name,people.profile,people.version FROM student_sessions AS sessions JOIN enrollment_orders AS orders ON orders.id=sessions.order_id JOIN people ON people.id=sessions.student_id WHERE orders.payment_status='paid' AND people.kind='student' AND (${where}) ORDER BY people.id,sessions.id`).all(...parameters);
    for(const row of rows){
     const entry=entries.get(key(row.schedule_id,row.sequence));if(!entry||entry.students.has(row.id))continue;
     if(!profiles.has(row.id)){let profile;try{profile=JSON.parse(row.profile);}catch{profile={};}profiles.set(row.id,plain(profile)?profile:{});}
     const profile=profiles.get(row.id),student={id:row.id,displayName:row.display_name},age=lessonDateAge(profile.dateOfBirth,entry.fact.date);
     if(typeof profile.gender==='string'&&profile.gender.length<=200&&profile.gender.trim())student.gender=profile.gender.trim();
     if(age)student.age=age;
+    if(row.show_remark===1){student.lessonRemark=typeof row.lesson_remark==='string'?row.lesson_remark:null;student.stickerColor=stickerValues.includes(row.sticker_color)?row.sticker_color:null;}
     entry.students.set(row.id,student);versions.set(row.id,row.version);
    }
   }
@@ -247,5 +289,5 @@ export function createEnrollmentOrderStore({database,transaction,schedules,resou
   const revision=hash({scope:scope?.revision??actor,from,to,facts,profiles:[...versions].sort(([a],[b])=>a.localeCompare(b)),sources:sorted.map(entry=>[entry.fact.scheduleId,entry.fact.sequence,entry.fact.date,entry.sourceVersion])});
   return since===revision?{revision,unchanged:true}:{revision,facts};
  },'read');
- return {managementSnapshot,setAccountLink,studentProfile,create,list,get,authorize:authorizedOrder,send,respond,confirmPayment,occupied,timetable,roster,filterFacts,audit:()=>database.prepare('SELECT * FROM enrollment_order_audit_log ORDER BY id').all().map(row=>({...row,snapshot:JSON.parse(row.snapshot)})),sales:()=>database.prepare('SELECT * FROM enrollment_sales ORDER BY created_at,id').all().map(row=>({id:row.id,orderId:row.order_id,studentId:row.student_id,amountCents:row.amount_cents,actorId:row.actor_id,createdAt:row.created_at}))};
+ return {managementSnapshot,setAccountLink,studentProfile,create,list,get,authorize:authorizedOrder,authorizeAttendance,saveAttendance,send,respond,confirmPayment,occupied,timetable,roster,filterFacts,audit:()=>database.prepare('SELECT * FROM enrollment_order_audit_log ORDER BY id').all().map(row=>({...row,snapshot:JSON.parse(row.snapshot)})),sales:()=>database.prepare('SELECT * FROM enrollment_sales ORDER BY created_at,id').all().map(row=>({id:row.id,orderId:row.order_id,studentId:row.student_id,amountCents:row.amount_cents,actorId:row.actor_id,createdAt:row.created_at}))};
 }

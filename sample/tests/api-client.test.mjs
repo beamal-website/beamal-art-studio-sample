@@ -407,3 +407,8 @@ test('course content metadata saves retain raw optional fields, the opened versi
  for(let attempt=0;attempt<2;attempt++){wire.reply('/api/courses/'+encodeURIComponent(id),{course:{id,version:8,content}});await client.updateCourseMetadata(id,fields,'content-retry');const call=wire.calls.at(-1);assert.deepEqual(JSON.parse(call.body),fields);assert.equal(call.method,'PATCH');assert.equal(call.headers.get('Idempotency-Key'),'content-retry');assert.equal(call.headers.get('X-CSRF-Token'),'csrf-fictional-B');}
  wire.reply('/api/courses/'+encodeURIComponent(id),{course:{id,version:9}});await client.updateCourseMetadata(id,{version:8,courseName:'Renamed'});assert.equal(wire.calls.at(-1).headers.get('Idempotency-Key'),null);
 });
+
+test('student attendance mutations encode exact session identity and preserve raw fields, versions and retry key',async t=>{
+ const wire=network(t),client=createApiClient();await login(client,wire,'B');const id='session / 二',fields={version:2,sourceVersion:7,attendance:'sick',remark:' 原文\n <note> ',sticker:'blue',showRemark:false};
+ for(let n=0;n<2;n++){wire.reply('/api/student-sessions/'+encodeURIComponent(id)+'/attendance',{session:{id,version:3}});await client.recordStudentAttendance(id,fields,'attendance-retry');const call=wire.calls.at(-1);assert.deepEqual(JSON.parse(call.body),fields);assert.equal(call.method,'PATCH');assert.equal(call.headers.get('Idempotency-Key'),'attendance-retry');assert.equal(call.headers.get('X-CSRF-Token'),'csrf-fictional-B');}
+});

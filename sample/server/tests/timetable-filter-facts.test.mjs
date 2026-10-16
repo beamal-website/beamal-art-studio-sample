@@ -38,7 +38,7 @@ const get=async(app,client=app.admin,suffix=query)=>{const reply=await client.re
 
 test('filter facts include every active authorized occurrence with paid students only and a minimal same-name-safe projection',async t=>{
  const app=await setup(t);await paid(app,'child-a',[1,2]);await paid(app,'child-b');const unpaid=await order(app,'child-unknown');
- app.inspection.prepare("INSERT INTO student_sessions VALUES ('legacy-unpaid-seat','child-unknown',?,1,?,'unmarked',?)").run(app.schedule.id,unpaid.id,new Date().toISOString());
+ app.inspection.prepare("INSERT INTO student_sessions(id,student_id,schedule_id,sequence,order_id,attendance,created_at) VALUES ('legacy-unpaid-seat','child-unknown',?,1,?,'unmarked',?)").run(app.schedule.id,unpaid.id,new Date().toISOString());
  const before={audit:app.store.enrollmentOrders.audit(),sales:app.store.enrollmentOrders.sales()},reply=await app.admin.request(route+query);assert.equal(reply.status,200,reply.text);assert.equal(reply.body.facts.length,3);
  assert.deepEqual(reply.body.facts.map(row=>[row.scheduleId,row.sequence,row.date,row.students.map(person=>person.id)]),[[app.schedule.id,1,'2026-10-16',['child-a','child-b']],[app.schedule.id,2,'2026-10-23',['child-a']],[app.schedule.id,3,'2026-10-30',[]]]);
  assert.deepEqual(reply.body.facts[0].students,[{id:'child-a',displayName:'Same Student',gender:'Female',age:{years:7,months:11,asOf:'2026-10-16'}},{id:'child-b',displayName:'Same Student',gender:'Male',age:{years:10,months:0,asOf:'2026-10-16'}}]);assert.deepEqual(reply.body.facts[1].students[0].age,{years:8,months:0,asOf:'2026-10-23'});
@@ -79,7 +79,7 @@ test('filter facts enforce an inclusive 62-day real date range and reject duplic
 });
 
 test('legacy duplicate paid seats are deduplicated by student identity without merging same-name people',async t=>{
- const app=await setup(t);await paid(app,'child-a');await paid(app,'child-b');app.inspection.exec('CREATE TABLE legacy_sessions AS SELECT * FROM student_sessions; DROP TABLE student_sessions; ALTER TABLE legacy_sessions RENAME TO student_sessions;');app.inspection.exec("INSERT INTO student_sessions SELECT 'duplicate-legacy-session',student_id,schedule_id,sequence,order_id,attendance,created_at FROM student_sessions WHERE student_id='child-a'");
+ const app=await setup(t);await paid(app,'child-a');await paid(app,'child-b');app.inspection.exec('CREATE TABLE legacy_sessions AS SELECT * FROM student_sessions; DROP TABLE student_sessions; ALTER TABLE legacy_sessions RENAME TO student_sessions;');app.inspection.exec("INSERT INTO student_sessions(id,student_id,schedule_id,sequence,order_id,attendance,created_at) SELECT 'duplicate-legacy-session',student_id,schedule_id,sequence,order_id,attendance,created_at FROM student_sessions WHERE student_id='child-a'");
  const result=await get(app);assert.deepEqual(result.facts[0].students.map(row=>row.id),['child-a','child-b']);
 });
 

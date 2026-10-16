@@ -1,0 +1,33 @@
+{
+  "user": {
+    "tables": 42,
+    "legacyFieldsChanged": [],
+    "addedColumns": {
+      "student_sessions": [
+        "session_version",
+        "remark",
+        "sticker_color",
+        "show_remark",
+        "updated_at"
+      ]
+    }
+  },
+  "gui": {
+    "tables": 42,
+    "legacyFieldsChanged": [
+      "enrollment_order_audit_log",
+      "idempotent_creates",
+      "sessions",
+      "student_sessions"
+    ],
+    "addedColumns": {
+      "student_sessions": [
+        "session_version",
+        "remark",
+        "sticker_color",
+        "show_remark",
+        "updated_at"
+      ]
+    }
+  }
+}

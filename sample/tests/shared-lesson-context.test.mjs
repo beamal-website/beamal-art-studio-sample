@@ -83,3 +83,9 @@ test('unknown unrelated or malformed student details never become an age or rema
  row.studentDetails={...valid,balance:{courseId:source.course.id,unit:'minutes',remaining:0,total:null}};
  assert.deepEqual(resolve(source,selected).facts.student.balance,{unit:'minutes',remaining:0});
 });
+
+test('attendance saving requires the canonical service permission and matching session/source versions',()=>{
+ const source=fixture(),row=source.roster.students[1];Object.assign(row,{version:2,sourceVersion:source.record.item.version,canRecordAttendance:true});
+ const ready=resolve(source,selected);assert.equal(ready.facts.capabilities.save,true);assert.equal(ready.facts.lesson.sessionVersion,2);
+ for(const fields of [{version:0},{version:'2'},{sourceVersion:source.record.item.version+1},{canRecordAttendance:false},{canRecordAttendance:'true'}]){const changed=structuredClone(source);Object.assign(changed.roster.students[1],fields);assert.equal(resolve(changed,selected).facts.capabilities.save,false);}
+});

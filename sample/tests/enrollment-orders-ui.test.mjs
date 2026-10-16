@@ -74,3 +74,10 @@ test('My classes read error offers an explicit bilingual retry and no stale orde
  }
  assert.doesNotMatch(sharedStudentClassesMarkup({...cache,error:''},en),/data-action="orders-refresh"/);
 });
+
+test('student classes translate all saved attendance states and never show internal remarks or stickers',()=>{
+ for(const [attendance,zh,english]of[['present','出席','Present'],['late','遲到','Late'],['absent','缺席','Absent'],['leave','請假','Leave'],['sick','病假','Sick leave'],['other','其他','Other']]){
+  const row={id:'session',studentId:'child',courseName:'Drawing',date:'2026-10-16',time:'13:00',attendance,remark:'PRIVATE LESSON NOTE',stickerColor:'blue',showRemark:true};
+  for(const [ctx,label]of[[{t:zh=>zh},zh],[en,english]]){const html=sharedStudentClassesMarkup({ready:true,lessons:[row]},ctx);assert.ok(html.includes(label));assert.doesNotMatch(html,/PRIVATE LESSON NOTE|Blue sticker|showRemark/);}
+ }
+});

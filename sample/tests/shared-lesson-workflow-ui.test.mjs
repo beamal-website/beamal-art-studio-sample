@@ -45,15 +45,16 @@ test('all private text is escaped in form review and slot context',()=>{
 });
 test('unknown loading and failed availability never claim zero available slots or borrow fixtures',()=>{
  for(const availability of [undefined,{ready:false,slots:[]},{ready:false,loading:true,slots:[]},{ready:false,error:'PRIVATE TOKEN <script>',slots:[slot()]}]){
-  const html=markup({...base('arrange'),availability},en);assert.match(html,/not available|Loading/);assert.doesNotMatch(html,/0 available|No matching|PRIVATE TOKEN|slot-second|Sample slots|Chloe/);
+  const html=markup({...base('arrange'),availability},en);assert.match(html,/not available|Loading|Could not load/);assert.doesNotMatch(html,/0 available|No matching|PRIVATE TOKEN|slot-second|Sample slots|Chloe/);
  }
  assert.match(markup(ready([]),en),/No eligible slots/);
 });
 test('only unique explicitly verified eligible slots appear and full or unknown capacities cannot be selected',()=>{
- const state=ready([slot(),slot({id:'not-verified',eligible:undefined}),slot({id:'not-eligible',eligible:false}),slot({id:'full',available:0}),slot({id:'unknown-places',available:null}),slot({id:'duplicate'}),slot({id:'duplicate'})]),html=markup(state,en);
+ const state=ready([slot(),slot({id:'not-eligible',eligible:false}),slot({id:'full',available:0}),slot({id:'unknown-places',available:null})]),html=markup(state,en);
  assert.match(html,/data-ui-id="slot-second"/);assert.doesNotMatch(html,/data-ui-id="not-verified"|data-ui-id="not-eligible"|data-ui-id="duplicate"/);assert.match(html,/Full/);assert.match(html,/Places unavailable/);
  for(const id of ['full','unknown-places','duplicate','not-verified','missing'])assert.notEqual(advance(state,'select-slot',{id}).draft?.selectedSlotId,id);
  assert.equal(advance(state,'select-slot',{id:'slot-second'}).draft.selectedSlotId,'slot-second');
+ for(const slots of [[slot(),slot({id:'not-verified',eligible:undefined})],[slot(),slot({id:'duplicate'}),slot({id:'duplicate'})]]){const malformed=ready(slots),html=markup(malformed,en);assert.match(html,/Could not load replacement slots/);assert.doesNotMatch(html,/data-ui-command="select-slot"/);assert.notEqual(advance(malformed,'select-slot',{id:'slot-second'}).draft?.selectedSlotId,'slot-second');}
 });
 test('arrangement date accordions sort dates and times and a date filter preserves the selected session',()=>{
  const state=ready([slot({id:'late',date:'2026-11-10',time:'16:00'}),slot({id:'early',date:'2026-11-09',time:'09:00'}),slot({id:'middle',date:'2026-11-09',time:'12:00'})]),html=markup(state,en);
@@ -260,4 +261,44 @@ test('pending failures use the focusable escaped error marker and preserve the e
 test('a newly capable Pending flow cannot borrow legacy implied readiness when no source status was supplied',()=>{
  const state=freeze({...ready(),capabilities:{savePending:true}}),html=markup(state,en);assert.ok(Object.hasOwn(commandNode(html,'pending').attributes,'disabled'));assert.ok(Object.hasOwn(commandNode(html,'select-slot').attributes,'disabled'));assert.equal(advance(state,'pending').step,'edit');assert.equal(advance(state,'select-slot',{id:'slot-second'}).draft.selectedSlotId,undefined);assert.equal(advance({...state,draft:{arrangement:'pending',selectedSlotId:''}},'review').step,'edit');assert.doesNotMatch(html,/id="slw-pending-saved"/);
  const legacy=advance(base('arrange'),'pending');assert.equal(legacy.step,'review');assert.ok(Object.hasOwn(commandNode(markup(legacy,en),'final-confirm').attributes,'disabled'));
+});
+
+test('replacement loading failure unknown and unconfirmed policy have distinct accurate states without claiming a known empty list',()=>{
+ const cases=[[{ready:false,loading:true,slots:[]},/Loading replacement slots/],[{ready:false,error:'PRIVATE SQL <script>',slots:[]},/Could not load replacement slots/],[{ready:false,slots:[]},/Replacement slots are not available yet/],[{ready:false,policyUnconfirmed:true,slots:[]},/Replacement arrangements are not open yet/]];
+ for(const [availability,label] of cases){const state=freeze({...base('arrange'),availability}),before=JSON.stringify(state),html=markup(state,en);assert.match(html,label);assert.doesNotMatch(html,/No eligible slots|No matching slots|0 available|PRIVATE SQL|<script>|data-ui-command="(?:query-slots|reload-slots)"/);assert.equal(JSON.stringify(state),before);}
+});
+test('malformed or ambiguous ready replacement facts fail closed as a whole and never become a known empty source',()=>{
+ const badRows=[null,{},'slots',[null],[slot({id:'duplicate'}),slot({id:'duplicate'})],[slot(),slot({id:'unknown-eligibility',eligible:undefined})],[slot({date:'2026-02-30'})],[slot({time:'25:00'})],[slot({duration:0})],[slot({available:'2'})]];
+ for(const slots of badRows){const state=freeze({...base('arrange'),availability:{ready:true,slots},draft:{arrangement:'selected',selectedSlotId:'slot-second'}}),html=markup(state,en);assert.match(html,/Could not load replacement slots|not available/);assert.doesNotMatch(html,/No eligible slots|No matching slots|data-ui-command="select-slot"/);const review=advance(state,'review');assert.equal(review.step,'edit');assert.ok(review.formError);}
+ const falseOnly=markup(ready([slot({eligible:false})]),en);assert.match(falseOnly,/No eligible slots/);const empty=markup(ready([]),en);assert.match(empty,/No eligible slots/);
+});
+test('query and reload only appear for a real host loading capability and remain inert pure commands',()=>{
+ const state={...ready(),sourceStatus:'ready',capabilities:{loadArrangementSlots:true}},html=markup(state,en);assert.ok(commandNode(html,'query-slots'));assert.equal(Object.hasOwn(commandNode(html,'query-slots').attributes,'disabled'),false);assert.match(commandNode(html,'query-slots').attributes.type,/button/);
+ for(const loadArrangementSlots of [undefined,false,1,'true',null])assert.doesNotMatch(markup({...state,capabilities:{loadArrangementSlots}},en),/data-ui-command="(?:query-slots|reload-slots)"/);
+ const failed=markup({...state,availability:{ready:false,error:'private',slots:[]}},en);assert.ok(commandNode(failed,'reload-slots'));assert.equal(Object.hasOwn(commandNode(failed,'reload-slots').attributes,'disabled'),false);assert.match(failed,/Retry/);
+ for(const patch of [{busy:true},{unconfirmed:true},{uncertain:true},{stale:true},{availability:{ready:false,loading:true,slots:[]}}]){const html=markup({...state,...patch},en);for(const command of ['query-slots','reload-slots']){const node=commandNode(html,command);if(node)assert.ok(Object.hasOwn(node.attributes,'disabled'),JSON.stringify(patch));}}
+ const frozen=freeze(state);for(const command of ['query-slots','reload-slots'])assert.equal(advance(frozen,command,{date:'2026-11-09',slots:[slot()]}),frozen);
+});
+test('selected replacement Review labels original lesson and new time without duplicating or changing their facts',()=>{
+ const target=slot({courseName:'Authorized target <name>',teacher:'Target teacher',date:'2026-11-10',time:'13:20'}),state=freeze(advance(advance(ready([target]),'select-slot',{id:target.id}),'review')),before=JSON.stringify(state),html=markup(state,en);
+ assert.match(html,/Original lesson/);assert.match(html,/Selected replacement/);assert.ok(html.indexOf('Original lesson')<html.indexOf('2026-11-02'));assert.ok(html.indexOf('Selected replacement')<html.indexOf('2026-11-10'));assert.match(html,/15:15/);assert.match(html,/13:20/);assert.match(html,/Authorized target &lt;name&gt;/);assert.equal((html.match(/Print &amp; colour/g)||[]).length,1);assert.ok(Object.hasOwn(commandNode(html,'final-confirm').attributes,'disabled'));assert.equal(JSON.stringify(state),before);assert.match(markup(state,zh),/原課堂/);assert.match(markup(state,zh),/所選補堂時段/);
+});
+test('stale arrangement cannot change date selection or draft while Back and Close remain usable',()=>{
+ const state=freeze({...ready(),stale:true,draft:{arrangement:'selected',selectedSlotId:'slot-second'},filterDate:'2026-11-09',dateFilter:'2026-11-09'}),before=JSON.stringify(state);
+ for(const command of ['draft','filter-date','select-slot','pending','review'])assert.equal(advance(state,command,{date:'2026-11-10',id:'slot-second'}),state);
+ const html=markup(state,en);assert.match(html,/name="date"[^>]*disabled/);assert.equal(Object.hasOwn(commandNode(html,'close').attributes,'disabled'),false);const back=advance({...state,step:'review'},'back');assert.equal(back.step,'edit');assert.deepEqual(back.draft,state.draft);assert.equal(JSON.stringify(state),before);
+});
+test('replacement read failure or unconfirmed policy does not remove the independent real Pending save flow',()=>{
+ for(const availability of [{ready:false,error:'source unavailable',slots:[]},{ready:false,policyUnconfirmed:true,slots:[]},{ready:false,loading:true,slots:[]}]){const state=freeze({...base('arrange'),sourceStatus:'ready',capabilities:{savePending:true},availability}),pending=advance(state,'pending');assert.equal(pending.step,'review');assert.equal(pending.draft.arrangement,'pending');assert.equal(Object.hasOwn(commandNode(markup(pending,en),'save-pending').attributes,'disabled'),false);assert.equal(pending.student.attendance,'unmarked');}
+});
+test('invalid raw date disables a real query without erasing selection and no capability can fabricate final replacement confirmation',()=>{
+ const state={...ready(),capabilities:{loadArrangementSlots:true},filterDate:'2026-02-30',draft:{arrangement:'selected',selectedSlotId:'slot-second'}},html=markup(state,en);assert.ok(Object.hasOwn(commandNode(html,'query-slots').attributes,'disabled'));assert.match(html,/aria-invalid="true"/);assert.equal(state.draft.selectedSlotId,'slot-second');
+ const review=advance(advance(ready(),'select-slot',{id:'slot-second'}),'review');for(const capabilities of [{save:true},{saveArrangement:true},{confirmArrangement:true},{save:true,savePending:true,saveArrangement:true,confirmArrangement:true}]){const current=freeze({...review,capabilities}),html=markup(current,en);assert.ok(Object.hasOwn(commandNode(html,'final-confirm').attributes,'disabled'));assert.equal(advance(current,'final-confirm',{confirmed:true,attendance:'present'}),current);assert.doesNotMatch(html,/Arrangement confirmed|Booking confirmed|id="slw-arrangement-saved"/);}
+});
+
+test('reopened canonical Pending without a draft cannot offer a duplicate review but can review a chosen replacement',()=>{
+ const state=freeze({...ready(),sourceStatus:'ready',capabilities:{savePending:true},arrangement:{status:'pending',version:2},draft:{}}),html=markup(state,en);
+ assert.match(html,/already pending confirmation/);assert.ok(Object.hasOwn(commandNode(html,'pending').attributes,'disabled'));
+ assert.ok(Object.hasOwn(commandNode(html,'review').attributes,'disabled'));
+ const selected=advance(state,'select-slot',{id:'slot-second'});assert.equal(Object.hasOwn(commandNode(markup(selected,en),'review').attributes,'disabled'),false);assert.equal(advance(selected,'review').step,'review');
 });

@@ -15,7 +15,7 @@ import {staffSharedState} from './staff-shared-adapter.js';
 
 // Presentation drafts are deliberately separate from shared business records.
 // No API client, browser storage, account changes or message delivery lives here.
-export function createInterfacePreview({context,showModal,cacheModal=()=>{},repaint,dom=document,Form=FormData,sharedSnapshot,onOpenStaffLesson,onEditStaff,onManageStaffAccess,onRetryStaff,onCopyCalendarSharing,resolveSharedLesson,onCloseSharedLesson,onSaveSharedAttendance,onSaveSharedPending}) {
+export function createInterfacePreview({context,showModal,cacheModal=()=>{},repaint,dom=document,Form=FormData,sharedSnapshot,onOpenStaffLesson,onEditStaff,onManageStaffAccess,onRetryStaff,onCopyCalendarSharing,resolveSharedLesson,onCloseSharedLesson,onSaveSharedAttendance,onSaveSharedPending,onSubmitStudentRequest,onAssignStudentRequest}) {
   let sharedAttendanceJob=null,sharedPendingJob=null;
   let productOwner=null,productEditPosition=null,productDetailPosition=null,productListReturn=null,productSourceProvided=false,productRendering=false;
   let operations,staff,student,documentPreview=null,account=null,lesson=null,dataTools=null,overlay=null,returnFocus=null,accountingReturns=[],accountingListReturn=null,messageListReturn=null,messageComposeReturn=null,staffReturn=null,staffManagementSection='directory',staffHrReturn=null,staffHrContext='',staffHrPositions=[],calendarCopyEpoch=0,sharedLesson=null,sharedLessonTicket=null,sharedLessonEditPosition=null;
@@ -666,7 +666,7 @@ export function createInterfacePreview({context,showModal,cacheModal=()=>{},repa
       if(!person)return null;
       if(!selected)selected=lessons.find(row=>row.studentId===person.id&&(!d.uiScheduleId||row.scheduleId===d.uiScheduleId)&&(!d.uiSequence||row.sequence===Number(d.uiSequence)));
       if(!selected||selected.studentId!==person.id||d.uiScheduleId&&selected.scheduleId!==d.uiScheduleId||d.uiSequence&&selected.sequence!==Number(d.uiSequence))return null;
-      return {shared:true,sharedIdentity:current.sharedIdentity,requestCapabilities:{submit:false,upload:false},data:{students:students.map(row=>({...row})),slots:[],trialHistory:[]},student:{...person},lesson:{...selected,teacher:Array.isArray(selected.teachers)?selected.teachers.map(row=>row.displayName).join(' · '):selected.teacher||'',room:Array.isArray(selected.rooms)?selected.rooms.map(row=>row.displayName).join(' · '):selected.room||''},draft:{requestType:d.uiRequestType==='sick'?'sick':'reschedule'}};
+      return {shared:true,sharedIdentity:current.sharedIdentity,requestCapabilities:{submit:true,upload:false},data:{students:students.map(row=>({...row})),slots:[],trialHistory:[]},student:{...person},lesson:{...selected,teacher:Array.isArray(selected.teachers)?selected.teachers.map(row=>row.displayName).join(' · '):selected.teacher||'',room:Array.isArray(selected.rooms)?selected.rooms.map(row=>row.displayName).join(' · '):selected.room||''},draft:{requestType:d.uiRequestType==='sick'?'sick':'reschedule'}};
     }
     const id=student.selectedStudentId||'child-1',registered=id==='child-1'?ctx().student:null,person=registered||student.data.students.find(row=>row.id===id)||{};
     return {student:{...person,...student.data.profileOverrides?.[person.id||id]},lesson:{scheduleId:d.uiScheduleId,sequence:Number(d.uiSequence)||1,date:d.uiLessonDate,time:d.uiLessonTime,courseName:d.uiCourseName},draft:{requestType:d.uiRequestType==='sick'?'sick':'reschedule'}};
@@ -693,6 +693,24 @@ export function createInterfacePreview({context,showModal,cacheModal=()=>{},repa
     if(status==='invalid')close();
     else if(status==='loading'||wasLoading)redrawOverlay();
     return status;
+  };
+  const submitSharedStudentRequest=async()=>{
+    if(!lesson?.shared||lesson.view!=='student-request'||lesson.step!=='review'||lesson.requestSubmitting)return true;
+    if(lesson.requestCapabilities?.submit!==true||typeof onSubmitStudentRequest!=='function'){
+      lesson={...lesson,requestError:ctx().t('網上申請暫未開放，請聯絡老師安排。','Online requests are not available yet. Please contact your teacher.')};redrawOverlay();return true;
+    }
+    const identity=lesson.sharedIdentity,lessonId=lesson.lesson.id,fields={identity,studentSessionId:lesson.lesson.id,type:lesson.draft.requestType==='sick'?'sick':'reschedule',reason:String(lesson.draft.reason||'').trim(),preferredDate:String(lesson.draft.preferredDate||'')};
+    lesson={...lesson,requestSubmitting:true,requestError:''};redrawOverlay();
+    try{
+      const result=await onSubmitStudentRequest(fields);
+      if(overlay!=='lesson'||lesson?.view!=='student-request'||lesson.sharedIdentity!==identity||lesson.lesson.id!==lessonId||ctx().sharedIdentity!==identity)return true;
+      if(!result?.id)throw new Error(ctx().t('沒有收到提交確認，請檢查申請紀錄。','Submission was not confirmed. Check your request history.'));
+      lesson={...lesson,requestSubmitting:false,submittedRequest:result,step:'complete',requestError:''};
+    }catch(error){
+      if(overlay!=='lesson'||lesson?.view!=='student-request'||lesson.sharedIdentity!==identity||lesson.lesson.id!==lessonId||ctx().sharedIdentity!==identity)return true;
+      lesson={...lesson,requestSubmitting:false,requestError:error?.message||ctx().t('暫時未能提交申請，請再試一次。','Could not submit the request. Please try again.')};
+    }
+    redrawOverlay();return true;
   };
   const refreshSharedStudentRequest=()=>{
     if(overlay!=='lesson'||!lesson?.shared||lesson.view!=='student-request')return false;
@@ -824,6 +842,11 @@ export function createInterfacePreview({context,showModal,cacheModal=()=>{},repa
         if(selected){close();onOpenStaffLesson({scheduleId:selected.scheduleId,sequence:selected.sequence,date:selected.date});}
         return true;
       }
+      if(staff.shared&&d.uiCommand==='assign-lesson-request'&&staff.viewer?.role==='admin'&&typeof onAssignStudentRequest==='function'){
+        const task=staff.todos.flatMap(category=>category.tasks||[]).find(row=>row.id===d.uiId&&row.requestId===d.uiId),sequence=Number(d.uiSequence),slot=task?.availableTimes?.find(row=>row.scheduleId===d.uiScheduleId&&row.sequence===sequence);
+        if(task&&slot&&!task.assigning)onAssignStudentRequest({requestId:task.requestId,version:task.requestVersion,scheduleId:slot.scheduleId,sequence:slot.sequence});
+        return true;
+      }
       if(d.uiCommand==='workflow'){const facts=staffWorkflowFacts(staff,d.uiId);if(!facts)return true;staff.dialog=null;openLesson(d.uiView||'arrange',facts);return true;}
       staff=advanceStaffPreview(staff,d.uiCommand,fields);
       overlay=staff.dialog?'staff':null;repaint();redrawOverlay();
@@ -835,6 +858,7 @@ export function createInterfacePreview({context,showModal,cacheModal=()=>{},repa
       if(d.uiCommand==='launch'){const facts=ctx().sharedMode&&d.personId?{sharedPerson:true,personId:d.personId}:ctx().sharedMode&&ctx().role==='student'||d.uiScheduleId?studentLessonFacts(d):{};if(facts)openLesson(d.uiView||'attendance',facts);return true;}
       if(d.uiCommand==='close'||d.uiCommand==='close-dialog'){close();return true;}
       if(!lesson)return true;
+      if(d.uiCommand==='submit-request')return submitSharedStudentRequest();
       if(lesson?.view==='family'&&lesson.step==='review'&&d.uiCommand==='confirm-preview'){openAccount('family-enrolment',{student:{...lesson.draft},draft:{...lesson.draft},route:lesson.draft?.route});return true;}
       lesson=advanceLessonWorkflow(lesson,d.uiCommand,fields);overlay=lesson?'lesson':null;redrawOverlay();return true;
     }

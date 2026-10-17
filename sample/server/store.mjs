@@ -4,7 +4,7 @@ import { mkdirSync, chmodSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { hashPassword, normaliseEmail } from './security.mjs';
 import { validateCourse, validateCourseContent, normalizeCourseContent, normalizePublicCourseColor, ApplicationError } from './validation.mjs';
-import { createMaterialStore } from './materials.mjs';
+import { createMaterialSchema, createMaterialStore } from './materials.mjs';
 import { createAttachmentStore } from './attachments.mjs';
 import { createScheduleStore } from './schedules.mjs';
 import { createSchedulingResourceStore } from './scheduling-resources.mjs';
@@ -20,12 +20,16 @@ import { createTrialApplicationStore } from './trial-applications.mjs';
 import { createPackageContentsStore } from './package-contents.mjs';
 import { createLessonParentMessageStore } from './lesson-parent-messages.mjs';
 import { createParentMessageTemplateStore } from './parent-message-templates.mjs';
+import { createStudentLessonRequestStore } from './student-lesson-requests.mjs';
+import { createPostgresDatabase } from './postgres-database.mjs';
+import { createTrialInquiryStore } from './trial-inquiries.mjs';
 
 const publicUser = row => row ? { id: row.id, email: row.email, displayName: row.display_name, role: row.role } : null;
 const pricingKeys = ['feeName', 'pricingModel', 'price', 'months', 'duration', 'packageType', 'packageTotal', 'bookingExpiry', 'onlineStore'];
 const metadata = (record, includePrivate = false) => ({ courseName: record.courseName, category: record.category || '', level: record.level || '', publicColor: normalizePublicCourseColor(record.publicColor), ...(includePrivate ? { classTypeId: record.classTypeId ?? null, content: normalizeCourseContent(record.content) } : {}) });
 const pricing = record => Object.fromEntries(pricingKeys.filter(key => Object.hasOwn(record, key)).map(key => [key, record[key]]));
 const nameKey = name => name.trim().toLowerCase();
+const compareText = (left, right) => left < right ? -1 : left > right ? 1 : 0;
 const deletion = row => row.deleted_at ? { deletedAt: row.deleted_at } : {};
 const historyPricing = snapshot => {
   const result = {
@@ -40,10 +44,27 @@ const historyPricing = snapshot => {
   return result;
 };
 
-export async function createStore({ databasePath = ':memory:', seedUsers = [], seedCourses = [], attachmentsDir, trialFormPolicy = null } = {}) {
-  if (databasePath !== ':memory:') mkdirSync(dirname(databasePath), { recursive: true, mode: 0o700 });
-  const database = new DatabaseSync(databasePath);
-  if (databasePath !== ':memory:') chmodSync(databasePath, 0o600);
+export async function createStore(options = {}) {
+  const { databasePath = ':memory:', databaseUrl = process.env.DATABASE_URL || '', seedUsers = [], seedCourses = [], attachmentsDir, trialFormPolicy = null } = options;
+  const postgres=!!databaseUrl;
+  if (!postgres&&databasePath !== ':memory:') mkdirSync(dirname(databasePath), { recursive: true, mode: 0o700 });
+  const database = postgres ? await createPostgresDatabase(databaseUrl) : new DatabaseSync(databasePath);
+  let databaseClosed = false;
+  const closeDatabase = () => {
+    if (!databaseClosed) { databaseClosed = true; database.close(); }
+  };
+  try {
+    return await initializeStore({ databasePath, seedUsers, seedCourses, attachmentsDir, database, postgres, closeDatabase, trialFormPolicy });
+  } catch (error) {
+    closeDatabase();
+    throw error;
+  }
+}
+
+async function initializeStore({ databasePath, seedUsers, seedCourses, attachmentsDir, database, postgres, closeDatabase, trialFormPolicy }) {
+  let closed = false;
+  if (postgres) console.log('PostgreSQL connection ready; initializing schema and application stores.');
+  if (!postgres&&databasePath !== ':memory:') chmodSync(databasePath, 0o600);
   database.exec(`
     PRAGMA foreign_keys = ON;
     PRAGMA busy_timeout = 5000;
@@ -55,7 +76,7 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
     );
     CREATE TABLE IF NOT EXISTS sessions (
       token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id),
-      csrf_hash TEXT NOT NULL, expires_at INTEGER NOT NULL
+      csrf_hash TEXT NOT NULL, expires_at BIGINT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS session_expiry ON sessions(expires_at);
     CREATE TABLE IF NOT EXISTS course_sequence (id INTEGER PRIMARY KEY CHECK(id = 1), value INTEGER NOT NULL);
@@ -98,10 +119,12 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
       created_at TEXT NOT NULL, PRIMARY KEY(user_id, route, request_key)
     );
   `);
+  if (postgres && database.prepare('PRAGMA table_info(sessions)').all().some(column => column.name === 'expires_at' && column.type.toLowerCase() === 'integer')) {
+    database.exec('ALTER TABLE sessions ALTER COLUMN expires_at TYPE BIGINT');
+  }
   if (!database.prepare('PRAGMA table_info(courses)').all().some(column => column.name === 'name_key')) database.exec('ALTER TABLE courses ADD COLUMN name_key TEXT');
   if (!database.prepare('PRAGMA table_info(courses)').all().some(column => column.name === 'deleted_at')) database.exec('ALTER TABLE courses ADD COLUMN deleted_at TEXT');
   database.exec('CREATE UNIQUE INDEX IF NOT EXISTS course_name_key_unique ON courses(name_key)');
-  let closed = false;
   let transactionDepth = 0, savepointCounter = 0;
   const transaction = (callback, mode = 'write') => {
     const outer = transactionDepth === 0, savepoint = `nested_${++savepointCounter}`;
@@ -157,8 +180,6 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
   const getCourse = id => parseCourse(database.prepare('SELECT * FROM courses WHERE id = ?').get(id));
   const visibleCourses = publicOnly => publicOnly ? 'WHERE courses.deleted_at IS NULL AND EXISTS (SELECT 1 FROM course_fees JOIN fees ON fees.id = course_fees.fee_id WHERE course_fees.course_id = courses.id AND fees.online_store = 1)' : '';
   const visibleFees = publicOnly => publicOnly ? 'WHERE online_store = 1 AND EXISTS (SELECT 1 FROM course_fees JOIN courses ON courses.id = course_fees.course_id WHERE course_fees.fee_id = fees.id AND courses.deleted_at IS NULL)' : '';
-  const readFeeRows = publicOnly => database.prepare(`SELECT * FROM fees ${visibleFees(publicOnly)} ORDER BY fee_code`).all();
-  const readLinkRows = publicOnly => database.prepare(`SELECT course_fees.course_id, course_fees.fee_id, course_fees.position FROM course_fees JOIN fees ON fees.id = course_fees.fee_id JOIN courses ON courses.id = course_fees.course_id ${publicOnly ? 'WHERE fees.online_store = 1 AND courses.deleted_at IS NULL' : ''} ORDER BY course_fees.course_id, course_fees.position, fees.fee_code`).all();
   const feeCatalog = (feeRows, links) => {
     const courseIdsByFee = new Map(), feeIdsByCourse = new Map();
     for (const link of links) {
@@ -175,12 +196,69 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
     return { fees, feesById: new Map(fees.map(fee => [fee.id, fee])), feeIdsByCourse };
   };
   const readCatalog = (publicOnly, allowedIds = null) => {
-    const courseRows = database.prepare(`SELECT * FROM courses ${visibleCourses(publicOnly)} ORDER BY course_code`).all().filter(row => allowedIds === null || allowedIds.has(row.id));
-    const links = readLinkRows(publicOnly).filter(row => allowedIds === null || allowedIds.has(row.course_id));
-    const feeIds = new Set(links.map(row => row.fee_id));
-    const feeRows = readFeeRows(publicOnly).filter(row => allowedIds === null || feeIds.has(row.id));
-    return { courseRows, ...feeCatalog(feeRows, links) };
+    const rows = database.prepare(`
+      SELECT 'course' AS kind, courses.id, courses.version, courses.course_code, NULL AS fee_code,
+        courses.data, courses.price_cents, courses.online_store, courses.created_at, courses.updated_at,
+        courses.name_key, courses.deleted_at, NULL AS course_id, NULL AS fee_id, CAST(NULL AS INTEGER) AS position
+      FROM courses ${visibleCourses(publicOnly)}
+      UNION ALL
+      SELECT 'fee', fees.id, fees.version, NULL, fees.fee_code, fees.data, fees.price_cents, fees.online_store,
+        fees.created_at, fees.updated_at, NULL, NULL, NULL, NULL, CAST(NULL AS INTEGER)
+      FROM fees ${visibleFees(publicOnly)}
+      UNION ALL
+      SELECT 'link', NULL, NULL, NULL, fees.fee_code, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+        course_fees.course_id, course_fees.fee_id, course_fees.position
+      FROM course_fees
+      JOIN fees ON fees.id = course_fees.fee_id
+      JOIN courses ON courses.id = course_fees.course_id
+      ${publicOnly ? 'WHERE fees.online_store = 1 AND courses.deleted_at IS NULL' : ''}
+    `).all();
+    const courseRows = [], feeRows = [], links = [];
+    for (const row of rows) {
+      if (row.kind === 'course') courseRows.push({
+        id: row.id, version: row.version, course_code: row.course_code, data: row.data,
+        price_cents: row.price_cents, online_store: row.online_store, created_at: row.created_at,
+        updated_at: row.updated_at, name_key: row.name_key, deleted_at: row.deleted_at,
+      });
+      else if (row.kind === 'fee') feeRows.push({
+        id: row.id, version: row.version, fee_code: row.fee_code, data: row.data,
+        price_cents: row.price_cents, online_store: row.online_store, created_at: row.created_at,
+        updated_at: row.updated_at,
+      });
+      else if (row.kind === 'link') links.push({
+        course_id: row.course_id, fee_id: row.fee_id, position: row.position, fee_code: row.fee_code,
+      });
+    }
+    courseRows.sort((left, right) => compareText(left.course_code, right.course_code));
+    feeRows.sort((left, right) => compareText(left.fee_code, right.fee_code));
+    links.sort((left, right) => compareText(left.course_id, right.course_id) || left.position - right.position || compareText(left.fee_code, right.fee_code));
+    const scopedCourseRows = courseRows.filter(row => allowedIds === null || allowedIds.has(row.id));
+    const scopedLinks = links.filter(row => allowedIds === null || allowedIds.has(row.course_id));
+    const feeIds = new Set(scopedLinks.map(row => row.fee_id));
+    const scopedFeeRows = feeRows.filter(row => (allowedIds === null || feeIds.has(row.id)));
+    return { courseRows: scopedCourseRows, ...feeCatalog(scopedFeeRows, scopedLinks) };
   };
+  const catalogVersions = publicOnly => {
+    const courses = [], fees = [];
+    for (const row of database.prepare(`
+      SELECT 'course' AS kind, id, version FROM courses ${visibleCourses(publicOnly)}
+      UNION ALL
+      SELECT 'fee', id, version FROM fees ${visibleFees(publicOnly)}
+      ORDER BY kind, id
+    `).all()) {
+      const target = row.kind === 'course' ? courses : fees;
+      target.push({ id: row.id, version: row.version });
+    }
+    courses.sort((left, right) => compareText(left.id, right.id));
+    fees.sort((left, right) => compareText(left.id, right.id));
+    return { courses, fees };
+  };
+  const snapshotRevision = (publicOnly, courses, fees) => createHash('sha256').update(JSON.stringify({ publicOnly, courses, fees })).digest('hex');
+  const catalogRevision = (publicOnly, catalog) => snapshotRevision(
+    publicOnly,
+    catalog.courseRows.map(({ id, version }) => ({ id, version })).sort((left, right) => compareText(left.id, right.id)),
+    catalog.fees.map(({ id, version }) => ({ id, version })).sort((left, right) => compareText(left.id, right.id)),
+  );
   const compactCourse = (row, feeIds, publicOnly = false) => ({
     ...metadata(JSON.parse(row.data), !publicOnly), id: row.id, courseCode: row.course_code, version: row.version,
     createdAt: row.created_at, updatedAt: row.updated_at, ...deletion(row), feeIds,
@@ -196,7 +274,7 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
       };
     });
   }, 'read');
-  const listFees = ({ publicOnly = false, user = null } = {}) => transaction(() => user?.role === 'teacher' ? readCatalog(publicOnly, accessControl.scopeFor(user).courseIds).fees : feeCatalog(readFeeRows(publicOnly), readLinkRows(publicOnly)).fees, 'read');
+  const listFees = ({ publicOnly = false, user = null } = {}) => transaction(() => readCatalog(publicOnly, user?.role === 'teacher' ? accessControl.scopeFor(user).courseIds : null).fees, 'read');
   const catalogSnapshot = ({ publicOnly = false, since = '', user = null } = {}) => transaction(() => {
     if (user?.role === 'teacher') {
       const scope = accessControl.scopeFor(user), catalog = readCatalog(publicOnly, scope.courseIds);
@@ -204,11 +282,18 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
       const revision = createHash('sha256').update(JSON.stringify({ access: scope.revision, courses, fees })).digest('hex');
       return since === revision ? { revision, unchanged: true } : { revision, courses, fees };
     }
-    const courses = database.prepare(`SELECT id, version FROM courses ${visibleCourses(publicOnly)} ORDER BY id`).all();
-    const fees = database.prepare(`SELECT id, version FROM fees ${visibleFees(publicOnly)} ORDER BY id`).all();
-    const revision = createHash('sha256').update(JSON.stringify({ publicOnly, courses, fees })).digest('hex');
-    if (since === revision) return { revision, unchanged: true };
+    if (since) {
+      const { courses, fees } = catalogVersions(publicOnly), revision = snapshotRevision(publicOnly, courses, fees);
+      if (since === revision) return { revision, unchanged: true };
+      const catalog = readCatalog(publicOnly);
+      return {
+        revision,
+        courses: catalog.courseRows.map(row => compactCourse(row, catalog.feeIdsByCourse.get(row.id) || [], publicOnly)),
+        fees: catalog.fees,
+      };
+    }
     const catalog = readCatalog(publicOnly);
+    const revision = catalogRevision(publicOnly, catalog);
     return {
       revision,
       courses: catalog.courseRows.map(row => compactCourse(row, catalog.feeIdsByCourse.get(row.id) || [], publicOnly)),
@@ -389,10 +474,11 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
       const input = Object.fromEntries(fields.filter(field => Object.hasOwn(seed, field)).map(field => [field, seed[field]]));
       createCourse(validateCourse(input), null, seed.id);
     }
-  } catch (error) { database.close(); throw error; }
-  let materials, attachments, schedules, schedulingResources, accessControl, people, availableSlots, classCapacityStatuses, enrollmentOrders, staffPersonalProfiles, lessonNotes, trialApplications, packageContents, lessonParentMessages, parentMessageTemplates;
+  } catch (error) { closeDatabase(); throw error; }
+  let materials, attachments, schedules, schedulingResources, accessControl, people, availableSlots, classCapacityStatuses, enrollmentOrders, staffPersonalProfiles, lessonNotes, trialApplications, packageContents, lessonParentMessages, parentMessageTemplates, studentLessonRequests, trialInquiries;
   try {
-    attachments = await createAttachmentStore({ database, transaction, directory: attachmentsDir || (databasePath === ':memory:' ? undefined : `${resolve(databasePath)}.attachments`) });
+    createMaterialSchema(database);
+    attachments = await createAttachmentStore({ database, transaction, directory: attachmentsDir || (databasePath === ':memory:' ? undefined : `${resolve(databasePath)}.attachments`), postgres });
     schedulingResources = createSchedulingResourceStore({ database, transaction });
     schedules = createScheduleStore({ database, transaction, resources: schedulingResources, classTypes });
     accessControl = createAccessControlStore({ database, transaction });
@@ -401,6 +487,7 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
     lessonNotes = createLessonNoteStore({ database, transaction, schedules, accessControl, getCourse });
     materials = createMaterialStore({ database, transaction, attachments, accessControl });
     people = createPeopleStore({ database, transaction });
+    trialInquiries = createTrialInquiryStore({ database, transaction });
     classCapacityStatuses = createClassCapacityStatusStore({ database, transaction, accessControl });
     availableSlots = createAvailableSlotStore({ database, transaction, accessControl, classCapacityStatuses });
     trialApplications = createTrialApplicationStore({ database, transaction, availableSlots, people, accessControl, trialFormPolicy });
@@ -408,11 +495,13 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
     enrollmentOrders = createEnrollmentOrderStore({ database, transaction, schedules, resources: schedulingResources, accessControl, getCourse, getFee });
     lessonParentMessages = createLessonParentMessageStore({ database, transaction, enrollmentOrders });
     parentMessageTemplates = createParentMessageTemplateStore({ database, transaction });
+    studentLessonRequests = createStudentLessonRequestStore({ database, transaction, schedules, getCourse, getStudentLesson: enrollmentOrders.studentLesson, postgres });
     classCapacityStatuses.setOccupancySource?.(enrollmentOrders.occupied);
   }
-  catch (error) { await attachments?.close(); database.close(); throw error; }
+  catch (error) { await attachments?.close(); closeDatabase(); throw error; }
+  if (postgres) console.log('PostgreSQL schema and application stores ready.');
   return {
-    listCourses, getCourse, createCourse, updateCourse, deleteCourse: (id, version, actor) => changeCourseDeletion(id, version, actor), restoreCourse: (id, version, actor) => changeCourseDeletion(id, version, actor, true), listFees, getFee, createFee, updateFee, createOnce, mutateOnce, catalogSnapshot, materials, attachments, schedules, schedulingResources, accessControl, people, availableSlots, classCapacityStatuses, classTypes, enrollmentOrders, staffPersonalProfiles, lessonNotes, trialApplications, packageContents, lessonParentMessages, parentMessageTemplates,
+    listCourses, getCourse, createCourse, updateCourse, deleteCourse: (id, version, actor) => changeCourseDeletion(id, version, actor), restoreCourse: (id, version, actor) => changeCourseDeletion(id, version, actor, true), listFees, getFee, createFee, updateFee, createOnce, mutateOnce, catalogSnapshot, materials, attachments, schedules, schedulingResources, accessControl, people, availableSlots, classCapacityStatuses, classTypes, enrollmentOrders, studentLessonRequests, staffPersonalProfiles, lessonNotes, trialApplications, packageContents, lessonParentMessages, parentMessageTemplates,trialInquiries,
     listUsers: () => database.prepare('SELECT * FROM users ORDER BY email').all().map(publicUser),
     userByEmail: email => database.prepare('SELECT * FROM users WHERE email = ?').get(email),
     publicUser,
@@ -430,6 +519,6 @@ export async function createStore({ databasePath = ':memory:', seedUsers = [], s
     audit: () => database.prepare('SELECT * FROM audit_log ORDER BY id').all().map(row => ({ ...row, snapshot: JSON.parse(row.snapshot) })),
     feeAudit: () => database.prepare('SELECT * FROM fee_audit_log ORDER BY id').all().map(row => ({ ...row, snapshot: JSON.parse(row.snapshot) })),
     feeHistory,
-    close() { if (!closed) { closed = true; const cleanup = attachments.close(); database.close(); return cleanup; } },
+    close() { if (!closed) { closed = true; const cleanup = attachments.close(); closeDatabase(); return cleanup; } },
   };
 }

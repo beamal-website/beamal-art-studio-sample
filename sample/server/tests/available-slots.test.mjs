@@ -68,6 +68,13 @@ test('one administrative slot persists unchanged facts and feeds a genuine anony
  const hidden=await send(app.admin,`/api/available-slots/${slot.id}`,'PATCH',{...standalone(app),publicVisibility:'hide',version:1},'slot-hide');assert.equal(hidden.status,200,hidden.text);assert.equal(hidden.body.slot.id,slot.id);assert.equal(hidden.body.slot.date,slot.date);assert.equal(hidden.body.slot.time,slot.time);assert.equal(hidden.body.slot.trialCapacity,slot.trialCapacity);assert.equal(hidden.body.slot.trialReserved,0);error(await anonymous.request('/api/public/courses/public-course?from=2026-10-15'),404);assert.deepEqual((await anonymous.request('/api/public/courses')).body.courses,[]);
 });
 
+test('public trial-times endpoint returns all future available trial slots independent of the seven-day detail window',async t=>{
+ const app=await setup(t),anonymous=app.client(),first=(await add(app,standalone(app,{date:'2026-10-24',time:'12:00'}))).body.slot,later=(await add(app,standalone(app,{date:'2026-11-20',time:'10:30'}))).body.slot;
+ const hidden=(await add(app,standalone(app,{date:'2026-12-01',time:'09:00',publicVisibility:'hide'}))).body.slot,reschedulingOnly=(await add(app,standalone(app,{date:'2026-12-02',time:'09:00',trialEnabled:false,reschedulingEnabled:true}))).body.slot;
+ const response=await anonymous.request('/api/public/courses/public-course/trial-times');assert.equal(response.status,200,response.text);assert.deepEqual(response.body.slots.map(slot=>slot.id),[first.id,later.id]);assert.equal(response.body.slots[1].date,'2026-11-20');assert.equal(response.body.slots[1].trialRemaining,2);for(const field of ['teacherIds','roomIds','remark','excludedStudentIds','sourceAvailable','version'])assert.equal(Object.hasOwn(response.body.slots[0],field),false,field);
+ const unchanged=await anonymous.request('/api/public/courses/public-course/trial-times?since='+encodeURIComponent(response.body.revision));assert.deepEqual(unchanged.body,{revision:response.body.revision,unchanged:true});assert.ok(hidden.id&&reschedulingOnly.id);
+});
+
 test('private availability writes enforce authenticated admin origin and CSRF while read queries require bounded ranges',async t=>{
  const app=await setup(t),slot=(await add(app)).body.slot,teacher=app.client(),student=app.client(),anonymous=app.client();await teacher.login(2);await student.login(3);
  for(const [method,path,input]of[['GET','/api/available-slots'+interval],['GET',`/api/available-slots/${slot.id}`],['GET','/api/availability-public-settings'],['POST','/api/available-slots',standalone(app)],['PATCH',`/api/available-slots/${slot.id}`,{version:1,remark:'forbidden'}],['PATCH','/api/availability-public-settings',{version:0,showFullTrialSlots:true,showReschedulingSlots:true}]]){

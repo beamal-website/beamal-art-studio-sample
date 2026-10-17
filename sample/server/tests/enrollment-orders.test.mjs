@@ -29,7 +29,7 @@ async function link(app,person='formal-a',userId=app.studentId,version=0){const 
 function draft(app,studentId='formal-a',sequences=[1,2]){return {studentId,amountCents:60000,items:[{courseId:'public-course',feeId:app.store.getCourse('public-course').feeIds[0],lessons:sequences.map(sequence=>({scheduleId:app.schedule.id,sequence,sourceVersion:app.schedule.version}))}]};}
 async function create(app,studentId='formal-a',sequences=[1,2],key){const reply=await send(app.admin,'/api/orders',draft(app,studentId,sequences),key);assert.equal(reply.status,201,reply.text);return reply.body.order;}
 async function accept(app,order){const sent=await send(app.admin,`/api/orders/${order.id}/send`,{version:order.version});assert.equal(sent.status,200,sent.text);const accepted=await send(app.student,`/api/orders/${order.id}/respond`,{version:sent.body.order.version,action:'confirm'});assert.equal(accepted.status,200,accepted.text);return accepted.body.order;}
-const roster=(app,sequence=1)=>app.admin.request(`/api/schedules/${app.schedule.id}/occurrences/${sequence}/students`);
+const roster=(app,sequence=1,scheduleId=app.schedule.id)=>app.admin.request(`/api/schedules/${scheduleId}/occurrences/${sequence}/students`);
 
 test('administrator links formal students explicitly; student profiles stay own-only with versioned durable links',async t=>{
  const app=await setup(t);const initialAccess=(await app.student.request('/api/auth/session')).body.user.accessRevision,strangerAccess=(await app.stranger.request('/api/auth/session')).body.user.accessRevision;const management=await app.admin.request('/api/student-account-links');assert.equal(management.status,200,management.text);assert.equal(management.body.students.length,2);assert.equal(management.body.accounts.length,2);assert.deepEqual(management.body.links,[]);
@@ -96,6 +96,57 @@ test('manual Full blocks payment; a simultaneous last-seat race cannot overbook 
  assert.deepEqual(replies.map(reply=>reply.status).sort(),[200,409]);assert.equal((await roster(app,1)).body.occupied,2);assert.equal((await roster(app,2)).body.occupied,2);assert.equal(app.store.enrollmentOrders.sales().length,2);
  const unavailable=await accept(app,await create(app,'formal-b',[3]));const canceled=await app.admin.request(`/api/schedules/${app.schedule.id}/occurrences/3`,{method:'DELETE',body:{version:1,scope:'single'}});assert.equal(canceled.status,200,canceled.text);error(await roster(app,3),404);error(await app.teacher.request(`/api/schedules/${app.schedule.id}/occurrences/3/students`),404);error(await app.teacher.request('/api/schedules/missing/occurrences/1/students'),404);
  error(await send(app.admin,`/api/orders/${unavailable.id}/confirm-payment`,{version:unavailable.version}),409);assert.equal(app.store.enrollmentOrders.occupied(app.schedule.id,3),0);assert.equal(app.store.enrollmentOrders.sales().length,2);
+});
+
+test('students can submit durable rescheduling and sick-leave requests for their own paid lessons; administrators see pending requests',async t=>{
+ const app=await setup(t);await link(app);
+ const order=await accept(app,await create(app,'formal-a',[1]));const paid=await send(app.admin,`/api/orders/${order.id}/confirm-payment`,{version:order.version});assert.equal(paid.status,200,paid.text);
+ const candidateDate=new Date(Date.now()+6*86400000).toISOString().slice(0,10),candidateWeekday=new Date(candidateDate+'T00:00:00Z').getUTCDay(),candidateScheduleReply=await send(app.admin,'/api/schedules',{...app.rule,startDate:candidateDate,time:'15:00',weekdays:[candidateWeekday],endMode:'count',count:3,capacity:1});assert.equal(candidateScheduleReply.status,201,candidateScheduleReply.text);
+ const candidateSchedule=candidateScheduleReply.body.schedule,inspection=new DatabaseSync(app.databasePath),now=new Date().toISOString();
+ try{
+  inspection.prepare("INSERT INTO student_sessions(id,student_id,schedule_id,sequence,order_id,attendance,created_at) VALUES ('other-student-seat','formal-b',?,1,?,'unmarked',?)").run(candidateSchedule.id,order.id,now);
+  inspection.prepare("INSERT INTO class_capacity_statuses(schedule_id,sequence,manual_status,version,created_at,updated_at) VALUES (?,2,'full',1,?,?)").run(candidateSchedule.id,now,now);
+ }finally{inspection.close();}
+ const myLesson=(await app.student.request('/api/student/timetable'+window)).body.lessons[0];
+ const originalRoster=(await roster(app)).body.students.find(row=>row.id===myLesson.id);
+ const attendance=await app.admin.request('/api/student-sessions/'+myLesson.id+'/attendance',{method:'PATCH',body:{version:originalRoster.version,sourceVersion:originalRoster.sourceVersion,attendance:'sick',remark:'Original lesson annotation',sticker:'pink',showRemark:true},headers:{'Idempotency-Key':'merge-attendance'}});assert.equal(attendance.status,200,attendance.text);
+ const pending=await app.admin.request('/api/student-sessions/'+myLesson.id+'/pending-arrangement',{method:'PATCH',body:{version:0,sessionVersion:attendance.body.session.version,sourceVersion:originalRoster.sourceVersion},headers:{'Idempotency-Key':'merge-pending'}});assert.equal(pending.status,200,pending.text);assert.equal((await app.admin.request('/api/pending-arrangements')).body.total,1);
+ const rescheduling={studentSessionId:myLesson.id,type:'reschedule',reason:'Family appointment',preferredDate:'2026-10-25'};
+ const saved=await send(app.student,'/api/lesson-requests',rescheduling,'student-reschedule-once');assert.equal(saved.status,201,saved.text);
+ assert.equal(saved.body.request.type,'reschedule');assert.equal(saved.body.request.status,'pending');assert.equal(saved.body.request.studentId,'formal-a');assert.equal(saved.body.request.studentName,'Chloe fictional');assert.equal(saved.body.request.lesson.studentSessionId,myLesson.id);assert.equal(saved.body.request.lesson.scheduleId,myLesson.scheduleId);assert.equal(saved.body.request.lesson.sequence,myLesson.sequence);assert.equal(saved.body.request.lesson.courseId,myLesson.courseId);assert.equal(saved.body.request.lesson.courseName,myLesson.courseName);assert.equal(saved.body.request.lesson.date,myLesson.date);assert.equal(saved.body.request.preferredDate,'2026-10-25');assert.equal(saved.body.request.reason,'Family appointment');
+ const replay=await send(app.student,'/api/lesson-requests',rescheduling,'student-reschedule-once');assert.deepEqual(replay.body,saved.body);
+ error(await send(app.student,'/api/lesson-requests',{...rescheduling,reason:'Different request'},'student-reschedule-once'),409);
+ const sick=await send(app.student,'/api/lesson-requests',{studentSessionId:myLesson.id,type:'sick',reason:'Unwell'},'student-sick-once');assert.equal(sick.status,201,sick.text);assert.equal(sick.body.request.type,'sick');assert.equal(sick.body.request.preferredDate,'');
+ const own=(await app.student.request('/api/lesson-requests')).body.requests;assert.deepEqual(own.map(row=>row.id),[sick.body.request.id,saved.body.request.id]);assert.ok(own.every(row=>!Object.hasOwn(row,'availableTimes')));
+ const admin=(await app.admin.request('/api/lesson-requests')).body.requests;assert.deepEqual(admin.map(row=>row.id),[sick.body.request.id,saved.body.request.id]);
+ for(const request of admin){
+  assert.ok(Array.isArray(request.availableTimes));assert.ok(request.availableTimes.length>0);
+  assert.ok(request.availableTimes.every(row=>row.courseId===myLesson.courseId));assert.ok(request.availableTimes.every(row=>row.scheduleId!==myLesson.scheduleId||row.sequence!==myLesson.sequence));
+  assert.ok(!request.availableTimes.some(row=>row.scheduleId===candidateSchedule.id&&row.sequence===1),'A fully occupied class must not be offered.');
+  assert.ok(!request.availableTimes.some(row=>row.scheduleId===candidateSchedule.id&&row.sequence===2),'A manually full class must not be offered.');
+  assert.ok(request.availableTimes.some(row=>row.scheduleId===candidateSchedule.id&&row.sequence===3),'A future class with an available seat must be offered.');
+ }
+ const assignmentInput={version:saved.body.request.version,scheduleId:candidateSchedule.id,sequence:3},fullAssignment=await send(app.admin,`/api/lesson-requests/${saved.body.request.id}/assign`,{...assignmentInput,sequence:1},'assign-full-lesson');assert.equal(fullAssignment.status,409);assert.equal((await app.student.request('/api/lesson-requests')).body.requests.find(row=>row.id===saved.body.request.id).status,'pending');
+ const manualFullAssignment=await send(app.admin,`/api/lesson-requests/${saved.body.request.id}/assign`,{...assignmentInput,sequence:2},'assign-manual-full-lesson');assert.equal(manualFullAssignment.status,409);
+ const assigned=await send(app.admin,`/api/lesson-requests/${saved.body.request.id}/assign`,assignmentInput,'assign-paid-lesson');assert.equal(assigned.status,200,assigned.text);assert.equal(assigned.body.request.status,'approved');assert.equal(assigned.body.request.version,saved.body.request.version+1);assert.deepEqual(assigned.body.request.assignedLesson,{scheduleId:candidateSchedule.id,sequence:3,courseId:myLesson.courseId,courseName:myLesson.courseName,date:new Date(Date.parse(candidateDate+'T00:00:00Z')+14*86400000).toISOString().slice(0,10),time:'15:00',duration:60});
+ assert.deepEqual(await send(app.admin,`/api/lesson-requests/${saved.body.request.id}/assign`,assignmentInput,'assign-paid-lesson'),assigned);
+ const movedRoster=await roster(app,3,candidateSchedule.id),releasedRoster=await roster(app,1,app.schedule.id);assert.equal(movedRoster.body.occupied,1);assert.equal(movedRoster.body.students[0].studentId,'formal-a');assert.equal(releasedRoster.body.occupied,0);assert.equal(app.store.enrollmentOrders.occupied(candidateSchedule.id,3),1);assert.equal(app.store.enrollmentOrders.sales().length,1);
+ assert.equal((await app.admin.request('/api/pending-arrangements')).body.total,0,'Assigning the same paid session must close its old Pending task.');
+ const movedStudent=movedRoster.body.students[0];assert.equal(movedStudent.version,attendance.body.session.version+1);assert.equal(movedStudent.remark,null);assert.equal(movedStudent.stickerColor,null);assert.equal(movedStudent.arrangement.status,null);
+ const assignmentHistory=app.store.studentLessonRequests.audit().find(row=>row.action==='request.assign');assert.equal(assignmentHistory.snapshot.originalSession.remark,'Original lesson annotation');assert.equal(assignmentHistory.snapshot.originalArrangement.status,'pending');
+ const inspectionAfter=new DatabaseSync(app.databasePath);try{const movedSession=inspectionAfter.prepare('SELECT schedule_id,sequence,order_id,attendance FROM student_sessions WHERE id=?').get(myLesson.id);assert.equal(movedSession.schedule_id,candidateSchedule.id);assert.equal(movedSession.sequence,3);assert.equal(movedSession.order_id,order.id);assert.equal(movedSession.attendance,'unmarked');}finally{inspectionAfter.close();}
+ const timetableTo=new Date(Date.parse(candidateDate+'T00:00:00Z')+30*86400000).toISOString().slice(0,10),movedTimetable=await app.student.request(`/api/student/timetable?from=${candidateDate}&to=${timetableTo}`);assert.equal(movedTimetable.status,200,movedTimetable.text);assert.ok(movedTimetable.body.lessons.some(row=>row.id===myLesson.id&&row.scheduleId===candidateSchedule.id&&row.sequence===3));
+ const afterAssignment=(await app.student.request('/api/lesson-requests')).body.requests.find(row=>row.id===saved.body.request.id);assert.equal(afterAssignment.status,'approved');assert.deepEqual(afterAssignment.assignedLesson,assigned.body.request.assignedLesson);
+ error(await send(app.student,`/api/lesson-requests/${saved.body.request.id}/assign`,assignmentInput),403);error(await send(app.teacher,`/api/lesson-requests/${saved.body.request.id}/assign`,assignmentInput),403);
+ assert.deepEqual((await app.admin.request('/api/lesson-requests')).body.requests.map(row=>row.id),[sick.body.request.id]);assert.equal(app.store.studentLessonRequests.audit().filter(row=>row.action==='request.assign').length,1);
+ assert.deepEqual((await app.stranger.request('/api/lesson-requests')).body.requests,[]);
+ error(await app.teacher.request('/api/lesson-requests'),403);error(await send(app.admin,'/api/lesson-requests',rescheduling),403);
+ error(await send(app.student,'/api/lesson-requests',{...rescheduling,studentSessionId:'not-the-students-lesson'}),404);
+ error(await send(app.student,'/api/lesson-requests',{...rescheduling,scheduleId:app.schedule.id}),400);
+ error(await send(app.student,'/api/lesson-requests',{...rescheduling,type:'cancel-class'}),400);
+ assert.equal(app.store.studentLessonRequests.audit().length,3);
+ const downgrade=new DatabaseSync(app.databasePath);try{downgrade.prepare("UPDATE users SET role='teacher' WHERE email=?").run(users[0].email);}finally{downgrade.close();}
+ error(await send(app.admin,`/api/lesson-requests/${saved.body.request.id}/assign`,assignmentInput,'assign-paid-lesson'),403);
 });
 
 test('order validation rejects forged fields non-integer amounts duplicate occurrence IDs and wrong course-fee associations without receipts or writes',async t=>{

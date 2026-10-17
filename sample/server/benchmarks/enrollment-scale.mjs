@@ -1,23 +1,20 @@
 import {DatabaseSync} from 'node:sqlite';
 import {randomUUID} from 'node:crypto';
 import {mkdtemp,rm,writeFile} from 'node:fs/promises';
-import {tmpdir} from 'node:os';
+import {tmpdir,cpus,totalmem,release} from 'node:os';
 import {join} from 'node:path';
 import {performance} from 'node:perf_hooks';
 import {createStore} from '../store.mjs';
 import {createApplication} from '../app.mjs';
 import {hashPassword,randomToken,tokenHash,csrfForToken} from '../security.mjs';
 import {validatePerson} from '../people.mjs';
+import {buildEnrollmentScalePlan,parseEnrollmentScaleArgs} from './enrollment-scale-plan.mjs';
 
 // A repeatable business-flow benchmark, not a concurrent-user/load simulation.
-// Usage: node sample/server/benchmarks/enrollment-scale.mjs [--students 12|300]
+// Usage: node sample/server/benchmarks/enrollment-scale.mjs [--students 12|300] [--class-capacity 8]
 // Every business mutation uses the public HTTP API. Only isolated fixture
 // identities/profiles and test login sessions may be prearranged directly.
-const args=process.argv.slice(2);
-if(args.length&&!(args.length===2&&args[0]==='--students'))throw new Error('Use [--students a-multiple-of-six].');
-const studentCount=args.length?Number(args[1]):300;
-if(!Number.isSafeInteger(studentCount)||studentCount<6||studentCount>3000||studentCount%6!==0)throw new Error('Student count must be a multiple of six from 6 to 3000.');
-const courseCount=6,teacherCount=4,occurrencesPerCourse=3,capacity=studentCount/courseCount;
+const options=parseEnrollmentScaleArgs(process.argv.slice(2)),plan=buildEnrollmentScalePlan(options),{studentCount,courseCount,teacherCount,classCapacity:capacity,occurrencesPerClass}=plan;
 const origin='http://localhost:5173',password='Fictional-enrollment-benchmark-password-123!';
 const range='?from=2026-10-01&to=2026-11-30';
 const timings=new Map(),started=performance.now();
@@ -59,7 +56,7 @@ try {
   const sharedHash=await hashPassword(password),now=new Date().toISOString();
   const administrator={id:randomUUID(),email:'scale-admin@example.test',displayName:'Fictional scale administrator',role:'admin'};
   const teachers=Array.from({length:teacherCount},(_,index)=>({id:randomUUID(),email:`scale-teacher-${index+1}@example.test`,displayName:`Fictional scale teacher ${index+1}`,role:'teacher'}));
-  const students=Array.from({length:studentCount},(_,index)=>({id:randomUUID(),personId:randomUUID(),email:`scale-student-${String(index+1).padStart(3,'0')}@example.test`,displayName:`Fictional scale student ${String(index+1).padStart(3,'0')}`,role:'student',age:3+index%16,courseIndex:index%courseCount}));
+  const students=Array.from({length:studentCount},(_,index)=>({id:randomUUID(),personId:randomUUID(),email:`scale-student-${String(index+1).padStart(3,'0')}@example.test`,displayName:`Fictional scale student ${String(index+1).padStart(3,'0')}`,role:'student',age:3+index%16,...plan.students[index]}));
   const seed=new DatabaseSync(databasePath);seed.exec('PRAGMA foreign_keys=ON; BEGIN IMMEDIATE;');
   try {
     for(const account of[administrator,...teachers,...students])seed.prepare('INSERT INTO users(id,email,display_name,role,password_hash,created_at) VALUES (?,?,?,?,?,?)').run(account.id,account.email,account.displayName,account.role,sharedHash,now);
@@ -84,18 +81,24 @@ try {
   }
   const setupMs=elapsed(setupStarted);
   stage='create courses and schedules';
-  const courseRecords=[],scheduleRecords=[],teacherResources=[];
+  const courseRecords=[],scheduleRecords=[],teacherResources=[],rooms=[];
   for(const [index,teacher]of teachers.entries()) {
     const {resource}=await admin.request('/api/scheduling-resources',{method:'POST',expect:201,body:{kind:'teacher',displayName:teacher.displayName,representativeColor:['#17777b','#426ea8','#b9772f','#8856a7'][index]},label:'Create teacher resource'});
     await admin.request(`/api/access-control/teacher-links/${resource.id}`,{method:'PATCH',body:{version:0,userId:teacher.id},label:'Link teacher account'});teacherResources.push(resource);
   }
   for(let index=0;index<courseCount;index++) {
     const {course}=await admin.request('/api/courses',{method:'POST',expect:201,body:{courseName:`Fictional scale course ${index+1}`,feeName:`Three-lesson scale package ${index+1}`,category:'Isolated scale fixture',level:'Ages 3–18',pricingModel:'package',price:900,packageType:'visits',packageTotal:3,bookingExpiry:null,onlineStore:true},label:'Create course'});
-    const {resource:room}=await admin.request('/api/scheduling-resources',{method:'POST',expect:201,body:{kind:'room',displayName:`Fictional scale room ${index+1}`,capacity},label:'Create room'});
-    const rule={course:course.id,startDate:'2026-10-16',time:['09:00','10:15','11:30','13:00','14:15','15:30'][index],duration:60,weekdays:[5],endMode:'count',count:occurrencesPerCourse,mustAttendAll:true,color:'#27777b',teacherIds:[teacherResources[index%teacherCount].id],roomIds:[room.id],capacity,remark:'PRIVATE SCALE LESSON NOTE',detail:'PRIVATE SCALE DETAIL'};
-    const {schedule}=await admin.request('/api/schedules',{method:'POST',expect:201,body:rule,label:'Create recurring schedule'});
-    courseRecords.push(course);scheduleRecords.push({...schedule,fixtureRule:rule});
+    courseRecords.push(course);
   }
+  for(let index=0;index<plan.roomCount;index++){
+    const {resource}=await admin.request('/api/scheduling-resources',{method:'POST',expect:201,body:{kind:'room',displayName:`Fictional scale room ${index+1}`,capacity},label:'Create room'});rooms.push(resource);
+  }
+  for(const group of plan.classes){
+    const course=courseRecords[group.courseIndex],rule={course:course.id,startDate:group.startDate,time:group.time,duration:group.duration,weekdays:[group.weekday],endMode:'count',count:occurrencesPerClass,mustAttendAll:true,color:'#27777b',teacherIds:[teacherResources[group.teacherIndex].id],roomIds:[rooms[group.roomIndex].id],capacity:group.capacity,remark:'PRIVATE SCALE LESSON NOTE',detail:'PRIVATE SCALE DETAIL'};
+    const {schedule}=await admin.request('/api/schedules',{method:'POST',expect:201,body:rule,label:'Create recurring schedule'});
+    scheduleRecords.push({...schedule,plan:group,fixtureRule:rule});
+  }
+  const scheduleByClass=new Map(scheduleRecords.map(schedule=>[schedule.plan.id,schedule]));
   const catalogMs=elapsed(setupStarted)-setupMs;
   stage='link students';
   const linkStarted=performance.now();
@@ -104,8 +107,8 @@ try {
   stage='complete enrollment payment through HTTP';
   const enrollmentStarted=performance.now(),orders=[];
   for(const [index,student]of students.entries()) {
-    const course=courseRecords[student.courseIndex],schedule=scheduleRecords[student.courseIndex];
-    const created=await admin.request('/api/orders',{method:'POST',expect:201,key:`scale-order-${index}`,body:{studentId:student.personId,amountCents:90000,items:[{courseId:course.id,feeId:course.feeIds[0],lessons:Array.from({length:occurrencesPerCourse},(_,sequence)=>({scheduleId:schedule.id,sequence:sequence+1,sourceVersion:schedule.version}))}]},label:'Create order'});
+    const course=courseRecords[student.courseIndex],schedule=scheduleByClass.get(student.classId);
+    const created=await admin.request('/api/orders',{method:'POST',expect:201,key:`scale-order-${index}`,body:{studentId:student.personId,amountCents:90000,items:[{courseId:course.id,feeId:course.feeIds[0],lessons:Array.from({length:occurrencesPerClass},(_,sequence)=>({scheduleId:schedule.id,sequence:sequence+1,sourceVersion:schedule.version}))}]},label:'Create order'});
     const sent=await admin.request(`/api/orders/${created.order.id}/send`,{method:'POST',body:{version:created.order.version},key:`scale-send-${index}`,label:'Send order'});
     const confirmed=await studentClients[index].request(`/api/orders/${created.order.id}/respond`,{method:'POST',body:{version:sent.order.version,action:'confirm'},key:`scale-respond-${index}`,label:'Student confirms order'});
     const paid=await admin.request(`/api/orders/${created.order.id}/confirm-payment`,{method:'POST',body:{version:confirmed.order.version},key:`scale-payment-${index}`,label:'Confirm payment'});
@@ -123,49 +126,57 @@ try {
   ensure(formalStudents.every(person=>person.kind==='student'&&person.quitDate===null),'All fixture Students must be active formal profiles.');
   const sql=new DatabaseSync(databasePath,{readOnly:true});let stored;
   try {stored={students:sql.prepare("SELECT COUNT(*) AS count FROM people WHERE kind='student'").get().count,paidOrders:sql.prepare("SELECT COUNT(*) AS count FROM enrollment_orders WHERE payment_status='paid'").get().count,sessions:sql.prepare('SELECT COUNT(*) AS count FROM student_sessions').get().count,sales:sql.prepare('SELECT COUNT(*) AS count FROM enrollment_sales').get().count};}finally{sql.close();}
-  ensure(stored.students===studentCount&&stored.paidOrders===studentCount&&stored.sessions===studentCount*occurrencesPerCourse&&stored.sales===studentCount,'Durable Student/order/session/sales totals do not match HTTP-confirmed payments.');
-  const occupancies=[];
-  for(const schedule of scheduleRecords)for(let sequence=1;sequence<=occurrencesPerCourse;sequence++) {
+  ensure(stored.students===studentCount&&stored.paidOrders===studentCount&&stored.sessions===studentCount*occurrencesPerClass&&stored.sales===studentCount,'Durable Student/order/session/sales totals do not match HTTP-confirmed payments.');
+  const occupancies=[];let automaticFullOccurrences=0,automaticAvailableOccurrences=0;
+  for(const schedule of scheduleRecords)for(let sequence=1;sequence<=occurrencesPerClass;sequence++) {
     const result=await admin.request(`/api/schedules/${schedule.id}/occurrences/${sequence}/students`,{label:'Read class roster'});
-    ensure(result.occupied===capacity&&result.students.length===capacity,'A class roster has an incorrect occupied-seat total.');
+    const expectedIds=new Set(schedule.plan.studentIndices.map(index=>students[index].personId)),expectedCount=expectedIds.size;
+    ensure(result.occupied===expectedCount&&result.students.length===expectedCount&&result.students.every(row=>expectedIds.has(row.studentId))&&new Set(result.students.map(row=>row.studentId)).size===expectedCount,'A class roster differs from its exact planned Student identities or occupied-seat total.');
     const status=await admin.request(`/api/schedules/${schedule.id}/occurrences/${sequence}/capacity-status`,{label:'Read automatic capacity'});
-    ensure(status.status.classOccupied===capacity&&status.status.automaticStatus==='full','Paid enrollments did not produce automatic Full capacity.');
+    const expectedStatus=expectedCount>=schedule.plan.capacity?'full':'available';ensure(status.status.classOccupied===expectedCount&&status.status.automaticStatus===expectedStatus,'Paid enrollments did not produce the truthful planned capacity status.');
+    if(expectedStatus==='full')automaticFullOccurrences++;else automaticAvailableOccurrences++;
     occupancies.push(result.occupied);
   }
   stage='verify Student and Teacher isolation';
-  const first=await studentClients[0].request('/api/student/timetable'+range,{label:'Student timetable full'});
-  const second=await studentClients[1].request('/api/student/timetable'+range,{label:'Student timetable full'});
-  for(const [index,projection]of[first,second].entries()) {
-    ensure(projection.lessons.length===occurrencesPerCourse&&projection.lessons.every(lesson=>lesson.studentId===students[index].personId),'A Student timetable contained another Student or incorrect lesson count.');
+  const sampledStudents=Array.from({length:Math.min(24,studentCount)},(_,index)=>Math.floor(index*studentCount/Math.min(24,studentCount))),studentReads=new Map();
+  for(const index of sampledStudents){
+    const projection=await studentClients[index].request('/api/student/timetable'+range,{label:'Student timetable full'}),expectedSchedule=scheduleByClass.get(students[index].classId);studentReads.set(index,projection);
+    ensure(projection.lessons.length===occurrencesPerClass&&projection.lessons.every(lesson=>lesson.studentId===students[index].personId&&lesson.scheduleId===expectedSchedule.id&&lesson.courseId===courseRecords[students[index].courseIndex].id),'A Student timetable contained another Student, wrong planned class/course or incorrect lesson count.');
     ensure(projection.students.length===1&&projection.students[0].id===students[index].personId,'A Student profile projection leaked another Student.');
     ensure(!JSON.stringify(projection).includes('PRIVATE SCALE')&&!JSON.stringify(projection).includes('guardian-'),'Student timetable leaked private lesson/profile details.');
     const ownOrders=await studentClients[index].request('/api/orders',{label:'Student orders'});
     ensure(ownOrders.orders.length===1&&ownOrders.orders[0].studentId===students[index].personId,'Student orders were not own-only.');
   }
+  const first=studentReads.get(0),second=studentReads.get(1)||await studentClients[1].request('/api/student/timetable'+range,{label:'Student timetable comparison source'});
   await studentClients[0].request(`/api/orders/${orders[1].id}`,{expect:404,label:'Block foreign Student order'});
   await studentClients[0].request('/api/student/timetable'+range+'&studentId='+students[1].personId,{expect:400,label:'Block Student identity override'});
   await studentClients[0].request(`/api/schedules/${scheduleRecords[0].id}/occurrences/1/students`,{expect:403,label:'Block Student class roster'});
   const teacherOccurrenceCounts=[];
-  for(const [index,client]of teacherClients.entries()) {
-    const allowed=scheduleRecords.filter((_,courseIndex)=>courseIndex%teacherCount===index),allowedIds=new Set(allowed.map(schedule=>schedule.id));
+  for(let round=0;round<6;round++)for(const [index,client]of teacherClients.entries()) {
+    const allowed=scheduleRecords.filter(schedule=>schedule.plan.teacherIndex===index),allowedIds=new Set(allowed.map(schedule=>schedule.id));
     const projection=await client.request('/api/schedules'+range,{label:'Teacher scoped timetable'});
-    ensure(projection.occurrences.length===allowed.length*occurrencesPerCourse&&projection.occurrences.every(lesson=>allowedIds.has(lesson.item.id)),'A Teacher timetable exceeded the linked Teacher scope.');
-    teacherOccurrenceCounts.push(projection.occurrences.length);
+    ensure(projection.occurrences.length===allowed.length*occurrencesPerClass&&projection.occurrences.every(lesson=>allowedIds.has(lesson.item.id)),'A Teacher timetable exceeded the linked Teacher scope.');
+    if(round===0)teacherOccurrenceCounts.push(projection.occurrences.length);
   }
   await teacherClients[0].request(`/api/schedules/${scheduleRecords[0].id}/occurrences/1/students`,{label:'Teacher own roster'});
   await teacherClients[0].request(`/api/schedules/${scheduleRecords[1].id}/occurrences/1/students`,{expect:404,label:'Block foreign Teacher roster'});
   stage='verify live shared reschedule projection';
   const schedule=scheduleRecords[0],moveStarted=performance.now();
-  await admin.request(`/api/schedules/${schedule.id}/occurrences/1`,{method:'PATCH',body:{...schedule.fixtureRule,version:schedule.version,scope:'single',time:'10:00'},key:'scale-move-one',label:'Move first occurrence'});
+  await admin.request(`/api/schedules/${schedule.id}/occurrences/1`,{method:'PATCH',body:{...schedule.fixtureRule,version:schedule.version,scope:'single',time:'08:45'},key:'scale-move-one',label:'Move first occurrence'});
   const changed=await studentClients[0].request('/api/student/timetable'+range+'&since='+first.revision,{label:'Student timetable after move'});
   ensure(changed.unchanged!==true&&changed.revision!==first.revision,'Student timetable did not detect the shared reschedule.');
   const before=first.lessons.find(lesson=>lesson.sequence===1),after=changed.lessons.find(lesson=>lesson.sequence===1);
-  ensure(before.id===after.id&&before.scheduleId===after.scheduleId&&after.time==='10:00','Reschedule did not preserve the same StudentSession and occurrence identity.');
+  ensure(before.id===after.id&&before.scheduleId===after.scheduleId&&after.time==='08:45','Reschedule did not preserve the same StudentSession and occurrence identity.');
   ensure(changed.lessons.filter(lesson=>lesson.sequence!==1).every(lesson=>lesson.time===schedule.fixtureRule.time),'Single-occurrence move changed following lessons.');
   const unaffected=await studentClients[1].request('/api/student/timetable'+range+'&since='+second.revision,{label:'Unrelated Student unchanged'});
   ensure(unaffected.unchanged===true,'Unrelated Student timetable changed during another class move.');
   const synchronizationMs=elapsed(moveStarted),verificationMs=elapsed(verificationStarted);
-  const result={ok:true,kind:'isolated-enrollment-scale',node:process.version,dataset:{activeFormalStudents:stored.students,ageRange:[Math.min(...students.map(student=>student.age)),Math.max(...students.map(student=>student.age))],courses:courseCount,teachers:teacherCount,paidOrders:stored.paidOrders,studentSessions:stored.sessions,sales:stored.sales,capacityPerCourse:capacity,occurrencesPerCourse},authentication:{realHTTPLogins:7,prearrangedDistinctStudentSessions:Math.max(0,studentCount-2),rateLimitUnchanged:true},verification:{allBusinessWrites:'real HTTP: create order → send → Student confirm → administrator confirm payment',paidRowsInsertedDirectly:false,automaticFullOccurrences:occupancies.length,rosterOccupancyRange:[Math.min(...occupancies),Math.max(...occupancies)],ownStudentLessons:occurrencesPerCourse,teacherOccurrenceCounts,foreignStudentOrderBlocked:true,studentIdentityOverrideBlocked:true,foreignTeacherRosterBlocked:true,sharedSingleOccurrenceMovePreservesIdentity:true,unrelatedStudentRevisionUnchanged:true},timing:{totalMs:elapsed(started),identityAndAuthenticationSetupMs:setupMs,catalogAndScheduleSetupMs:Math.round(catalogMs*100)/100,studentLinkMs:linkMs,enrollmentBusinessFlowMs:enrollmentMs,verificationMs,sharedMoveAndFreshStudentReadMs:synchronizationMs,requests:Object.fromEntries([...timings].map(([label,values])=>[label,summary(values)]))},limits:'Sequential local HTTP and isolated file SQLite. This verifies dataset scale and measured request timings; it does not claim 300 simultaneous users, hosted-server performance, browser layout, attendance, or complete Goal acceptance.'};
+  const result={ok:true,kind:'isolated-enrollment-scale',node:process.version,hardware:{cpu:cpus()[0]?.model||'unknown',logicalCpus:cpus().length,memoryGiB:Math.round(totalmem()/2**30*10)/10,platform:process.platform,architecture:process.arch,osRelease:release()},
+    dataset:{activeFormalStudents:stored.students,ageRange:[Math.min(...students.map(student=>student.age)),Math.max(...students.map(student=>student.age))],courses:courseCount,teachers:teacherCount,classrooms:rooms.length,classes:scheduleRecords.length,studentsPerCourse:studentCount/courseCount,classCapacity:capacity,...(options.classCapacity===undefined?{capacityPerCourse:capacity}:{}),occurrencesPerClass,occurrencesPerCourse:scheduleRecords.filter(schedule=>schedule.plan.courseIndex===0).length*occurrencesPerClass,totalClassOccurrences:scheduleRecords.length*occurrencesPerClass,paidOrders:stored.paidOrders,studentSessions:stored.sessions,sales:stored.sales,scheduledDates:{from:plan.classes.map(group=>group.startDate).sort()[0],to:new Date(Date.parse(plan.classes.map(group=>group.startDate).sort().at(-1)+'T00:00:00Z')+(occurrencesPerClass-1)*7*86400000).toISOString().slice(0,10)},queryRange:{from:'2026-10-01',to:'2026-11-30'}},
+    authentication:{realHTTPLogins:7,prearrangedDistinctStudentSessions:Math.max(0,studentCount-2),rateLimitUnchanged:true},
+    verification:{allBusinessWrites:'real HTTP: create order → send → Student confirm → administrator confirm payment',paidRowsInsertedDirectly:false,verifiedClassRosters:occupancies.length,automaticFullOccurrences,automaticAvailableOccurrences,rosterOccupancyRange:[Math.min(...occupancies),Math.max(...occupancies)],exactPlannedRosterMembership:true,ownStudentLessons:occurrencesPerClass,freshStudentTimetableSamples:timings.get('Student timetable full')?.length||0,freshTeacherTimetableSamples:timings.get('Teacher scoped timetable')?.length||0,teacherOccurrenceCounts,foreignStudentOrderBlocked:true,studentIdentityOverrideBlocked:true,foreignTeacherRosterBlocked:true,sharedSingleOccurrenceMovePreservesIdentity:true,sharedMoveTime:'08:45',unrelatedStudentRevisionUnchanged:true},
+    timing:{totalMs:elapsed(started),identityAndAuthenticationSetupMs:setupMs,catalogAndScheduleSetupMs:Math.round(catalogMs*100)/100,studentLinkMs:linkMs,enrollmentBusinessFlowMs:enrollmentMs,verificationMs,sharedMoveAndFreshStudentReadMs:synchronizationMs,httpRequests:[...timings.values()].reduce((sum,values)=>sum+values.length,0),requests:Object.fromEntries([...timings].map(([label,values])=>[label,summary(values)]))},
+    limits:'Sequential local HTTP and isolated file SQLite. Only benchmark identities/profiles and the remaining distinct login sessions are prearranged. All enrollment create/send/Student confirm/Admin payment steps use real business HTTP. This does not claim 300 simultaneous users, hosted performance, real customer data, browser layout, attendance or complete Goal acceptance.'};
   await writeFile(join(directory,'result.json'),JSON.stringify(result,null,2)+'\n',{mode:0o600});
   console.log(JSON.stringify(result));successful=true;
 }catch(error) {

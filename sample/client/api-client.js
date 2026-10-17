@@ -11,7 +11,9 @@ export class ApiError extends Error {
 
 // Only explicit operations are sent to the service. The browser's legacy
 // state is never uploaded wholesale, so another user's work cannot be reset.
-export function createApiClient() {
+export function createApiClient({ baseUrl = import.meta.env?.VITE_BEAMAL_API_BASE_URL || '' } = {}) {
+  // Keep production browser requests on the Vercel origin so Safari accepts the session cookie.
+  const apiBaseUrl=import.meta.env?.PROD?'':String(baseUrl).replace(/\/+$/,'');
   let csrfToken = '', cookieCsrfToken = '', identityKey = '';
   let authEpoch = 0, authMutation = Promise.resolve();
   const superseded = () => new ApiError('The signed-in account changed.', 0, 'AUTH_SUPERSEDED');
@@ -32,9 +34,9 @@ export function createApiClient() {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
     try {
-      const response = await fetch(`/api${path}`, {
+      const response = await fetch(`${apiBaseUrl}/api${path}`, {
         method,
-        credentials: 'same-origin',
+        credentials: apiBaseUrl ? 'include' : 'same-origin',
         signal: controller.signal,
         headers: {
           Accept: 'application/json',
@@ -101,6 +103,9 @@ export function createApiClient() {
         idempotencyKey: operationKey,
       });
     },
+    publicCatalog: (revision = '') => request(`/public/catalog${revision ? '?since=' + encodeURIComponent(revision) : ''}`),
+    publicTrialTimes: (courseId, revision = '') => request(`/public/courses/${encodeURIComponent(courseId)}/trial-times${revision ? '?since=' + encodeURIComponent(revision) : ''}`),
+    createTrialApplication: application => request('/trial-applications', { method: 'POST', body: application }),
     publicTimetable(from, revision = '', days) {
       const query = new URLSearchParams();
       if (from) query.set('from', from);
@@ -147,6 +152,9 @@ export function createApiClient() {
     studentAccountLinks: () => request('/student-account-links'),
     saveStudentAccountLink: (studentId, userId, version, operationKey) => request(`/people/${encodeURIComponent(studentId)}/account-link`, {method:'PATCH',body:{userId,version},idempotencyKey:operationKey}),
     studentProfile: () => request('/student/profile'),
+    lessonRequests: () => request('/lesson-requests'),
+    createLessonRequest: (fields, operationKey) => request('/lesson-requests', {method:'POST',body:fields,idempotencyKey:operationKey}),
+    assignLessonRequest: (id, fields, operationKey) => request(`/lesson-requests/${encodeURIComponent(id)}/assign`, {method:'POST',body:fields,idempotencyKey:operationKey}),
     orders: () => request('/orders'),
     order: id => request(`/orders/${encodeURIComponent(id)}`),
     createOrder: (order, operationKey) => request('/orders', {method:'POST',body:order,idempotencyKey:operationKey}),

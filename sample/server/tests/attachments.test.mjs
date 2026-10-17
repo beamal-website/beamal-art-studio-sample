@@ -8,6 +8,7 @@ import {request as httpRequest} from 'node:http';
 import {DatabaseSync} from 'node:sqlite';
 import fs from 'node:fs';
 import {syncBuiltinESMExports} from 'node:module';
+import {createAttachmentStore} from '../attachments.mjs';
 import {fixture,error,origin,users,noCredentials,grantTeacherAccess} from './helpers.mjs';
 
 // Complete files generated once with ffmpeg, verified with ffprobe, then
@@ -350,6 +351,23 @@ test('expired unattached stages are cleaned while saved attachment bytes and lin
  assert.deepEqual((await binary(app.admin,attachmentPath(saved,attached))).bytes,png.bytes);
  error(await app.admin.request('/api/courses/public-course/materials',{method:'POST',body:material({attachments:[pending.id]})}),404);
  assert.deepEqual((await app.admin.request(`/api/materials/${saved.id}`)).body.material,saved);assert.equal(app.materials.audit().length,1);
+});
+
+test('PostgreSQL attachment expiry cleanup does not run recurring synchronous queries',async t=>{
+ const directory=await mkdtemp(join(tmpdir(),'beamal-postgres-attachments-'));t.after(()=>rm(directory,{recursive:true,force:true}));
+ t.mock.timers.enable({apis:['setInterval']});
+ let expiryScans=0,upgraded=false;
+ const database={
+  exec(sql){if(sql.includes('ALTER TABLE material_uploads ALTER COLUMN expires_at TYPE BIGINT'))upgraded=true},
+  prepare(sql){return {all(){if(sql==='PRAGMA table_info(material_uploads)')return [{name:'expires_at',type:'INTEGER'}];if(sql.startsWith('SELECT id, file_key FROM material_uploads'))expiryScans++;return []}}}
+ };
+ const store=await createAttachmentStore({database,transaction:callback=>callback(),directory,postgres:true});
+ assert.equal(upgraded,true,'PostgreSQL mode must upgrade legacy upload expiries');
+ assert.equal(expiryScans,1,'Startup still removes expired uploads');
+ t.mock.timers.tick(60_000);
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(expiryScans,1,'PostgreSQL cleanup must not block the HTTP request thread every minute');
+ await store.close();
 });
 
 test('unknown null course associations return validation errors without creating receipts, consuming staged files or mutating materials',async t=>{

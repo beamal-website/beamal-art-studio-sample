@@ -77,7 +77,7 @@ async function physicalPath(path) {
   return resolve(await physicalPath(parent), target.slice(parent.length + (parent.endsWith(sep) ? 0 : 1)));
 }
 
-export async function createApplication({ databasePath = ':memory:', seedUsers = [], seedCourses = [], seedMaterialAccess = [], allowedOrigins = defaultOrigins, staticDir = null, secureCookies = false, attachmentsDir, trialFormPolicy = null } = {}) {
+export async function createApplication({ databasePath = ':memory:', databaseUrl = process.env.DATABASE_URL || '', seedUsers = [], seedCourses = [], seedMaterialAccess = [], allowedOrigins = defaultOrigins, staticDir = null, secureCookies = false, attachmentsDir, trialFormPolicy = null } = {}) {
   const origins = new Set(allowedOrigins.map(value => {
     const parsed = new URL(value);
     if (!['http:', 'https:'].includes(parsed.protocol) || parsed.origin !== value) throw new Error('Allowed origins must be complete http or https origins without paths.');
@@ -88,7 +88,7 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
   const staticRoot = staticDir ? await realpath(resolve(staticDir)).catch(() => null) : null;
   const insideStatic = path => staticRoot && (path === staticRoot || path.startsWith(`${staticRoot}${sep}`));
   if (storagePath && insideStatic(await physicalPath(storagePath))) throw new Error('Attachment storage must be outside the public static directory.');
-  const store = await createStore({ databasePath, seedUsers, seedCourses, attachmentsDir, trialFormPolicy });
+  const store = await createStore({ databasePath, databaseUrl, seedUsers, seedCourses, attachmentsDir, trialFormPolicy });
   const authUser = user => user ? { ...user, accessRevision: store.accessControl.revisionFor(user), teacherResourceIds: store.accessControl.ownTeacherResourceIds(user) } : null;
   const materials = store.materials;
   const attachments = store.attachments;
@@ -105,7 +105,7 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
   const dummyHash = await hashPassword(randomToken());
   const attempts = new Map();
   const trialAttempts = new Map();
-  const cookie = (value, seconds) => `${COOKIE}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${seconds}${secureCookies ? '; Secure' : ''}`;
+  const cookie = (value, seconds) => `${COOKIE}=${value}; Path=/; HttpOnly; SameSite=${secureCookies?'None':'Lax'}; Max-Age=${seconds}${secureCookies ? '; Secure' : ''}`;
   const allowedOrigin = (request, origin) => {
     if (typeof origin !== 'string') return false;
     if (origins.has(origin)) return true;
@@ -147,6 +147,13 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
     const ip = request.socket.remoteAddress || 'unknown', attempt = trialAttempts.get(ip);
     if (attempt?.count >= 30 || !attempt && trialAttempts.size >= 10000) throw new ApplicationError(429, 'TRIAL_RATE_LIMIT', 'Too many trial submission attempts. Please try again later.');
     trialAttempts.set(ip, { count: (attempt?.count || 0) + 1, until: attempt?.until || now + 15 * 60 * 1000 });
+  }
+  function throttleTrialApplication(request){
+    const now=Date.now(),ip=request.socket.remoteAddress||'unknown';
+    for(const[key,entry]of trialAttempts)if(entry.until<=now)trialAttempts.delete(key);
+    const entry=trialAttempts.get(ip)||{count:0,until:now+15*60*1000};
+    if(entry.count>=8)throw new ApplicationError(429,'TRIAL_APPLICATION_RATE_LIMIT','Too many trial applications. Please try again later.');
+    entry.count++;trialAttempts.set(ip,entry);
   }
   const serveStatic = async (request, response, pathname) => {
     if (!staticRoot) throw new ApplicationError(404, 'NOT_FOUND', 'Resource was not found.');
@@ -312,6 +319,22 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
       if (pathname === '/api/student/timetable' && request.method === 'GET') {
         const session=requireSession(request); const query=enrollmentQuery(['from','to','since']); json(response,200,store.enrollmentOrders.timetable(session.user,query)); return;
       }
+      if(pathname==='/api/lesson-requests'&&request.method==='GET'){
+        const session=requireSession(request);enrollmentQuery([]);json(response,200,store.studentLessonRequests.list(session.user));return;
+      }
+      if(pathname==='/api/lesson-requests'&&request.method==='POST'){
+        const session=requireMutation(request);enrollmentQuery([]);const input=await body(request),key=idempotencyKey(request);
+        if(session.user.role!=='student')throw new ApplicationError(403,'ROLE_FORBIDDEN','Only a student may submit a lesson request.');
+        const result=store.createOnce({userId:session.user.id,route:pathname,key,payloadHash:payloadHash(input)},()=>({request:store.studentLessonRequests.create(input,session.user)}));
+        json(response,result.status,result.body);return;
+      }
+      const lessonRequestAssignmentMatch=/^\/api\/lesson-requests\/([^/]+)\/assign$/.exec(pathname);
+      if(lessonRequestAssignmentMatch&&request.method==='POST'){
+        const session=requireMutation(request);enrollmentQuery([]);const id=decodeId(lessonRequestAssignmentMatch[1]),input=await body(request),key=idempotencyKey(request),route=`POST /api/lesson-requests/${encodeURIComponent(id)}/assign`;
+        if(requireSession(request).user.role!=='admin')throw new ApplicationError(403,'ROLE_FORBIDDEN','Only an administrator may assign a student to another lesson.');
+        const result=store.mutateOnce({userId:session.user.id,route,key,payloadHash:payloadHash(input),status:200},()=>({request:store.studentLessonRequests.assign(id,input,session.user)}));
+        json(response,result.status,result.body);return;
+      }
       if (pathname === '/api/timetable/filter-facts' && request.method === 'GET') {
         const session=requireSession(request);
         if(!['admin','teacher'].includes(session.user.role))throw new ApplicationError(403,'ROLE_FORBIDDEN','Timetable filter facts are not available for this role.');
@@ -433,6 +456,7 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
       const attachmentMatch = /^\/api\/materials\/([^/]+)\/attachments\/([^/]+)$/.exec(pathname);
       const materialMatch = /^\/api\/materials\/([^/]+)$/.exec(pathname);
       const availableSlotMatch = /^\/api\/available-slots\/([^/]+)$/.exec(pathname);
+      const publicTrialTimesMatch = /^\/api\/public\/courses\/([^/]+)\/trial-times$/.exec(pathname);
       const publicCourseMatch = /^\/api\/public\/courses\/([^/]+)$/.exec(pathname);
       const slotQuery = keys => {
         for (const [key,value] of requestUrl.searchParams) if (!keys.includes(key) || value.length > 200 || requestUrl.searchParams.getAll(key).length !== 1) throw new ApplicationError(400, 'INVALID_QUERY', 'Choose supported availability query parameters.');
@@ -454,12 +478,23 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
         const result=store.mutateOnce({userId:session.user.id,route,key,payloadHash:payloadHash(input),status:200},()=>({status:store.classCapacityStatuses.update(id,sequence,input,session.user)}));
         json(response,result.status,result.body); return;
       }
+      if(publicTrialTimesMatch&&request.method==='GET'){
+        const query=slotQuery(['since']);json(response,200,store.availableSlots.publicTrialTimes(decodeId(publicTrialTimesMatch[1]),query));return;
+      }
       if (request.method === 'GET' && (pathname === '/api/public/courses' || publicCourseMatch)) {
         const query = slotQuery(publicCourseMatch ? ['from','since','days'] : ['since']);
         json(response, 200, publicCourseMatch ? store.availableSlots.publicDetail(decodeId(publicCourseMatch[1]), query) : store.availableSlots.publicCourses(query)); return;
       }
       if (pathname === '/api/public/timetable' && request.method === 'GET') {
         json(response,200,store.availableSlots.publicTimetable(slotQuery(['from','since','days']))); return;
+      }
+      if(pathname==='/api/trial-applications'&&request.method==='POST'){
+        requireOrigin(request);throttleTrialApplication(request);const saved=store.trialInquiries.create(await body(request));
+        json(response,201,{application:{id:saved.id,status:saved.status,createdAt:saved.createdAt}});return;
+      }
+      if (pathname === '/api/public/catalog' && request.method === 'GET') {
+        const query = slotQuery(['since']), catalog = store.catalogSnapshot({ publicOnly: true, since: query.since || '' });
+        json(response, 200, catalog.unchanged ? catalog : { revision: catalog.revision, courses: catalog.courses.map(({ id, courseName, category, level }) => ({ id, courseName, category, level })) }); return;
       }
       if (request.method === 'GET' && (pathname === '/api/available-slots' || availableSlotMatch)) {
         const session = requireSession(request);
@@ -674,7 +709,7 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
         json(response, 200, store.updateFee(id, fee, version, session.user.id, true)); return;
       }
       if (pathname === '/api' || pathname.startsWith('/api/')) {
-        const known = parentTemplateMatch || parentTemplateActionMatch || pathname === '/api/parent-message-templates' || parentMessageContextMatch || parentMessageMatch || pathname === '/api/parent-messages/inbox' || packageContentsMatch || pendingArrangementMatch || pathname === '/api/pending-arrangements' || trialApplicationMatch || trialRejectMatch || ['/api/public/trial-form-policy','/api/public/trial-applications','/api/trial-applications','/api/trial-applications/work'].includes(pathname) || studentLinkMatch || orderMatch || orderActionMatch || studentRosterMatch || lessonNoteMatch || match || feeMatch || courseMaterialMatch || materialMatch || uploadMatch || attachmentMatch || scheduleMatch || occurrenceMatch || courseLifecycleMatch || schedulingResourceMatch || personMatch || personHistoryMatch || teacherLinkMatch || accessGrantMatch || availableSlotMatch || publicCourseMatch || capacityStatusMatch || classTypeMatch || ['/api/student-account-links', '/api/student/profile', '/api/student/timetable', '/api/timetable/filter-facts', '/api/staff/personal-profiles', '/api/orders', '/api/class-types', '/api/class-capacity-statuses', '/api/available-slots', '/api/availability-public-settings', '/api/public/courses', '/api/public/timetable', '/api/people', '/api/access-control', '/api/access-control/grants', '/api/health', '/api/auth/session', '/api/auth/login', '/api/auth/logout', '/api/courses', '/api/fees', '/api/catalog', '/api/schedules', '/api/scheduling-resources'].includes(pathname);
+        const known = publicTrialTimesMatch || parentTemplateMatch || parentTemplateActionMatch || pathname === '/api/parent-message-templates' || parentMessageContextMatch || parentMessageMatch || pathname === '/api/parent-messages/inbox' || packageContentsMatch || pendingArrangementMatch || pathname === '/api/pending-arrangements' || trialApplicationMatch || trialRejectMatch || ['/api/public/trial-form-policy','/api/public/trial-applications','/api/trial-applications','/api/trial-applications/work'].includes(pathname) || studentLinkMatch || orderMatch || orderActionMatch || studentRosterMatch || lessonNoteMatch || match || feeMatch || courseMaterialMatch || materialMatch || uploadMatch || attachmentMatch || scheduleMatch || occurrenceMatch || courseLifecycleMatch || schedulingResourceMatch || personMatch || personHistoryMatch || teacherLinkMatch || accessGrantMatch || availableSlotMatch || publicCourseMatch || capacityStatusMatch || classTypeMatch || ['/api/student-account-links', '/api/student/profile', '/api/student/timetable', '/api/timetable/filter-facts', '/api/staff/personal-profiles', '/api/orders', '/api/class-types', '/api/class-capacity-statuses', '/api/available-slots', '/api/availability-public-settings', '/api/public/courses', '/api/public/timetable', '/api/public/catalog', '/api/people', '/api/access-control', '/api/access-control/grants', '/api/health', '/api/auth/session', '/api/auth/login', '/api/auth/logout', '/api/courses', '/api/fees', '/api/catalog', '/api/schedules', '/api/scheduling-resources'].includes(pathname);
         throw new ApplicationError(known ? 405 : 404, known ? 'METHOD_NOT_ALLOWED' : 'NOT_FOUND', 'API route or method is not available.');
       }
       await serveStatic(request, response, pathname);
@@ -684,7 +719,10 @@ export async function createApplication({ databasePath = ':memory:', seedUsers =
       if (error instanceof ApplicationError) {
         if (error.status === 429) response.setHeader('Retry-After', '900');
         json(response, error.status, { error: { code: error.code, message: error.message } });
-      } else json(response, 500, { error: { code: 'INTERNAL_ERROR', message: 'Could not complete this request. Please try again.' } });
+      } else {
+        console.error('Unhandled API request error.', error);
+        json(response, 500, { error: { code: 'INTERNAL_ERROR', message: 'Could not complete this request. Please try again.' } });
+      }
     }
   });
   let closed = false;

@@ -56,6 +56,15 @@ test('staff and workspace use shared IDs, explicit account links, six real cours
   assert.match(lesson,/Present/);
   assert.match(lesson,/Absent/);
 });
+test('administrator to-do projects each pending student lesson request with its actionable details',()=>{
+ const source={...snapshot(),studentRequestsReady:true,studentRequests:[{id:'request-1',studentId:'student-chloe',studentName:'Chloe actual',type:'reschedule',status:'pending',createdAt:'2026-10-15T09:00:00Z',lesson:{date:'2026-10-16',time:'13:00',courseName:'Art course 1'},availableTimes:[{scheduleId:'schedule-next',sequence:2,courseId:'course-art',courseName:'Art course 1',date:'2026-10-23',time:'15:00',availableSeats:2}],preferredDate:'2026-10-18',reason:'Family schedule'}]};
+ const state=staffSharedState(staffInterfacePreviewState(),source),task=state.todos[0].tasks[0],html=staffPortalMarkup({...state,portalTab:'todo'},en);
+ assert.equal(state.todosReady,true);assert.equal(task.id,'request-1');assert.equal(task.studentName,'Chloe actual');
+ assert.equal(task.courseName,'Art course 1');assert.deepEqual(task.availableTimes,source.studentRequests[0].availableTimes);
+ assert.match(task.detail.en,/2026-10-16 13:00/);assert.match(task.detail.en,/2026-10-18/);assert.match(task.detail.en,/Family schedule/);
+ assert.match(html,/Chloe actual/);assert.match(html,/Rescheduling request/);assert.match(html,/Family schedule/);
+ const dialog=staffDialogMarkup({...state,dialog:{kind:'task',id:'request-1'}},en);assert.match(dialog,/Other available times for this course/);assert.match(dialog,/Art course 1/);assert.match(dialog,/2026-10-23 · 15:00/);assert.match(dialog,/2 seats available/);assert.match(dialog,/data-ui-command="assign-lesson-request"/);assert.match(dialog,/Move paid lesson here/);assert.match(dialog,/frees the original seat and adds no charge/);
+});
 
 test('live lesson time, room and roster changes update without replacing the open staff access summary',()=>{
   const source=snapshot();let state=staffSharedState({},source);

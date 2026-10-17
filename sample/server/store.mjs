@@ -165,11 +165,11 @@ async function initializeStore({ databasePath, seedUsers, seedCourses, attachmen
     const rows = database.prepare(`
       SELECT 'course' AS kind, courses.id, courses.version, courses.course_code, NULL AS fee_code,
         courses.data, courses.price_cents, courses.online_store, courses.created_at, courses.updated_at,
-        courses.name_key, courses.deleted_at, NULL AS course_id, NULL AS fee_id, NULL AS position
+        courses.name_key, courses.deleted_at, NULL AS course_id, NULL AS fee_id, CAST(NULL AS INTEGER) AS position
       FROM courses ${visibleCourses(publicOnly)}
       UNION ALL
       SELECT 'fee', fees.id, fees.version, NULL, fees.fee_code, fees.data, fees.price_cents, fees.online_store,
-        fees.created_at, fees.updated_at, NULL, NULL, NULL, NULL, NULL
+        fees.created_at, fees.updated_at, NULL, NULL, NULL, NULL, CAST(NULL AS INTEGER)
       FROM fees ${visibleFees(publicOnly)}
       UNION ALL
       SELECT 'link', NULL, NULL, NULL, fees.fee_code, NULL, NULL, NULL, NULL, NULL, NULL, NULL,

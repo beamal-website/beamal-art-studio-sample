@@ -583,7 +583,10 @@ export async function createApplication({ databasePath = ':memory:', databaseUrl
       if (error instanceof ApplicationError) {
         if (error.status === 429) response.setHeader('Retry-After', '900');
         json(response, error.status, { error: { code: error.code, message: error.message } });
-      } else json(response, 500, { error: { code: 'INTERNAL_ERROR', message: 'Could not complete this request. Please try again.' } });
+      } else {
+        console.error('Unhandled API request error.', error);
+        json(response, 500, { error: { code: 'INTERNAL_ERROR', message: 'Could not complete this request. Please try again.' } });
+      }
     }
   });
   let closed = false;

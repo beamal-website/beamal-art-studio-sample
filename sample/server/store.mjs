@@ -24,6 +24,7 @@ const pricingKeys = ['feeName', 'pricingModel', 'price', 'months', 'duration', '
 const metadata = (record, includeClassType = false) => ({ courseName: record.courseName, category: record.category || '', level: record.level || '', ...(includeClassType ? { classTypeId: record.classTypeId ?? null } : {}) });
 const pricing = record => Object.fromEntries(pricingKeys.filter(key => Object.hasOwn(record, key)).map(key => [key, record[key]]));
 const nameKey = name => name.trim().toLowerCase();
+const compareText = (left, right) => left < right ? -1 : left > right ? 1 : 0;
 const deletion = row => row.deleted_at ? { deletedAt: row.deleted_at } : {};
 
 export async function createStore(options = {}) {
@@ -145,8 +146,6 @@ async function initializeStore({ databasePath, seedUsers, seedCourses, attachmen
   const getCourse = id => parseCourse(database.prepare('SELECT * FROM courses WHERE id = ?').get(id));
   const visibleCourses = publicOnly => publicOnly ? 'WHERE courses.deleted_at IS NULL AND EXISTS (SELECT 1 FROM course_fees JOIN fees ON fees.id = course_fees.fee_id WHERE course_fees.course_id = courses.id AND fees.online_store = 1)' : '';
   const visibleFees = publicOnly => publicOnly ? 'WHERE online_store = 1 AND EXISTS (SELECT 1 FROM course_fees JOIN courses ON courses.id = course_fees.course_id WHERE course_fees.fee_id = fees.id AND courses.deleted_at IS NULL)' : '';
-  const readFeeRows = publicOnly => database.prepare(`SELECT * FROM fees ${visibleFees(publicOnly)} ORDER BY fee_code`).all();
-  const readLinkRows = publicOnly => database.prepare(`SELECT course_fees.course_id, course_fees.fee_id, course_fees.position FROM course_fees JOIN fees ON fees.id = course_fees.fee_id JOIN courses ON courses.id = course_fees.course_id ${publicOnly ? 'WHERE fees.online_store = 1 AND courses.deleted_at IS NULL' : ''} ORDER BY course_fees.course_id, course_fees.position, fees.fee_code`).all();
   const feeCatalog = (feeRows, links) => {
     const courseIdsByFee = new Map(), feeIdsByCourse = new Map();
     for (const link of links) {
@@ -163,12 +162,69 @@ async function initializeStore({ databasePath, seedUsers, seedCourses, attachmen
     return { fees, feesById: new Map(fees.map(fee => [fee.id, fee])), feeIdsByCourse };
   };
   const readCatalog = (publicOnly, allowedIds = null) => {
-    const courseRows = database.prepare(`SELECT * FROM courses ${visibleCourses(publicOnly)} ORDER BY course_code`).all().filter(row => allowedIds === null || allowedIds.has(row.id));
-    const links = readLinkRows(publicOnly).filter(row => allowedIds === null || allowedIds.has(row.course_id));
-    const feeIds = new Set(links.map(row => row.fee_id));
-    const feeRows = readFeeRows(publicOnly).filter(row => allowedIds === null || feeIds.has(row.id));
-    return { courseRows, ...feeCatalog(feeRows, links) };
+    const rows = database.prepare(`
+      SELECT 'course' AS kind, courses.id, courses.version, courses.course_code, NULL AS fee_code,
+        courses.data, courses.price_cents, courses.online_store, courses.created_at, courses.updated_at,
+        courses.name_key, courses.deleted_at, NULL AS course_id, NULL AS fee_id, NULL AS position
+      FROM courses ${visibleCourses(publicOnly)}
+      UNION ALL
+      SELECT 'fee', fees.id, fees.version, NULL, fees.fee_code, fees.data, fees.price_cents, fees.online_store,
+        fees.created_at, fees.updated_at, NULL, NULL, NULL, NULL, NULL
+      FROM fees ${visibleFees(publicOnly)}
+      UNION ALL
+      SELECT 'link', NULL, NULL, NULL, fees.fee_code, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+        course_fees.course_id, course_fees.fee_id, course_fees.position
+      FROM course_fees
+      JOIN fees ON fees.id = course_fees.fee_id
+      JOIN courses ON courses.id = course_fees.course_id
+      ${publicOnly ? 'WHERE fees.online_store = 1 AND courses.deleted_at IS NULL' : ''}
+    `).all();
+    const courseRows = [], feeRows = [], links = [];
+    for (const row of rows) {
+      if (row.kind === 'course') courseRows.push({
+        id: row.id, version: row.version, course_code: row.course_code, data: row.data,
+        price_cents: row.price_cents, online_store: row.online_store, created_at: row.created_at,
+        updated_at: row.updated_at, name_key: row.name_key, deleted_at: row.deleted_at,
+      });
+      else if (row.kind === 'fee') feeRows.push({
+        id: row.id, version: row.version, fee_code: row.fee_code, data: row.data,
+        price_cents: row.price_cents, online_store: row.online_store, created_at: row.created_at,
+        updated_at: row.updated_at,
+      });
+      else if (row.kind === 'link') links.push({
+        course_id: row.course_id, fee_id: row.fee_id, position: row.position, fee_code: row.fee_code,
+      });
+    }
+    courseRows.sort((left, right) => compareText(left.course_code, right.course_code));
+    feeRows.sort((left, right) => compareText(left.fee_code, right.fee_code));
+    links.sort((left, right) => compareText(left.course_id, right.course_id) || left.position - right.position || compareText(left.fee_code, right.fee_code));
+    const scopedCourseRows = courseRows.filter(row => allowedIds === null || allowedIds.has(row.id));
+    const scopedLinks = links.filter(row => allowedIds === null || allowedIds.has(row.course_id));
+    const feeIds = new Set(scopedLinks.map(row => row.fee_id));
+    const scopedFeeRows = feeRows.filter(row => (allowedIds === null || feeIds.has(row.id)));
+    return { courseRows: scopedCourseRows, ...feeCatalog(scopedFeeRows, scopedLinks) };
   };
+  const catalogVersions = publicOnly => {
+    const courses = [], fees = [];
+    for (const row of database.prepare(`
+      SELECT 'course' AS kind, id, version FROM courses ${visibleCourses(publicOnly)}
+      UNION ALL
+      SELECT 'fee', id, version FROM fees ${visibleFees(publicOnly)}
+      ORDER BY kind, id
+    `).all()) {
+      const target = row.kind === 'course' ? courses : fees;
+      target.push({ id: row.id, version: row.version });
+    }
+    courses.sort((left, right) => compareText(left.id, right.id));
+    fees.sort((left, right) => compareText(left.id, right.id));
+    return { courses, fees };
+  };
+  const snapshotRevision = (publicOnly, courses, fees) => createHash('sha256').update(JSON.stringify({ publicOnly, courses, fees })).digest('hex');
+  const catalogRevision = (publicOnly, catalog) => snapshotRevision(
+    publicOnly,
+    catalog.courseRows.map(({ id, version }) => ({ id, version })).sort((left, right) => compareText(left.id, right.id)),
+    catalog.fees.map(({ id, version }) => ({ id, version })).sort((left, right) => compareText(left.id, right.id)),
+  );
   const compactCourse = (row, feeIds, publicOnly = false) => ({
     ...metadata(JSON.parse(row.data), !publicOnly), id: row.id, courseCode: row.course_code, version: row.version,
     createdAt: row.created_at, updatedAt: row.updated_at, ...deletion(row), feeIds,
@@ -184,7 +240,7 @@ async function initializeStore({ databasePath, seedUsers, seedCourses, attachmen
       };
     });
   }, 'read');
-  const listFees = ({ publicOnly = false, user = null } = {}) => transaction(() => user?.role === 'teacher' ? readCatalog(publicOnly, accessControl.scopeFor(user).courseIds).fees : feeCatalog(readFeeRows(publicOnly), readLinkRows(publicOnly)).fees, 'read');
+  const listFees = ({ publicOnly = false, user = null } = {}) => transaction(() => readCatalog(publicOnly, user?.role === 'teacher' ? accessControl.scopeFor(user).courseIds : null).fees, 'read');
   const catalogSnapshot = ({ publicOnly = false, since = '', user = null } = {}) => transaction(() => {
     if (user?.role === 'teacher') {
       const scope = accessControl.scopeFor(user), catalog = readCatalog(publicOnly, scope.courseIds);
@@ -192,11 +248,18 @@ async function initializeStore({ databasePath, seedUsers, seedCourses, attachmen
       const revision = createHash('sha256').update(JSON.stringify({ access: scope.revision, courses, fees })).digest('hex');
       return since === revision ? { revision, unchanged: true } : { revision, courses, fees };
     }
-    const courses = database.prepare(`SELECT id, version FROM courses ${visibleCourses(publicOnly)} ORDER BY id`).all();
-    const fees = database.prepare(`SELECT id, version FROM fees ${visibleFees(publicOnly)} ORDER BY id`).all();
-    const revision = createHash('sha256').update(JSON.stringify({ publicOnly, courses, fees })).digest('hex');
-    if (since === revision) return { revision, unchanged: true };
+    if (since) {
+      const { courses, fees } = catalogVersions(publicOnly), revision = snapshotRevision(publicOnly, courses, fees);
+      if (since === revision) return { revision, unchanged: true };
+      const catalog = readCatalog(publicOnly);
+      return {
+        revision,
+        courses: catalog.courseRows.map(row => compactCourse(row, catalog.feeIdsByCourse.get(row.id) || [], publicOnly)),
+        fees: catalog.fees,
+      };
+    }
     const catalog = readCatalog(publicOnly);
+    const revision = catalogRevision(publicOnly, catalog);
     return {
       revision,
       courses: catalog.courseRows.map(row => compactCourse(row, catalog.feeIdsByCourse.get(row.id) || [], publicOnly)),

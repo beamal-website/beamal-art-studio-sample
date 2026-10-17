@@ -4,7 +4,7 @@ import { mkdirSync, chmodSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { hashPassword, normaliseEmail } from './security.mjs';
 import { validateCourse, ApplicationError } from './validation.mjs';
-import { createMaterialStore } from './materials.mjs';
+import { createMaterialSchema, createMaterialStore } from './materials.mjs';
 import { createAttachmentStore } from './attachments.mjs';
 import { createScheduleStore } from './schedules.mjs';
 import { createSchedulingResourceStore } from './scheduling-resources.mjs';
@@ -377,6 +377,7 @@ async function initializeStore({ databasePath, seedUsers, seedCourses, attachmen
   } catch (error) { closeDatabase(); throw error; }
   let materials, attachments, schedules, schedulingResources, accessControl, people, availableSlots, classCapacityStatuses, enrollmentOrders, staffPersonalProfiles, trialApplications, studentLessonRequests;
   try {
+    createMaterialSchema(database);
     attachments = await createAttachmentStore({ database, transaction, directory: attachmentsDir || (databasePath === ':memory:' ? undefined : `${resolve(databasePath)}.attachments`) });
     schedulingResources = createSchedulingResourceStore({ database, transaction });
     schedules = createScheduleStore({ database, transaction, resources: schedulingResources, classTypes });

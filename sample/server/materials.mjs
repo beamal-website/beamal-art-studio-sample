@@ -35,7 +35,7 @@ export function requireMaterialVersion(input) {
   return input.version;
 }
 
-export function createMaterialStore({ database, transaction, attachments, accessControl }) {
+export function createMaterialSchema(database) {
   database.exec(`
     CREATE TABLE IF NOT EXISTS materials (
       id TEXT PRIMARY KEY, course_id TEXT NOT NULL REFERENCES courses(id),
@@ -58,6 +58,9 @@ export function createMaterialStore({ database, transaction, attachments, access
       version INTEGER NOT NULL, snapshot TEXT NOT NULL, created_at TEXT NOT NULL
     );
   `);
+}
+
+export function createMaterialStore({ database, transaction, attachments, accessControl }) {
   const identity = user => user && typeof user.id === 'string' ? database.prepare('SELECT id, display_name, role FROM users WHERE id = ?').get(user.id) : null;
   const courseRecord = id => typeof id === 'string' ? database.prepare('SELECT id, deleted_at FROM courses WHERE id = ?').get(id) : null;
   const activeCourse = id => {

@@ -77,7 +77,7 @@ export async function createPostgresDatabase(connectionString){
  const send=(action,sql='',values=[])=>{
   if(closed)throw new Error('The PostgreSQL connection is closed.');
   const id=++requestId,signalBuffer=new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT),signal=new Int32Array(signalBuffer),deadline=Date.now()+postgresQueryTimeoutMs;
-  worker.postMessage({id,action,sql,values,signal:signalBuffer});let packet;
+  channel.port1.postMessage({id,action,sql,values,signal:signalBuffer});let packet;
   while(!packet){
    packet=receiveMessageOnPort(channel.port1);if(packet)break;
    const remaining=deadline-Date.now();

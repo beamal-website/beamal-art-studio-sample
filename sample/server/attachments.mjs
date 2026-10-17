@@ -136,7 +136,7 @@ async function detectType(file, extension) {
   });
 }
 
-export async function createAttachmentStore({ database, transaction, directory }) {
+export async function createAttachmentStore({ database, transaction, directory, postgres = false }) {
   const ownedDirectory = !directory;
   directory ||= await mkdtemp(join(tmpdir(), 'beamal-attachments-'));
   directory = resolve(directory);
@@ -146,7 +146,7 @@ export async function createAttachmentStore({ database, transaction, directory }
     CREATE TABLE IF NOT EXISTS material_uploads (
       id TEXT PRIMARY KEY, course_id TEXT NOT NULL REFERENCES courses(id), actor_id TEXT NOT NULL REFERENCES users(id),
       name TEXT NOT NULL, mime_type TEXT NOT NULL, size INTEGER NOT NULL CHECK(size > 0 AND size <= 50000000),
-      sha256 TEXT NOT NULL, file_key TEXT NOT NULL UNIQUE, created_at TEXT NOT NULL, expires_at INTEGER NOT NULL,
+      sha256 TEXT NOT NULL, file_key TEXT NOT NULL UNIQUE, created_at TEXT NOT NULL, expires_at BIGINT NOT NULL,
       bound_material_id TEXT REFERENCES materials(id)
     );
     CREATE TABLE IF NOT EXISTS material_attachments (
@@ -159,6 +159,9 @@ export async function createAttachmentStore({ database, transaction, directory }
       PRIMARY KEY(actor_id, course_id, request_key)
     );
   `);
+  if (postgres && database.prepare('PRAGMA table_info(material_uploads)').all().some(column => column.name === 'expires_at' && column.type.toLowerCase() === 'integer')) {
+    database.exec('ALTER TABLE material_uploads ALTER COLUMN expires_at TYPE BIGINT');
+  }
   const rowsFor = materialId => database.prepare('SELECT material_uploads.* FROM material_uploads JOIN material_attachments ON material_uploads.id = material_attachments.upload_id WHERE material_attachments.material_id = ? ORDER BY material_attachments.position').all(materialId);
   const list = materialId => rowsFor(materialId).map(descriptor);
   const listMany = materialIds => {

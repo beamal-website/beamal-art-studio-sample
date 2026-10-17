@@ -58,7 +58,7 @@ async function initializeStore({ databasePath, seedUsers, seedCourses, attachmen
     );
     CREATE TABLE IF NOT EXISTS sessions (
       token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id),
-      csrf_hash TEXT NOT NULL, expires_at INTEGER NOT NULL
+      csrf_hash TEXT NOT NULL, expires_at BIGINT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS session_expiry ON sessions(expires_at);
     CREATE TABLE IF NOT EXISTS course_sequence (id INTEGER PRIMARY KEY CHECK(id = 1), value INTEGER NOT NULL);
@@ -101,6 +101,9 @@ async function initializeStore({ databasePath, seedUsers, seedCourses, attachmen
       created_at TEXT NOT NULL, PRIMARY KEY(user_id, route, request_key)
     );
   `);
+  if (postgres && database.prepare('PRAGMA table_info(sessions)').all().some(column => column.name === 'expires_at' && column.type.toLowerCase() === 'integer')) {
+    database.exec('ALTER TABLE sessions ALTER COLUMN expires_at TYPE BIGINT');
+  }
   if (!database.prepare('PRAGMA table_info(courses)').all().some(column => column.name === 'name_key')) database.exec('ALTER TABLE courses ADD COLUMN name_key TEXT');
   if (!database.prepare('PRAGMA table_info(courses)').all().some(column => column.name === 'deleted_at')) database.exec('ALTER TABLE courses ADD COLUMN deleted_at TEXT');
   database.exec('CREATE UNIQUE INDEX IF NOT EXISTS course_name_key_unique ON courses(name_key)');
@@ -378,7 +381,7 @@ async function initializeStore({ databasePath, seedUsers, seedCourses, attachmen
   let materials, attachments, schedules, schedulingResources, accessControl, people, availableSlots, classCapacityStatuses, enrollmentOrders, staffPersonalProfiles, trialApplications, studentLessonRequests;
   try {
     createMaterialSchema(database);
-    attachments = await createAttachmentStore({ database, transaction, directory: attachmentsDir || (databasePath === ':memory:' ? undefined : `${resolve(databasePath)}.attachments`) });
+    attachments = await createAttachmentStore({ database, transaction, directory: attachmentsDir || (databasePath === ':memory:' ? undefined : `${resolve(databasePath)}.attachments`), postgres });
     schedulingResources = createSchedulingResourceStore({ database, transaction });
     schedules = createScheduleStore({ database, transaction, resources: schedulingResources, classTypes });
     accessControl = createAccessControlStore({ database, transaction });

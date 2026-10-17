@@ -26,10 +26,26 @@ const pricing = record => Object.fromEntries(pricingKeys.filter(key => Object.ha
 const nameKey = name => name.trim().toLowerCase();
 const deletion = row => row.deleted_at ? { deletedAt: row.deleted_at } : {};
 
-export async function createStore({ databasePath = ':memory:', databaseUrl = process.env.DATABASE_URL || '', seedUsers = [], seedCourses = [], attachmentsDir } = {}) {
+export async function createStore(options = {}) {
+  const { databasePath = ':memory:', databaseUrl = process.env.DATABASE_URL || '', seedUsers = [], seedCourses = [], attachmentsDir } = options;
   const postgres=!!databaseUrl;
   if (!postgres&&databasePath !== ':memory:') mkdirSync(dirname(databasePath), { recursive: true, mode: 0o700 });
   const database = postgres ? await createPostgresDatabase(databaseUrl) : new DatabaseSync(databasePath);
+  let databaseClosed = false;
+  const closeDatabase = () => {
+    if (!databaseClosed) { databaseClosed = true; database.close(); }
+  };
+  try {
+    return await initializeStore({ databasePath, seedUsers, seedCourses, attachmentsDir, database, postgres, closeDatabase });
+  } catch (error) {
+    closeDatabase();
+    throw error;
+  }
+}
+
+async function initializeStore({ databasePath, seedUsers, seedCourses, attachmentsDir, database, postgres, closeDatabase }) {
+  let closed = false;
+  if (postgres) console.log('PostgreSQL connection ready; initializing schema and application stores.');
   if (!postgres&&databasePath !== ':memory:') chmodSync(databasePath, 0o600);
   database.exec(`
     PRAGMA foreign_keys = ON;
@@ -88,7 +104,6 @@ export async function createStore({ databasePath = ':memory:', databaseUrl = pro
   if (!database.prepare('PRAGMA table_info(courses)').all().some(column => column.name === 'name_key')) database.exec('ALTER TABLE courses ADD COLUMN name_key TEXT');
   if (!database.prepare('PRAGMA table_info(courses)').all().some(column => column.name === 'deleted_at')) database.exec('ALTER TABLE courses ADD COLUMN deleted_at TEXT');
   database.exec('CREATE UNIQUE INDEX IF NOT EXISTS course_name_key_unique ON courses(name_key)');
-  let closed = false;
   let transactionDepth = 0, savepointCounter = 0;
   const transaction = (callback, mode = 'write') => {
     const outer = transactionDepth === 0, savepoint = `nested_${++savepointCounter}`;
@@ -359,7 +374,7 @@ export async function createStore({ databasePath = ':memory:', databaseUrl = pro
       const input = Object.fromEntries(fields.filter(field => Object.hasOwn(seed, field)).map(field => [field, seed[field]]));
       createCourse(validateCourse(input), null, seed.id);
     }
-  } catch (error) { database.close(); throw error; }
+  } catch (error) { closeDatabase(); throw error; }
   let materials, attachments, schedules, schedulingResources, accessControl, people, availableSlots, classCapacityStatuses, enrollmentOrders, staffPersonalProfiles, trialApplications, studentLessonRequests;
   try {
     attachments = await createAttachmentStore({ database, transaction, directory: attachmentsDir || (databasePath === ':memory:' ? undefined : `${resolve(databasePath)}.attachments`) });
@@ -377,7 +392,8 @@ export async function createStore({ databasePath = ':memory:', databaseUrl = pro
     studentLessonRequests = createStudentLessonRequestStore({ database, transaction, schedules, getCourse, getStudentLesson: enrollmentOrders.studentLesson, postgres });
     classCapacityStatuses.setOccupancySource?.(enrollmentOrders.occupied);
   }
-  catch (error) { await attachments?.close(); database.close(); throw error; }
+  catch (error) { await attachments?.close(); closeDatabase(); throw error; }
+  if (postgres) console.log('PostgreSQL schema and application stores ready.');
   return {
     listCourses, getCourse, createCourse, updateCourse, deleteCourse: (id, version, actor) => changeCourseDeletion(id, version, actor), restoreCourse: (id, version, actor) => changeCourseDeletion(id, version, actor, true), listFees, getFee, createFee, updateFee, createOnce, mutateOnce, catalogSnapshot, materials, attachments, schedules, schedulingResources, accessControl, people, availableSlots, classCapacityStatuses, classTypes, enrollmentOrders, studentLessonRequests, staffPersonalProfiles, trialApplications,
     listUsers: () => database.prepare('SELECT * FROM users ORDER BY email').all().map(publicUser),
@@ -396,6 +412,6 @@ export async function createStore({ databasePath = ':memory:', databaseUrl = pro
     deleteSession: tokenHash => database.prepare('DELETE FROM sessions WHERE token_hash = ?').run(tokenHash),
     audit: () => database.prepare('SELECT * FROM audit_log ORDER BY id').all().map(row => ({ ...row, snapshot: JSON.parse(row.snapshot) })),
     feeAudit: () => database.prepare('SELECT * FROM fee_audit_log ORDER BY id').all().map(row => ({ ...row, snapshot: JSON.parse(row.snapshot) })),
-    close() { if (!closed) { closed = true; const cleanup = attachments.close(); database.close(); return cleanup; } },
-  };
+    close() { if (!closed) { closed = true; const cleanup = attachments.close(); closeDatabase(); return cleanup; } },
+    };
 }

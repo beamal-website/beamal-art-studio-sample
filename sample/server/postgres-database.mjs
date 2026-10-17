@@ -1,6 +1,7 @@
 import {MessageChannel,Worker,receiveMessageOnPort} from 'node:worker_threads';
 
 const pragmaTableInfo=/^\s*PRAGMA\s+table_info\s*\(\s*['"]?([a-z0-9_]+)['"]?\s*\)\s*;?\s*$/i;
+const postgresQueryTimeoutMs=30000;
 
 export function translateSql(source){
  let sql=String(source).trim();if(!sql)return '';
@@ -49,15 +50,21 @@ function statements(source){
  if(current.trim())result.push(current.trim());return result;
 }
 
-export function waitForPostgresWorker(worker){
+export function waitForPostgresWorker(worker,timeoutMs=20000){
  return new Promise((resolve,reject)=>{
-  const failed=error=>reject(error);
+  let settled=false;
+  const cleanup=()=>{clearTimeout(timer);worker.off('error',failed);worker.off('exit',exited);worker.off('message',received);};
+  const finish=error=>{if(settled)return;settled=true;cleanup();error?reject(error):resolve();};
+  const failed=error=>finish(error);
+  const exited=code=>finish(new Error(`PostgreSQL worker exited before becoming ready (code ${code}).`));
+  const received=message=>{
+   if(message?.ready===true){finish();return;}
+   finish(Object.assign(new Error(message?.error?.message||'Could not connect to PostgreSQL.'),{code:message?.error?.code}));
+  };
+  const timer=setTimeout(()=>finish(new Error(`PostgreSQL worker did not become ready within ${timeoutMs} ms.`)),timeoutMs);
   worker.once('error',failed);
-  worker.once('message',message=>{
-   worker.off('error',failed);
-   if(message.ready){resolve();return;}
-   reject(Object.assign(new Error(message.error?.message||'Could not connect to PostgreSQL.'),{code:message.error?.code}));
-  });
+  worker.once('exit',exited);
+  worker.once('message',received);
  });
 }
 
@@ -69,9 +76,22 @@ export async function createPostgresDatabase(connectionString){
  let requestId=0,closed=false;
  const send=(action,sql='',values=[])=>{
   if(closed)throw new Error('The PostgreSQL connection is closed.');
-  const id=++requestId,signalBuffer=new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT),signal=new Int32Array(signalBuffer);
+  const id=++requestId,signalBuffer=new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT),signal=new Int32Array(signalBuffer),deadline=Date.now()+postgresQueryTimeoutMs;
   worker.postMessage({id,action,sql,values,signal:signalBuffer});let packet;
-  while(!packet){packet=receiveMessageOnPort(channel.port1);if(packet)break;const wait=Atomics.wait(signal,0,0,1000);if(wait==='timed-out'&&worker.threadId===-1)throw new Error('The PostgreSQL worker exited unexpectedly.');}
+  while(!packet){
+   packet=receiveMessageOnPort(channel.port1);if(packet)break;
+   const remaining=deadline-Date.now();
+   if(remaining<=0){
+    closed=true;channel.port1.close();
+    worker.terminate().catch(error=>console.error('Could not stop the PostgreSQL worker after a query timeout.',error));
+    throw new Error(`PostgreSQL worker did not respond to ${action} within ${postgresQueryTimeoutMs} ms.`);
+   }
+   const wait=Atomics.wait(signal,0,0,Math.min(1000,remaining));
+   if(wait==='timed-out'&&worker.threadId===-1){
+    closed=true;channel.port1.close();
+    throw new Error('The PostgreSQL worker exited unexpectedly.');
+   }
+  }
   const message=packet.message;if(message.id!==id)throw new Error('PostgreSQL worker returned an out-of-order response.');
   if(message.error)throw Object.assign(new Error(message.error.message||'PostgreSQL query failed.'),{code:message.error.code,detail:message.error.detail});
   return message;

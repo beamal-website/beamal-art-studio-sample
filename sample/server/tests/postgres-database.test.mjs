@@ -34,3 +34,15 @@ test('PostgreSQL worker readiness forwards connection errors',async()=>{
  worker.emit('message',{ready:false,error:{message:'password authentication failed',code:'28P01'}});
  await assert.rejects(ready,{message:'password authentication failed',code:'28P01'});
 });
+
+test('PostgreSQL worker readiness rejects if the worker exits before connecting',async()=>{
+ const worker=new EventEmitter();
+ const ready=waitForPostgresWorker(worker,100);
+ worker.emit('exit',1);
+ await assert.rejects(ready,{message:'PostgreSQL worker exited before becoming ready (code 1).'});
+});
+
+test('PostgreSQL worker readiness times out if the worker never responds',async()=>{
+ const worker=new EventEmitter();
+ await assert.rejects(waitForPostgresWorker(worker,5),{message:'PostgreSQL worker did not become ready within 5 ms.'});
+});

@@ -15,13 +15,14 @@ function importOrder(source,tables){
  return ordered;
 }
 
-function verifyFreshTarget(database,tables){
+export function verifyFreshTarget(database,tables){
  for(const table of tables){
   const count=Number(database.prepare(`SELECT COUNT(*) AS count FROM ${quote(table)}`).get().count);
   if(!count)continue;
   if(table==='class_types'&&count===2){const ids=database.prepare('SELECT id FROM class_types').all().map(row=>row.id).sort();if(ids.join(',')==='00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000002')continue;}
   if(table==='schema_metadata'&&count===1&&database.prepare('SELECT value FROM schema_metadata WHERE name=?').get('normalized_fees_v1')?.value==='1')continue;
   if(['course_sequence','fee_sequence'].includes(table)&&count===1&&database.prepare(`SELECT value FROM ${quote(table)} WHERE id=1`).get()?.value===0)continue;
+  if(table==='availability_public_settings'&&count===1){const settings=database.prepare('SELECT id,show_full_trial_slots,show_rescheduling_slots,version FROM availability_public_settings').get();if(Number(settings?.id)===1&&Number(settings.show_full_trial_slots)===0&&Number(settings.show_rescheduling_slots)===0&&Number(settings.version)===0)continue;}
   fail(`Supabase table "${table}" already contains data. Stop here; import only into an empty target or review a separate merge plan.`);
  }
 }

@@ -26,7 +26,7 @@ test('HTTP health and anonymous session identify shared test mode without exposi
 test('secure deployment cookies allow credentialed Vercel-to-Render requests',async t=>{
   const app=await fixture(t,{secureCookies:true}),client=app.client(),response=await client.request('/api/auth/login',{method:'POST',body:{email:users[0].email,password:users[0].password},csrf:false});
   assert.equal(response.status,200,response.text);const cookie=response.headers.getSetCookie().join('; ');
-  assert.match(cookie,/SameSite=None/i);assert.match(cookie,/\bSecure\b/i);assert.match(cookie,/\bHttpOnly\b/i);
+  assert.match(cookie,/SameSite=None/i);assert.match(cookie,/\bSecure\b/i);assert.match(cookie,/\bHttpOnly\b/i);assert.doesNotMatch(cookie,/;\s*Domain=/i);
 });
 
 test('real password verification rejects invalid credentials and returns only the logged-in public identity',async t=>{

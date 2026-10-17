@@ -12,7 +12,8 @@ export class ApiError extends Error {
 // Only explicit operations are sent to the service. The browser's legacy
 // state is never uploaded wholesale, so another user's work cannot be reset.
 export function createApiClient({ baseUrl = import.meta.env?.VITE_BEAMAL_API_BASE_URL || '' } = {}) {
-  const apiBaseUrl=String(baseUrl).replace(/\/+$/,'');
+  // Keep production browser requests on the Vercel origin so Safari accepts the session cookie.
+  const apiBaseUrl=import.meta.env?.PROD?'':String(baseUrl).replace(/\/+$/,'');
   let csrfToken = '', cookieCsrfToken = '', identityKey = '';
   let authEpoch = 0, authMutation = Promise.resolve();
   const superseded = () => new ApiError('The signed-in account changed.', 0, 'AUTH_SUPERSEDED');

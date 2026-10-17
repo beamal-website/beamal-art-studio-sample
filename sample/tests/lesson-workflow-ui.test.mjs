@@ -86,7 +86,8 @@ test('shared request forms use task language and disclose unavailable submission
  assert.match(lessonWorkflowMarkup(sick,en),/name="supportingDocument"[^>]*disabled/);
  assert.match(lessonWorkflowMarkup(sick,{t:zh=>zh}),/申請病假/);
  assert.doesNotMatch(lessonWorkflowMarkup({...sick,step:'review'},en),/Preferred date|2026-11-14/);
- assert.doesNotMatch(lessonWorkflowMarkup({...state,step:'complete'},en),/Preview complete|This preview has been updated|✓/);
+ assert.match(lessonWorkflowMarkup({...state,step:'complete'},en),/Request submitted/);
+ assert.doesNotMatch(lessonWorkflowMarkup({...state,step:'complete'},en),/Preview complete|This preview has been updated/);
 });
 
 test('shared request editing review and type changes retain the same reason and preferred date',()=>{

@@ -4,15 +4,15 @@ import { randomBytes } from 'node:crypto';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createApplication } from './app.mjs';
+import { resolveListenerConfig } from './listener-config.mjs';
 
 const sampleDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const dataDir = resolve(process.env.BEAMAL_DATA_DIR || resolve(sampleDir, '.data'));
 const databasePath = resolve(process.env.BEAMAL_DATABASE_PATH || resolve(dataDir, 'beamal.sqlite'));
 const accountPath = resolve(dataDir, 'bootstrap-accounts.json');
-const host = process.env.BEAMAL_HOST || '127.0.0.1';
-const port = Number(process.env.BEAMAL_PORT || process.env.PORT || 5180);
+const { host, port } = resolveListenerConfig();
 const postgresMode = Boolean(process.env.DATABASE_URL);
-if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error('BEAMAL_PORT must be a valid port number.');
+if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error('PORT or BEAMAL_PORT must be a valid port number.');
 await mkdir(dataDir, { recursive: true, mode: 0o700 });
 
 let accounts = [], bootstrapNewAccounts = false;
@@ -51,7 +51,9 @@ const options = {
   secureCookies: process.env.BEAMAL_SECURE_COOKIES === 'true',
 };
 if (process.env.BEAMAL_ALLOWED_ORIGINS) options.allowedOrigins = process.env.BEAMAL_ALLOWED_ORIGINS.split(',').map(value => value.trim()).filter(Boolean);
+console.log(`Initializing Beamal shared test service with ${postgresMode ? 'PostgreSQL' : 'SQLite'}; listener target ${host}:${port}.`);
 const application = await createApplication(options);
+console.log('Application initialized; opening HTTP listener.');
 if (bootstrapNewAccounts) {
   try {
     await writeFile(accountPath, JSON.stringify({ notice: 'Fictional accounts for shared-system testing only. Keep this file private.', createdAt: new Date().toISOString(), accounts }, null, 2) + '\n', { mode: 0o600, flag: 'wx' });

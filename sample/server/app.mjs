@@ -239,6 +239,21 @@ export async function createApplication({ databasePath = ':memory:', databaseUrl
       if (pathname === '/api/student/timetable' && request.method === 'GET') {
         const session=requireSession(request); const query=enrollmentQuery(['from','to','since']); json(response,200,store.enrollmentOrders.timetable(session.user,query)); return;
       }
+      if(pathname==='/api/lesson-requests'&&request.method==='GET'){
+        const session=requireSession(request);enrollmentQuery([]);json(response,200,store.studentLessonRequests.list(session.user));return;
+      }
+      if(pathname==='/api/lesson-requests'&&request.method==='POST'){
+        const session=requireMutation(request);enrollmentQuery([]);const input=await body(request),key=idempotencyKey(request);
+        if(session.user.role!=='student')throw new ApplicationError(403,'ROLE_FORBIDDEN','Only a student may submit a lesson request.');
+        const result=store.createOnce({userId:session.user.id,route:pathname,key,payloadHash:payloadHash(input)},()=>({request:store.studentLessonRequests.create(input,session.user)}));
+        json(response,result.status,result.body);return;
+      }
+      const lessonRequestAssignmentMatch=/^\/api\/lesson-requests\/([^/]+)\/assign$/.exec(pathname);
+      if(lessonRequestAssignmentMatch&&request.method==='POST'){
+        const session=requireMutation(request);enrollmentQuery([]);const id=decodeId(lessonRequestAssignmentMatch[1]),input=await body(request),key=idempotencyKey(request),route=`POST /api/lesson-requests/${encodeURIComponent(id)}/assign`;
+        const result=store.mutateOnce({userId:session.user.id,route,key,payloadHash:payloadHash(input),status:200},()=>({request:store.studentLessonRequests.assign(id,input,session.user)}));
+        json(response,result.status,result.body);return;
+      }
       if (pathname === '/api/timetable/filter-facts' && request.method === 'GET') {
         const session=requireSession(request);
         if(!['admin','teacher'].includes(session.user.role))throw new ApplicationError(403,'ROLE_FORBIDDEN','Timetable filter facts are not available for this role.');

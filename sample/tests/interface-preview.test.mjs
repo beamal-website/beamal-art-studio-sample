@@ -248,6 +248,15 @@ test('shared People refresh updates visible facts without remounting unchanged d
 });
 
 function preview(options={}){let html='',paints=0,modalWrites=0;const dom={activeElement:null,querySelector:()=>null,querySelectorAll:()=>[]};class Form{constructor(form){this.entries=Object.entries(form.values||{}).flatMap(([name,value])=>Array.isArray(value)?value.map(item=>[name,item]):[[name,value]]);}*[Symbol.iterator](){yield* this.entries;}getAll(name){return this.entries.filter(([key])=>key===name).map(([,value])=>value);}}const ui=createInterfacePreview({context:()=>({t,role:'teacher'}),showModal:value=>{html=value;modalWrites++;},repaint:()=>paints++,dom,Form,...options});return {ui,get html(){return html;},get paints(){return paints;},get modalWrites(){return modalWrites;}};}
+test('administrator assignment action only forwards a course slot offered for that pending request',()=>{
+ const assignments=[],request={id:'request-1',version:4,studentId:'student-1',studentName:'Student One',type:'reschedule',status:'pending',createdAt:'2026-10-16T09:00:00Z',lesson:{courseId:'course-1',courseName:'Art course',date:'2026-10-16',time:'13:00'},availableTimes:[{scheduleId:'schedule-1',sequence:3,courseId:'course-1',courseName:'Art course',date:'2026-10-30',time:'15:00',availableSeats:1}]};
+ const p=preview({context:()=>({t,role:'admin',sharedMode:true,sharedIdentity:'admin-login'}),sharedSnapshot:()=>({user:{id:'admin-login',role:'admin'},ready:true,studentRequestsReady:true,studentRequests:[request]}),onAssignStudentRequest:input=>assignments.push(input)});
+ p.ui.teacherPortal();p.ui.action({action:'ui-staff',uiCommand:'open-task',uiId:'request-1'});
+ p.ui.action({action:'ui-staff',uiCommand:'assign-lesson-request',uiId:'request-1',uiScheduleId:'unoffered-schedule',uiSequence:'3'});
+ assert.deepEqual(assignments,[]);
+ p.ui.action({action:'ui-staff',uiCommand:'assign-lesson-request',uiId:'request-1',uiScheduleId:'schedule-1',uiSequence:'3'});
+ assert.deepEqual(assignments,[{requestId:'request-1',version:4,scheduleId:'schedule-1',sequence:3}]);
+});
 
 function productPreview(){
  let p,cachedHtml,buttons=[];
@@ -668,21 +677,20 @@ test('student lesson handoff resolves current family and session IDs after renam
  current.lessons=[];assert.equal(p.ui.studentLessonFacts({}),null);
 });
 
-test('shared student request host preserves typed fields across tabs and blocks every submission path without creating records',()=>{
+test('shared student request host preserves typed fields and submits the reviewed request through its host callback',async()=>{
  const current={t,role:'student',sharedMode:true,sharedIdentity:'["student-account","student","access-1"]',sharedReady:true,students:[{id:'actual-child',displayName:'Actual child'}],lessons:[{id:'actual-session',studentId:'actual-child',scheduleId:'actual-series',sequence:4,date:'2026-11-07',time:'10:00',courseName:'Actual watercolour',teachers:[{displayName:'Actual teacher'}]}]};
- let form=null;const dom={activeElement:null,querySelector:selector=>selector==='#ui-lesson-form'?form:null,querySelectorAll:()=>[]},p=preview({context:()=>current,dom}),before=JSON.stringify(current);
- const facts=p.ui.studentLessonFacts({uiId:'actual-session'});assert.equal(facts.shared,true);assert.deepEqual(facts.requestCapabilities,{submit:false,upload:false});
+ let form=null,submitted=null;const dom={activeElement:null,querySelector:selector=>selector==='#ui-lesson-form'?form:null,querySelectorAll:()=>[]},p=preview({context:()=>current,dom,onSubmitStudentRequest:async fields=>{submitted=fields;return {id:'request-actual-1'};}}),before=JSON.stringify(current);
+ const facts=p.ui.studentLessonFacts({uiId:'actual-session'});assert.equal(facts.shared,true);assert.deepEqual(facts.requestCapabilities,{submit:true,upload:false});
  p.ui.action({action:'ui-lesson',uiCommand:'launch',uiView:'student-request',uiId:'actual-session'});
  form={values:{requestType:'reschedule',reason:'Reason typed before changing tab',preferredDate:'2026-11-14'}};
  p.ui.action({action:'ui-lesson',uiCommand:'request-type',uiId:'sick'});assert.match(p.html,/Reason typed before changing tab/);assert.match(p.html,/Supporting documents cannot be attached yet/);
  form={values:{requestType:'sick',reason:'Reason typed before changing tab'}};
  p.ui.action({action:'ui-lesson',uiCommand:'request-type',uiId:'reschedule'});assert.match(p.html,/value="2026-11-14"/);
- p.ui.submit({id:'ui-lesson-form',dataset:{uiCommand:'review'},values:{requestType:'reschedule',reason:'Reason typed before changing tab',preferredDate:'2026-11-14'}});form=null;
- for(const command of ['confirm-preview','save-preview','submit','submit-request']){
-  p.ui.action({action:'ui-lesson',uiCommand:command});assert.match(p.html,/Review request/);assert.match(p.html,/data-ui-command="submit-request"[^>]*disabled/);assert.doesNotMatch(p.html,/This preview has been updated|Preview complete/);
-  p.ui.submit({id:'ui-lesson-form',dataset:{uiCommand:command},values:{}});assert.match(p.html,/Review request/);
- }
- p.ui.action({action:'ui-lesson',uiCommand:'back'});assert.match(p.html,/Reason typed before changing tab/);assert.match(p.html,/value="2026-11-14"/);
+ p.ui.submit({id:'ui-lesson-form',dataset:{uiCommand:'review'},values:{requestType:'reschedule',reason:'Reason typed before changing tab',preferredDate:'2026-11-14'}});form=null;assert.match(p.html,/Review request/);
+ assert.match(p.html,/data-ui-command="submit-request"[^>]*>/);assert.doesNotMatch(p.html,/data-ui-command="submit-request"[^>]*disabled/);
+ await p.ui.action({action:'ui-lesson',uiCommand:'submit-request'});
+ assert.match(p.html,/Request submitted/);assert.equal(submitted.identity,current.sharedIdentity);assert.equal(submitted.studentSessionId,'actual-session');assert.equal(submitted.type,'reschedule');assert.equal(submitted.reason,'Reason typed before changing tab');assert.equal(submitted.preferredDate,'2026-11-14');
+ assert.equal(JSON.stringify(current),before,'The UI passes the request to its host without mutating lesson or identity records itself');
  assert.equal(JSON.stringify(current),before);
 });
 

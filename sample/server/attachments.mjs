@@ -298,8 +298,9 @@ export async function createAttachmentStore({ database, transaction, directory, 
     } catch (error) { await close(); throw error; }
   };
   await cleanup();
-  const timer = setInterval(() => cleanup().catch(() => {}), 60_000); timer.unref();
-  return { directory, list, listMany, bind, stage, serve, cleanup, async close() { clearInterval(timer); if (ownedDirectory) await rm(directory, { recursive: true, force: true }); } };
+  const timer = postgres ? null : setInterval(() => cleanup().catch(() => {}), 60_000);
+  timer?.unref();
+  return { directory, list, listMany, bind, stage, serve, cleanup, async close() { if (timer) clearInterval(timer); if (ownedDirectory) await rm(directory, { recursive: true, force: true }); } };
   } catch (error) {
     if (ownedDirectory) await rm(directory, { recursive: true, force: true });
     throw error;

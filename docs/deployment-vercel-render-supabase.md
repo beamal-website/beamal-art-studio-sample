@@ -11,6 +11,8 @@ This repository includes a Render Blueprint at [`render.yaml`](../render.yaml). 
 
 The Render service enables HTTPS-only session cookies and listens on Render's port. The persistent disk is mounted at `/var/data`; private material attachments use `/var/data/beamal.sqlite.attachments`.
 
+In PostgreSQL mode, expired temporary uploads are cleaned when the API starts rather than by a recurring timer. This avoids blocking Render's HTTP health checks while a synchronous PostgreSQL query runs; expired uploads are still rejected, and their unused files are removed on the next service start.
+
 ## Import the current SQLite database
 
 The importer defaults to `sample/.data/local-demo/beamal.sqlite`. Set `DATABASE_URL` in your local terminal from a secure password manager or shell secret prompt, then run:

@@ -1,3 +1,4 @@
+import {createStudentRecordStore} from './student-records.mjs';
 import {createReschedulingAvailability} from './rescheduling-availability.mjs';
 import {createWebsiteNewsStore} from './website-news.mjs';
 import { DatabaseSync } from 'node:sqlite';
@@ -479,7 +480,7 @@ async function initializeStore({ databasePath, seedUsers, seedCourses, attachmen
       createCourse(validateCourse(input), null, seed.id);
     }
   } catch (error) { closeDatabase(); throw error; }
-  let materials, attachments, schedules, schedulingResources, accessControl, people, availableSlots, classCapacityStatuses, enrollmentOrders, staffPersonalProfiles, lessonNotes, dateNotes, trialApplications, packageContents, lessonParentMessages, parentMessageTemplates, studentLessonRequests, trialInquiries, websiteNews;
+  let materials, attachments, schedules, schedulingResources, accessControl, people, availableSlots, classCapacityStatuses, enrollmentOrders, staffPersonalProfiles, lessonNotes, dateNotes, trialApplications, packageContents, lessonParentMessages, parentMessageTemplates, studentLessonRequests, trialInquiries, websiteNews, studentRecords;
   try {
     createMaterialSchema(database);
     attachments = await createAttachmentStore({ database, transaction, directory: attachmentsDir || (databasePath === ':memory:' ? undefined : `${resolve(databasePath)}.attachments`), postgres });
@@ -502,12 +503,13 @@ async function initializeStore({ databasePath, seedUsers, seedCourses, attachmen
     lessonParentMessages = createLessonParentMessageStore({ database, transaction, enrollmentOrders });
     parentMessageTemplates = createParentMessageTemplateStore({ database, transaction });
     studentLessonRequests = createStudentLessonRequestStore({ database, transaction, schedules, getCourse, getStudentLesson: enrollmentOrders.studentLesson, postgres, rescheduling:createReschedulingAvailability({database,transaction,availableSlots,schedules,getCourse,postgres}) });
+    studentRecords=createStudentRecordStore({database,transaction,people,enrollmentOrders});
     classCapacityStatuses.setOccupancySource?.(enrollmentOrders.occupied);
   }
   catch (error) { await attachments?.close(); closeDatabase(); throw error; }
   if (postgres) console.log('PostgreSQL schema and application stores ready.');
   return {
-    listCourses, getCourse, createCourse, updateCourse, deleteCourse: (id, version, actor) => changeCourseDeletion(id, version, actor), restoreCourse: (id, version, actor) => changeCourseDeletion(id, version, actor, true), listFees, getFee, createFee, updateFee, createOnce, mutateOnce, catalogSnapshot, materials, attachments, schedules, schedulingResources, accessControl, people, availableSlots, classCapacityStatuses, classTypes, enrollmentOrders, studentLessonRequests, staffPersonalProfiles, lessonNotes, dateNotes, trialApplications, packageContents, lessonParentMessages, parentMessageTemplates,trialInquiries,websiteNews,
+    listCourses, getCourse, createCourse, updateCourse, deleteCourse: (id, version, actor) => changeCourseDeletion(id, version, actor), restoreCourse: (id, version, actor) => changeCourseDeletion(id, version, actor, true), listFees, getFee, createFee, updateFee, createOnce, mutateOnce, catalogSnapshot, materials, attachments, schedules, schedulingResources, accessControl, people, availableSlots, classCapacityStatuses, classTypes, enrollmentOrders, studentLessonRequests, staffPersonalProfiles, lessonNotes, dateNotes, trialApplications, packageContents, lessonParentMessages, parentMessageTemplates,trialInquiries,websiteNews,studentRecords,
     listUsers: () => database.prepare('SELECT * FROM users WHERE archived_at IS NULL ORDER BY email').all().map(publicUser),
     userByEmail: email => database.prepare('SELECT * FROM users WHERE email = ? AND archived_at IS NULL').get(email),
     publicUser,

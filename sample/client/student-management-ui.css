@@ -1,0 +1,52 @@
+/* Student management follows the same flat lists and shared navigation as Sales. */
+.student-management-page{min-width:0;min-height:100%;color:var(--ink,#253d3b)}
+.student-management-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px 24px;border-bottom:1px solid #d9ddd2}
+.student-management-heading h1{font-size:26px;font-weight:500;margin:0}
+.student-management-heading>div,.people-header-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.student-management-heading button,.people-header-actions button{min-height:44px;border-radius:3px;padding:10px 18px}
+.student-management-body{padding:20px 24px}
+.student-management-controls{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:12px}
+.student-management-controls select{min-width:130px;width:auto;margin:0}
+.student-management-controls select,.student-management-controls input{min-height:46px;border:1px solid #bdcbc1;border-radius:3px;background:#fffdf8;color:var(--ink,#253d3b);font-size:16px}
+.student-management-search{position:relative;display:flex;align-items:center;width:330px;max-width:100%;margin:0}
+.student-management-search svg{position:absolute;left:14px;width:22px;height:22px;color:#75867e;pointer-events:none}
+.student-management-search input{width:100%;margin:0;padding:10px 12px 10px 46px}
+.student-record-date{display:flex;gap:10px;align-items:center;margin:0;color:#526a60}
+.student-record-date input{width:170px;margin:0;padding:10px}
+.student-management-tabs{display:flex;gap:20px;padding:0 24px;border-bottom:1px solid #d9ddd2}
+.student-management-tabs button{min-height:48px;margin:0 0 -1px;padding:12px 16px;border-radius:0;border:0;border-bottom:3px solid transparent;background:transparent;box-shadow:none;color:#687770}
+.student-management-tabs button[aria-pressed=true]{color:var(--teal);border-bottom-color:var(--teal)}
+.student-management-table{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain}
+.student-management-table table{width:100%;min-width:850px;margin:0;border-collapse:collapse;text-align:left}
+.student-management-table th,.student-management-table td{padding:20px 16px;border:0;border-bottom:1px solid #d9ddd2;line-height:1.5}
+.student-management-table th{background:#e9eee5;white-space:nowrap;font-size:15px;font-weight:600}
+.student-management-empty{padding:52px 20px;text-align:center;color:#687770;border:0}
+.portal-content>.people-directory{padding:0}
+.people-directory .people-page-header{align-items:center;margin:0;padding:20px 24px;border-bottom:1px solid #d9ddd2}
+.people-directory .people-page-header h1{font-size:26px;margin:0}
+.people-directory .people-controls{display:flex;align-items:flex-start;gap:12px;margin:20px 24px 12px;position:relative}
+.people-directory .people-classification{margin:0;flex:0 0 132px}
+.people-directory .people-classification select{min-height:48px;width:100%;margin:0;background:#e9eee5}
+.people-directory .people-search{flex:1}
+.people-directory .people-search>div{gap:8px}
+.people-advanced{flex:0 0 180px}
+.people-advanced summary{display:flex;align-items:center;min-height:48px;border:1px solid #bdcbc1;border-radius:3px;padding:10px 18px;margin:0;cursor:pointer;color:var(--teal);gap:16px;justify-content:space-between;box-sizing:border-box;list-style:none}
+.people-advanced summary::-webkit-details-marker{display:none}
+.people-advanced summary:after{content:'⌄';flex:none}
+.people-advanced[open] summary:after{content:'⌃'}
+.people-advanced>div{position:absolute;right:0;top:56px;z-index:5;width:300px;max-width:100%;display:grid;gap:14px;padding:18px;background:#fffdf8;border:1px solid #d9ddd2;border-radius:3px;box-shadow:0 5px 18px #253d3b16;box-sizing:border-box}
+.people-directory .people-table-scroll{margin:0 24px;border:0;border-radius:0;max-width:calc(100% - 48px);background:transparent}
+.people-directory .people-table-scroll table{min-width:1350px}
+.people-directory .people-table-scroll th,.people-directory .people-table-scroll td{width:auto;padding:20px 16px;white-space:normal}
+.people-directory .people-table-scroll th:first-child{width:210px}
+.people-directory .people-table-scroll th{font-weight:600;color:var(--ink,#253d3b)}
+.people-directory .people-empty{border:0;background:transparent;padding:48px 20px;text-align:center}
+.people-directory .people-pagination{padding:20px 24px}
+.people-directory>.people-error-state,.people-directory>.people-loading{margin:16px 24px}
+@media(max-width:780px){
+ .student-management-heading,.people-directory .people-page-header{padding:18px 16px;align-items:flex-start;flex-wrap:wrap}
+ .student-management-body{padding:16px}.student-management-tabs{padding:0 16px}
+ .student-management-controls{align-items:stretch}.student-management-search{flex:1 1 240px}.student-record-date{flex-wrap:wrap}
+ .people-directory .people-controls{margin:16px;flex-wrap:wrap}.people-directory .people-search{flex:1 1 220px}.people-advanced{flex:1 1 150px}.people-directory .people-table-scroll{margin:0 16px;max-width:calc(100% - 32px)}
+ .people-advanced>div{top:100%;margin-top:8px}.people-directory .people-pagination{padding:18px 16px}
+}

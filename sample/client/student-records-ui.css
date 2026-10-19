@@ -1,0 +1,54 @@
+.sr-link{min-height:44px;padding:8px 0;border:0;background:transparent;color:var(--teal,#27777b);box-shadow:none;border-radius:0;text-align:left;font:inherit;overflow-wrap:anywhere}
+.sr-link:hover,.sr-link:focus-visible{background:#e9eee5;text-decoration:underline;filter:none}
+.student-management-table small{display:block;color:#687770;margin-top:4px}
+.student-management-table td{vertical-align:top;overflow-wrap:anywhere;white-space:pre-wrap}
+.sr-pagination{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:20px 0;font-size:14px;color:#526a60}
+.sr-pagination>div{display:flex;align-items:center;gap:12px}.sr-pagination button{min-height:44px}
+.student-management-controls>button{min-height:46px;margin:0}.student-management-controls{margin:0 0 12px}
+.people-profile{position:fixed;inset:16px;z-index:35;display:flex;flex-direction:column;min-width:0;min-height:0;max-width:none;margin:0;padding:0!important;background:#fffdf8;border:1px solid #d9ddd2;border-radius:5px;box-shadow:0 0 0 100vmax #253d3b70;overflow:hidden}
+.people-profile-heading{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:18px 26px}
+.people-profile-heading h1{margin:0;font-size:27px;font-weight:500;overflow-wrap:anywhere}
+.people-profile-close{width:44px;min-height:44px;padding:0;border:0;background:transparent;color:#687770;box-shadow:none;font-size:32px;flex:none}
+.people-profile-tabs{display:flex;gap:8px;flex:none;padding:0 20px;border-bottom:1px solid #d9ddd2;overflow-x:auto;overscroll-behavior-x:contain}
+.people-profile-tabs button{min-height:48px;margin:0 0 -1px;padding:12px 16px;border-radius:0;border:0;border-bottom:3px solid transparent;background:transparent;box-shadow:none;white-space:nowrap;color:#687770}
+.people-profile-tabs button[aria-current=page]{color:var(--teal);border-bottom-color:var(--teal)}
+.people-profile-scroll{flex:1;min-height:0;min-width:0;overflow:auto;overscroll-behavior:contain;padding:24px 26px}
+.people-profile .people-profile-layout{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:24px}
+.people-profile .people-details{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.people-profile .people-details>div{display:flex;flex-direction:column;align-items:stretch;gap:8px;padding:10px 14px;border:1px solid #c8d0c8;min-height:70px;border-radius:3px;box-sizing:border-box;background:transparent}
+.people-profile .people-details dt{font-size:13px;color:#687770;line-height:1.4}
+.people-profile .people-details dd{margin:0;font-size:16px;color:#253d3b;white-space:pre-wrap;overflow-wrap:anywhere}
+.people-profile .people-profile-section{margin:0 0 26px;padding:0 0 26px;border:0;border-bottom:1px solid #d9ddd2;border-radius:0;background:transparent}
+.people-profile .people-profile-section h2{font-size:20px;margin:0 0 22px;font-weight:600}
+.people-profile-sidebar{min-width:0}.people-profile-sidebar>section{padding:18px;border:1px solid #d9ddd2;border-radius:3px;margin-top:20px}.people-profile-sidebar h2{font-size:18px;margin:0 0 12px}
+.people-profile-avatar{display:grid;place-items:center;background:#f2f3ee;aspect-ratio:1;border-radius:3px;color:#899189}.people-profile-avatar svg{width:55%;height:55%}
+.people-profile-footer{display:flex;align-items:center;justify-content:flex-end;gap:12px;padding:14px 26px;border-top:1px solid #d9ddd2;min-height:44px;flex:none}
+.people-profile-footer:empty{display:none}.people-profile-footer button{min-height:44px;margin:0}
+.people-profile .people-history{padding:0;border:0;border-radius:0;background:transparent;position:static}
+.people-profile .student-management-table{margin-top:12px}
+.sr-history{padding:0;list-style:none}.sr-history li{padding:18px 0;border-bottom:1px solid #d9ddd2}.sr-history p{white-space:pre-wrap}.sr-history span{font-size:14px;color:#687770}
+.sr-modal{z-index:1520;padding:16px;grid-template-columns:minmax(0,1fr)}
+.sr-dialog{display:flex;flex-direction:column;width:min(860px,100%);max-width:860px;max-height:calc(100dvh - 32px);min-width:0;margin:0;padding:0;overflow:hidden;border-radius:5px;background:#fffdf8}
+.sr-dialog>header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 24px;border-bottom:1px solid #d9ddd2;flex:none}.sr-dialog h2{font-size:24px;margin:0}.sr-icon{width:44px;min-height:44px;padding:0;background:transparent;color:#687770;border:0;box-shadow:none;font-size:30px}
+.sr-dialog form{display:flex;flex-direction:column;min-height:0;margin:0;overflow:hidden;flex:1}.sr-dialog-body{min-height:0;overflow:auto;overscroll-behavior:contain;padding:24px;flex:1}.sr-dialog-body>fieldset{padding:0;margin:0;border:0;min-width:0}
+.sr-dialog footer{display:flex;align-items:center;justify-content:flex-end;gap:12px;padding:14px 24px;border-top:1px solid #d9ddd2;flex:none}.sr-dialog footer button{min-height:44px;margin:0}
+.sr-field{display:flex;flex-direction:column;gap:8px;margin:0 0 18px;min-width:0}.sr-field>span{font-size:14px;color:#526a60}
+.sr-field input,.sr-field select,.sr-field textarea{min-width:0;width:100%;box-sizing:border-box;margin:0;min-height:46px;border:1px solid #bdcbc1;border-radius:3px;background:#fffdf8;color:#253d3b;padding:10px 12px;font-size:16px}.sr-field textarea{resize:vertical;min-height:100px}
+.sr-find-student{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid #d9ddd2}.sr-find-student>label{flex:1;min-width:180px;font-size:14px;color:#526a60;margin:0}.sr-find-student input{margin:8px 0 0;min-height:44px}.sr-find-student small{flex-basis:100%;color:#687770}.sr-find-student button{padding:10px;min-height:44px}
+.sr-recipients,.sr-rubric{min-width:0;border:1px solid #d9ddd2;padding:16px;margin-bottom:20px}.sr-recipients{max-height:230px;overflow:auto;overscroll-behavior:contain}.sr-recipients label{display:flex;align-items:center;gap:10px;min-height:44px;margin:0;font-size:15px}.sr-recipients input{width:18px;min-height:18px;margin:0;flex:none}
+.sr-details{margin:0}.sr-details>div{display:grid;grid-template-columns:150px minmax(0,1fr);gap:16px;padding:16px 0;border-bottom:1px solid #d9ddd2}.sr-details dt{color:#687770;font-size:14px}.sr-details dd{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.sr-family{margin:24px 28px;padding:24px 0;border-top:1px solid #d9ddd2}.sr-family h2{font-size:23px}.sr-family article{padding:20px 0;border-bottom:1px solid #d9ddd2}.sr-family h3{margin:0 0 8px}.sr-text{white-space:pre-wrap;overflow-wrap:anywhere}.sr-sign{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}.sr-family dd{margin:0 0 12px}
+@media(max-width:1000px){.people-profile .people-profile-layout{grid-template-columns:minmax(0,1fr) 210px}.people-profile .people-details{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:780px){.people-profile{inset:8px}.people-profile-heading{padding:14px 16px}.people-profile-heading h1{font-size:22px}.people-profile-tabs{padding:0 8px;gap:0}.people-profile-tabs button{padding:10px 14px}.people-profile-scroll{padding:20px 16px}.people-profile .people-profile-layout{display:flex;flex-direction:column}.people-profile-sidebar{width:100%;display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}.people-profile-avatar{width:120px;flex:none}.people-profile-sidebar>section{flex:1;min-width:180px;margin:0}.people-profile-footer{padding:12px 16px}.sr-dialog-body{padding:18px 16px}.sr-dialog>header,.sr-dialog footer{padding:14px 16px}.sr-details>div{grid-template-columns:minmax(0,1fr);gap:6px}.sr-family{margin:20px 16px}.student-management-search{flex:1 1 200px}}
+@media(max-width:480px){.people-profile .people-details{grid-template-columns:minmax(0,1fr)}.sr-modal{padding:8px}.sr-dialog{max-height:calc(100dvh - 16px)}.sr-dialog h2{font-size:21px}}
+/* Account-wide button rules must not turn profile tabs and links into filled actions. */
+.portal-content .people-profile .people-profile-tabs>button{background:transparent;color:#687770;box-shadow:none;border-radius:0;border:0;border-bottom:3px solid transparent}
+.portal-content .people-profile .people-profile-tabs>button[aria-current=page]{color:var(--teal);border-bottom-color:var(--teal)}
+.portal-content .people-profile .people-profile-tabs>button:hover{background:#e9eee5;filter:none}
+.portal-content .people-profile .people-profile-close{background:transparent;color:#687770;border:0;box-shadow:none;border-radius:3px}
+.portal-content .sr-link,.sr-dialog .sr-link{background:transparent;color:var(--teal);border:0;box-shadow:none;border-radius:0}
+.portal-content .sr-link:hover,.sr-dialog .sr-link:hover,.portal-content .people-profile .people-profile-close:hover{background:#e9eee5;filter:none}
+.people-profile:focus{outline:none}
+.sr-field select{padding-inline-end:44px}
+.portal-content .student-management-heading .sr-icon{background:transparent;color:var(--teal);border:0;box-shadow:none;width:44px;min-height:44px;padding:8px;font-size:26px}
+.portal-content .student-management-heading .sr-icon:hover{background:#e9eee5;filter:none}

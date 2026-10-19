@@ -19,8 +19,8 @@ const tagById = (html, id) => html.match(new RegExp(`<[^>]+\\bid="${id}"[^>]*>`)
 test('directory offers controlled segments, search, sorting and profile actions in both languages', () => {
   for (const language of ['zh', 'en']) {
     const html = peopleDirectoryMarkup({ people: [person], total: 45, page: 2, pageSize: 20, kind: 'applicant', q: 'Chan', sort: 'createdAt', direction: 'desc' }, ui(language));
-    assert.match(html, /data-action="people-kind" data-people-kind="student" aria-pressed="false"/);
-    assert.match(html, /data-action="people-kind" data-people-kind="applicant" aria-pressed="true"/);
+    assert.match(html, /id="people-kind-filter"/);assert.match(html, /<option value="student">/);
+    assert.match(html, /<option value="applicant" selected>/);
     assert.match(html, /<form[^>]+id="people-search"/);
     assert.match(tagById(html, 'people-search-query'), /name="q"[^>]+value="Chan"/);
     assert.match(html, /<option value="createdAt" selected>/);
@@ -30,7 +30,7 @@ test('directory offers controlled segments, search, sorting and profile actions 
     assert.match(html, /data-action="people-page" data-page="1"/);
     assert.match(html, /data-action="people-page" data-page="3"/);
     assert.match(html, /people-table-scroll/);
-    assert.match(html, language === 'en' ? /Applicant directory/ : /申請者名冊/);
+    assert.match(html, language === 'en' ? /Applicants/ : /申請者/);
     assert.match(html, /Avery Chan/);
   }
 });
@@ -61,7 +61,7 @@ test('directory distinguishes no records, no search matches, loading and failure
 });
 
 test('all untrusted directory fields and ids are escaped instead of becoming markup', () => {
-  const unsafe = { ...person, id: '\" data-go=\"/leak', displayName: '<img src=x onerror=alert(1)>', parentName: '<script>bad()</script>', email: '<bad@example.test>' };
+  const unsafe = { ...person, id: '\" data-go=\"/leak', displayName: '<img src=x onerror=alert(1)>', contact1Name: '<script>bad()</script>', email: '<bad@example.test>' };
   const html = peopleDirectoryMarkup({ people: [unsafe], total: 1, q: '\"><script>search()</script>' }, ui('en'));
   assert.match(html, /&lt;img src=x onerror=alert\(1\)&gt;/);
   assert.match(html, /&lt;script&gt;bad\(\)&lt;\/script&gt;/);
@@ -97,7 +97,7 @@ test('profile age uses the actual birthday, handles leap years, and imposes no t
 
 test('history shows audited action, actor, time and version without exposing snapshots as JSON', () => {
   const history = ['person.create', 'person.update', 'person.convert'].map((action, index) => ({ id: index + 1, action, version: index + 1, actor: { id: 'admin-a', displayName: 'Administrator <A>' }, createdAt: '2026-10-15T01:30:00.000Z', snapshot: { ...person, privateSentinel: 'DO_NOT_PRINT_RAW_SNAPSHOT' } }));
-  const html = peopleProfileMarkup({ person, history }, ui('en'));
+  const html = peopleProfileMarkup({ person, history, profileTab: 'logs' }, ui('en'));
   assert.match(html, /Record created/);
   assert.match(html, /Details updated/);
   assert.match(html, /Converted to student/);
@@ -105,10 +105,10 @@ test('history shows audited action, actor, time and version without exposing sna
   assert.match(html, /datetime="2026-10-15T01:30:00.000Z"/);
   assert.match(html, /Version 3/);
   assert.doesNotMatch(html, /DO_NOT_PRINT_RAW_SNAPSHOT|privateSentinel|"snapshot"|admin-a/);
-  const historyFailed = peopleProfileMarkup({ person, historyError: 'History unavailable' }, ui('en'));
+  const historyFailed = peopleProfileMarkup({ person, profileTab: 'logs', historyError: 'History unavailable' }, ui('en'));
   assert.match(historyFailed, /role="alert"[^>]*>History unavailable/);
   assert.doesNotMatch(historyFailed, /No history yet/);
-  const historyLoading = peopleProfileMarkup({ person, historyLoading: true }, ui('en'));
+  const historyLoading = peopleProfileMarkup({ person, profileTab: 'logs', historyLoading: true }, ui('en'));
   assert.match(historyLoading, /Loading history/);
   assert.doesNotMatch(historyLoading, /No history yet/);
 });
@@ -247,4 +247,11 @@ test('extended profile data is escaped and preserves a recorded promotion choice
   assert.doesNotMatch(optedInEditor, /<option value="" selected>/);
   assert.match(optedInEditor, /value="&lt;ID&gt;"/);
   assert.match(optedInEditor, /&lt;Detailed note&gt;/);
+});
+
+test('student list shows the reference contact columns using real fields and never invents student numbers',()=>{
+ const html=peopleDirectoryMarkup({people:[{...person,citizenId:'ID-actual',phone:'20000000',mobile:'90000000',contact1Name:'Guardian one',contact1Phone:'91111111',contact2Name:'Guardian two',contact2Phone:'92222222'}]},ui('en'));
+ for(const label of ['Name','Student no.','Citizen ID','Phone','Mobile','Contact 1','Contact 1 phone','Contact 2','Contact 2 phone'])assert.ok(html.includes('>'+label+'</th>'));
+ for(const value of ['ID-actual','20000000','90000000','Guardian one','91111111','Guardian two','92222222'])assert.ok(html.includes(value));
+ assert.match(html,/<\/button><\/td><td>—<\/td>/);assert.doesNotMatch(html,/AI Assistant/);
 });

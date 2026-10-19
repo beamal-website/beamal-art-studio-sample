@@ -394,7 +394,7 @@ function sharedStaffSnapshot(){return {ready:true,today:'2026-10-15',currentTime
 
 test('shared staff host refreshes the actual schedule and opens its stable occurrence through the business callback',()=>{
  let snapshot={...sharedStaffSnapshot(),today:'2026-10-16'},opened=null;const p=preview({sharedSnapshot:()=>snapshot,onOpenStaffLesson:lesson=>opened=lesson});
- p.ui.teacherPortal();p.ui.action({action:'ui-staff',uiCommand:'tab',uiTab:'class-schedule'});let html=p.ui.teacherPortal();assert.match(html,/Actual teacher/);assert.match(html,/Actual art course/);assert.match(html,/Actual room/);assert.doesNotMatch(html,/Chloe Ho|Sophie|Leo Chan/);
+ p.ui.teacherPortal();p.ui.action({action:'ui-staff',uiCommand:'tab',uiTab:'class-schedule'});let html=p.ui.teacherPortal();assert.doesNotMatch(html.split('</header>')[0],/Actual teacher|<p>/);assert.match(html,/Actual art course/);assert.match(html,/Actual room/);assert.doesNotMatch(html,/Chloe Ho|Sophie|Leo Chan/);
  snapshot.occurrences[0].item.time='15:15';snapshot.resources[1].displayName='Updated room';html=p.ui.teacherPortal();assert.match(html,/15:15/);assert.match(html,/Updated room/);
  p.ui.action({action:'ui-staff',uiCommand:'open-class',uiId:'actual-schedule:4'});
  assert.deepEqual(opened,{scheduleId:'actual-schedule',sequence:4,date:'2026-10-16'});assert.equal(p.ui.isOpen,false);assert.equal(p.html,'');

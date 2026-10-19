@@ -82,7 +82,7 @@ test('workspace keeps leave and Clock navigation without a separate clock action
     assert.match(html,/data-ui-command="tab"[^>]*data-ui-tab="leave"[^>]*>(Leave|請假)<\/button>/);
     assert.equal((html.match(/data-ui-command="open-clock"/g)||[]).length,0);
     assert.doesNotMatch(html,/data-ui-command="clock-in"|data-ui-command="clock-out"|>Clock in<|>Clock out<|>上班打卡<|>下班打卡</);
-    assert.match(html,/Leo Chan/);
+    assert.doesNotMatch(html.split('</header>')[0],/Leo Chan|<p>/);
   }
 });
 
@@ -94,7 +94,7 @@ test('unconnected shared Clock stays with the current teacher and cannot create 
   assert.equal(source.dialog,undefined);
   for(const locale of [en,zh]){
     const html=staffDialogMarkup(opened,locale);
-    assert.match(html,/Leo Chan/);
+    assert.doesNotMatch(html.split('</header>')[0],/Leo Chan|<p>/);
     assert.match(html,/16:20/);
     assert.doesNotMatch(html,/Maya Lam|Chloe Ho|Confirm clock in|Confirm clock out|確認上班打卡|確認下班打卡/);
     assert.match(html,/type="submit" disabled aria-describedby="ui-staff-clock-note"/);

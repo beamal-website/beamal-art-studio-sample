@@ -5,7 +5,7 @@
 .portal-sales-subnav-inner{min-height:0;overflow:hidden;display:grid;gap:4px}
 .portal-sales-group.is-expanded .portal-sales-subnav{grid-template-rows:1fr;opacity:1;visibility:visible}
 .portal-sales-group.is-expanded .portal-sales-subnav-inner{padding:4px 0 10px}
-@starting-style{.portal-sales-group.is-expanded .portal-sales-subnav{grid-template-rows:0fr;opacity:0}}
+/* Animate explicit group toggles only; rebuilt expanded submenus stay open. */
 .portal-sidebar .portal-sales-subnav button{min-height:44px;padding:10px 18px 10px 58px;font-size:15px}
 .sales-workspace{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,32%);min-height:calc(100dvh - 76px);background:#fffdf8}
 .sales-catalogue{min-width:0}

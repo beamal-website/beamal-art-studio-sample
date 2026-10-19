@@ -18,3 +18,14 @@ export function sidebarClickWave(event,{document:dom,window:win}){
  wave.style.cssText=`width:${size}px;height:${size}px;left:${x-size/2}px;top:${y-size/2}px`;
  button.append(wave);wave.addEventListener('animationend',()=>wave.remove(),{once:true});
 }
+
+// Page renders replace the navigation node; retain only its own scroll position.
+export function captureSidebarScroll(dom){
+ const sidebar=dom.querySelector('#portal-sidebar'),identity=sidebar?.getAttribute?.('data-scroll-identity');
+ return identity?{identity,top:sidebar.scrollTop||0,left:sidebar.scrollLeft||0}:null;
+}
+export function restoreSidebarScroll(dom,position){
+ const sidebar=dom.querySelector('#portal-sidebar');
+ if(!position||sidebar?.getAttribute?.('data-scroll-identity')!==position.identity)return;
+ sidebar.scrollTop=position.top;sidebar.scrollLeft=position.left;
+}

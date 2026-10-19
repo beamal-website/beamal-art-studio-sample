@@ -146,6 +146,12 @@ export function createApiClient({ baseUrl = import.meta.env?.VITE_BEAMAL_API_BAS
     },
     person: id => request(`/people/${encodeURIComponent(id)}`),
     personHistory: id => request(`/people/${encodeURIComponent(id)}/history`),
+    studentWorkspace: id => request('/people/'+encodeURIComponent(id)+'/workspace'),
+    studentRecords(query={}) {const params=new URLSearchParams();for(const key of ['kind','studentId','q','page','pageSize','status','visibility','type','date','period'])if(query[key]!==undefined&&query[key]!=='')params.set(key,query[key]);return request('/student-records?'+params);},
+    studentRecord: id => request('/student-records/'+encodeURIComponent(id)),
+    saveStudentRecord: (fields,current,key) => request(current?'/student-records/'+encodeURIComponent(current.id):'/student-records',{method:current?'PATCH':'POST',body:{...fields,...(current?{version:current.version}:{})},idempotencyKey:key}),
+    studentFamilyRecords: () => request('/student/records'),
+    signStudentNotice: (id,fields,key) => request('/student-records/'+encodeURIComponent(id)+'/sign',{method:'POST',body:fields,idempotencyKey:key}),
     savePerson(profile, current, operationKey) {
       return request(current ? `/people/${encodeURIComponent(current.id)}` : '/people', {
         method: current ? 'PATCH' : 'POST',

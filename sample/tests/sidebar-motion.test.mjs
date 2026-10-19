@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {syncSidebarGroups,sidebarClickWave} from '../client/sidebar-motion.js';
+import {syncSidebarGroups,sidebarClickWave,captureSidebarScroll,restoreSidebarScroll} from '../client/sidebar-motion.js';
 test('compacting and reopening the sidebar restores each group without changing its saved expansion',()=>{
  const make=open=>{const attributes={},subnav={},group={classList:{contains:()=>open},querySelector:selector=>selector==='.portal-sales-subnav'?subnav:{setAttribute:(name,value)=>attributes[name]=value}};return {group,attributes,subnav};};
  const sales=make(true),accounting=make(true),closed=make(false),sidebar={querySelectorAll:()=>[sales.group,accounting.group,closed.group]};
@@ -18,4 +18,12 @@ test('click wave attaches to the repainted button, starts from the click and rem
  const event={target:{closest:()=>original},detail:1,clientX:30,clientY:40};
  sidebarClickWave(event,{document,window});assert.equal(added,wave);assert.equal(wave.className,'portal-click-wave');assert.match(wave.style.cssText,/left:-180px;top:-180px/);finish();assert.equal(removed,true);
  added=null;sidebarClickWave(event,{document,window:{matchMedia:()=>({matches:true})}});assert.equal(added,null);
+});
+
+test('sidebar scroll belongs to the same account and does not carry across removed navigation or identity changes',()=>{
+ let sidebar={scrollTop:240,scrollLeft:3,getAttribute:()=> 'account-a'},content={scrollTop:77};
+ const dom={querySelector:selector=>selector==='#portal-sidebar'?sidebar:content},saved=captureSidebarScroll(dom);
+ sidebar={scrollTop:0,scrollLeft:0,getAttribute:()=> 'account-a'};restoreSidebarScroll(dom,saved);assert.equal(sidebar.scrollTop,240);assert.equal(sidebar.scrollLeft,3);assert.equal(content.scrollTop,77);
+ sidebar={scrollTop:0,scrollLeft:0,getAttribute:()=> 'account-b'};restoreSidebarScroll(dom,saved);assert.equal(sidebar.scrollTop,0);
+ sidebar=null;assert.equal(captureSidebarScroll(dom),null);assert.doesNotThrow(()=>restoreSidebarScroll(dom,saved));
 });

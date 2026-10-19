@@ -1204,3 +1204,27 @@
 .tt-display-group>.class-type-filter{position:relative;display:grid;gap:0;margin:4px 0 0;padding:0;min-width:0}
 .tt-display-group>.class-type-filter>span{position:absolute;top:0;left:0;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 .tt-display-group>.class-type-filter select{width:100%;min-width:0;max-width:100%;min-height:44px;font-size:13px}
+
+/* Keep dropdown cues inset consistently across public pages, portals and dialogs.
+   Arrow longhands win over component background shorthands without changing field colors. */
+select:not([multiple]):not([size]) {
+  appearance:none;-webkit-appearance:none;
+  padding-right:44px !important;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23253d3b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+  background-repeat:no-repeat !important;
+  background-position:right 16px center !important;
+  background-size:16px 16px !important;
+}
+/* The timetable view switch already has a separate SVG cue. */
+.tt-toolbar .tt-view-control select {background-image:none !important;}
+.tt-display-group>summary {padding-right:8px;}
+.tt-advanced-filters>.tt-display-group {margin:0 14px 14px;}
+.tt-filter-eye,
+.portal-content .tt-filter-eye,
+.portal-content .tt-filter-eye:hover,
+.portal-content .tt-filter-eye:focus-visible {
+  background:transparent;color:var(--teal,#27777b);border:0;box-shadow:none;
+}
+@media (forced-colors:active) {
+  select:not([multiple]):not([size]) {appearance:auto;-webkit-appearance:auto;background-image:none !important;}
+}

@@ -333,7 +333,7 @@ function localSampleLoginEnabled(){return !!sharedClient&&['localhost','127.0.0.
 function localSampleLoginAccounts(){return [{id:'admin',email:'admin@gmail.com',label:t('管理員','Administrator')},{id:'teacher',email:'teacher@gmail.com',label:t('老師','Teacher')},{id:'student',email:'student@gmail.com',label:t('學生','Student')}];}
 function localSampleLoginShortcuts(){
  if(!localSampleLoginEnabled())return '';
- return `<aside class="login-sample-shortcuts" aria-label="${t('示範帳戶快速填寫','Sample account quick fill')}"><p>${t('本機示範帳戶','Local sample accounts')}</p>${localSampleLoginAccounts().map(account=>`<button type="button" class="ghost" data-action="login-sample-fill" data-sample-account="${account.id}">${account.label}</button>`).join('')}<small>${t('選擇身份即可填入帳戶與密碼。','Choose a role to fill the email and password.')}</small></aside>`;
+ return `<aside class="login-sample-shortcuts" aria-label="${t('示範帳戶快速填寫','Sample account quick fill')}">${localSampleLoginAccounts().map(account=>`<button type="button" class="ghost" data-action="login-sample-fill" data-sample-account="${account.id}">${account.label}</button>`).join('')}</aside>`;
 }
 function fillLocalSampleLogin(id){
  if(!localSampleLoginEnabled()||path()!=='/login'||loginPending)return;

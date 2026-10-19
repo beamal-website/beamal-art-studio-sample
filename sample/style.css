@@ -1165,11 +1165,9 @@
 /* Temporary quick fill for the three local sample accounts. */
 .login-with-shortcuts{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,550px) minmax(0,1fr);align-items:center;gap:24px;margin:20px auto}
 .login-with-shortcuts>.form{grid-column:2;width:100%;min-width:0;margin:0}
-.login-sample-shortcuts{grid-column:3;display:flex;flex-direction:column;gap:10px;width:180px;min-width:0;padding:16px;border:1px solid #d9ddd2;border-radius:8px;background:#eef3ee}
-.login-sample-shortcuts p{margin:0 0 2px;color:#253d3b;font-size:14px;font-weight:600;line-height:1.6}
+.login-sample-shortcuts{grid-column:3;display:flex;flex-direction:column;gap:10px;width:180px;min-width:0;padding:0;border:0;background:transparent}
 .login-sample-shortcuts button{width:100%;min-height:44px;margin:0;padding:10px 12px;border-radius:6px;background:#fffdf8;font-size:14px}
-.login-sample-shortcuts small{color:#526a60;font-size:12px;line-height:1.6}
-@media(max-width:1000px){.login-with-shortcuts{grid-template-columns:minmax(0,1fr);gap:16px;max-width:550px}.login-with-shortcuts>.form,.login-sample-shortcuts{grid-column:1}.login-sample-shortcuts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;width:100%}.login-sample-shortcuts p,.login-sample-shortcuts small{grid-column:1/-1}.login-sample-shortcuts button{padding-inline:8px}}
+@media(max-width:1000px){.login-with-shortcuts{grid-template-columns:minmax(0,1fr);gap:16px;max-width:550px}.login-with-shortcuts>.form,.login-sample-shortcuts{grid-column:1}.login-sample-shortcuts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;width:100%}.login-sample-shortcuts button{padding-inline:8px}}
 
 /* Keep the timetable aligned with the full portal column when navigation is taller. */
 @media screen and (min-width:781px){

@@ -1228,3 +1228,12 @@ select:not([multiple]):not([size]) {
 @media (forced-colors:active) {
   select:not([multiple]):not([size]) {appearance:auto;-webkit-appearance:auto;background-image:none !important;}
 }
+
+/* Saved advanced filters follow the same name-and-eye layout as Display. */
+.tnf-compact-list {padding:0 14px 14px;border:0;}
+.tnf-compact-list .tnf-row {display:flex;align-items:center;gap:8px;margin:0;padding:4px 0;border:0;border-radius:0;background:transparent;}
+.tnf-compact-list .tnf-row.is-only {box-shadow:none;}
+.portal-content .tnf-compact-list .tnf-filter-name {flex:1;min-width:0;min-height:44px;margin:0;padding:8px 0;border:0;background:transparent;color:var(--ink,#253d3b);box-shadow:none;text-align:left;justify-content:flex-start;font-size:13px;font-weight:400;overflow-wrap:anywhere;}
+.tnf-compact-list .tnf-row.is-only .tnf-filter-name {font-weight:700;text-decoration:underline;}
+.portal-content .tnf-compact-list .tnf-add-filter {display:flex;align-items:center;justify-content:center;width:44px;height:44px;margin:8px auto 0;padding:0;border:0;background:transparent;color:var(--teal);box-shadow:none;font-size:24px;font-weight:400;}
+.portal-content .tnf-compact-list .tnf-add-filter:disabled {opacity:.4;cursor:not-allowed;}

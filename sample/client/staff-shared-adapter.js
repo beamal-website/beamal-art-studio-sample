@@ -45,7 +45,7 @@ export function staffSharedState(previous={},snapshot={}){
     const matches=personalRecords.filter(record=>record.staffId===id),record=matches.length===1?matches[0]:null;
     const status=user.role!=='admin'&&!ownResources.has(id)?'unavailable':matches.length>1?'ambiguous':record?'ready':snapshot.staffProfileLoading===true?'loading':snapshot.staffProfileError?'error':personalReady?'empty':'unavailable';
     const value=key=>typeof record?.[key]==='string'?record[key]:'';
-    return {position:value('position')||{zh:'職位暫未提供',en:'Position unavailable'},employment:record&&typeof record.employment==='string'?record.employment:undefined,contactEmail:value('contactEmail'),phone:value('phone'),mobile:value('mobile'),joined:value('joined'),personalSourceStatus:status,personalSourceLoading:snapshot.staffProfileLoading===true,personalSourceError:!!snapshot.staffProfileError};
+    return {staffNumber:value('staffNumber'),detail:value('detail'),remarks:value('remarks'),position:value('position')||{zh:'職位暫未提供',en:'Position unavailable'},employment:record&&typeof record.employment==='string'?record.employment:undefined,contactEmail:value('contactEmail'),phone:value('phone'),mobile:value('mobile'),joined:value('joined'),personalSourceStatus:status,personalSourceLoading:snapshot.staffProfileLoading===true,personalSourceError:!!snapshot.staffProfileError};
   };
   const occurrences=sourceReady?rows(snapshot.occurrences).filter(row=>row.item&&typeof row.item.id==='string'&&Number.isSafeInteger(row.sequence)&&row.sequence>0&&!row.cancelled&&!row.item.activityDeleted):[];
   const staff=sourceReady?resources.filter(resource=>resource.kind==='teacher').map(resource=>{

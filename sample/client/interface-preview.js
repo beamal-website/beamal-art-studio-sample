@@ -1,3 +1,4 @@
+import {staffReferenceMarkup} from './staff-reference-ui.js';
 import {accountingReferenceMarkup} from './accounting-reference-ui.js';
 import {operationsPageMarkup,operationsDialogMarkup,getOperationsPreviewData,advanceOperationsPreview,accountingEntrySummaryMarkup,accountingEntryStudentMarkup} from './operations-ui.js';
 import {staffDirectoryMarkup,staffPortalMarkup,staffDialogMarkup,staffInterfacePreviewState,advanceStaffPreview,staffWorkflowFacts,staffPayrollModel,staffAttendanceModel,staffLeaveModel,staffRosterModel,staffCalendarSharingModel,staffProfileModel} from './staff-portal-ui.js';
@@ -19,7 +20,7 @@ import {staffSharedState} from './staff-shared-adapter.js';
 export function createInterfacePreview({context,showModal,cacheModal=()=>{},repaint,dom=document,Form=FormData,sharedSnapshot,onOpenStaffLesson,onEditStaff,onManageStaffAccess,onRetryStaff,onCopyCalendarSharing,resolveSharedLesson,onCloseSharedLesson,onSaveSharedAttendance,onSaveSharedPending,onSubmitStudentRequest,onReadStudentReschedulingTimes,onAssignStudentRequest}) {
   let sharedAttendanceJob=null,sharedPendingJob=null;
   let productOwner=null,productEditPosition=null,productDetailPosition=null,productListReturn=null,productSourceProvided=false,productRendering=false;
-  let operations,staff,student,documentPreview=null,account=null,lesson=null,dataTools=null,overlay=null,returnFocus=null,accountingReturns=[],accountingListReturn=null,messageListReturn=null,messageComposeReturn=null,staffReturn=null,staffManagementSection='directory',staffHrReturn=null,staffHrContext='',staffHrPositions=[],calendarCopyEpoch=0,sharedLesson=null,sharedLessonTicket=null,sharedLessonEditPosition=null;
+  let operations,staff,student,documentPreview=null,account=null,lesson=null,dataTools=null,overlay=null,returnFocus=null,accountingReturns=[],accountingListReturn=null,messageListReturn=null,messageComposeReturn=null,staffReturn=null,staffManagementSection='directory',staffReferenceUi={},staffHrReturn=null,staffHrContext='',staffHrPositions=[],calendarCopyEpoch=0,sharedLesson=null,sharedLessonTicket=null,sharedLessonEditPosition=null;
   const fresh=()=>{productOwner=null;productEditPosition=null;productDetailPosition=null;productListReturn=null;productSourceProvided=false;calendarCopyEpoch++;messageListReturn=null;messageComposeReturn=null;operations={data:getOperationsPreviewData(),today:context()?.today,query:'',status:'all',category:'all',accountingTab:'invoices',selectedThreadId:'thread-1',settingsTab:'general',dialog:null,notice:''};staff=staffInterfacePreviewState();student={data:getStudentPortalData(),section:'profile',requestFilter:'all',notificationFilter:'all',query:'',selectedStudentId:'child-1',dialog:null,notice:''};account=null;lesson=null;dataTools=null;overlay=null;sharedLesson=null;sharedLessonTicket=null;sharedLessonEditPosition=null;};
   fresh();
   const ctx=()=>{const current=context()||{};return {...current,esc:current.esc||(value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char])))};};
@@ -250,7 +251,7 @@ export function createInterfacePreview({context,showModal,cacheModal=()=>{},repa
       if(calendarCopyPending.epoch!==calendarCopyEpoch||calendarCopyPending.sourceKey!==JSON.stringify([staff.sharedIdentity,ctx().staffViewKey,current])){calendarCopyEpoch++;calendarCopyPending=null;}
     }
     const hrChanged=staffHrContext&&staffHrContext!==JSON.stringify([staff.sharedIdentity,ctx().staffViewKey]);
-    if(identityChanged||hrChanged){calendarCopyEpoch++;for(const hr of Object.values(hrModules))staff[hr.key]={};staffManagementSection='directory';staffHrReturn=null;staffHrContext='';staffHrPositions=[];staffReturn=null;}
+    if(identityChanged||hrChanged){if(identityChanged)staffReferenceUi={};calendarCopyEpoch++;for(const hr of Object.values(hrModules))staff[hr.key]={};staffManagementSection='directory';staffHrReturn=null;staffHrContext='';staffHrPositions=[];staffReturn=null;}
     if((identityChanged&&['staff',...hrKinds].includes(overlay))||(hrChanged&&hrKinds.includes(overlay))){overlay=null;showModal('');}
   };
   const advanceOperations=(command,fields)=>advanceOperationsPreview({...operations,lang:ctx().t('zh','en')},command,fields);
@@ -380,6 +381,7 @@ export function createInterfacePreview({context,showModal,cacheModal=()=>{},repa
     return true;
   };
   const staffManagementMarkup=accountActions=>{
+    if(ctx().staffReference===true)return staffReferenceMarkup(staffManagementSection,{staff,roster:staffRosterModel(staff),payroll:staffPayrollModel(staff),ui:staffReferenceUi},{...ctx(),accountActions});
     if(staff.viewer?.role!=='admin')return staffDirectoryMarkup(staff,{...ctx(),accountActions});
     const {t,esc}=ctx(),nav=`<nav class="ui-staff-management-tabs" aria-label="${esc(t('員工管理分頁','Staff areas'))}">${[['directory','員工','Staff'],['roster','排班','Roster'],['leave','假期','Leave'],['attendance','打卡紀錄','Clock records'],['payroll','薪金','Payroll']].map(([key,zh,en])=>`<button type="button" class="ui-staff-button ui-staff-secondary" data-action="ui-staff" data-ui-command="management-section" data-ui-tab="${key}" aria-current="${staffManagementSection===key?'page':'false'}">${esc(t(zh,en))}</button>`).join('')}</nav>`;
     return `<div class="ui-staff-management">${nav}${staffManagementSection==='roster'?rosterPageMarkup(staffRosterModel(staff),ctx()):staffManagementSection==='payroll'?payrollPageMarkup(staffPayrollModel(staff),ctx()):staffManagementSection==='attendance'?attendancePageMarkup(staffAttendanceModel(staff),ctx()):staffManagementSection==='leave'?leavePageMarkup(staffLeaveModel(staff),ctx()):staffDirectoryMarkup(staff,{...ctx(),accountActions})}</div>`;
@@ -823,6 +825,7 @@ export function createInterfacePreview({context,showModal,cacheModal=()=>{},repa
     }
     if(d.action==='ui-staff'){
       syncStaff();
+      if(d.uiCommand==='staff-reference-payroll-tab'){if(staff.viewer?.role==='admin'&&['policy','payslip'].includes(d.uiTab)){staffReferenceUi.payrollTab=d.uiTab;repaint();}return true;}
       if(['open-detail','detail-tab'].includes(d.uiCommand))calendarCopyEpoch++;
       if(d.uiCommand==='management-section'){
         if(staff.viewer?.role==='admin'&&['directory','roster','leave','attendance','payroll'].includes(d.uiTab)){
@@ -977,6 +980,7 @@ export function createInterfacePreview({context,showModal,cacheModal=()=>{},repa
     return false;
   };
   const change=target=>{
+    if(target.dataset?.uiCommand==='staff-reference-filter'){syncStaff();if(staff.viewer?.role==='admin'&&['active','inactive','all'].includes(target.value)){staff=advanceStaffPreview(staff,'filter',{value:target.value});repaint();}return true;}
     if(captureProductControl(target))return true;
     if(overlay==='shared-lesson'&&target.closest?.('#shared-lesson-workflow-form')){if(syncSharedLesson({capture:false})==='invalid')return true;captureSharedLessonDraft(target.closest('form'));if(target.dataset?.uiCommand==='filter-date'){const position=sharedLessonPosition();sharedLesson=advanceSharedLessonWorkflow(sharedLesson,'filter-date',{date:target.value});redrawOverlay();restoreSharedLessonPosition(position);}return true;}
     if(guardStudentRequest()!=='ready')return true;
@@ -1001,7 +1005,7 @@ export function createInterfacePreview({context,showModal,cacheModal=()=>{},repa
   return {
     salesProducts:()=>{syncProductSource();return JSON.parse(JSON.stringify(operations.data.products||[]));},
     operations:section=>{guardStudentRequest();if(section==='products')syncProductSource();if(ctx().accountingReference&&['accounting','accounting-receipts'].includes(section)){operations.accountingTab=section==='accounting-receipts'?'payments':'invoices';return accountingReferenceMarkup(operations,ctx());}return operationsPageMarkup(section,operations,ctx());},
-    directory:(accountActions='')=>{guardStudentRequest();syncStaff();return staffManagementMarkup(accountActions);},
+    directory:(accountActions='',section='')=>{guardStudentRequest();syncStaff();if(ctx().staffReference===true&&staff.viewer?.role==='admin'&&['directory','roster','payroll'].includes(section))staffManagementSection=section;return staffManagementMarkup(accountActions);},
     teacherPortal:()=>{guardStudentRequest();syncStaff();if(!staff.shared)staff={...staff,viewerId:ctx().role==='admin'?'maya':'leo'};return staffPortalMarkup(staff,ctx());},
     studentPage:section=>{guardStudentRequest();return studentPortalPageMarkup(section,student,ctx());},
     action,submit,keyboard,input,change,openLesson,openSharedLesson,refreshSharedLesson,openAccount,openOrderDocument,studentLessonFacts,refreshSharedStudentRequest,refreshSharedPerson,refreshSharedStaff,resumeStaffReturn,discardStaffReturn:()=>{staffReturn=null;},close,

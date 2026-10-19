@@ -1102,3 +1102,12 @@ test('parent request loads permitted times and submits only its selected availab
  p.ui.submit({id:'ui-lesson-form',dataset:{uiCommand:'review'},values:{requestType:'reschedule',preferredSlotId:'allowed-time',reason:'Family appointment'}});assert.match(p.html,/Review request/);assert.match(p.html,/2090-02-01/);
  await p.ui.action({action:'ui-lesson',uiCommand:'submit-request'});assert.equal(submitted.preferredSlotId,'allowed-time');assert.match(p.html,/Request submitted/);
 });
+
+test('staff reference directory retains real profile actions, filters and month navigation without writing HR records',()=>{
+ const snapshot=sharedStaffSnapshot();snapshot.user.role='admin';const original=JSON.stringify(snapshot),edited=[],p=preview({context:()=>({t,role:'admin',staffReference:true,staffViewKey:'management'}),sharedSnapshot:()=>snapshot,onEditStaff:details=>edited.push(details)});
+ assert.match(p.ui.directory('','directory'),/staff-ref-table/);assert.doesNotMatch(p.ui.directory(),/ui-staff-management-tabs|ui-staff-team-summary/);
+ p.ui.action({action:'ui-staff',uiCommand:'open-edit',uiId:'resource-actual'});assert.equal(edited[0].resourceId,'resource-actual');
+ p.ui.change({dataset:{uiCommand:'staff-reference-filter'},value:'inactive'});assert.doesNotMatch(p.ui.directory('','directory'),/data-ui-command="open-detail"/);
+ assert.match(p.ui.directory('','roster'),/value="2026-10"/);p.ui.action({action:'ui-roster',uiCommand:'roster-next-month'});assert.match(p.ui.directory('','roster'),/value="2026-11"/);
+ p.ui.action({action:'ui-staff',uiCommand:'staff-reference-payroll-tab',uiTab:'policy'});assert.match(p.ui.directory('','payroll'),/Unset salaries are not treated as zero/);assert.equal(JSON.stringify(snapshot),original);
+});

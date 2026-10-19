@@ -372,3 +372,7 @@ test('teaching badges and directory filter follow staff eligibility independentl
  const state=staffSharedState({},source);assert.equal(state.staff.find(row=>row.id==='resource-leo').teaching,false);assert.equal(state.staff.find(row=>row.id==='resource-maya').teaching,true);
  const html=staffDirectoryMarkup({...state,filter:'teacher'},en);assert.match(html,/Teacher maya/);assert.doesNotMatch(html,/Teacher leo/);assert.match(html,/Teacher ethan/);
 });
+
+test('staff directory number and detail come only from the authorized personal profile source',()=>{
+ const current=snapshot();current.resources[1].staffNumber='UNTRUSTED NUMBER';current.resources[1].detail='UNTRUSTED DETAIL';current.staffProfileReady=true;current.staffProfileRecords=[{staffId:'resource-leo',staffNumber:'ST-002',detail:'Saved teaching details',remarks:'Saved remarks'}];const state=staffSharedState({},current),leo=state.staff.find(row=>row.id==='resource-leo');assert.equal(leo.staffNumber,'ST-002');assert.equal(leo.detail,'Saved teaching details');assert.equal(leo.remarks,'Saved remarks');const absent=staffSharedState({}, {...current,staffProfileReady:false});assert.equal(absent.staff.find(row=>row.id==='resource-leo').staffNumber,'');assert.equal(absent.staff.find(row=>row.id==='resource-leo').detail,'');
+});

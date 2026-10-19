@@ -1172,3 +1172,17 @@
 .tt-sidebar>.class-type-filter{display:grid;gap:8px;margin:0;padding:14px;border-bottom:1px solid #d9ddd2;flex:none;min-width:0}
 .tt-sidebar>.class-type-filter select{width:100%;min-width:0;max-width:100%;min-height:44px}
 @media(max-width:780px){.tt-sidebar>.class-type-filter{grid-column:1/-1;grid-row:2;padding:12px 10px}.tt-add-menu>summary{padding:0 3px;gap:0;font-size:11px}}
+
+/* Default display filters stay together in one compact, scrollable column. */
+.tt-display{padding:14px;gap:0}
+.tt-display>h2{margin:0 0 14px;font-size:16px;font-weight:500;line-height:1.4}
+.tt-display-group{display:block;min-width:0;margin:0 0 16px;padding:0;border:0}
+.tt-display-group>legend,.tt-display>.class-type-filter>span{padding:0;margin-bottom:6px;font-size:12px;font-weight:400;color:#687770;line-height:1.5}
+.tt-display .tt-resource-option{margin:2px 0;gap:6px}
+.tt-display .tt-resource-option label{font-size:13px;line-height:1.4}
+.tt-display>.class-type-filter{display:grid;gap:0;min-width:0;margin:0;padding:0;flex:none}
+.tt-display>.class-type-filter select{width:100%;min-width:0;max-width:100%;min-height:44px;font-size:13px}
+.tt-display>.tt-named-status{margin:0 0 14px;padding:8px;gap:4px;font-size:12px}
+.portal-content .tt-display>.tt-named-status>button{min-height:44px;padding:4px 0;font-size:12px;line-height:1.4;background:transparent;color:var(--teal);box-shadow:none;text-align:left}
+.tt-advanced-filters>.tt-hide-empty{margin:0;border-top:0;border-bottom:1px solid #d9ddd2;font-size:12px}
+@media(max-width:780px){.tt-sidebar>.tt-display{grid-column:2;grid-row:1;padding:12px 10px}.tt-display>h2{font-size:15px}.tt-display-group{margin-bottom:14px}}

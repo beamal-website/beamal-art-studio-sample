@@ -106,7 +106,7 @@ test('adds only the separately marked Student when upgrading an existing checkpo
 
 test('unknown account collisions never replace another account or partially create fixtures',async t=>{
   const databasePath=await temporaryDatabase(t),originalHash=await hashPassword('Unrelated-account-password-123!');
-  inspect(databasePath,db=>db.prepare('INSERT INTO users VALUES (?,?,?,?,?,?)').run('unrelated-admin','ADMIN@gmail.com','Existing administrator','admin',originalHash,'2026-01-01T00:00:00Z'));
+  inspect(databasePath,db=>db.prepare('INSERT INTO users(id,email,display_name,role,password_hash,created_at) VALUES (?,?,?,?,?,?)').run('unrelated-admin','ADMIN@gmail.com','Existing administrator','admin',originalHash,'2026-01-01T00:00:00Z'));
   await assert.rejects(provision(databasePath),{code:'CHECKPOINT_PROFILE_CONFLICT'});
   inspect(databasePath,db=>{assert.equal(count(db,'users'),1);assert.equal(count(db,'people'),0);assert.equal(count(db,'courses'),0);assert.equal(db.prepare('SELECT password_hash FROM users').get().password_hash===originalHash,true);});
 });

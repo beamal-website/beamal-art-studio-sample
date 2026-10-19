@@ -58,6 +58,7 @@ export function createMaterialSchema(database) {
       version INTEGER NOT NULL, snapshot TEXT NOT NULL, created_at TEXT NOT NULL
     );
   `);
+  if(!database.prepare('PRAGMA table_info(materials)').all().some(column=>column.name==='archived_at'))database.exec('ALTER TABLE materials ADD COLUMN archived_at TEXT');
 }
 
 export function createMaterialStore({ database, transaction, attachments, accessControl }) {
@@ -82,7 +83,7 @@ export function createMaterialStore({ database, transaction, attachments, access
     attachments: attachmentMap ? attachmentMap.get(row.id) || [] : attachments?.list(row.id) || [],
   } : null;
   const select = 'SELECT materials.*, users.display_name AS owner_name FROM materials JOIN users ON users.id = materials.owner_id';
-  const record = id => database.prepare(`${select} WHERE materials.id = ?`).get(id);
+  const record = id => database.prepare(`${select} WHERE materials.id = ? AND materials.archived_at IS NULL`).get(id);
   const get = (id, user) => {
     const person = identity(user), row = record(id);
     return row && canReadCourse(row.course_id, person) && (person.role !== 'student' || row.visible_to_students) ? dto(row) : null;
@@ -90,7 +91,7 @@ export function createMaterialStore({ database, transaction, attachments, access
   const list = (courseId, user) => transaction(() => {
     const person = identity(user);
     if (!canReadCourse(courseId, person)) throw new ApplicationError(404, 'COURSE_NOT_FOUND', 'Course was not found.');
-    const rows = database.prepare(`${select} WHERE materials.course_id = ? ${person.role === 'student' ? 'AND materials.visible_to_students = 1' : ''} ORDER BY materials.created_at, materials.id`).all(courseId);
+    const rows = database.prepare(`${select} WHERE materials.archived_at IS NULL AND materials.course_id = ? ${person.role === 'student' ? 'AND materials.visible_to_students = 1' : ''} ORDER BY materials.created_at, materials.id`).all(courseId);
     const attachmentMap = attachments?.listMany(rows.map(row => row.id)) || null;
     return rows.map(row => dto(row, attachmentMap));
   }, 'read');

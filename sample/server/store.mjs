@@ -119,6 +119,7 @@ async function initializeStore({ databasePath, seedUsers, seedCourses, attachmen
       created_at TEXT NOT NULL, PRIMARY KEY(user_id, route, request_key)
     );
   `);
+  if (!database.prepare('PRAGMA table_info(users)').all().some(column => column.name === 'archived_at')) database.exec('ALTER TABLE users ADD COLUMN archived_at TEXT');
   if (postgres && database.prepare('PRAGMA table_info(sessions)').all().some(column => column.name === 'expires_at' && column.type.toLowerCase() === 'integer')) {
     database.exec('ALTER TABLE sessions ALTER COLUMN expires_at TYPE BIGINT');
   }
@@ -502,15 +503,15 @@ async function initializeStore({ databasePath, seedUsers, seedCourses, attachmen
   if (postgres) console.log('PostgreSQL schema and application stores ready.');
   return {
     listCourses, getCourse, createCourse, updateCourse, deleteCourse: (id, version, actor) => changeCourseDeletion(id, version, actor), restoreCourse: (id, version, actor) => changeCourseDeletion(id, version, actor, true), listFees, getFee, createFee, updateFee, createOnce, mutateOnce, catalogSnapshot, materials, attachments, schedules, schedulingResources, accessControl, people, availableSlots, classCapacityStatuses, classTypes, enrollmentOrders, studentLessonRequests, staffPersonalProfiles, lessonNotes, trialApplications, packageContents, lessonParentMessages, parentMessageTemplates,trialInquiries,
-    listUsers: () => database.prepare('SELECT * FROM users ORDER BY email').all().map(publicUser),
-    userByEmail: email => database.prepare('SELECT * FROM users WHERE email = ?').get(email),
+    listUsers: () => database.prepare('SELECT * FROM users WHERE archived_at IS NULL ORDER BY email').all().map(publicUser),
+    userByEmail: email => database.prepare('SELECT * FROM users WHERE email = ? AND archived_at IS NULL').get(email),
     publicUser,
     createSession({ tokenHash, userId, csrfHash, expiresAt }) {
       database.prepare('DELETE FROM sessions WHERE expires_at <= ?').run(Date.now());
       database.prepare('INSERT INTO sessions(token_hash, user_id, csrf_hash, expires_at) VALUES (?, ?, ?, ?)').run(tokenHash, userId, csrfHash, expiresAt);
     },
     getSession(tokenHash) {
-      const row = database.prepare('SELECT sessions.csrf_hash, sessions.expires_at, users.* FROM sessions JOIN users ON users.id = sessions.user_id WHERE token_hash = ?').get(tokenHash);
+      const row = database.prepare('SELECT sessions.csrf_hash, sessions.expires_at, users.* FROM sessions JOIN users ON users.id = sessions.user_id WHERE token_hash = ? AND users.archived_at IS NULL').get(tokenHash);
       if (!row) return null;
       if (row.expires_at <= Date.now()) { database.prepare('DELETE FROM sessions WHERE token_hash = ?').run(tokenHash); return null; }
       return { user: publicUser(row), csrfHash: row.csrf_hash, expiresAt: row.expires_at };

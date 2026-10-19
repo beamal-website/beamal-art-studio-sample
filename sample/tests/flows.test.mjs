@@ -2117,7 +2117,7 @@ async function resourceUiApp(remote={resources:[],revision:1},overrides={},optio
 async function openResourceManager(a){await a.set('openSchedulingResources()');assert.ok(a.read('resourceManager'));assert.match(a.nodes['#modal-root'].innerHTML,/resource-manager-modal/);}
 function resourceEditorForm(a,values={}){
  const markup=a.nodes['#modal-root'].innerHTML,tag=markup.match(/<form\b[^>]*id="scheduling-resource-editor"[^>]*>/)?.[0];assert.ok(tag,'A real resource editor must be open before submitting');
- const current=a.read('resourceDraft.current??null'),kind=a.read('resourceDraft.kind'),form=sharedForm('scheduling-resource-editor'),colourField=markup.match(/<input\b[^>]*id="resource-representative-color"[^>]*>/)?.[0];form.dataset=markupDataset(tag);form.values={displayName:current?.displayName||'',...(current?.active===false?{}:{active:'on'}),...(kind==='room'?{capacity:current?.capacity==null?'':String(current.capacity),detail:current?.detail||'',remark:current?.remark||'',...(current?.externalLocation?{externalLocation:'on'}:{})}:colourField?{representativeColor:colourField.match(/value="([^"]*)"/)?.[1]||'#27777b',...(/<input\b[^>]*id="resource-color-enabled"[^>]*\bchecked/.test(markup)?{useRepresentativeColor:'on'}:{})}:{}),...values};form.isConnected=true;
+ const current=a.read('resourceDraft.current??null'),kind=a.read('resourceDraft.kind'),form=sharedForm('scheduling-resource-editor'),colourField=markup.match(/<input\b[^>]*id="resource-representative-color"[^>]*>/)?.[0];form.dataset=markupDataset(tag);form.values={displayName:current?.displayName||'',...(/id="resource-teaching-allowed"[^>]*checked/.test(markup)?{teachingAllowed:'on'}:{}),...(current?.active===false?{}:{active:'on'}),...(kind==='room'?{capacity:current?.capacity==null?'':String(current.capacity),detail:current?.detail||'',remark:current?.remark||'',...(current?.externalLocation?{externalLocation:'on'}:{})}:colourField?{representativeColor:colourField.match(/value="([^"]*)"/)?.[1]||'#27777b',...(/<input\b[^>]*id="resource-color-enabled"[^>]*\bchecked/.test(markup)?{useRepresentativeColor:'on'}:{})}:{}),...values};form.isConnected=true;
  const controls=Object.entries(form.values).map(([name,value])=>({name,value,disabled:false,focus(){}})),close={disabled:false};form.allControls=[...controls,...form.querySelectorAll('button'),close];a.resourceForm=form;
  a.nodes['#scheduling-resource-editor']=form;a.nodes['#resource-editor-save']=form.submitButton;a.nodes['#resource-editor-error']={textContent:'',isConnected:true};return form;
 }
@@ -4246,4 +4246,12 @@ test('fee dialog keyboard navigation includes the scrollable reading body before
   a.ctx.document.activeElement=body;a.keydown('Tab',{preventDefault(){prevented++}});assert.equal(prevented,0,'Tab from the reading area must reach footer instead of looping back to Close');assert.equal(a.ctx.document.activeElement,body);
   a.ctx.document.activeElement=last;a.keydown('Tab',{preventDefault(){prevented++}});assert.equal(a.ctx.document.activeElement,first,'Tab still wraps at the actual final control');
  }
+});
+
+test('the calendar teacher list follows current staff teaching eligibility and never promotes inactive or legacy assignments',async()=>{
+ const remote={resources:[schedulingResource('qualified','teacher','Qualified'),schedulingResource('inactive','teacher','Inactive',{active:false}),schedulingResource('not-teaching','teacher','Not teaching',{teachingAllowed:false})],revision:1},a=await resourceUiApp(remote);
+ a.set("db.schedules=[{id:'old',teacher:'Teacher 1'}]");assert.deepEqual(a.read("timetableResourceOptions('teachers').map(row=>row.id).sort()"),['qualified','unassigned']);
+ remote.resources.push(schedulingResource('new-staff','teacher','New staff',{teachingAllowed:true}));remote.revision++;await a.set('refreshSharedResources()');assert.ok(a.read("timetableResourceOptions('teachers').some(row=>row.id==='new-staff')"));
+ remote.resources[0].teachingAllowed=false;remote.revision++;await a.set('refreshSharedResources()');assert.equal(a.read("timetableResourceOptions('teachers').some(row=>row.id==='qualified')"),false);
+ remote.resources.at(-1).active=false;remote.revision++;await a.set('refreshSharedResources()');assert.equal(a.read("timetableResourceOptions('teachers').some(row=>row.id==='new-staff')"),false);
 });

@@ -358,3 +358,9 @@ test('staff profile host projection keeps the canonical current day for read-onl
  const current={...snapshot(),staffProfileReady:true,staffProfileRecords:[{staffId:'resource-leo',dateOfBirth:'1996-10-16'}]},state=staffSharedState({},current),html=staffDialogMarkup({...state,dialog:{kind:'detail',id:'resource-leo',tab:'contact'}},en);
  assert.match(html,/1996-10-16/);assert.match(html,/29 years/);assert.doesNotMatch(html,/name="age"|name="dateOfBirth"/);
 });
+
+test('teaching badges and directory filter follow staff eligibility independently of login role',()=>{
+ const source=snapshot();source.resources.find(row=>row.id==='resource-leo').teachingAllowed=false;
+ const state=staffSharedState({},source);assert.equal(state.staff.find(row=>row.id==='resource-leo').teaching,false);assert.equal(state.staff.find(row=>row.id==='resource-maya').teaching,true);
+ const html=staffDirectoryMarkup({...state,filter:'teacher'},en);assert.match(html,/Teacher maya/);assert.doesNotMatch(html,/Teacher leo/);assert.match(html,/Teacher ethan/);
+});

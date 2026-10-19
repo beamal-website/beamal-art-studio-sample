@@ -66,6 +66,7 @@ export function createPeopleStore({database,transaction}) {
     );
     CREATE INDEX IF NOT EXISTS person_audit_person ON person_audit_log(person_id,id);
   `);
+  if(!database.prepare('PRAGMA table_info(people)').all().some(column=>column.name==='archived_at'))database.exec('ALTER TABLE people ADD COLUMN archived_at TEXT');
   // Public form submissions have no user account. Preserve every old audit row,
   // index, trigger and AUTOINCREMENT high-water mark when removing NOT NULL.
   if(database.prepare('PRAGMA table_info(person_audit_log)').all().find(column=>column.name==='actor_id')?.notnull)transaction(()=>{
@@ -91,13 +92,13 @@ export function createPeopleStore({database,transaction}) {
     return {...Object.fromEntries(profileFields.map(key=>[key,Object.hasOwn(profile,key)?profile[key]:defaults[key]])),displayName:row.display_name,id:row.id,kind:row.kind,version:row.version,createdAt:row.created_at,updatedAt:row.updated_at,convertedAt:row.converted_at,convertedBy:row.converted_by?{id:row.converted_by,displayName:row.converter_name}:null};
   };
   const select='SELECT people.*,converter.display_name AS converter_name FROM people LEFT JOIN users AS converter ON converter.id=people.converted_by';
-  const record=id=>database.prepare(`${select} WHERE people.id=?`).get(id);
+  const record=id=>database.prepare(`${select} WHERE people.id=? AND people.archived_at IS NULL`).get(id);
   const get=(id,actorId)=>transaction(()=>{administrator(actorId);const person=dto(record(id));if(!person)throw new ApplicationError(404,'PERSON_NOT_FOUND','Profile was not found.');return person;},'read');
   const searchText=profile=>Object.values(profile).filter(value=>typeof value==='string').join('\n').toLowerCase();
   const audit=(actor,action,person)=>database.prepare('INSERT INTO person_audit_log(person_id,actor_id,actor_name,action,version,snapshot,created_at) VALUES (?,?,?,?,?,?,?)').run(person.id,actor.id,actor.display_name,action,person.version,JSON.stringify(person),person.updatedAt);
   const list=(query,actorId)=>transaction(()=>{
     administrator(actorId);const normalized=validatePeopleQuery(query),{kind,q,page,pageSize,sort,direction,since}=normalized;
-    const where='WHERE people.kind=? AND instr(people.search_text,?)>0',params=[kind,q.toLowerCase()],versions=database.prepare(`SELECT id,version FROM people ${where} ORDER BY id`).all(...params),total=versions.length;
+    const where='WHERE people.archived_at IS NULL AND people.kind=? AND instr(people.search_text,?)>0',params=[kind,q.toLowerCase()],versions=database.prepare(`SELECT id,version FROM people ${where} ORDER BY id`).all(...params),total=versions.length;
     const revision=createHash('sha256').update(JSON.stringify({scope:'administrator-profiles-v1',kind,q:q.toLowerCase(),page,pageSize,sort,direction,versions})).digest('hex');
     if(since===revision)return {revision,unchanged:true,page,pageSize,total};
     const column=sort==='displayName'?'people.display_name COLLATE NOCASE':'people.created_at',order=direction==='asc'?'ASC':'DESC';

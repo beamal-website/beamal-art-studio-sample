@@ -30,7 +30,7 @@ test('enrichment fills only blank owned personal fields with audited version cha
  const input=await fixture(t);
  const before=inspect(input.databasePath,db=>{
   for(const row of profiles(db)){const profile=JSON.parse(row.profile);for(const key of fields.filter(key=>key!=='dateOfBirth'))profile[key]='';if(row.id===RELATIONAL_DEMO_IDS.students[3])profile.dateOfBirth=null;if(row.id===RELATIONAL_DEMO_IDS.students[0])Object.assign(profile,{gender:'Unspecified',dateOfBirth:'2013-08-21',firstName:'Family preferred name',school:'Family selected school'});db.prepare('UPDATE people SET profile=?,version=version+1 WHERE id=?').run(JSON.stringify(profile),row.id);}
-  const stamp='2026-01-01T00:00:00Z';db.prepare("INSERT INTO people VALUES ('unrelated-student','student','原有學生',?,'原有學生',1,?,?,NULL,NULL)").run(JSON.stringify({displayName:'原有學生',gender:'',dateOfBirth:null}),stamp,stamp);
+  const stamp='2026-01-01T00:00:00Z';db.prepare("INSERT INTO people(id,kind,display_name,profile,search_text,version,created_at,updated_at,converted_at,converted_by) VALUES ('unrelated-student','student','原有學生',?,'原有學生',1,?,?,NULL,NULL)").run(JSON.stringify({displayName:'原有學生',gender:'',dateOfBirth:null}),stamp,stamp);
   return {people:profiles(db),protected:protectedSnapshot(db),audit:db.prepare('SELECT * FROM person_audit_log ORDER BY id').all()};
  });
  const changedBefore=before.people.filter(row=>ownedIds.includes(row.id)),expectedFields=changedBefore.reduce((count,row)=>count+fields.filter(key=>blank(JSON.parse(row.profile)[key])).length,0),result=await enrichOwnedDemoProfiles({databasePath:input.databasePath});

@@ -137,7 +137,7 @@ export function createScheduleStore({database,transaction,resources,classTypes})
       for(const id of record[ids]) {
         const resource=rows.get(id);
         if(!resource||resource.kind!==kind)throw new ApplicationError(400,'INVALID_RESOURCE_SELECTION','Select an existing resource of the correct kind.');
-        if(!resource.active&&!current?.[ids]?.includes(id))throw new ApplicationError(409,'RESOURCE_INACTIVE','This resource is inactive. Keep its existing assignment or choose an active resource.');
+        if((!resource.active||kind==='teacher'&&resource.teachingAllowed===false)&&!current?.[ids]?.includes(id))throw new ApplicationError(409,'RESOURCE_INACTIVE','This resource is inactive. Keep its existing assignment or choose an active resource.');
       }
     }
   };

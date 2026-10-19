@@ -60,7 +60,7 @@ export function createAccessControlStore({database,transaction}) {
   const audit=(actorId,action,targetId,value)=>database.prepare('INSERT INTO access_control_audit_log(actor_id,action,target_id,version,snapshot,created_at) VALUES (?,?,?,?,?,?)').run(actorId,action,targetId,value.version,JSON.stringify(value),value.updatedAt);
   const managementSnapshot=actorId=>transaction(()=>{
     administrator(actorId);
-    const accounts=database.prepare("SELECT id,display_name,role FROM users WHERE role IN ('admin','teacher') ORDER BY display_name,id").all().map(row=>({id:row.id,displayName:row.display_name,role:row.role}));
+    const accounts=database.prepare("SELECT id,display_name,role FROM users WHERE archived_at IS NULL AND role IN ('admin','teacher') ORDER BY display_name,id").all().map(row=>({id:row.id,displayName:row.display_name,role:row.role}));
     const teacherLinks=database.prepare('SELECT * FROM teacher_account_links ORDER BY teacher_resource_id').all().map(linkDTO),grants=database.prepare('SELECT * FROM scoped_read_grants ORDER BY id').all().map(grantDTO);
     return {revision:hash({accounts,teacherLinks,grants}),accounts,teacherLinks,grants};
   },'read');

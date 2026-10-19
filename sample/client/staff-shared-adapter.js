@@ -52,7 +52,7 @@ export function staffSharedState(previous={},snapshot={}){
     const own=ownResources.has(resource.id),link=links.find(item=>item.teacherResourceId===resource.id&&(!hasSelfIds||item.userId!==user.id||own));
     const linkedUserId=own?user.id:link?.userId||null,account=accounts.get(linkedUserId);
     const courseIds=[...new Set(occurrences.filter(row=>ids(row.item.teacherIds).includes(resource.id)).map(row=>row.item.course))];
-    return {...resource,...personalFor(resource.id),id:resource.id,userId:linkedUserId||null,accountId:linkedUserId||null,accountName:account?.displayName||'',accountRole:account?.role||null,accountLinkKnown:user.role==='admin'||!!link||ownResources.has(resource.id),displayName:resource.displayName,email:account?.email??'',role:account?.role==='admin'?'admin':'teacher',teaching:true,courses:courseIds.map(id=>nameOf(courses.get(id))),shared:true};
+    return {...resource,...personalFor(resource.id),id:resource.id,userId:linkedUserId||null,accountId:linkedUserId||null,accountName:account?.displayName||'',accountRole:account?.role||null,accountLinkKnown:user.role==='admin'||!!link||ownResources.has(resource.id),displayName:resource.displayName,email:account?.email??'',role:account?.role==='admin'?'admin':'teacher',teaching:resource.teachingAllowed!==false,courses:courseIds.map(id=>nameOf(courses.get(id))),shared:true};
   }):saved?rows(previous.staff):[];
   const authorizedOccurrences=occurrences.filter(row=>user.role==='teacher'||ids(row.item.teacherIds).some(id=>ownResources.has(id)));
   const classes=sourceReady?authorizedOccurrences.map(row=>{

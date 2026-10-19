@@ -74,3 +74,10 @@ test('existing legacy text may be retained unchanged but cannot be reassigned or
  const cleared=await patchOccurrence(app,chosen.body.schedule,2,'single',{teacherIds:[]});assert.equal(cleared.status,200,cleared.text);assert.equal(scheduleOccurrence(cleared.body.schedule,2).item.teacher,'');
  const before=(await app.admin.request('/api/schedules')).body;await app.close();const reopened=await setup(t,{databasePath});assert.deepEqual((await reopened.admin.request('/api/schedules')).body,before);
 });
+
+test('revoking teaching eligibility rejects new assignments while retaining an existing lesson and its history',async t=>{
+ const app=await setup(t),current=await create(app,{teacherIds:[app.a.id],roomIds:[app.roomA.id]});
+ const revoked=await send(app.admin,'/api/scheduling-resources/'+app.a.id,'PATCH',{version:1,teachingAllowed:false});assert.equal(revoked.status,200,revoked.text);
+ const rejected=await send(app.admin,'/api/schedules','POST',baseRule({teacherIds:[app.a.id]}));error(rejected,409);
+ const existing=await send(app.admin,'/api/schedules/'+current.id,'PATCH',{version:current.version,time:'13:00'});assert.equal(existing.status,200,existing.text);assert.deepEqual(existing.body.schedule.teacherIds,[app.a.id]);
+});

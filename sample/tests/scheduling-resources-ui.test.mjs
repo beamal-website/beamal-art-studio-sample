@@ -58,3 +58,8 @@ test('rooms keep all existing metadata fields and never receive a teacher colour
   assert.match(table, /Capacity/);
   assert.doesNotMatch(table, /Representative colour|teacher-colour|#123456/);
 });
+
+test('staff editor exposes teaching eligibility separately from active state and preserves a revoked setting',()=>{
+ for(const language of ['zh','en']){const html=schedulingResourceEditorMarkup({kind:'teacher',record:{...teacher,teachingAllowed:false},canEdit:true},ui(language));assert.match(html,/name="teachingAllowed"/);assert.doesNotMatch(tagById(html,'resource-teaching-allowed'),/checked/);assert.match(html,language==='en'?/Allowed to teach/:/獲准授課/);}
+ assert.doesNotMatch(schedulingResourceEditorMarkup({kind:'room',canEdit:true},ui('en')),/name="teachingAllowed"/);
+});

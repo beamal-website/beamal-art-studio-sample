@@ -108,7 +108,7 @@ test('reruns preserve edits and unknown records, and mapping drift cannot append
   db.prepare('UPDATE people SET profile=?,version=version+1 WHERE id=?').run(JSON.stringify(profile),id);
   db.prepare('UPDATE scheduling_resources SET display_name=?,name_key=?,version=version+1 WHERE id=?').run('使用者更新的老師名字','使用者更新的老師名字',DEMO_IDS.teachers.leo);
   db.prepare('UPDATE schedules SET data=json_set(data,\'$.time\',\'10:30\'),version=version+1 WHERE id=?').run(first.createdScheduleIds[0]);
-  const now=new Date().toISOString();db.prepare("INSERT INTO people VALUES ('unrelated-profile','applicant','原有申請人','{}','原有申請人',1,?,?,NULL,NULL)").run(now,now);
+  const now=new Date().toISOString();db.prepare("INSERT INTO people(id,kind,display_name,profile,search_text,version,created_at,updated_at,converted_at,converted_by) VALUES ('unrelated-profile','applicant','原有申請人','{}','原有申請人',1,?,?,NULL,NULL)").run(now,now);
  });
  const snapshot=inspect(input.databasePath,db=>Object.fromEntries(['users','people','courses','fees','scheduling_resources','schedules','enrollment_orders','student_sessions','enrollment_sales','schema_metadata'].map(table=>[table,db.prepare(`SELECT * FROM ${table} ORDER BY 1`).all()])));
  const again=await provisionRelationalDemo(input);assert.equal(again.created,false);assert.deepEqual(again.scheduleIds,first.scheduleIds);
@@ -121,7 +121,7 @@ test('reruns preserve edits and unknown records, and mapping drift cannot append
 test('wrong mappings and unowned stable-id collisions are rejected without importing profiles',async t=>{
  const input=await setup(t),wrong={...input,mapping:{...input.mapping,teachers:input.mapping.teachers.map(row=>row.key==='ava'?{...row,id:DEMO_IDS.room}:row)}};
  await assert.rejects(provisionRelationalDemo(wrong),{code:'RELATIONAL_DEMO_INVALID_MAPPING'});assert.equal(inspect(input.databasePath,db=>count(db,'people')),1);
- inspect(input.databasePath,db=>{const now=new Date().toISOString();db.prepare("INSERT INTO people VALUES (?,'applicant','原有個案','{}','原有個案',1,?,?,NULL,NULL)").run(RELATIONAL_DEMO_IDS.students[0],now,now);});
+ inspect(input.databasePath,db=>{const now=new Date().toISOString();db.prepare("INSERT INTO people(id,kind,display_name,profile,search_text,version,created_at,updated_at,converted_at,converted_by) VALUES (?,'applicant','原有個案','{}','原有個案',1,?,?,NULL,NULL)").run(RELATIONAL_DEMO_IDS.students[0],now,now);});
  await assert.rejects(provisionRelationalDemo(input),{code:'RELATIONAL_DEMO_CONFLICT'});assert.equal(inspect(input.databasePath,db=>count(db,'people')),2);assert.equal(inspect(input.databasePath,db=>count(db,'student_sessions')),0);
 });
 

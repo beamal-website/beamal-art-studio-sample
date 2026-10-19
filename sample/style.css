@@ -1145,3 +1145,9 @@
 /* Per-student markers are separate from the teacher's lesson colour. */
 .lesson-student-sticker{display:inline-block;flex:none;width:10px;height:10px;margin-inline-end:6px;vertical-align:baseline;border:1px solid #253d3b55;border-radius:50%;background:var(--student-sticker)}
 .tt-list-student-note{display:block;max-width:32rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;line-height:1.6;color:var(--slw-muted,#687770)}
+
+/* Keep the timetable aligned with the full portal column when navigation is taller. */
+@media screen and (min-width:781px){
+ .portal-content>.teacher-timetable{display:flex;flex-direction:column;min-height:100%}
+ .teacher-timetable>.tt-workspace{flex-grow:1}
+}

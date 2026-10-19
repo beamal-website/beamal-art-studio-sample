@@ -85,3 +85,7 @@ test('preview escapes identities and public labels and supports both languages',
     assert.match(html, language === 'en' ? />Manage time<\/button>/ : />管理時段<\/button>/);
   }
 });
+
+test('management preview embeds Settings after its public calendar without a nested dialog',()=>{
+ for(const language of ['en','zh']){const html=availabilityPublicPreviewMarkup({...model,settings:{version:2,rangeDays:14,showFullTrialSlots:true,showReschedulingSlots:false}},ui(language));assert.match(html,/id="availability-preview-settings-title"/);assert.match(html,language==='en'?/>Settings</:/>設定</);assert.match(html,/id="availability-public-settings"/);assert.match(html,/name="rangeDays"[^>]*value="14"/);assert.equal((html.match(/role="dialog"/g)||[]).length,1);assert.ok(html.indexOf('id="availability-preview-settings-title"')>html.indexOf('data-availability-date='));}
+});

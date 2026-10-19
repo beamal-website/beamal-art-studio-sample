@@ -63,3 +63,11 @@
   .availability-preview-body .availability-public-day > h4 { padding: 14px 16px; font-size: 17px; }
   .availability-preview-manage { width: 100%; }
 }
+
+.availability-preview-settings{min-width:0;margin-top:24px;padding-top:20px;border-top:1px solid var(--availability-border)}
+.availability-preview-settings>h3{margin:0 0 12px;font-size:20px;color:var(--availability-ink)}
+.availability-preview-settings .availability-body{padding:0}
+.availability-preview-settings .availability-footer{padding:12px 0 0;border:0;flex-wrap:wrap}
+.availability-preview-settings .availability-settings-fields{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;max-width:640px}
+.availability-preview-settings .availability-field{max-width:320px}
+.availability-preview-settings input[type="number"]{box-sizing:border-box;width:100%;min-height:44px;border:1px solid var(--availability-border);border-radius:4px;background:var(--availability-surface);padding:10px 12px;font:inherit;color:inherit}

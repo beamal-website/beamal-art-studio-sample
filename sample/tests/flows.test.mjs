@@ -4311,3 +4311,11 @@ test('Display and each default group preserve independent collapsed state across
  const a=await classTypeUiApp();a.set("lang='en';tab='overview';location.pathname='/account';render()");for(const group of ['display','rooms','teachers','classType'])assert.match(a.read('timetableResourcePanel()'),new RegExp('data-tt-display-group="'+group+'" open'));
  a.set("timetableDisplayExpanded.rooms=false;timetableDisplayExpanded.classType=false;redrawTimetableDisplay()");let html=a.read('timetableResourcePanel()');assert.match(html,/data-tt-display-group="rooms"><summary>Room/);assert.match(html,/data-tt-display-group="classType"><summary>Class type/);assert.match(html,/data-tt-display-group="teachers" open/);a.set("timetableDisplayExpanded.display=false;redrawTimetableDisplay()");assert.match(a.read('timetableResourcePanel()'),/data-tt-display-group="display"><summary/);
 });
+
+test('Display status appearing or disappearing keeps a bottom-scrolled sidebar pinned without moving the lesson grid',()=>{
+ const a=app(),sidebar={scrollHeight:900,clientHeight:500,scrollTop:400,scrollLeft:0},grid={scrollHeight:1800,clientHeight:500,scrollTop:650,scrollLeft:100};a.ctx.document.querySelectorAll=selector=>selector==='.tt-sidebar'?[sidebar]:selector==='.tt-grid-scroll'?[grid]:[];a.ctx.paintSidebar=()=>{sidebar.scrollHeight=1020;sidebar.scrollTop=0;grid.scrollTop=0;grid.scrollLeft=0;};a.set('render=paintSidebar;redrawTimetableDisplay()');assert.equal(sidebar.scrollTop,520,'Growing status must move content upward and retain the bottom edge');assert.equal(grid.scrollTop,650);assert.equal(grid.scrollLeft,100);
+ a.ctx.paintSidebar=()=>{sidebar.scrollHeight=900;sidebar.scrollTop=0;};a.set('render=paintSidebar;redrawTimetableDisplay()');assert.equal(sidebar.scrollTop,400,'Removing status must keep the sidebar bottom aligned too');
+});
+test('Display redraw preserves ordinary sidebar position when it is not at the bottom',()=>{
+ const a=app(),sidebar={scrollHeight:900,clientHeight:500,scrollTop:120,scrollLeft:0};a.ctx.document.querySelectorAll=selector=>selector==='.tt-sidebar'?[sidebar]:[];a.ctx.paintSidebar=()=>{sidebar.scrollHeight=1020;sidebar.scrollTop=0;};a.set('render=paintSidebar;redrawTimetableDisplay()');assert.equal(sidebar.scrollTop,120);
+});

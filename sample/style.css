@@ -1237,3 +1237,16 @@ select:not([multiple]):not([size]) {
 .tnf-compact-list .tnf-row.is-only .tnf-filter-name {font-weight:700;text-decoration:underline;}
 .portal-content .tnf-compact-list .tnf-add-filter {display:flex;align-items:center;justify-content:center;width:44px;height:44px;margin:8px auto 0;padding:0;border:0;background:transparent;color:var(--teal);box-shadow:none;font-size:24px;font-weight:400;}
 .portal-content .tnf-compact-list .tnf-add-filter:disabled {opacity:.4;cursor:not-allowed;}
+
+/* Highlight the whole filter row without moving its name or eye control. */
+.tt-sidebar :is(.tt-resource-option,.tnf-compact-list .tnf-row) {
+  padding-inline:6px;border-radius:4px;
+}
+.tt-sidebar :is(.tt-resource-option,.tnf-compact-list .tnf-row):focus-within {
+  background:#e2efea;box-shadow:none;
+}
+@media (hover:hover) {
+  .tt-sidebar :is(.tt-resource-option,.tnf-compact-list .tnf-row):hover {
+    background:#e2efea;box-shadow:none;
+  }
+}

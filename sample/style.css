@@ -1158,3 +1158,17 @@
  .portal-shell>.portal-sidebar,.portal-shell>.portal-content{min-height:0;overflow-y:auto;overscroll-behavior-y:contain}
  .portal-shell>.portal-sidebar>*{flex-shrink:0}
 }
+
+/* Consolidated timetable actions and sidebar class-type filter. */
+.tt-add-menu{position:relative;z-index:9}
+.portal-content .tt-add-menu{padding:0}
+.tt-add-menu>summary{display:flex;align-items:center;justify-content:center;gap:6px;height:46px;padding:0 16px;list-style:none;border-radius:3px;background:var(--teal);color:white;cursor:pointer;box-shadow:0 2px 3px #0002}
+.tt-add-menu>summary::-webkit-details-marker{display:none}
+.tt-add-menu>summary:focus-visible{outline:2px solid var(--teal);outline-offset:3px}
+.tt-add-options{position:absolute;right:0;top:calc(100% + 6px);display:grid;width:260px;max-width:calc(100vw - 32px);padding:6px;background:#fffdf8;border:1px solid #bdcbc1;border-radius:3px;box-shadow:0 6px 18px #253d3b1a}
+.portal-content .tt-add-options button{width:100%;min-height:44px;padding:12px;text-align:left;white-space:normal;background:transparent;color:#253d3b;box-shadow:none;line-height:1.4}
+.portal-content .tt-add-options button:hover,.portal-content .tt-add-options button:focus-visible{background:#e9eee5}
+.portal-content .tt-add-options button:disabled{color:#7c8578;background:#f0ebdc}
+.tt-sidebar>.class-type-filter{display:grid;gap:8px;margin:0;padding:14px;border-bottom:1px solid #d9ddd2;flex:none;min-width:0}
+.tt-sidebar>.class-type-filter select{width:100%;min-width:0;max-width:100%;min-height:44px}
+@media(max-width:780px){.tt-sidebar>.class-type-filter{grid-column:1/-1;grid-row:2;padding:12px 10px}.tt-add-menu>summary{padding:0 3px;gap:0;font-size:11px}}

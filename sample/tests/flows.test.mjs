@@ -4288,3 +4288,13 @@ test('preview Settings blocks duplicate saves while pending and ignores an old a
 test('preview Settings read remains valid when a slot acknowledgement updates the same preview generation',async()=>{
  const a=await mixedTimetableApp();a.set('applySharedUser('+JSON.stringify(sharedTestUser)+')');await openAvailabilityTimetable(a);const gate=deferred();let started=false;a.client.availabilityPublicSettings=async()=>{started=true;return gate.promise};const pending=a.click({action:'availability-preview-open',courseId:''});await until(()=>started,'Settings read pending');a.ctx.previewAcknowledgedSlot=copy(a.availabilityRemote.slots[0]);a.set('applyAvailabilityAcknowledgement(previewAcknowledgedSlot)');gate.resolve({settings:{version:3,rangeDays:14,showFullTrialSlots:true,showReschedulingSlots:false}});await pending;assert.equal(a.read('availabilityOverlay.settings.version'),3);assert.match(a.nodes['#modal-root'].innerHTML,/id="availability-public-settings"/);
 });
+
+test('timetable groups scheduling and public availability actions without a second toolbar row',async()=>{
+ const a=await mixedTimetableApp();a.set('applySharedUser('+JSON.stringify(sharedTestUser)+')');await openAvailabilityTimetable(a);
+ for(const language of ['en','zh']){a.set(`lang='${language}';render()`);const html=a.nodes['#app'].innerHTML,menu=html.match(/<details class="tt-add tt-add-menu">[\s\S]*?<\/details>/)?.[0];assert.ok(menu);assert.match(menu,/<summary[^>]*>/);for(const action of ['tt-add-schedule','availability-add','availability-preview-open'])assert.match(menu,new RegExp('data-action="'+action+'"'));assert.doesNotMatch(html,/class="tt-calendar-controls"/);}
+ await a.click({action:'tt-add-schedule'});assert.match(a.nodes['#modal-root'].innerHTML,/id="schedule-editor"/);await a.click({action:'close'});await a.click({action:'availability-preview-open',courseId:''});assert.equal(a.read('availabilityOverlay.kind'),'public-preview');
+ a.set('applySharedUser('+JSON.stringify({...sharedTestUser,id:'qa-teacher',role:'teacher'})+');render()');const html=a.nodes['#app'].innerHTML,menu=html.match(/<details class="tt-add tt-add-menu">[\s\S]*?<\/details>/)?.[0]||'';assert.doesNotMatch(menu,/availability-add|availability-preview-open/);
+});
+test('timetable class type filter lives in the date and resource sidebar',async()=>{
+ const a=await classTypeUiApp();a.set("tab='overview';location.pathname='/account';render()");const html=a.nodes['#app'].innerHTML,sidebar=html.match(/<aside class="tt-sidebar"[\s\S]*?<\/aside>/)?.[0]||'';assert.match(sidebar,/id="tt-class-type-filter"/);assert.equal((html.match(/id="tt-class-type-filter"/g)||[]).length,1);assert.doesNotMatch(html,/class="tt-calendar-controls"/);
+});

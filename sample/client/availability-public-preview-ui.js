@@ -12,7 +12,8 @@ export function availabilityPublicPreviewMarkup(
   const unavailable = !busy && !failure && !invalidDate && !hasCourse
     ? t('課程資料暫未提供。', 'Course details are unavailable.') : '';
   const shownCourse = loading !== true && !failure && hasCourse ? course : null;
-  const projection = mixed ? publicTimetableMarkup({courses: loading || failure ? [] : courses, courseFilter, slots: loading || failure || invalidDate ? [] : slots, from, to, rangeDays, slotType, loading:busy, error:failure, dateError:invalidDate, dateInput},{t,esc,managementPreview:true}) : publicCourseDetailsMarkup({
+  const refreshButton = `<span class="availability-preview-refresh-control"><button type="button" class="availability-preview-refresh-icon" data-action="availability-preview-refresh" aria-label="${esc(t('重新整理','Refresh'))}" aria-describedby="availability-preview-refresh-tip"${busy||settingsSaving?' disabled':''}><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5"/><path d="M19.1 7A8 8 0 1 0 20 16M20 12l-4-4"/></svg></button><span class="availability-preview-refresh-tooltip" id="availability-preview-refresh-tip" role="tooltip">${esc(t('重新整理','Refresh'))}</span></span>`;
+  const projection = mixed ? `<section class="availability-parent-preview" aria-label="${esc(t('家長視角預覽（只供查看）','Parent view preview (view only)'))}">${refreshButton}${publicTimetableMarkup({courses:loading||failure?[]:courses,courseFilter,slots:loading||failure||invalidDate?[]:slots,from,to,rangeDays,slotType,loading:busy,error:failure,dateError:invalidDate,dateInput},{t,esc,trialPreview:true,staticPreview:true})}</section>` : publicCourseDetailsMarkup({
     course: shownCourse,
     slots: shownCourse && !invalidDate && Array.isArray(slots) ? slots : [],
     from, to, rangeDays, slotType, dateInput, loading: busy, error: failure || unavailable, dateError: invalidDate,
@@ -22,13 +23,11 @@ export function availabilityPublicPreviewMarkup(
     <div class="dialog availability-preview-dialog" tabindex="-1">
       <header class="availability-header">
         <h2 id="availability-preview-title">${esc(t('公開課表', 'Public timetable'))}</h2>
+        ${mixed?'':refreshButton}
         <button type="button" class="availability-close" data-action="availability-preview-close" aria-label="${esc(t('關閉', 'Close'))}">×</button>
       </header>
       <div class="availability-body availability-preview-body">${projection}${settingsSection}</div>
-      <footer class="availability-footer">
-        <button type="button" class="ghost" data-action="availability-preview-refresh"${busy ? ' disabled' : ''}>${esc(t('重新整理', 'Refresh'))}</button>
-        <button type="button" data-action="availability-preview-close">${esc(t('關閉', 'Close'))}</button>
-      </footer>
+
     </div>
   </div>`;
 }

@@ -138,7 +138,7 @@ test('forged final submit, save or create commands never create or update a sour
 
 test('ready empty, filtered empty, loading, error and unavailable sources are distinct and never borrow fixtures', () => {
   const empty = source(); empty.data.products = [];
-  assert.match(operationsPageMarkup('products', empty, en), /No products yet/);
+  assert.match(operationsPageMarkup('products', empty, en), /Add product details, pricing and manage product inventory/);
   assert.match(operationsPageMarkup('products', {...source(), query: 'none-match'}, en), /No matching products/);
   for (const status of ['loading', 'error', 'unavailable']) {
     const state = {...source(), productSource: {status, error: 'Read failed'}};

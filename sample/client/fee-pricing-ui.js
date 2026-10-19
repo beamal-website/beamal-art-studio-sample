@@ -44,7 +44,7 @@ function count(value, zh, en, singular, h) {
 function pricingModel(model, h) {
   if (model === 'monthly-lessons') return h.text('按當月堂數計算月費', 'Monthly fee by lesson count');
   if (model === 'fixed-monthly') return h.text('固定月費', 'Fixed monthly fee');
-  if (model === 'package') return h.text('固定套票', 'Fixed package');
+  if (model === 'package') return h.text('每期課程', 'Fixed package');
   return h.unknown();
 }
 
@@ -67,14 +67,14 @@ function pricingFacts(pricing = {}, h, current = false) {
   if (model === 'monthly-lessons' || model === 'fixed-monthly') facts += definition(h.text('月數', 'No. of months'), count(pricing.months, '個月', 'months', 'month', h));
   if (model === 'package') {
     const unit = pricing.packageType === 'minutes' ? ['分鐘', 'minutes', 'minute'] : ['visits', 'lessons'].includes(pricing.packageType) ? ['次', 'visits', 'visit'] : null;
-    facts += definition(h.text('套票總額度', 'Package total'), unit ? count(pricing.packageTotal, ...unit, h) : h.unknown());
+    facts += definition(h.text('每期總額度', 'Package total'), unit ? count(pricing.packageTotal, ...unit, h) : h.unknown());
   }
   facts += definition(h.text('預約期限（由發票日期起計）', 'Booking expiry (from invoice date)'), bookingExpiry(pricing?.bookingExpiry, h));
   return facts;
 }
 
 function savedDetails(fee, h) {
-  return `<section class="fee-ui-section"><h3>${provided(fee.feeName, h)}</h3><dl class="fee-ui-facts">${definition(h.text('費用編號', 'Fee code'), provided(fee.feeCode, h))}${definition(h.text('版本', 'Version'), positiveInteger(fee.version) ? h.esc(fee.version) : h.unknown())}${pricingFacts(fee, h, true)}${definition(h.text('網上商店', 'Online Store'), fee.onlineStore === true ? h.text('顯示', 'Shown') : fee.onlineStore === false ? h.text('隱藏', 'Hidden') : h.unknown())}</dl></section>`;
+  return `<section class="fee-ui-section"><h3>${provided(h.t(fee.feeName, fee.feeNameEn || fee.feeName), h)}</h3><dl class="fee-ui-facts">${definition(h.text('費用編號', 'Fee code'), provided(fee.feeCode, h))}${definition(h.text('版本', 'Version'), positiveInteger(fee.version) ? h.esc(fee.version) : h.unknown())}${pricingFacts(fee, h, true)}${definition(h.text('網上商店', 'Online Store'), fee.onlineStore === true ? h.text('顯示', 'Shown') : fee.onlineStore === false ? h.text('隱藏', 'Hidden') : h.unknown())}</dl></section>`;
 }
 
 function linkedCourses(courseNames, h) {

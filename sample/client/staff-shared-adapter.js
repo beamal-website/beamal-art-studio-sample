@@ -23,7 +23,7 @@ export function staffSharedState(previous={},snapshot={}){
   const ready=sourceReady||saved,loading=authorized&&(snapshot.loading===true||snapshot.loading===undefined&&!sourceReady&&!snapshot.error);
   const sharedError=authorized&&snapshot.error?String(snapshot.error):'';
   const studentRequestTasks=user.role==='admin'&&snapshot.studentRequestsReady===true?rows(snapshot.studentRequests).map(request=>({
-    id:request.id,requestId:request.id,requestVersion:request.version,studentId:request.studentId,studentName:request.studentName,courseName:request.lesson?.courseName||'',availableTimes:Array.isArray(request.availableTimes)?request.availableTimes:[],assigning:request.assigning===true,
+    id:request.id,requestId:request.id,requestVersion:request.version,createdAt:request.createdAt,originalLesson:request.lesson?{...request.lesson}:null,preferredLesson:request.preferredSlot?{...request.preferredSlot}:null,preferredDate:request.preferredDate||'',studentId:request.studentId,studentName:request.studentName,courseName:request.lesson?.courseName||'',availableTimes:Array.isArray(request.availableTimes)?request.availableTimes:[],assigning:request.assigning===true,
     title:{zh:`${request.type==='sick'?'病假':'調課'}申請 · ${request.lesson?.courseName||'課堂'}`,en:`${request.type==='sick'?'Sick leave':'Rescheduling'} request · ${request.lesson?.courseName||'Lesson'}`},
     detail:{zh:`課堂：${request.lesson?.date||'—'} ${request.lesson?.time||''}${request.preferredDate?` · 希望日期：${request.preferredDate}`:''}${request.reason?` · 原因：${request.reason}`:''}`,en:`Lesson: ${request.lesson?.date||'—'} ${request.lesson?.time||''}${request.preferredDate?` · Preferred date: ${request.preferredDate}`:''}${request.reason?` · Reason: ${request.reason}`:''}`},
     due:request.lesson?.date||request.createdAt?.slice(0,10)||'',scheduleId:request.scheduleId,sequence:request.sequence,requestType:request.type
@@ -63,7 +63,7 @@ export function staffSharedState(previous={},snapshot={}){
   return {
     ...ui,shared:true,sharedIdentity:identity,sharedReady:ready,sharedSourceReady:sourceReady,sharedLoading:loading,sharedError,sharedStale:ready&&!!sharedError&&!loading,
     today:snapshot.today||'',currentTime:snapshot.currentTime||'',viewerId:user.id||'',viewer:{...user,id:user.id||'',displayName:user.displayName||'',teacherResourceIds:saved&&!sourceReady?ids(previous.viewer?.teacherResourceIds):[...ownResources]},
-    staff,classes,portalTab:ui.portalTab||'home',query:ui.query||'',filter:ui.filter||'active',page:ui.page||1,pageSize:ui.pageSize||20,
+    staff,classes,portalTab:ui.portalTab==='home'?'todo':ui.portalTab||'todo',query:ui.query||'',filter:ui.filter||'active',page:ui.page||1,pageSize:ui.pageSize||20,
     dialog:ready?ui.dialog||null:null,notice:ui.notice||'',error:ui.error||'',staffDrafts:{},
     todos:user.role==='admin'&&snapshot.studentRequestsReady===true?[studentRequestsTodo]:[],todosReady:sourceReady&&(user.role!=='admin'||snapshot.studentRequestsReady===true),todosError:sourceReady&&user.role==='admin'?String(snapshot.studentRequestsError||''):'',paymentRequests:[],payrollRows:[],payrollReady:false,clockEntries:ui.clockEntries||[],clockReady:false,leaveRequests:ui.leaveRequests||[],clockedIn:ui.clockedIn||false,
     leaveRecords:sourceReady&&snapshot.leaveReady===true?rows(snapshot.leaveRecords):[],leaveReady:sourceReady&&snapshot.leaveReady===true,leaveLoading:authorized&&snapshot.leaveLoading===true,leaveError:authorized&&snapshot.leaveError?String(snapshot.leaveError):'',

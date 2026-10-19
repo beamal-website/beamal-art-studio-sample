@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { availabilityEditorMarkup, availabilityDetailMarkup, publicCourseDirectoryMarkup, publicCourseDetailsMarkup, availabilityPublicSettingsMarkup } from '../client/availability-ui.js';
+import { availabilityHeadcount, availabilityEditorMarkup, availabilityDetailMarkup, publicCourseDirectoryMarkup, publicCourseDetailsMarkup, availabilityPublicSettingsMarkup } from '../client/availability-ui.js';
 
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 const ui = language => ({ t: (zh, en) => language === 'en' ? en : zh, esc });
@@ -52,7 +52,7 @@ test('unknown classes and standalone times never invent a Regular label or avail
 
 test('public type filters use only published class trial and enabled visible rescheduling facts',()=>{
  const records=[{...slot,id:'class-only',classAvailability:'unknown',trialEnabled:false,reschedulingVisible:false},{...slot,id:'trial-only',classAvailability:null,reschedulingVisible:false,trialStatus:'full',trialRemaining:0},{...slot,id:'reschedule-only',classAvailability:null,trialEnabled:false},{...slot,id:'closed-reschedule',classAvailability:null,trialEnabled:false,reschedulingEnabled:false}];
- for(const [slotType,expected]of [['class',['class-only']],['trial',['trial-only']],['rescheduling',['reschedule-only']]]){
+ for(const [slotType,expected]of [['class',['class-only']],['trial',['trial-only']]]){
   const html=publicCourseDetailsMarkup({course,slots:records,from:'2026-10-15',slotType},ui('en'));assert.deepEqual([...html.matchAll(/data-availability-slot-id="([^"]+)"/g)].map(m=>m[1]),expected);assert.match(html,new RegExp(`<option value="${slotType}" selected>`));
  }
  const hidden=publicCourseDetailsMarkup({course,slots:[records[3]],from:'2026-10-15'},ui('en'));assert.doesNotMatch(hidden,/<strong>Rescheduling/);
@@ -90,20 +90,20 @@ test('standalone editor preserves version and uses actual course, date, duration
   assert.match(html, /role="dialog" aria-modal="true" aria-labelledby="availability-editor-title"/);
   assert.match(html, /class="dialog availability-editor-dialog" tabindex="-1"/);
   assert.match(html, /<form id="availability-editor" data-id="slot-a" data-version="4"/);
-  assert.match(html, /<option value="standalone" selected>/);
+  assert.match(tagById(html,'availability-mode'), /type="hidden" name="mode" value="standalone"/);
   assert.match(html, /<option value="course-a" selected>Fictional art class<\/option>/);
   for (const name of ['date', 'time', 'duration']) assert.match(html, new RegExp(`name="${name}"`));
   assert.match(html, /name="teacherIds" value="teacher-a" checked/);
   assert.match(html, /name="roomIds" value="room-a" checked/);
-  assert.match(html, /At least one teacher/);
+  assert.match(html, /Arrange later/);
   assert.match(tagById(html, 'availability-linked-fields'), /hidden disabled/);
-  assert.doesNotMatch(html, /name="excludedStudentIds"|private-person-a/);
+  assert.doesNotMatch(html, /name="excludedStudentIds"/);
 });
 
 test('linked editor selects immutable occurrence identity and does not offer editable copied facts', () => {
   const html = availabilityEditorMarkup({ slot: { ...slot, mode: 'linked', scheduleId: 'schedule-a', sequence: 2 }, courses, resources, occurrences }, ui('en'));
-  assert.match(html, /<option value="linked" selected>/);
-  assert.match(html, /<option value="schedule-a:2" selected>/);
+  assert.match(tagById(html,'availability-mode'), /type="hidden" name="mode" value="linked"/);
+  assert.match(html, /name="occurrenceKey" value="schedule-a:2"/);
   assert.match(tagById(html, 'availability-standalone-fields'), /hidden disabled/);
   assert.doesNotMatch(tagById(html, 'availability-linked-fields'), /disabled|hidden/);
   assert.match(html, /id="availability-occurrence-summary"/);
@@ -115,11 +115,11 @@ test('linked editor selects immutable occurrence identity and does not offer edi
 
 test('capacity settings are independent nonnegative whole values and unsupplied values remain blank', () => {
   const html = availabilityEditorMarkup({ slot, courses, resources }, ui('en'));
-  for (const name of ['totalCapacity', 'trialCapacity', 'reschedulingCapacity']) assert.match(html, new RegExp(`name="${name}" type="number" min="0" step="1"`));
-  for (const name of ['trialEnabled', 'reschedulingEnabled', 'active']) assert.match(html, new RegExp(`type="checkbox" name="${name}"[^>]* checked`));
+  for (const name of ['trialCapacity', 'reschedulingCapacity']) assert.match(html, new RegExp(`name="${name}" type="number" min="0" step="1"`));
+  for (const name of ['active']) assert.match(html, new RegExp(`type="checkbox" name="${name}"[^>]* checked`));
   assert.match(html, /name="publicVisibility"/);
-  assert.match(html, /<option value="default" selected>/);
-  assert.match(html, /<option value="show">/);
+  assert.doesNotMatch(html, /<option value="default"/);
+  assert.match(html, /<option value="show" selected>/);
   assert.match(html, /<option value="hide">/);
   assert.match(html, /name="remark" maxlength="2000"/);
   const empty = availabilityEditorMarkup({}, ui('en'));
@@ -129,10 +129,10 @@ test('capacity settings are independent nonnegative whole values and unsupplied 
 
 test('editor escapes names, ids and draft notes, and retains unavailable linked identities', () => {
   const html = availabilityEditorMarkup({ slot: { ...slot, scheduleId: 'missing-schedule', sequence: 9, sourceAvailable: false, unavailableReason: 'SOURCE_REMOVED', unavailableReasonText: 'Source <removed>', remark: '<private draft>' }, courses: [{ ...course, courseName: '<course>' }], resources, occurrences }, ui('en'));
-  assert.match(html, /value="missing-schedule:9" selected/);
+  assert.match(html, /name="occurrenceKey" value="missing-schedule:9"/);
   assert.match(html, /Source &lt;removed&gt;/);
   assert.match(html, /&lt;private draft&gt;/);
-  assert.doesNotMatch(html, /<private draft>|<removed>|private-person-a/);
+  assert.doesNotMatch(html, /<private draft>|<removed>/);
 });
 
 test('busy editor locks all fieldsets, both cancellation buttons and save while retaining an escaped error', () => {
@@ -148,7 +148,7 @@ test('busy editor locks all fieldsets, both cancellation buttons and save while 
 test('internal detail shows genuine capacity and source state, without inventing total usage or class occupancy', () => {
   const html = availabilityDetailMarkup({ slot: { ...slot, scheduleId: 'schedule-a', sequence: 2, classCapacity: 12, classOccupied: null }, canEdit: true }, ui('en'));
   assert.match(html, /data-action="availability-edit" data-slot-id="slot-a"/);
-  assert.match(html, /<dt>Total capacity<\/dt><dd>10<\/dd>/);
+  assert.match(html, /<dt>Capacity<\/dt><dd>10<\/dd>/);
   assert.match(html, /<dt>Total reserved<\/dt><dd>—<\/dd>/);
   assert.match(html, /<dt>Class occupancy<\/dt><dd>—<\/dd>/);
   assert.match(html, /Private note/);
@@ -275,7 +275,7 @@ test('public settings preserve opened version, independent visibility switches a
   const html = availabilityPublicSettingsMarkup({ settings: { version: 0, rangeDays: 7, showFullTrialSlots: true, showReschedulingSlots: false } }, ui('en'));
   assert.match(html, /<form id="availability-public-settings" data-version="0"/);
   assert.match(html, /type="checkbox" name="showFullTrialSlots" checked/);
-  assert.match(html, /type="checkbox" name="showReschedulingSlots"/);
+  assert.doesNotMatch(html, /type="checkbox" name="showReschedulingSlots"/);
   assert.doesNotMatch(html, /type="checkbox" name="showReschedulingSlots" checked/);
   assert.match(html, /name="rangeDays" type="number" value="7" min="7" max="30"/);
   assert.match(html, /id="availability-public-settings-save"/);
@@ -369,4 +369,46 @@ test('public trial visibility accepts an explicit true flag or the legacy absent
  const html=value=>publicCourseDetailsMarkup({course,slots:[{...slot,classAvailability:'available',trialVisible:value}],from:'2026-10-15',to:'2026-10-21'},{...ui('en'),trialPreview:true});
  for(const value of [false,null,0,1,'false','true'])assert.doesNotMatch(html(value),/<strong>Trial places<\/strong>|data-action="availability-trial-open"/);
  for(const value of [true,undefined])assert.match(html(value),/data-action="availability-trial-open"/);
+});
+
+test('purpose comes first and only relevant trial or rescheduling settings are available',()=>{
+ for(const [purpose,trial,rescheduling]of [['trial',true,false],['rescheduling',false,true],['both',true,true]]){
+  const html=availabilityEditorMarkup({slot:{...slot,trialEnabled:trial,reschedulingEnabled:rescheduling}},ui('zh'));
+  assert.equal(/name="trialEnabled" checked/.test(html),trial);assert.equal(/name="reschedulingEnabled" checked/.test(html),rescheduling);
+  assert.ok(html.indexOf('name="trialEnabled"')<html.indexOf('id="availability-mode"'));
+  assert.equal(/hidden disabled/.test(tagById(html,'availability-trial-settings')),!trial);
+  assert.equal(/hidden disabled/.test(tagById(html,'availability-rescheduling-settings')),!rescheduling);
+  assert.doesNotMatch(html,/設定摘要|availability-save-summary/);
+  assert.doesNotMatch(html,/type="radio"|name="purpose"/);
+ }
+ const inactive=availabilityEditorMarkup({slot:{...slot,trialEnabled:false,reschedulingEnabled:false}},ui('en'));
+ assert.doesNotMatch(inactive,/name="(?:trialEnabled|reschedulingEnabled)" checked/);assert.match(tagById(inactive,'availability-save'),/disabled/);
+ assert.doesNotMatch(inactive,/<select[^>]*name="mode"|How is the time arranged/);
+});
+
+test('new available times use direct course date and time with deferred teacher and room choices',()=>{
+ const html=availabilityEditorMarkup({},ui('zh'));assert.doesNotMatch(html,/<select[^>]*name="mode"|時間點樣安排/);
+ assert.match(html,/name="teacherDeferred" checked/);assert.match(html,/name="roomDeferred" checked/);assert.match(html,/稍後安排/);assert.match(html,/總人數/);
+});
+
+test('headcount uses two quota inputs and an automatic total without an extra summary',()=>{
+ const html=availabilityEditorMarkup({slot:{...slot,trialCapacity:2,reschedulingCapacity:3}},ui('zh'));
+ assert.match(html,/id="availability-total-headcount"[^>]*>5</);assert.match(html,/試堂人數/);assert.match(html,/調堂人數/);assert.match(html,/總人數/);
+ assert.match(tagById(html,'availability-totalCapacity'),/type="hidden"/);assert.doesNotMatch(html,/共用總名額|試堂與調堂各有自己的名額/);assert.doesNotMatch(html,/設定摘要|availability-save-summary/);
+});
+
+test('headcount totals only enabled uses and leaves incomplete or unsafe totals unset',()=>{
+ assert.equal(availabilityHeadcount({trialEnabled:true,reschedulingEnabled:true,trialCapacity:'2',reschedulingCapacity:'3'}),5);
+ assert.equal(availabilityHeadcount({trialEnabled:true,trialCapacity:'2',reschedulingCapacity:99}),2);
+ assert.equal(availabilityHeadcount({reschedulingEnabled:true,trialCapacity:99,reschedulingCapacity:'3'}),3);
+ for(const value of ['',-1,1.5,Number.MAX_SAFE_INTEGER+1])assert.equal(availabilityHeadcount({trialEnabled:true,trialCapacity:value}),null);
+ assert.equal(availabilityHeadcount({trialEnabled:true,reschedulingEnabled:true,trialCapacity:Number.MAX_SAFE_INTEGER,reschedulingCapacity:1}),null);
+});
+
+test('trial publication has only public and private choices, defaults public, and omits the settings summary',()=>{
+ for(const [stored,expected]of [[undefined,'show'],['default','show'],['show','show'],['hide','hide']]){
+  const html=availabilityEditorMarkup({slot:{...slot,publicVisibility:stored}},ui('zh')),select=html.match(/<select id="availability-public-visibility"[^>]*>([\s\S]*?)<\/select>/)?.[1]||'';
+  assert.equal((select.match(/<option /g)||[]).length,2);assert.match(select,new RegExp(`value="${expected}" selected`));assert.doesNotMatch(select,/跟隨預設|value="default"/);
+  assert.doesNotMatch(html,/設定摘要|availability-save-summary/);assert.match(html,/name="active"/);assert.match(html,/name="remark"/);
+ }
 });

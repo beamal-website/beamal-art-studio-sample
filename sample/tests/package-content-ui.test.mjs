@@ -149,7 +149,7 @@ test('both languages escape long names, values, errors and row IDs without chang
     assert.match(html, /FE-&lt;img&gt;/);
     assert.doesNotMatch(html, /<script|<img|<svg|<b>|" data-evil="|" onfocus="/);
   }
-  assert.match(packageContentMarkup(state, zh), /套票內容/);
+  assert.match(packageContentMarkup(state, zh), /每期課程內容/);
   assert.match(packageContentMarkup({...state, step: 'review'}, zh), /內容尚未儲存/);
   assert.equal(JSON.stringify(source), before);
 });

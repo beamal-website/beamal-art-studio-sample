@@ -36,3 +36,56 @@
 .ui-staff-management-tabs .ui-staff-button{min-height:44px;background:var(--staff-paper);color:var(--staff-teal);border-color:#c8d6ce}
 .ui-staff-management-tabs [aria-current="page"]{background:var(--teal,#27777b);color:#fff;border-color:var(--teal,#27777b)}
 @media(max-width:600px){.ui-staff-management-tabs{padding:12px 16px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.ui-staff-management-tabs button{min-width:0;white-space:normal;padding:8px}}
+
+/* Workspace areas stay in a simple vertical menu beside their content. */
+.ui-staff-workspace-shell{display:grid;grid-template-columns:176px minmax(0,1fr);gap:24px;align-items:start}
+.ui-staff-workspace-shell>.ui-staff-portal-tabs{display:flex;flex-direction:column;gap:4px;overflow:visible;margin:0;padding:0 16px 0 0;border-right:1px solid var(--staff-line);min-width:0}
+.ui-staff-page .ui-staff-workspace-shell>.ui-staff-portal-tabs>button{width:100%;min-width:0;justify-content:flex-start;text-align:left;white-space:normal;border:0;background:transparent;color:var(--staff-muted);padding:12px;border-radius:6px}
+.ui-staff-page .ui-staff-workspace-shell>.ui-staff-portal-tabs>button:hover{background:var(--staff-wash);color:var(--staff-teal)}
+.ui-staff-page .ui-staff-workspace-shell>.ui-staff-portal-tabs>button[aria-current=page]{background:#e1ece5;color:var(--staff-teal)}
+.ui-staff-workspace-content{min-width:0}
+.ui-staff-workspace-content>.ui-staff-workspace-layout{grid-template-columns:minmax(0,1fr)}
+.ui-staff-workspace-content .ui-staff-class-list article{padding:14px 0;gap:8px 16px}
+.ui-staff-workspace-content .ui-staff-class-list article>button{grid-row:1;grid-column:3;align-self:center}
+@media(max-width:900px){.ui-staff-workspace-shell{grid-template-columns:144px minmax(0,1fr);gap:16px}}
+@media(max-width:600px){
+ .ui-staff-portal>.ui-staff-body{padding:16px 12px}
+ .ui-staff-workspace-shell{grid-template-columns:104px minmax(0,1fr);gap:12px}
+ .ui-staff-workspace-shell>.ui-staff-portal-tabs{padding-right:8px}
+ .ui-staff-page .ui-staff-workspace-shell>.ui-staff-portal-tabs>button{padding:10px 8px;font-size:13px}
+ .ui-staff-workspace-content .ui-staff-class-list{padding:0 10px}
+ .ui-staff-workspace-content .ui-staff-class-list article{grid-template-columns:minmax(0,1fr);gap:8px}
+ .ui-staff-workspace-content .ui-staff-class-time{flex-direction:row;border:0;padding:0}
+ .ui-staff-workspace-content .ui-staff-class-list article>button{grid-row:auto;grid-column:auto}
+ .ui-staff-workspace-content .ui-staff-section-heading{flex-wrap:wrap;gap:8px}
+}
+
+.ui-staff-clock-placeholder{min-height:320px;background:#fff}
+
+/* One vertical stack of flat lists, with horizontal rules only. */
+.ui-staff-todo-board{min-width:0;margin-bottom:24px;padding:0;border:0;background:transparent}
+.ui-staff-todo-columns{display:block;min-width:0}
+.ui-staff-todo-column{min-width:0;padding:20px 0;border:0;border-bottom:1px solid var(--staff-line);background:transparent}
+.ui-staff-todo-column:first-child{padding-top:0}
+.ui-staff-todo-column>h3{margin:0 0 14px;padding:0;background:transparent;font-size:17px;line-height:1.5}
+.ui-staff-todo-column-body{padding:0;border:0;min-width:0;font-size:13px;line-height:1.7}
+.ui-staff-task-table-scroll{max-width:100%;overflow-x:auto;min-width:0;scrollbar-width:thin}
+.ui-staff-task-table-scroll:focus-visible{outline:2px solid var(--staff-teal);outline-offset:3px}
+.ui-staff-task-table{width:100%;min-width:600px;border-collapse:collapse;background:transparent;table-layout:auto}
+.ui-staff-rescheduling-table{min-width:600px}
+.ui-staff-task-table th,.ui-staff-task-table td{padding:12px 10px;border:0;border-bottom:1px solid var(--staff-line);vertical-align:top;text-align:left;white-space:normal;font-size:13px;line-height:1.7;overflow-wrap:anywhere}
+.ui-staff-task-table th{background:var(--staff-wash);font-weight:600;white-space:nowrap}
+.ui-staff-task-table td{background:transparent}
+.ui-staff-task-table small{display:block;color:var(--staff-muted);font-size:12px}
+.ui-staff-task-table p{margin:4px 0;color:var(--staff-muted)}
+.ui-staff-task-table tbody tr:last-child td{border-bottom:0}
+.ui-staff-task-table .ui-staff-transfer-cell{padding-inline:4px;width:24px;text-align:center}
+.ui-staff-transfer-arrow{display:block;padding-top:10px;color:var(--staff-teal);font-size:20px}
+.ui-staff-page .ui-staff-task-table .ui-staff-button{justify-content:flex-start;padding:4px 0;min-height:44px;text-align:left;border:0;border-radius:0;background:transparent;color:var(--staff-teal);box-shadow:none;font-size:13px}
+.ui-staff-page .ui-staff-task-table .ui-staff-button:hover{background:var(--staff-wash);color:var(--staff-teal);text-decoration:underline}
+.ui-staff-todo-column .trial-work-card{border:0;border-radius:0;padding:0;background:transparent}
+.ui-staff-todo-column .trial-work-card header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:0 0 10px}
+.ui-staff-todo-column .trial-work-card h4{margin:0;font-size:13px;font-weight:400;color:var(--staff-muted)}
+.ui-staff-todo-column .trial-work-card button{padding:6px 0;border:0;border-radius:0;background:transparent;box-shadow:none;font-size:13px}
+.ui-staff-todo-column .trial-work-card button:hover{color:var(--staff-teal);text-decoration:underline;background:transparent}
+@media(max-width:600px){.ui-staff-todo-column{padding-block:16px}.ui-staff-task-table th,.ui-staff-task-table td{padding:10px 8px}}

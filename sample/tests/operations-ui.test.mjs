@@ -582,3 +582,16 @@ test('inline message draft commands preserve each conversation without inventing
  const unknown=advance(state,'message-draft',{id:'missing-thread',message:'DO NOT STORE'});assert.equal(unknown.replyDrafts?.['missing-thread'],undefined);assert.doesNotMatch(operationsPageMarkup('messages',{...state,selectedThreadId:'missing-thread'},ctx),/ops-message-history|name="message"/);
 });
 test('compose native draft updates are immutable and cannot overwrite the previous rendered state',async()=>{const {advanceOperationsPreview:advance}=await import('../client/operations-ui.js'),opened=advance({lang:'en',data:getOperationsPreviewData()},'compose'),before=JSON.stringify(opened);const typed=advance(opened,'message-compose-draft',{recipient:'thread-2',subject:'Native draft',message:'New text'});assert.equal(JSON.stringify(opened),before);assert.equal(typed.dialog.values.message,'New text');assert.equal(typed.composeDraft.recipient,'thread-2');});
+
+test('product overview matches the reference columns and stock view retains inventory actions',async()=>{
+ const {advanceOperationsPreview}=await import('../client/operations-ui.js');
+ const source={data:getOperationsPreviewData(),productTab:'overview',query:'sketchbook'};
+ const overview=operationsPageMarkup('products',source,ctx);
+ for(const label of ['Overview','Manage stock','Code','Name','Detail','Remark','Online Store','Created date'])assert.ok(overview.includes(label),label);
+ assert.doesNotMatch(overview,/ops-summary/);
+ const stock=advanceOperationsPreview(source,'product-tab',{id:'stock'});
+ assert.equal(stock.query,'sketchbook');assert.equal(stock.productTab,'stock');
+ assert.match(operationsPageMarkup('products',stock,ctx),/data-ui-command="stock-product"/);
+ const empty=operationsPageMarkup('products',{data:{...getOperationsPreviewData(),products:[]}},ctx);
+ assert.match(empty,/<thead>/);assert.match(empty,/Add product details, pricing/);
+});

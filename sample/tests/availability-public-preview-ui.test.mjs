@@ -20,7 +20,7 @@ test('preview has a bounded modal contract and renders the same seven-day public
   assert.match(html, /data-action="availability-preview-manage" data-slot-id="slot-2"/);
   assert.match(html, /2 places remaining/);
   assert.match(html, /data-action="availability-preview-refresh"/);
-  assert.equal((html.match(/data-action="availability-preview-close"/g) || []).length, 2);
+  assert.equal((html.match(/data-action="availability-preview-close"/g) || []).length, 1);
   assert.doesNotMatch(html, /PRIVATE_|private-student|private-exclusion|9876|trial-application|availability-trial-preview|type="submit"|data-action="availability-edit"|data-action="availability-save"/);
 });
 
@@ -88,4 +88,27 @@ test('preview escapes identities and public labels and supports both languages',
 
 test('management preview embeds Settings after its public calendar without a nested dialog',()=>{
  for(const language of ['en','zh']){const html=availabilityPublicPreviewMarkup({...model,settings:{version:2,rangeDays:14,showFullTrialSlots:true,showReschedulingSlots:false}},ui(language));assert.match(html,/id="availability-preview-settings-title"/);assert.match(html,language==='en'?/>Settings</:/>設定</);assert.match(html,/id="availability-public-settings"/);assert.match(html,/name="rangeDays"[^>]*value="14"/);assert.equal((html.match(/role="dialog"/g)||[]).length,1);assert.ok(html.indexOf('id="availability-preview-settings-title"')>html.indexOf('data-availability-date='));}
+});
+
+test('global preview shows only the inert parent-facing timetable with working settings outside it',()=>{
+ for(const language of ['en','zh']){
+  const html=availabilityPublicPreviewMarkup({...model,mixed:true,courses:[course],rangeDays:7,settings:{version:2,rangeDays:14,showFullTrialSlots:true,showReschedulingSlots:false}},ui(language));
+  assert.match(html,/class="availability-parent-preview"/);
+  assert.match(html,/class="availability-public availability-public-weekly"[^>]* inert>/);
+  assert.match(html,/id="availability-public-week-title"/);
+  assert.match(html,/data-action="availability-week-course"/);
+  assert.ok(html.indexOf('availability-preview-settings-title')>html.indexOf('data-availability-date='));
+  assert.doesNotMatch(html,/<iframe|availability-public-back|availability-preview-manage|PRIVATE_/);
+  assert.match(html,/id="availability-public-settings"/);
+  assert.match(html,/<form id="availability-public-settings"/);
+ }
+});
+
+test('preview refresh is an accessible icon outside the inert area and the redundant footer is removed',()=>{
+ const html=availabilityPublicPreviewMarkup({...model,mixed:true,courses:[course]},ui('en'));
+ assert.match(html,/class="availability-preview-refresh-icon"[^>]*aria-label="Refresh"[^>]*aria-describedby="availability-preview-refresh-tip"/);
+ assert.match(html,/role="tooltip">Refresh<\/span>/);
+ assert.ok(html.indexOf('availability-preview-refresh-icon')<html.indexOf(' inert>'));
+ assert.equal((html.match(/data-action="availability-preview-close"/g)||[]).length,1);
+ assert.doesNotMatch(html,/<footer class="availability-footer">/);
 });

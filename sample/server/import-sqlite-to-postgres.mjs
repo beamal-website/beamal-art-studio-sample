@@ -39,7 +39,7 @@ export async function importSqliteToPostgres({sourcePath=resolve(sampleDir,'.dat
  try{source=new DatabaseSync(sourcePath,{readOnly:true});}catch(error){fail(`Cannot open the source SQLite database: ${error.message}`);}
  let store,destination;
  try{
-  store=await createStore({databasePath:':memory:',databaseUrl,seedUsers:[],seedCourses:[]});await store.close();store=null;
+  store=await createStore({databasePath:':memory:',databaseUrl,seedUsers:[],seedCourses:[],seedNews:false});await store.close();store=null;
   destination=await createPostgresDatabase(databaseUrl);
   const targetTables=destination.prepare("SELECT table_name FROM information_schema.tables WHERE table_schema=current_schema() AND table_type='BASE TABLE'").all().map(row=>row.table_name);
   verifyFreshTarget(destination,targetTables);

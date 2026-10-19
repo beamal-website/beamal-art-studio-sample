@@ -4,19 +4,19 @@ import {staffDirectoryMarkup,staffPortalMarkup,staffDialogMarkup,staffInterfaceP
 const en={t:(_zh,text)=>text},zh={t:text=>text};
 test('staff directory keeps staff identities and routes permission settings through individual profiles',()=>{const html=staffDirectoryMarkup(staffInterfacePreviewState(),en);assert.match(html,/Maya Lam/);assert.match(html,/Leo Chan/);assert.match(html,/admin@gmail.com/);assert.match(html,/teacher@gmail.com/);assert.match(html,/data-ui-command="open-detail"[^>]*data-ui-id="leo"/);assert.doesNotMatch(html,/Interface preview|Preview profile|data-ui-command="open-permissions"/);assert.doesNotMatch(html,/000000|<img|fetch\(/);});
 test('directory search filters visible cards and escapes names and attributes',()=>{const state=staffInterfacePreviewState();state.query='leo';let html=staffDirectoryMarkup(state,en);assert.match(html,/Leo Chan/);assert.doesNotMatch(html,/Maya Lam/);state.staff=[{id:'"><script>',displayName:'<script>bad</script>',role:'teacher',active:true}];state.query='';html=staffDirectoryMarkup(state,en);assert.match(html,/&lt;script&gt;bad&lt;\/script&gt;/);assert.doesNotMatch(html,/<script>/);});
-test('Teacher home prioritizes actionable To-do and classes with staff-specific clock controls',()=>{const html=staffPortalMarkup(staffInterfacePreviewState(),en);assert.match(html,/Pending class arrangements/);assert.match(html,/Chloe Ho/);assert.match(html,/Today’s classes/);assert.match(html,/data-ui-command="open-clock"/);assert.match(html,/data-ui-command="open-task"/);assert.match(html,/data-ui-command="open-class"/);assert.doesNotMatch(html,/navigator.geolocation|access-control\/|Confirm verified payment/);});
+test('Teacher home prioritizes actionable To-do and classes without clock actions',()=>{const html=staffPortalMarkup(staffInterfacePreviewState(),en);assert.match(html,/Other matters/);assert.match(html,/Chloe Ho/);assert.doesNotMatch(html,/<h2>Today’s classes<\/h2>/);assert.doesNotMatch(html,/data-ui-command="open-clock"/);assert.match(html,/data-ui-command="open-task"/);assert.doesNotMatch(html,/data-ui-command="open-class"/);assert.doesNotMatch(html,/navigator.geolocation|access-control\/|Confirm verified payment/);});
 test('permissions dialog uses module-specific own/all read/edit scopes without pretending to save backend permissions',()=>{const state=staffInterfacePreviewState();state.dialog={kind:'permissions',id:'leo'};const html=staffDialogMarkup(state,en);assert.match(html,/id="ui-staff-form"/);assert.match(html,/data-ui-form="permissions"/);assert.match(html,/name="timetable_read"/);assert.match(html,/name="timetable_edit"/);assert.match(html,/value="own"/);assert.match(html,/value="all"/);assert.match(html,/>Save<\/button>/);assert.doesNotMatch(html,/Interface preview|Save preview/);assert.match(html,/role="dialog"/);assert.match(html,/aria-modal="true"/);assert.doesNotMatch(html,/type="password"|Grant administrator/);});
 test('leave form has required dates and reason, bilingual rendering and preview-only submission',()=>{const state=staffInterfacePreviewState();state.dialog={kind:'leave',id:'leo'};const html=staffDialogMarkup(state,en);assert.match(html,/name="from"[^>]*required/);assert.match(html,/name="to"[^>]*required/);assert.match(html,/name="reason"[^>]*required/);assert.match(html,/>Submit request<\/button>/);assert.match(staffDialogMarkup(state,zh),/請假申請/);});
-test('payroll and clock tabs separate unknown monthly pay and independent clock events',()=>{
+test('payroll retains unknown monthly pay while the Clock page stays blank',()=>{
  const state=staffInterfacePreviewState();state.portalTab='payroll';let html=staffPortalMarkup(state,en);
  for(const text of ['Scheduled','Actual','Approved OT','Net pay'])assert.ok(html.includes(text),text);
  assert.match(html,/type="month"/);assert.match(html,/Payroll records are not available yet/);assert.doesNotMatch(html,/Estimated total|HK\$960|pay-1/);
  state.portalTab='clock';state.clockedIn=true;html=staffPortalMarkup(state,en);
- assert.equal((html.match(/data-ui-command="open-clock"/g)||[]).length,1);assert.match(html,/Clock records/);assert.match(html,/12:45/);
+ assert.equal((html.match(/data-ui-command="open-clock"/g)||[]).length,0);assert.match(html,/ui-staff-clock-placeholder/);assert.doesNotMatch(html,/Clock records|12:45|name="teacherId"/);
  assert.doesNotMatch(html,/In progress|4h 17m|Clocked in|Ready to start|<button[^>]*>Clock (?:in|out)<\/button>|Interface preview|interface examples|\(preview\)/);
 });
 
-test('empty data and unknown staff dialogs remain readable and never invent saved records',()=>{const state={staff:[],todos:[],classes:[],clockEntries:[],leaveRequests:[],payrollRows:[],viewerId:'missing',dialog:{kind:'detail',id:'missing'}};assert.match(staffDirectoryMarkup(state,en),/No staff match/);assert.match(staffPortalMarkup(state,en),/No classes scheduled/);assert.match(staffDialogMarkup(state,en),/Staff profile unavailable/);});
+test('empty data and unknown staff dialogs remain readable and never invent saved records',()=>{const state={staff:[],todos:[],classes:[],clockEntries:[],leaveRequests:[],payrollRows:[],viewerId:'missing',dialog:{kind:'detail',id:'missing'}};assert.match(staffDirectoryMarkup(state,en),/No staff match/);assert.match(staffPortalMarkup({...state,portalTab:'class-schedule'},en),/No classes today/);assert.match(staffDialogMarkup(state,en),/Staff profile unavailable/);});
 
 test('reducer edits a preview profile and granular permissions without mutating the input or creating real identities',async()=>{const {advanceStaffPreview}=await import('../client/staff-portal-ui.js');const state=staffInterfacePreviewState(),opened=advanceStaffPreview(state,'open-edit',{id:'leo'});const edited=advanceStaffPreview(opened,'submit',{formKind:'edit',displayName:'Leo revised',email:'teacher@gmail.com',hourlyRate:'330',courses:'Drawing, Watercolour'});assert.equal(state.staff[1].displayName,'陳子朗 Leo Chan');assert.equal(edited.staff[1].displayName,'Leo revised');assert.deepEqual(edited.staff[1].courses,['Drawing','Watercolour']);assert.equal(edited.staff[1].role,'teacher');assert.equal(edited.dialog,null);const permissions=advanceStaffPreview(advanceStaffPreview(edited,'open-permissions',{id:'leo'}),'submit',{formKind:'permissions',timetable_read:'all',timetable_edit:'own'});assert.deepEqual(permissions.staff[1].permissions.timetable,{read:'all',edit:'own'});assert.equal(permissions.staff[1].permissions.payroll.read,'none');assert.equal(permissions.staff[1].role,'teacher');});
 test('unconnected clock and legacy leave submissions cannot fabricate records while isolated task drafts remain usable',async()=>{
@@ -29,7 +29,7 @@ test('unconnected clock and legacy leave submissions cannot fabricate records wh
  }
  state=advanceStaffPreview(state,'close-dialog');state=advanceStaffPreview(state,'open-leave',{id:'leo'});
  state=advanceStaffPreview(state,'submit',{formKind:'leave',from:'2026-10-20',to:'2026-10-21',reason:'Personal',leaveType:'annual'});
- assert.equal(state.leaveRequests.length,1);assert.equal(state.portalTab,'home');assert.match(state.error,/no leave record was saved/);assert.equal(state.dialog.draft.reason,'Personal');
+ assert.equal(state.leaveRequests.length,1);assert.equal(state.portalTab,'todo');assert.match(state.error,/no leave record was saved/);assert.equal(state.dialog.draft.reason,'Personal');
  state=advanceStaffPreview(state,'task-complete',{id:'task-chloe'});assert.equal(state.todos[0].tasks[0].done,true);assert.match(state.notice,/Updated for this demonstration/);
 });
 
@@ -74,13 +74,13 @@ test('staff sample uses natural lesson and room names without engineering labels
   assert.match(staffPortalMarkup({...state,portalTab:'classes'},en),/Studio A/);
 });
 
-test('workspace keeps leave navigation and one neutral Clock entry without promotional filler',()=>{
+test('workspace keeps leave and Clock navigation without a separate clock action',()=>{
   const source=staffInterfacePreviewState();
   for(const locale of [en,zh])for(const clockedIn of [false,true]){
     const html=staffPortalMarkup({...source,clockedIn},locale);
     assert.doesNotMatch(html,/ui-staff-quick-note|Your teaching, at a glance|Keep class lists|Leave and cover arrangements|專注於你的課堂|減少來回尋找|請假及代課安排/);
     assert.match(html,/data-ui-command="tab"[^>]*data-ui-tab="leave"[^>]*>(Leave|請假)<\/button>/);
-    assert.equal((html.match(/data-ui-command="open-clock"/g)||[]).length,1);
+    assert.equal((html.match(/data-ui-command="open-clock"/g)||[]).length,0);
     assert.doesNotMatch(html,/data-ui-command="clock-in"|data-ui-command="clock-out"|>Clock in<|>Clock out<|>上班打卡<|>下班打卡</);
     assert.match(html,/Leo Chan/);
   }
@@ -207,3 +207,69 @@ test('missing shared employment is not selected as part-time in profile or a for
     assert.doesNotMatch(editor,/<option value="part-time" selected/);
   }
 });
+
+test('workspace uses a left navigation shell with only overview tasks classes clock and leave',()=>{
+ for(const locale of [en,zh]){
+  const html=staffPortalMarkup(staffInterfacePreviewState(),locale);
+  const nav=html.match(/<nav class="ui-staff-portal-tabs"[\s\S]*?<\/nav>/)?.[0]||'';
+  assert.match(html,/class="ui-staff-workspace-shell"/);
+  assert.match(html,/class="ui-staff-workspace-content"/);
+  for(const key of ['todo','class-schedule','classes','clock','leave'])assert.match(nav,new RegExp('data-ui-tab="'+key+'"'));
+  assert.doesNotMatch(nav,/data-ui-tab="(?:roster|payroll)"/);
+  assert.doesNotMatch(html,/students · Capacity/);
+ }
+ const detail=staffPortalMarkup({...staffInterfacePreviewState(),portalTab:'classes'},en);
+ assert.match(detail,/students · Capacity/);
+});
+
+test('four-column task board keeps requests in the right group and excludes another teacher tasks',()=>{
+ const state={...staffInterfacePreviewState(),todos:[{id:'student-requests',tasks:[{id:'move',staffId:'leo',requestType:'reschedule',title:'MOVE_ONLY',studentName:'MOVE_ONLY'},{id:'sick',staffId:'leo',requestType:'sick',title:'SICK_ONLY'},{id:'private',staffId:'maya',title:'PRIVATE_OTHER_TEACHER'}]},{id:'payment',tasks:[{id:'pay',staffId:'leo',title:'PAY_ONLY',payerName:'PAY_ONLY'}]}]};
+ const html=staffPortalMarkup(state,en);
+ const column=key=>html.split('data-todo-category="'+key+'"')[1].split('</section>')[0];
+ assert.equal((html.match(/data-todo-category=/g)||[]).length,4);
+ assert.match(column('rescheduling'),/MOVE_ONLY/);assert.doesNotMatch(column('rescheduling'),/SICK_ONLY|PAY_ONLY/);
+ assert.match(column('other'),/SICK_ONLY/);assert.match(column('payment'),/PAY_ONLY/);
+ assert.doesNotMatch(html,/PRIVATE_OTHER_TEACHER/);
+ for(const label of ['Rescheduling requests','Trial applications','Payment requests','Other matters'])assert.ok(html.includes(label));
+});
+
+test('workspace opens only To-do and keeps today’s classes as a separate inner page',()=>{
+ const state=staffInterfacePreviewState(),home=staffPortalMarkup(state,en),schedule=staffPortalMarkup({...state,portalTab:'class-schedule'},en);
+ assert.equal(state.portalTab,'todo');
+ assert.match(home,/<h1>My workspace<\/h1>/);assert.match(home,/id="ui-staff-todo-board-title"/);
+ assert.doesNotMatch(home,/data-ui-tab="home"|data-ui-command="open-class"/);
+ assert.match(schedule,/<h1>My workspace<\/h1>/);assert.match(schedule,/<h2>Today’s classes<\/h2>/);
+ assert.match(schedule,/data-ui-command="open-class"/);assert.doesNotMatch(schedule,/id="ui-staff-todo-board-title"/);
+ assert.match(staffPortalMarkup({...state,portalTab:'home'},en),/id="ui-staff-todo-board-title"/);
+});
+
+test('rescheduling lists preserve original and chosen lessons and open read-only details for either side',async()=>{
+ const {advanceStaffPreview}=await import('../client/staff-portal-ui.js');
+ const task={id:'exact-request',staffId:'leo',studentName:'Exact student',createdAt:'2026-10-19T03:20:00Z',requestType:'reschedule',originalLesson:{courseName:'Old painting',date:'2026-10-20',time:'10:00',duration:60},preferredLesson:{courseName:'Chosen painting',date:'2026-10-22',time:'15:00',duration:45},availableTimes:[{courseName:'Do not guess this option',date:'2026-10-21',time:'09:00'}]};
+ const state={...staffInterfacePreviewState(),todos:[{id:'student-requests',tasks:[task]}]};
+ const html=staffPortalMarkup(state,en);
+ assert.match(html,/Old painting/);assert.match(html,/Chosen painting/);assert.match(html,/11:20/);assert.match(html,/ui-staff-transfer-arrow/);
+ assert.doesNotMatch(html,/Do not guess this option/);
+ for(const side of ['original','preferred']){
+  const opened=advanceStaffPreview(state,'open-request-lesson',{id:task.id,tab:side}),dialog=staffDialogMarkup(opened,en);
+  assert.match(dialog,side==='original'?/Old painting/:/Chosen painting/);
+  assert.match(dialog,side==='original'?/10:00/:/15:00/);
+  assert.doesNotMatch(dialog,/type="submit"|assign-lesson-request/);
+ }
+ const missing=staffPortalMarkup({...state,todos:[{id:'student-requests',tasks:[{...task,preferredLesson:null,preferredDate:'2026-10-25'}]}]},en);
+ assert.match(missing,/New lesson not selected/);assert.match(missing,/2026-10-25/);assert.doesNotMatch(missing,/Do not guess this option/);
+ const privateDialog=staffDialogMarkup({...state,viewerId:'maya',dialog:{kind:'request-lesson',id:task.id,tab:'original'}},en);
+ assert.doesNotMatch(privateDialog,/Old painting/);
+});
+
+ test('today’s classes excludes other dates and teachers, sorts times and does not truncate the day',()=>{
+ const base=staffInterfacePreviewState(),today=base.today;
+ const rows=Array.from({length:10},(_,i)=>({id:'today-'+i,staffId:base.viewerId,date:today,time:String(18-i).padStart(2,'0')+':00',courseName:'TODAY_'+i}));
+ const state={...base,portalTab:'class-schedule',classes:[...rows,{id:'past',staffId:base.viewerId,date:'2026-10-15',courseName:'PAST_ONLY'},{id:'future',staffId:base.viewerId,date:'2026-10-17',courseName:'FUTURE_ONLY'},{id:'other',staffId:'maya',date:today,courseName:'OTHER_TEACHER'}]};
+ for(const shared of [false,true]){
+ const html=staffPortalMarkup({...state,shared,sharedReady:true},en);
+ assert.equal((html.match(/data-ui-command="open-class"/g)||[]).length,10);assert.doesNotMatch(html,/PAST_ONLY|FUTURE_ONLY|OTHER_TEACHER/);assert.ok(html.indexOf('TODAY_9')<html.indexOf('TODAY_0'));
+ const empty=staffPortalMarkup({...state,shared,sharedReady:true,classes:state.classes.filter(row=>row.date!==today)},en);assert.match(empty,/No classes today/);assert.doesNotMatch(empty,/FUTURE_ONLY|PAST_ONLY|Upcoming classes/);
+ }
+ const all=staffPortalMarkup({...state,portalTab:'classes'},en);assert.match(all,/PAST_ONLY/);assert.match(all,/FUTURE_ONLY/);
+ });

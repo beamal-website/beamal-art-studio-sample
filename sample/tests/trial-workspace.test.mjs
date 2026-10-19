@@ -5,7 +5,7 @@ const state={shared:true,sharedReady:true,sharedSourceReady:true,viewerId:'teach
 test('a real trial follow-up is inside the teacher home and To-do surfaces with a real count and no contradictory unavailable message',()=>{
  for(const portalTab of ['home','todo']){
   const html=staffPortalMarkup({...state,portalTab},{trialWork:()=>'<section data-real-trial-work>Exact trial queue</section>',trialPendingTotal:2});
-  assert.match(html,/data-real-trial-work/);assert.doesNotMatch(html,/Tasks are not available yet/);assert.match(html,/To-do \(2\)/);assert.ok(html.indexOf('data-real-trial-work')>html.indexOf('<h1'));
+  assert.match(html,/data-real-trial-work/);const trialColumn=html.split('data-todo-category="trial"')[1].split('data-todo-category="payment"')[0];assert.doesNotMatch(trialColumn,/Tasks are not available yet/);assert.match(html,/To-do \(2\)/);assert.ok(html.indexOf('data-real-trial-work')>html.indexOf('<h1'));
  }
 });
 test('without the authoritative trial source the existing unavailable state does not turn into zero tasks or fixtures',()=>{

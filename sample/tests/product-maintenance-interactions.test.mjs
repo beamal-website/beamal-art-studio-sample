@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {productFixture,copy} from './helpers/product-host.mjs';
 for(const mode of ['error','changed'])test('a composing product field stays mounted when its source becomes '+mode,()=>{
- const p=productFixture();p.filter({query:'Same product title'});p.action('edit-product','exact-product-21');
+ const p=productFixture();p.filter({query:'Same product title'});p.action('view-product','exact-product-21');p.action('edit-product','exact-product-21');
  const field=p.type('remark','中文輸入候選');field.focus();field.setSelectionRange(3,3,'none');field.scrollTop=29;p.body.scrollTop=207;
  const writes=p.modalWrites,rows=copy(p.records);rows[20].price=999;
  p.current.productsContext=mode==='error'?{status:'error',records:[],revision:'temporary-error',error:'Product source unavailable'}:{status:'ready',records:rows,revision:'new-current-price'};

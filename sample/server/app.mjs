@@ -24,7 +24,7 @@ function json(response, status, payload) {
   response.end(JSON.stringify(payload));
 }
 
-async function body(request) {
+async function body(request,limit=BODY_LIMIT) {
   if (!/^application\/json(?:\s*;|$)/i.test(request.headers['content-type'] || '')) throw new ApplicationError(415, 'JSON_REQUIRED', 'Use application/json for this request.');
   const raw = await new Promise((resolveBody, reject) => {
     let bytes = 0, completed = false;
@@ -32,7 +32,7 @@ async function body(request) {
     request.on('data', chunk => {
       if (completed) return;
       bytes += chunk.length;
-      if (bytes > BODY_LIMIT) { completed = true; chunks.length = 0; reject(new ApplicationError(413, 'BODY_TOO_LARGE', 'Request body is too large.')); }
+      if (bytes > limit) { completed = true; chunks.length = 0; reject(new ApplicationError(413, 'BODY_TOO_LARGE', 'Request body is too large.')); }
       else chunks.push(chunk);
     });
     request.on('end', () => { if (!completed) { completed = true; resolveBody(Buffer.concat(chunks).toString('utf8')); } });
@@ -228,6 +228,7 @@ export async function createApplication({ databasePath = ':memory:', databaseUrl
       const studentRosterMatch = /^\/api\/schedules\/([^/]+)\/occurrences\/([^/]+)\/students$/.exec(pathname);
       const studentAttendanceMatch = /^\/api\/student-sessions\/([^/]+)\/attendance$/.exec(pathname);
       const pendingArrangementMatch = /^\/api\/student-sessions\/([^/]+)\/(arrangement|pending-arrangement)$/.exec(pathname);
+      const dateNoteMatch = /^\/api\/date-notes\/([^/]+)$/.exec(pathname);
       const lessonNoteMatch = /^\/api\/schedules\/([^/]+)\/occurrences\/([^/]+)\/note$/.exec(pathname);
       const parentMessageContextMatch = /^\/api\/student-sessions\/([^/]+)\/parent-message-context$/.exec(pathname);
       const parentMessageMatch = /^\/api\/student-sessions\/([^/]+)\/parent-messages$/.exec(pathname);
@@ -319,6 +320,10 @@ export async function createApplication({ databasePath = ':memory:', databaseUrl
       if (pathname === '/api/student/timetable' && request.method === 'GET') {
         const session=requireSession(request); const query=enrollmentQuery(['from','to','since']); json(response,200,store.enrollmentOrders.timetable(session.user,query)); return;
       }
+      const reschedulingTimesMatch=/^\/api\/student\/lessons\/([^/]+)\/rescheduling-times$/.exec(pathname);
+      if(reschedulingTimesMatch&&request.method==='GET'){const session=requireSession(request);enrollmentQuery([]);json(response,200,store.studentLessonRequests.options(decodeId(reschedulingTimesMatch[1]),session.user));return;}
+      if(pathname==='/api/availability-pending-arrangements'&&request.method==='GET'){const session=requireSession(request);enrollmentQuery([]);json(response,200,store.availableSlots.pendingArrangements(session.user));return;}
+      if(pathname==='/api/availability-rule-options'&&request.method==='GET'){const session=requireSession(request);enrollmentQuery([]);json(response,200,store.availableSlots.ruleOptions(session.user));return;}
       if(pathname==='/api/lesson-requests'&&request.method==='GET'){
         const session=requireSession(request);enrollmentQuery([]);json(response,200,store.studentLessonRequests.list(session.user));return;
       }
@@ -385,6 +390,18 @@ export async function createApplication({ databasePath = ':memory:', databaseUrl
         // Recheck the current responsible teacher even for a cached retry.
         store.enrollmentOrders.authorizeAttendance(id,session.user);
         const result=store.mutateOnce({userId:session.user.id,route:'PATCH /api/student-sessions/'+encodeURIComponent(id)+'/attendance',key,payloadHash:payloadHash(input),status:200},()=>({session:store.enrollmentOrders.saveAttendance(id,input,session.user)}));
+        json(response,result.status,result.body);return;
+      }
+      if (pathname==='/api/date-notes'&&request.method==='GET') {
+        const session=requireSession(request);enrollmentQuery(['from','to']);
+        json(response,200,store.dateNotes.list(requestUrl.searchParams.get('from'),requestUrl.searchParams.get('to'),session.user));return;
+      }
+      if (dateNoteMatch && ['GET','PATCH'].includes(request.method)) {
+        const session=request.method==='GET'?requireSession(request):requireMutation(request),date=decodeId(dateNoteMatch[1]);enrollmentQuery([]);
+        if(request.method==='GET'){json(response,200,{note:store.dateNotes.get(date,session.user)});return;}
+        const input=await body(request),key=idempotencyKey(request);
+        store.dateNotes.authorizeWrite(date,session.user);
+        const result=store.mutateOnce({userId:session.user.id,route:'PATCH /api/date-notes/'+encodeURIComponent(date),key,payloadHash:payloadHash(input),status:200},()=>({note:store.dateNotes.save(date,input,session.user)}));
         json(response,result.status,result.body);return;
       }
       if (lessonNoteMatch && ['GET','PATCH'].includes(request.method)) {
@@ -492,9 +509,20 @@ export async function createApplication({ databasePath = ':memory:', databaseUrl
         requireOrigin(request);throttleTrialApplication(request);const saved=store.trialInquiries.create(await body(request));
         json(response,201,{application:{id:saved.id,status:saved.status,createdAt:saved.createdAt}});return;
       }
+      const websiteNewsMatch=/^\/api\/news\/([^/]+)$/.exec(pathname);
+      if(['/api/public/news','/api/news'].includes(pathname)&&request.method==='GET'){
+        if(requestUrl.search)throw new ApplicationError(400,'INVALID_QUERY','News does not accept query parameters.');
+        json(response,200,store.websiteNews.list({publicOnly:pathname==='/api/public/news',user:pathname==='/api/news'?requireSession(request).user:null}));return;
+      }
+      if((pathname==='/api/news'||pathname==='/api/news/import')&&request.method==='POST'||websiteNewsMatch&&request.method==='PATCH'){
+        const session=requireMutation(request);if(session.user.role!=='admin')throw new ApplicationError(403,'ROLE_FORBIDDEN','Only administrators can manage website news.');
+        const input=await body(request,2*1024*1024),key=idempotencyKey(request),route=request.method+' '+pathname,status=pathname==='/api/news'?201:200;
+        const result=store.mutateOnce({userId:session.user.id,route,key,payloadHash:payloadHash(input),status},()=>pathname==='/api/news/import'?store.websiteNews.importLegacy(input,session.user):{post:websiteNewsMatch?store.websiteNews.update(decodeId(websiteNewsMatch[1]),input,session.user):store.websiteNews.create(input,session.user)});
+        json(response,result.status,result.body);return;
+      }
       if (pathname === '/api/public/catalog' && request.method === 'GET') {
         const query = slotQuery(['since']), catalog = store.catalogSnapshot({ publicOnly: true, since: query.since || '' });
-        json(response, 200, catalog.unchanged ? catalog : { revision: catalog.revision, courses: catalog.courses.map(({ id, courseName, category, level }) => ({ id, courseName, category, level })) }); return;
+        json(response, 200, catalog.unchanged ? catalog : { revision: catalog.revision, courses: catalog.courses.map(({ id, courseName, courseNameEn, category, level }) => ({ id, courseName, ...(courseNameEn !== undefined ? {courseNameEn} : {}), category, level })) }); return;
       }
       if (request.method === 'GET' && (pathname === '/api/available-slots' || availableSlotMatch)) {
         const session = requireSession(request);
@@ -709,7 +737,7 @@ export async function createApplication({ databasePath = ':memory:', databaseUrl
         json(response, 200, store.updateFee(id, fee, version, session.user.id, true)); return;
       }
       if (pathname === '/api' || pathname.startsWith('/api/')) {
-        const known = publicTrialTimesMatch || parentTemplateMatch || parentTemplateActionMatch || pathname === '/api/parent-message-templates' || parentMessageContextMatch || parentMessageMatch || pathname === '/api/parent-messages/inbox' || packageContentsMatch || pendingArrangementMatch || pathname === '/api/pending-arrangements' || trialApplicationMatch || trialRejectMatch || ['/api/public/trial-form-policy','/api/public/trial-applications','/api/trial-applications','/api/trial-applications/work'].includes(pathname) || studentLinkMatch || orderMatch || orderActionMatch || studentRosterMatch || lessonNoteMatch || match || feeMatch || courseMaterialMatch || materialMatch || uploadMatch || attachmentMatch || scheduleMatch || occurrenceMatch || courseLifecycleMatch || schedulingResourceMatch || personMatch || personHistoryMatch || teacherLinkMatch || accessGrantMatch || availableSlotMatch || publicCourseMatch || capacityStatusMatch || classTypeMatch || ['/api/student-account-links', '/api/student/profile', '/api/student/timetable', '/api/timetable/filter-facts', '/api/staff/personal-profiles', '/api/orders', '/api/class-types', '/api/class-capacity-statuses', '/api/available-slots', '/api/availability-public-settings', '/api/public/courses', '/api/public/timetable', '/api/public/catalog', '/api/people', '/api/access-control', '/api/access-control/grants', '/api/health', '/api/auth/session', '/api/auth/login', '/api/auth/logout', '/api/courses', '/api/fees', '/api/catalog', '/api/schedules', '/api/scheduling-resources'].includes(pathname);
+        const known = reschedulingTimesMatch || pathname==='/api/availability-rule-options' || pathname==='/api/availability-pending-arrangements' || ['/api/news','/api/public/news','/api/news/import'].includes(pathname) || websiteNewsMatch || pathname === '/api/date-notes' || publicTrialTimesMatch || parentTemplateMatch || parentTemplateActionMatch || pathname === '/api/parent-message-templates' || parentMessageContextMatch || parentMessageMatch || pathname === '/api/parent-messages/inbox' || packageContentsMatch || pendingArrangementMatch || pathname === '/api/pending-arrangements' || trialApplicationMatch || trialRejectMatch || ['/api/public/trial-form-policy','/api/public/trial-applications','/api/trial-applications','/api/trial-applications/work'].includes(pathname) || studentLinkMatch || orderMatch || orderActionMatch || studentRosterMatch || dateNoteMatch || lessonNoteMatch || match || feeMatch || courseMaterialMatch || materialMatch || uploadMatch || attachmentMatch || scheduleMatch || occurrenceMatch || courseLifecycleMatch || schedulingResourceMatch || personMatch || personHistoryMatch || teacherLinkMatch || accessGrantMatch || availableSlotMatch || publicCourseMatch || capacityStatusMatch || classTypeMatch || ['/api/student-account-links', '/api/student/profile', '/api/student/timetable', '/api/timetable/filter-facts', '/api/staff/personal-profiles', '/api/orders', '/api/class-types', '/api/class-capacity-statuses', '/api/available-slots', '/api/availability-public-settings', '/api/public/courses', '/api/public/timetable', '/api/public/catalog', '/api/people', '/api/access-control', '/api/access-control/grants', '/api/health', '/api/auth/session', '/api/auth/login', '/api/auth/logout', '/api/courses', '/api/fees', '/api/catalog', '/api/schedules', '/api/scheduling-resources'].includes(pathname);
         throw new ApplicationError(known ? 405 : 404, known ? 'METHOD_NOT_ALLOWED' : 'NOT_FOUND', 'API route or method is not available.');
       }
       await serveStatic(request, response, pathname);

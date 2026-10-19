@@ -9,7 +9,7 @@ export class ApplicationError extends Error {
 const invalid = message => { throw new ApplicationError(400, 'INVALID_COURSE', message); };
 const pricingFields = ['pricingModel', 'price', 'months', 'duration', 'packageType', 'packageTotal', 'bookingExpiry', 'onlineStore'];
 const typeFields = ['classTypeId', 'classTypeVersion'];
-const fields = new Set(['courseName', 'feeName', 'category', 'level', 'publicColor', 'content', ...typeFields, ...pricingFields]);
+const fields = new Set(['courseName', 'courseNameEn', 'feeName', 'feeNameEn', 'category', 'level', 'publicColor', 'content', ...typeFields, ...pricingFields]);
 const plainObject = value => value !== null && typeof value === 'object' && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype;
 export const normalizePublicCourseColor = value => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value) ? value.toLowerCase() : null;
 const contentFields = ['descriptionZh', 'descriptionEn', 'minAgeYears', 'maxAgeYears'];
@@ -65,6 +65,8 @@ function text(value, label, required = false) {
   return value.trim();
 }
 
+const englishName = (source, key) => Object.hasOwn(source, key) ? { [key]: text(source[key], 'English name') } : {};
+
 function positive(value, label, maximum, integer = false) {
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0 || value > maximum || (integer && !Number.isInteger(value))) invalid(`${label} must be a positive ${integer ? 'whole number' : 'number'} no greater than ${maximum}.`);
   return value;
@@ -100,7 +102,7 @@ function validatePricing(source) {
 }
 
 export function hasPricingFields(input) {
-  return ['feeName', ...pricingFields].some(field => Object.hasOwn(input, field));
+  return ['feeName', 'feeNameEn', ...pricingFields].some(field => Object.hasOwn(input, field));
 }
 
 function classTypeSelection(input) {
@@ -117,9 +119,9 @@ function classTypeSelection(input) {
 
 export function validateCourseMetadata(input, current = null) {
   if (!plainObject(input)) invalid('Course must be a JSON object.');
-  for (const key of Object.keys(input)) if (!['courseName', 'category', 'level', 'publicColor', 'content', 'version', ...typeFields].includes(key)) invalid(`Unsupported course field: ${key}.`);
+  for (const key of Object.keys(input)) if (!['courseName', 'courseNameEn', 'category', 'level', 'publicColor', 'content', 'version', ...typeFields].includes(key)) invalid(`Unsupported course field: ${key}.`);
   const source = current ? { ...current, ...input } : input;
-  return { courseName: text(source.courseName, 'Course name', true), category: text(source.category, 'Category'), level: text(source.level, 'Level'), publicColor: coursePublicColor(source.publicColor), ...classTypeSelection(input), ...courseContentSelection(input) };
+  return { courseName: text(source.courseName, 'Course name', true), ...englishName(source, 'courseNameEn'), category: text(source.category, 'Category'), level: text(source.level, 'Level'), publicColor: coursePublicColor(source.publicColor), ...classTypeSelection(input), ...courseContentSelection(input) };
 }
 
 export function validateCourse(input, current = null) {
@@ -127,18 +129,18 @@ export function validateCourse(input, current = null) {
   for (const key of Object.keys(input)) if (!fields.has(key) && key !== 'version') invalid(`Unsupported course field: ${key}.`);
   const source = current ? { ...current, ...input } : input;
   return {
-    courseName: text(source.courseName, 'Course name', true), category: text(source.category, 'Category'), level: text(source.level, 'Level'), publicColor: coursePublicColor(source.publicColor),
-    feeName: text(source.feeName, 'Fee name', true), ...validatePricing(source), ...classTypeSelection(input), ...courseContentSelection(input),
+    courseName: text(source.courseName, 'Course name', true), ...englishName(source, 'courseNameEn'), category: text(source.category, 'Category'), level: text(source.level, 'Level'), publicColor: coursePublicColor(source.publicColor),
+    feeName: text(source.feeName, 'Fee name', true), ...englishName(source, 'feeNameEn'), ...validatePricing(source), ...classTypeSelection(input), ...courseContentSelection(input),
   };
 }
 
 export function validateFee(input, current = null) {
   if (!plainObject(input)) invalid('Fee must be a JSON object.');
-  const allowed = new Set(['feeName', 'category', 'courseIds', 'version', ...pricingFields]);
+  const allowed = new Set(['feeName', 'feeNameEn', 'category', 'courseIds', 'version', ...pricingFields]);
   for (const key of Object.keys(input)) if (!allowed.has(key)) invalid(`Unsupported fee field: ${key}.`);
   const source = current ? { ...current, ...input } : input;
   if (!Array.isArray(source.courseIds) || !source.courseIds.length || source.courseIds.length > 1000 || source.courseIds.some(id => typeof id !== 'string' || !id || id.length > 200) || new Set(source.courseIds).size !== source.courseIds.length) invalid('Select one or more different existing courses.');
-  return { feeName: text(source.feeName, 'Fee name', true), category: text(source.category, 'Fee category'), ...validatePricing(source), courseIds: [...source.courseIds] };
+  return { feeName: text(source.feeName, 'Fee name', true), ...englishName(source, 'feeNameEn'), category: text(source.category, 'Fee category'), ...validatePricing(source), courseIds: [...source.courseIds] };
 }
 
 export function requireVersion(input) {

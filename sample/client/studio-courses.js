@@ -1,66 +1,16 @@
-export const studioCourseRooms = [
-  {
-    id: 'b11', nameZh: 'B11 課室', nameEn: 'B11 Classroom', audienceZh: '幼兒及初級課程', audienceEn: 'Junior classes', courses: [
-      { id: 'b11-pre-baby', nameZh: '幼幼班', nameEn: 'Pre-Baby Class', ageZh: '2.5 歲', ageEn: '2.5 years old', formatsZh: ['45 分鐘 · 4／12／24 堂'], formatsEn: ['45 minutes · 4 / 12 / 24 lessons'] },
-      { id: 'b11-baby', nameZh: '幼兒班', nameEn: 'Baby Class', ageZh: '3 歲', ageEn: '3 years old', formatsZh: ['60 分鐘 · 4／12／24 堂'], formatsEn: ['60 minutes · 4 / 12 / 24 lessons'] },
-      { id: 'b11-junior-a', nameZh: '初級 A 班', nameEn: 'Junior Class A', ageZh: '4–5 歲', ageEn: '4–5 years old', formatsZh: ['60 分鐘 · 4／12／24 堂'], formatsEn: ['60 minutes · 4 / 12 / 24 lessons'] },
-      { id: 'b11-interview', nameZh: '面試班', nameEn: 'Interview Class', ageZh: '', ageEn: '', formatsZh: ['60 分鐘 · 8 堂'], formatsEn: ['60 minutes · 8 lessons'] },
-      { id: 'b11-basic-story', nameZh: '基礎繪本課程', nameEn: 'Basic Story Course', ageZh: '', ageEn: '', formatsZh: ['60 分鐘 · 12 堂', '120 分鐘 · 6 堂'], formatsEn: ['60 minutes · 12 lessons', '120 minutes · 6 lessons'] },
-      { id: 'b11-package-1', nameZh: '套裝 1', nameEn: 'Package 1', ageZh: '', ageEn: '', formatsZh: ['初級 A 班（60 分鐘）＋面試班（30 分鐘）· 12 堂'], formatsEn: ['Junior Class A (60 minutes) + Interview Class (30 minutes) · 12 lessons'] },
-      { id: 'b11-package-2', nameZh: '套裝 2', nameEn: 'Package 2', ageZh: '', ageEn: '', formatsZh: ['初級 A 班（60 分鐘）＋面試班（60 分鐘）· 8 堂'], formatsEn: ['Junior Class A (60 minutes) + Interview Class (60 minutes) · 8 lessons'] },
-    ],
-  },
-  {
-    id: 'b8', nameZh: 'B8 課室', nameEn: 'B8 Classroom', audienceZh: '高級課程', audienceEn: 'Senior classes', courses: [
-      { id: 'b8-junior-b', nameZh: '初級 B 班', nameEn: 'Junior Class B', ageZh: '6–8 歲', ageEn: '6–8 years old', formatsZh: ['60 分鐘 · 4／12／24 堂'], formatsEn: ['60 minutes · 4 / 12 / 24 lessons'] },
-      { id: 'b8-pre-senior', nameZh: '預備高級班', nameEn: 'Pre-Senior Class', ageZh: '8–16 歲', ageEn: '8–16 years old', formatsZh: ['90 分鐘 · 4／12／24 堂'], formatsEn: ['90 minutes · 4 / 12 / 24 lessons'] },
-      { id: 'b8-senior', nameZh: '高級班', nameEn: 'Senior Class', ageZh: '14 歲或以上', ageEn: '14 years old or above', formatsZh: ['120 分鐘 · 4／12／24 堂'], formatsEn: ['120 minutes · 4 / 12 / 24 lessons'] },
-      { id: 'b8-advanced-story', nameZh: '進階繪本課程', nameEn: 'Advanced Storybook Course', ageZh: '6 歲或以上', ageEn: '6 years old or above', formatsZh: ['60 分鐘 × 16 堂', '120 分鐘 × 8 堂'], formatsEn: ['60 minutes × 16 lessons', '120 minutes × 8 lessons'] },
-      { id: 'b8-sewing', nameZh: '縫紉班', nameEn: 'Sewing Class', ageZh: '6 歲或以上', ageEn: '6 years old or above', formatsZh: ['60 分鐘 · 4 堂'], formatsEn: ['60 minutes · 4 lessons'] },
-    ],
-  },
-];
-
-export function studioCourseById(id) {
-  for (const room of studioCourseRooms) {
-    const course = room.courses.find(item => item.id === id);
-    if (course) return { ...course, room };
-  }
-  return null;
-}
-
-export function studioCourseByName(name) {
-  const normalized = String(name ?? '').trim().toLocaleLowerCase();
-  if (!normalized) return null;
-  for (const room of studioCourseRooms) {
-    const course = room.courses.find(item => [item.nameZh, item.nameEn].some(label => label.toLocaleLowerCase() === normalized));
-    if (course) return { ...course, room };
-  }
-  return null;
-}
-
+// Public pages only use published records supplied by the catalogue service.
+// Retained exports keep older callers from reintroducing removed display presets.
+export const studioCourseRooms = [];
+export const studioCourseById = () => null;
+export const studioCourseByName = () => null;
 export function studioCourseFromCatalog(record) {
-  const known = studioCourseByName(record?.courseName);
-  if (known) return { ...known, id: record.id, category: record.category || '', level: record.level || '' };
-  const name = String(record?.courseName || '');
-  return { id: record?.id, nameZh: name, nameEn: name, ageZh: '', ageEn: '', formatsZh: [], formatsEn: [], category: record?.category || '', level: record?.level || '', room: { nameZh: '其他課程', nameEn: 'Other courses' } };
+ const name=String(record?.courseName||'');
+ return {id:record?.id,nameZh:name,nameEn:String(record?.courseNameEn||name),ageZh:'',ageEn:'',formatsZh:[],formatsEn:[],category:record?.category||'',level:record?.level||'',room:{nameZh:'',nameEn:''}};
 }
-
-export function studioCourseDirectoryMarkup({ courses = [], loading = false, error = '', t, esc }) {
-  const normalized = value => String(value || '').trim().toLocaleLowerCase();
-  const fixed = studioCourseRooms.flatMap(room => room.courses.map(course => {
-    const linked = courses.find(record => [course.nameZh, course.nameEn].some(name => normalized(name) === normalized(record.courseName)));
-    return { room, course, id: linked?.id || course.id, linked };
-  }));
-  const linkedIds = new Set(fixed.map(item => item.linked?.id).filter(Boolean));
-  const row = (course, id, detail) => `<a class="studio-course-row" href="/classes/${encodeURIComponent(id)}" data-go="/classes/${encodeURIComponent(id)}"><span class="studio-course-copy"><strong>${esc(course)}</strong><span>${esc(detail)}</span></span><span class="studio-course-more">${esc(t('課程資料及試堂時段', 'Info & trial times'))}<span aria-hidden="true">↗</span></span></a>`;
-  const rooms = studioCourseRooms.map(room => {
-    const entries = fixed.filter(item => item.room.id === room.id);
-    return `<section class="studio-room" aria-labelledby="studio-room-${room.id}"><header class="studio-room-heading"><div><p>${esc(t(room.audienceZh, room.audienceEn))}</p><h3 id="studio-room-${room.id}">${esc(t(room.nameZh, room.nameEn))}</h3></div><span>${String(entries.length).padStart(2, '0')} ${esc(t('個課程', 'classes'))}</span></header><div class="studio-course-list">${entries.map(({ course, id, linked }) => row(t(course.nameZh, course.nameEn), id, `${course.ageZh ? `${t(course.ageZh, course.ageEn)} · ` : ''}${t(course.formatsZh.join('；'), course.formatsEn.join('; '))}${linked?.category ? ` · ${linked.category}` : ''}`)).join('')}</div></section>`;
-  }).join('');
-  const additional = courses.filter(record => !linkedIds.has(record.id));
-  const extraRoom = additional.length ? `<section class="studio-room" aria-labelledby="studio-room-additional"><header class="studio-room-heading"><div><p>${esc(t('更多公開課程', 'ADDITIONAL COURSES'))}</p><h3 id="studio-room-additional">${esc(t('其他課程', 'Other courses'))}</h3></div><span>${String(additional.length).padStart(2, '0')} ${esc(t('個課程', 'courses'))}</span></header><div class="studio-course-list">${additional.map(course => row(course.courseName, course.id, [course.category, course.level].filter(Boolean).map(esc).join(' · ') || t('課程資料', 'Course information'))).join('')}</div></section>` : '';
-  return `<section class="studio-course-catalog" aria-labelledby="studio-courses-title"><header class="studio-catalog-heading"><p>${esc(t('課程及課室', 'CLASSES & CLASSROOMS'))}</p><h2 id="studio-courses-title">${esc(t('選擇適合的課程', 'Find a class'))}</h2></header>${loading ? `<p class="studio-catalog-status" role="status">${esc(t('正在同步公開課程…', 'Syncing published courses…'))}</p>` : ''}${error ? `<p class="studio-catalog-status" role="alert">${esc(error)}</p>` : ''}${rooms}${extraRoom}</section>`;
+export function studioCourseDirectoryMarkup({courses=[],loading=false,error='',t,esc}) {
+ const rows=courses.map(record=>{const course=studioCourseFromCatalog(record),detail=[course.category,course.level].filter(Boolean).join(' · ');
+ return `<a class="studio-course-row" href="/classes/${encodeURIComponent(course.id)}" data-go="/classes/${encodeURIComponent(course.id)}"><span class="studio-course-copy"><strong>${esc(t(course.nameZh,course.nameEn))}</strong>${detail?`<span>${esc(detail)}</span>`:''}</span><span class="studio-course-more">${esc(t('課程資料及試堂時段','Info & trial times'))}<span aria-hidden="true">↗</span></span></a>`;}).join('');
+ return `<section class="studio-course-catalog" aria-labelledby="studio-courses-title"><header class="studio-catalog-heading"><p>${esc(t('公開課程','CLASSES'))}</p><h2 id="studio-courses-title">${esc(t('選擇適合的課程','Find a class'))}</h2></header>${loading?`<p role="status">${esc(t('正在同步公開課程…','Syncing published courses…'))}</p>`:''}${error?`<p role="alert">${esc(error)}</p>`:''}${rows?`<section class="studio-room"><header class="studio-room-heading"><h3>${esc(t('課程','Classes'))}</h3><span>${courses.length} ${esc(t('個課程','courses'))}</span></header><div class="studio-course-list">${rows}</div></section>`:!loading&&!error?`<p class="empty">${esc(t('暫時沒有公開課程。','No published courses at the moment.'))}</p>`:''}</section>`;
 }
 
 const shiftDate = (value, days) => {

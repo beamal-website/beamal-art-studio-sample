@@ -1,3 +1,5 @@
+import {createReschedulingAvailability} from './rescheduling-availability.mjs';
+import {createWebsiteNewsStore} from './website-news.mjs';
 import { DatabaseSync } from 'node:sqlite';
 import { randomUUID, createHash } from 'node:crypto';
 import { mkdirSync, chmodSync } from 'node:fs';
@@ -16,6 +18,7 @@ import { createClassTypeStore } from './class-types.mjs';
 import { createEnrollmentOrderStore } from './enrollment-orders.mjs';
 import { createStaffPersonalProfileStore } from './staff-personal-profiles.mjs';
 import { createLessonNoteStore } from './lesson-notes.mjs';
+import { createDateNoteStore } from './date-notes.mjs';
 import { createTrialApplicationStore } from './trial-applications.mjs';
 import { createPackageContentsStore } from './package-contents.mjs';
 import { createLessonParentMessageStore } from './lesson-parent-messages.mjs';
@@ -25,8 +28,8 @@ import { createPostgresDatabase } from './postgres-database.mjs';
 import { createTrialInquiryStore } from './trial-inquiries.mjs';
 
 const publicUser = row => row ? { id: row.id, email: row.email, displayName: row.display_name, role: row.role } : null;
-const pricingKeys = ['feeName', 'pricingModel', 'price', 'months', 'duration', 'packageType', 'packageTotal', 'bookingExpiry', 'onlineStore'];
-const metadata = (record, includePrivate = false) => ({ courseName: record.courseName, category: record.category || '', level: record.level || '', publicColor: normalizePublicCourseColor(record.publicColor), ...(includePrivate ? { classTypeId: record.classTypeId ?? null, content: normalizeCourseContent(record.content) } : {}) });
+const pricingKeys = ['feeName', 'feeNameEn', 'pricingModel', 'price', 'months', 'duration', 'packageType', 'packageTotal', 'bookingExpiry', 'onlineStore'];
+const metadata = (record, includePrivate = false) => ({ courseName: record.courseName, ...(Object.hasOwn(record, 'courseNameEn') ? {courseNameEn:record.courseNameEn} : {}), category: record.category || '', level: record.level || '', publicColor: normalizePublicCourseColor(record.publicColor), ...(includePrivate ? { classTypeId: record.classTypeId ?? null, content: normalizeCourseContent(record.content) } : {}) });
 const pricing = record => Object.fromEntries(pricingKeys.filter(key => Object.hasOwn(record, key)).map(key => [key, record[key]]));
 const nameKey = name => name.trim().toLowerCase();
 const compareText = (left, right) => left < right ? -1 : left > right ? 1 : 0;
@@ -45,7 +48,7 @@ const historyPricing = snapshot => {
 };
 
 export async function createStore(options = {}) {
-  const { databasePath = ':memory:', databaseUrl = process.env.DATABASE_URL || '', seedUsers = [], seedCourses = [], attachmentsDir, trialFormPolicy = null } = options;
+  const { databasePath = ':memory:', databaseUrl = process.env.DATABASE_URL || '', seedUsers = [], seedCourses = [], attachmentsDir, trialFormPolicy = null, seedNews = true } = options;
   const postgres=!!databaseUrl;
   if (!postgres&&databasePath !== ':memory:') mkdirSync(dirname(databasePath), { recursive: true, mode: 0o700 });
   const database = postgres ? await createPostgresDatabase(databaseUrl) : new DatabaseSync(databasePath);
@@ -54,14 +57,14 @@ export async function createStore(options = {}) {
     if (!databaseClosed) { databaseClosed = true; database.close(); }
   };
   try {
-    return await initializeStore({ databasePath, seedUsers, seedCourses, attachmentsDir, database, postgres, closeDatabase, trialFormPolicy });
+    return await initializeStore({ databasePath, seedUsers, seedCourses, attachmentsDir, database, postgres, closeDatabase, trialFormPolicy, seedNews });
   } catch (error) {
     closeDatabase();
     throw error;
   }
 }
 
-async function initializeStore({ databasePath, seedUsers, seedCourses, attachmentsDir, database, postgres, closeDatabase, trialFormPolicy }) {
+async function initializeStore({ databasePath, seedUsers, seedCourses, attachmentsDir, database, postgres, closeDatabase, trialFormPolicy, seedNews }) {
   let closed = false;
   if (postgres) console.log('PostgreSQL connection ready; initializing schema and application stores.');
   if (!postgres&&databasePath !== ':memory:') chmodSync(databasePath, 0o600);
@@ -471,12 +474,12 @@ async function initializeStore({ databasePath, seedUsers, seedCourses, attachmen
     for (const seed of seedCourses) {
       if (!seed.id || typeof seed.id !== 'string' || seed.id.length > 200) throw new Error('Seed course requires a valid id.');
       if (getCourse(seed.id)) continue;
-      const fields = ['courseName', 'feeName', 'category', 'level', 'publicColor', 'content', 'classTypeId', 'classTypeVersion', ...pricingKeys.slice(1)];
+      const fields = ['courseName', 'courseNameEn', 'feeName', 'feeNameEn', 'category', 'level', 'publicColor', 'content', 'classTypeId', 'classTypeVersion', ...pricingKeys.slice(1)];
       const input = Object.fromEntries(fields.filter(field => Object.hasOwn(seed, field)).map(field => [field, seed[field]]));
       createCourse(validateCourse(input), null, seed.id);
     }
   } catch (error) { closeDatabase(); throw error; }
-  let materials, attachments, schedules, schedulingResources, accessControl, people, availableSlots, classCapacityStatuses, enrollmentOrders, staffPersonalProfiles, lessonNotes, trialApplications, packageContents, lessonParentMessages, parentMessageTemplates, studentLessonRequests, trialInquiries;
+  let materials, attachments, schedules, schedulingResources, accessControl, people, availableSlots, classCapacityStatuses, enrollmentOrders, staffPersonalProfiles, lessonNotes, dateNotes, trialApplications, packageContents, lessonParentMessages, parentMessageTemplates, studentLessonRequests, trialInquiries, websiteNews;
   try {
     createMaterialSchema(database);
     attachments = await createAttachmentStore({ database, transaction, directory: attachmentsDir || (databasePath === ':memory:' ? undefined : `${resolve(databasePath)}.attachments`), postgres });
@@ -486,23 +489,25 @@ async function initializeStore({ databasePath, seedUsers, seedCourses, attachmen
     packageContents = createPackageContentsStore({ database, transaction, getFee, getCourse, accessControl });
     staffPersonalProfiles = createStaffPersonalProfileStore({ database, transaction, resources: schedulingResources, accessControl });
     lessonNotes = createLessonNoteStore({ database, transaction, schedules, accessControl, getCourse });
+    dateNotes = createDateNoteStore({ database, transaction });
+    websiteNews = createWebsiteNewsStore({database,transaction,seed:seedNews});
     materials = createMaterialStore({ database, transaction, attachments, accessControl });
     people = createPeopleStore({ database, transaction });
     trialInquiries = createTrialInquiryStore({ database, transaction });
     classCapacityStatuses = createClassCapacityStatusStore({ database, transaction, accessControl });
-    availableSlots = createAvailableSlotStore({ database, transaction, accessControl, classCapacityStatuses });
+    availableSlots = createAvailableSlotStore({ database, transaction, accessControl, classCapacityStatuses, postgres });
     trialApplications = createTrialApplicationStore({ database, transaction, availableSlots, people, accessControl, trialFormPolicy });
     accessControl.setSlotSource(() => availableSlots.scopeFacts());
     enrollmentOrders = createEnrollmentOrderStore({ database, transaction, schedules, resources: schedulingResources, accessControl, getCourse, getFee });
     lessonParentMessages = createLessonParentMessageStore({ database, transaction, enrollmentOrders });
     parentMessageTemplates = createParentMessageTemplateStore({ database, transaction });
-    studentLessonRequests = createStudentLessonRequestStore({ database, transaction, schedules, getCourse, getStudentLesson: enrollmentOrders.studentLesson, postgres });
+    studentLessonRequests = createStudentLessonRequestStore({ database, transaction, schedules, getCourse, getStudentLesson: enrollmentOrders.studentLesson, postgres, rescheduling:createReschedulingAvailability({database,transaction,availableSlots,schedules,getCourse,postgres}) });
     classCapacityStatuses.setOccupancySource?.(enrollmentOrders.occupied);
   }
   catch (error) { await attachments?.close(); closeDatabase(); throw error; }
   if (postgres) console.log('PostgreSQL schema and application stores ready.');
   return {
-    listCourses, getCourse, createCourse, updateCourse, deleteCourse: (id, version, actor) => changeCourseDeletion(id, version, actor), restoreCourse: (id, version, actor) => changeCourseDeletion(id, version, actor, true), listFees, getFee, createFee, updateFee, createOnce, mutateOnce, catalogSnapshot, materials, attachments, schedules, schedulingResources, accessControl, people, availableSlots, classCapacityStatuses, classTypes, enrollmentOrders, studentLessonRequests, staffPersonalProfiles, lessonNotes, trialApplications, packageContents, lessonParentMessages, parentMessageTemplates,trialInquiries,
+    listCourses, getCourse, createCourse, updateCourse, deleteCourse: (id, version, actor) => changeCourseDeletion(id, version, actor), restoreCourse: (id, version, actor) => changeCourseDeletion(id, version, actor, true), listFees, getFee, createFee, updateFee, createOnce, mutateOnce, catalogSnapshot, materials, attachments, schedules, schedulingResources, accessControl, people, availableSlots, classCapacityStatuses, classTypes, enrollmentOrders, studentLessonRequests, staffPersonalProfiles, lessonNotes, dateNotes, trialApplications, packageContents, lessonParentMessages, parentMessageTemplates,trialInquiries,websiteNews,
     listUsers: () => database.prepare('SELECT * FROM users WHERE archived_at IS NULL ORDER BY email').all().map(publicUser),
     userByEmail: email => database.prepare('SELECT * FROM users WHERE email = ? AND archived_at IS NULL').get(email),
     publicUser,

@@ -494,3 +494,16 @@ test('pending arrangements use exact session references independent versions and
  wire.reply('/api/pending-arrangements?page=2&pageSize=10&since=work+%2F+rev',{revision:'new',records:[],total:0,page:2,pageSize:10});await client.pendingArrangementWork({page:2,pageSize:10},'work / rev');assert.equal(wire.calls.at(-1).method,'GET');
  for(let n=0;n<2;n++){wire.reply(path+'/pending-arrangement',{arrangement:{sessionId:id,status:'pending',version:1}});await client.savePendingArrangement(id,fields,'pending-retry');const call=wire.calls.at(-1);assert.deepEqual(JSON.parse(call.body),fields);assert.equal(call.method,'PATCH');assert.equal(call.headers.get('Idempotency-Key'),'pending-retry');assert.equal(call.headers.get('X-CSRF-Token'),'csrf-fictional-B');}
 });
+
+test('private date-note requests use the authenticated session and retain the save retry key',async t=>{
+ const wire=network(t),client=createApiClient();await login(client,wire,'B');
+ const path='/api/date-notes/2026-10-12',note={date:'2026-10-12',version:1,text:' Private\n中文 ',updatedAt:'2026-10-18T00:00:00.000Z',canWrite:true};wire.reply(path,{note});
+ assert.deepEqual(await client.dateNote('2026-10-12'),{note});assert.equal(wire.calls.at(-1).method,'GET');
+ const fields={version:0,text:note.text};wire.reply(path,{note});assert.deepEqual(await client.saveDateNote('2026-10-12',fields,'private-date-key'),{note});
+ const call=wire.calls.at(-1);assert.equal(call.method,'PATCH');assert.deepEqual(JSON.parse(call.body),fields);assert.equal(call.headers.get('Idempotency-Key'),'private-date-key');assert.ok(call.headers.get('X-CSRF-Token'));
+});
+
+test('date-note calendar indicators fetch the bounded private window without an owner or note text payload',async t=>{
+ const wire=network(t),client=createApiClient();await login(client,wire,'B');wire.reply('/api/date-notes?from=2026-10-12&to=2026-10-18',{dates:['2026-10-12']});
+ assert.deepEqual(await client.dateNoteIndicators('2026-10-12','2026-10-18'),{dates:['2026-10-12']});assert.equal(wire.calls.at(-1).method,'GET');assert.equal(wire.calls.at(-1).body,undefined);
+});

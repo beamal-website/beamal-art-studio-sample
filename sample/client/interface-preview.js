@@ -1,3 +1,4 @@
+import {accountingReferenceMarkup} from './accounting-reference-ui.js';
 import {operationsPageMarkup,operationsDialogMarkup,getOperationsPreviewData,advanceOperationsPreview,accountingEntrySummaryMarkup,accountingEntryStudentMarkup} from './operations-ui.js';
 import {staffDirectoryMarkup,staffPortalMarkup,staffDialogMarkup,staffInterfacePreviewState,advanceStaffPreview,staffWorkflowFacts,staffPayrollModel,staffAttendanceModel,staffLeaveModel,staffRosterModel,staffCalendarSharingModel,staffProfileModel} from './staff-portal-ui.js';
 import {payrollPageMarkup,payrollDialogMarkup,advancePayrollUi} from './staff-payroll-ui.js';
@@ -15,7 +16,7 @@ import {staffSharedState} from './staff-shared-adapter.js';
 
 // Presentation drafts are deliberately separate from shared business records.
 // No API client, browser storage, account changes or message delivery lives here.
-export function createInterfacePreview({context,showModal,cacheModal=()=>{},repaint,dom=document,Form=FormData,sharedSnapshot,onOpenStaffLesson,onEditStaff,onManageStaffAccess,onRetryStaff,onCopyCalendarSharing,resolveSharedLesson,onCloseSharedLesson,onSaveSharedAttendance,onSaveSharedPending,onSubmitStudentRequest,onAssignStudentRequest}) {
+export function createInterfacePreview({context,showModal,cacheModal=()=>{},repaint,dom=document,Form=FormData,sharedSnapshot,onOpenStaffLesson,onEditStaff,onManageStaffAccess,onRetryStaff,onCopyCalendarSharing,resolveSharedLesson,onCloseSharedLesson,onSaveSharedAttendance,onSaveSharedPending,onSubmitStudentRequest,onReadStudentReschedulingTimes,onAssignStudentRequest}) {
   let sharedAttendanceJob=null,sharedPendingJob=null;
   let productOwner=null,productEditPosition=null,productDetailPosition=null,productListReturn=null,productSourceProvided=false,productRendering=false;
   let operations,staff,student,documentPreview=null,account=null,lesson=null,dataTools=null,overlay=null,returnFocus=null,accountingReturns=[],accountingListReturn=null,messageListReturn=null,messageComposeReturn=null,staffReturn=null,staffManagementSection='directory',staffHrReturn=null,staffHrContext='',staffHrPositions=[],calendarCopyEpoch=0,sharedLesson=null,sharedLessonTicket=null,sharedLessonEditPosition=null;
@@ -632,7 +633,7 @@ export function createInterfacePreview({context,showModal,cacheModal=()=>{},repa
       if(!current.sharedReady||!current.sharedIdentity)return false;
       facts={...facts,shared:true,sharedIdentity:current.sharedIdentity,data:{students:(current.students||[]).map(row=>({...row})),slots:[],trialHistory:[]}};
     }
-    const element=dom.activeElement;returnFocus={element,dataset:{...element?.dataset}};const data=getLessonWorkflowData();lesson={view,step:'edit',student:data.students[0],lesson:{courseName:'創意繪畫 · Creative Drawing',date:'2026-10-16',time:'13:00',duration:60,teacher:'陳子朗 Leo Chan'},data,...facts};overlay='lesson';redrawOverlay();
+    const element=dom.activeElement;returnFocus={element,dataset:{...element?.dataset}};const data=getLessonWorkflowData();lesson={view,step:'edit',student:data.students[0],lesson:{courseName:'創意繪畫 · Creative Drawing',date:'2026-10-16',time:'13:00',duration:60,teacher:'陳子朗 Leo Chan'},data,...facts};overlay='lesson';if(view==='student-request'&&current.sharedMode&&typeof onReadStudentReschedulingTimes==='function'){lesson.reschedulingRequired=true;lesson.reschedulingLoading=true;lesson.reschedulingOptions=[];loadStudentReschedulingTimes();}redrawOverlay();
   };
   const openAccount=(view,facts={})=>{
     if(ctx().sharedMode&&view==='trial-application')return false;
@@ -674,8 +675,14 @@ export function createInterfacePreview({context,showModal,cacheModal=()=>{},repa
   const retainStudentRequestDraft=fields=>{
     if(!lesson?.shared||lesson.view!=='student-request')return;
     const form=dom.querySelector('#ui-lesson-form'),typed=form?Object.fromEntries([...new Form(form)].filter(([key])=>key!=='requestType')):{},values={...typed,...fields};
-    const draft=Object.fromEntries(Object.entries(values).filter(([key,value])=>['reason','preferredDate'].includes(key)&&typeof value==='string'));
+    const draft=Object.fromEntries(Object.entries(values).filter(([key,value])=>['reason','preferredDate','preferredSlotId'].includes(key)&&typeof value==='string'));
     lesson={...lesson,draft:{...lesson.draft,...draft}};
+  };
+  const loadStudentReschedulingTimes=async()=>{
+    if(!lesson?.shared||lesson.view!=='student-request'||typeof onReadStudentReschedulingTimes!=='function')return;
+    const identity=lesson.sharedIdentity,id=lesson.lesson.id,ticket={};retainStudentRequestDraft();lesson={...lesson,reschedulingTicket:ticket,reschedulingLoading:true,reschedulingError:''};
+    try{const slots=await onReadStudentReschedulingTimes({identity,studentSessionId:id});if(overlay!=='lesson'||lesson?.reschedulingTicket!==ticket||ctx().sharedIdentity!==identity)return;retainStudentRequestDraft();lesson={...lesson,reschedulingOptions:slots,reschedulingLoading:false};redrawOverlay();}
+    catch{if(overlay!=='lesson'||lesson?.reschedulingTicket!==ticket||ctx().sharedIdentity!==identity)return;retainStudentRequestDraft();lesson={...lesson,reschedulingLoading:false,reschedulingError:ctx().t('未能載入可調堂時段，請重試。','Could not load eligible times. Please retry.')};redrawOverlay();}
   };
   const syncStudentRequest=(fields,{captureDraft=true}={})=>{
     if(!lesson?.shared||lesson.view!=='student-request')return 'ready';
@@ -699,7 +706,7 @@ export function createInterfacePreview({context,showModal,cacheModal=()=>{},repa
     if(lesson.requestCapabilities?.submit!==true||typeof onSubmitStudentRequest!=='function'){
       lesson={...lesson,requestError:ctx().t('網上申請暫未開放，請聯絡老師安排。','Online requests are not available yet. Please contact your teacher.')};redrawOverlay();return true;
     }
-    const identity=lesson.sharedIdentity,lessonId=lesson.lesson.id,fields={identity,studentSessionId:lesson.lesson.id,type:lesson.draft.requestType==='sick'?'sick':'reschedule',reason:String(lesson.draft.reason||'').trim(),preferredDate:String(lesson.draft.preferredDate||'')};
+    const identity=lesson.sharedIdentity,lessonId=lesson.lesson.id,fields={identity,studentSessionId:lesson.lesson.id,type:lesson.draft.requestType==='sick'?'sick':'reschedule',reason:String(lesson.draft.reason||'').trim(),preferredDate:String(lesson.draft.preferredDate||''),...(lesson.draft.requestType!=='sick'&&lesson.draft.preferredSlotId?{preferredSlotId:lesson.draft.preferredSlotId}:{})};
     lesson={...lesson,requestSubmitting:true,requestError:''};redrawOverlay();
     try{
       const result=await onSubmitStudentRequest(fields);
@@ -758,7 +765,8 @@ export function createInterfacePreview({context,showModal,cacheModal=()=>{},repa
       if(form)Object.assign(fields,Object.fromEntries(new Form(form)));
     }
     if(d.action==='ui-operations'&&d.uiCommand==='apply-filters'){
-      for(const control of element?.closest('.ops-filters')?.querySelectorAll('input[name],select[name]')||[])fields[control.name]=control.value;
+      const filterScope=d.uiSection==='products'?element?.closest('.ops-product-reference')||element?.closest('.ops-filters'):element?.closest('.ops-filters');
+      for(const control of filterScope?.querySelectorAll('input[name],select[name]')||[])fields[control.name]=control.value;
     }
     if(d.action==='ui-operations'&&d.uiCommand==='preview-reply'){
       const composer=element?.closest('.ops-composer');
@@ -843,8 +851,8 @@ export function createInterfacePreview({context,showModal,cacheModal=()=>{},repa
         return true;
       }
       if(staff.shared&&d.uiCommand==='assign-lesson-request'&&staff.viewer?.role==='admin'&&typeof onAssignStudentRequest==='function'){
-        const task=staff.todos.flatMap(category=>category.tasks||[]).find(row=>row.id===d.uiId&&row.requestId===d.uiId),sequence=Number(d.uiSequence),slot=task?.availableTimes?.find(row=>row.scheduleId===d.uiScheduleId&&row.sequence===sequence);
-        if(task&&slot&&!task.assigning)onAssignStudentRequest({requestId:task.requestId,version:task.requestVersion,scheduleId:slot.scheduleId,sequence:slot.sequence});
+        const task=staff.todos.flatMap(category=>category.tasks||[]).find(row=>row.id===d.uiId&&row.requestId===d.uiId),sequence=Number(d.uiSequence),slot=task?.availableTimes?.find(row=>d.uiSlotId?row.id===d.uiSlotId:row.scheduleId===d.uiScheduleId&&row.sequence===sequence);
+        if(task&&slot&&!task.assigning)onAssignStudentRequest({requestId:task.requestId,version:task.requestVersion,...(slot.id?{slotId:slot.id}:{scheduleId:slot.scheduleId,sequence:slot.sequence})});
         return true;
       }
       if(d.uiCommand==='workflow'){const facts=staffWorkflowFacts(staff,d.uiId);if(!facts)return true;staff.dialog=null;openLesson(d.uiView||'arrange',facts);return true;}
@@ -858,7 +866,7 @@ export function createInterfacePreview({context,showModal,cacheModal=()=>{},repa
       if(d.uiCommand==='launch'){const facts=ctx().sharedMode&&d.personId?{sharedPerson:true,personId:d.personId}:ctx().sharedMode&&ctx().role==='student'||d.uiScheduleId?studentLessonFacts(d):{};if(facts)openLesson(d.uiView||'attendance',facts);return true;}
       if(d.uiCommand==='close'||d.uiCommand==='close-dialog'){close();return true;}
       if(!lesson)return true;
-      if(d.uiCommand==='submit-request')return submitSharedStudentRequest();
+      if(d.uiCommand==='reload-rescheduling-times')return loadStudentReschedulingTimes().then(()=>true);if(d.uiCommand==='submit-request')return submitSharedStudentRequest();
       if(lesson?.view==='family'&&lesson.step==='review'&&d.uiCommand==='confirm-preview'){openAccount('family-enrolment',{student:{...lesson.draft},draft:{...lesson.draft},route:lesson.draft?.route});return true;}
       lesson=advanceLessonWorkflow(lesson,d.uiCommand,fields);overlay=lesson?'lesson':null;redrawOverlay();return true;
     }
@@ -919,6 +927,9 @@ export function createInterfacePreview({context,showModal,cacheModal=()=>{},repa
     }else if(form.id==='ui-data-tools-form'){
       fields.columns=typeof values.getAll==='function'?values.getAll('column'):[...values].filter(([name])=>name==='column').map(([,value])=>value);
       dataTools=advanceDataTools(dataTools,'review',{...fields,filename:form.querySelector?.('[name=file]')?.files?.[0]?.name||''});overlay='data-tools';
+    }else if(form.id==='ui-accounting-reference-filter'){
+      if(fields.from&&fields.to&&fields.from>fields.to){operations.accountingReferenceError=ctx().t('開始日期不可遲於結束日期。','From date cannot be after To date.');}
+      else{operations.accountingReferenceFilters={status:fields.status||'all',query:String(fields.query||''),from:fields.from||'',to:fields.to||''};operations.accountingReferenceError='';}
     }else if(form.matches?.('.ops-filters')){
       operations=advanceOperations('apply-filters',{...fields,section:fields.section||fields.formSection||form.dataset?.uiSection});
       if((fields.section||fields.formSection||form.dataset?.uiSection)==='accounting'){repaintAccountingPage();return true;}
@@ -988,7 +999,8 @@ export function createInterfacePreview({context,showModal,cacheModal=()=>{},repa
     return false;
   };
   return {
-    operations:section=>{guardStudentRequest();if(section==='products')syncProductSource();return operationsPageMarkup(section,operations,ctx());},
+    salesProducts:()=>{syncProductSource();return JSON.parse(JSON.stringify(operations.data.products||[]));},
+    operations:section=>{guardStudentRequest();if(section==='products')syncProductSource();if(ctx().accountingReference&&['accounting','accounting-receipts'].includes(section)){operations.accountingTab=section==='accounting-receipts'?'payments':'invoices';return accountingReferenceMarkup(operations,ctx());}return operationsPageMarkup(section,operations,ctx());},
     directory:(accountActions='')=>{guardStudentRequest();syncStaff();return staffManagementMarkup(accountActions);},
     teacherPortal:()=>{guardStudentRequest();syncStaff();if(!staff.shared)staff={...staff,viewerId:ctx().role==='admin'?'maya':'leo'};return staffPortalMarkup(staff,ctx());},
     studentPage:section=>{guardStudentRequest();return studentPortalPageMarkup(section,student,ctx());},

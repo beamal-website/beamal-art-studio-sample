@@ -102,6 +102,7 @@ test('students can submit durable rescheduling and sick-leave requests for their
  const app=await setup(t);await link(app);
  const order=await accept(app,await create(app,'formal-a',[1]));const paid=await send(app.admin,`/api/orders/${order.id}/confirm-payment`,{version:order.version});assert.equal(paid.status,200,paid.text);
  const candidateDate=new Date(Date.now()+6*86400000).toISOString().slice(0,10),candidateWeekday=new Date(candidateDate+'T00:00:00Z').getUTCDay(),candidateScheduleReply=await send(app.admin,'/api/schedules',{...app.rule,startDate:candidateDate,time:'15:00',weekdays:[candidateWeekday],endMode:'count',count:3,capacity:1});assert.equal(candidateScheduleReply.status,201,candidateScheduleReply.text);
+ const target=candidateScheduleReply.body.schedule;for(const sequence of [1,2,3]){const opened=await send(app.admin,'/api/available-slots',{scheduleId:target.id,sequence,totalCapacity:1,trialCapacity:0,reschedulingCapacity:1,trialEnabled:false,reschedulingEnabled:true,active:true});assert.equal(opened.status,201,opened.text);}
  const candidateSchedule=candidateScheduleReply.body.schedule,inspection=new DatabaseSync(app.databasePath),now=new Date().toISOString();
  try{
   inspection.prepare("INSERT INTO student_sessions(id,student_id,schedule_id,sequence,order_id,attendance,created_at) VALUES ('other-student-seat','formal-b',?,1,?,'unmarked',?)").run(candidateSchedule.id,order.id,now);

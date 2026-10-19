@@ -30,7 +30,7 @@ export function requireScheduleVersion(input,versionOnly=false) {
   return input.version;
 }
 
-export function validateSchedule(input,current=null,{stored=false}={}) {
+export function validateSchedule(input,current=null,{stored=false,exactTime=false}={}) {
   if (!plain(input)) invalid('Schedule must be a JSON object.');
   for (const key of Object.keys(input)) if (!fields.includes(key) && !selectionFields.includes(key) && !(stored&&key==='classType') && !(current && key === 'version')) invalid(`Unsupported schedule field: ${key}.`);
   const selection=validateClassTypeSelection(input,{inherit:!current&&!stored});
@@ -44,7 +44,7 @@ export function validateSchedule(input,current=null,{stored=false}={}) {
   if (!validDate(source.startDate)) invalid('Choose a valid start date.');
   if (typeof source.time !== 'string' || !/^([01]\d|2[0-3]):[0-5]\d$/.test(source.time)) invalid('Choose a valid start time.');
   const minutes = Number(source.time.slice(0,2))*60+Number(source.time.slice(3));
-  if (minutes % 15 || !Number.isSafeInteger(source.duration) || source.duration < 15 || source.duration % 15 || minutes+source.duration > 1440) invalid('Start time and duration must use 15-minute intervals and end within the same day.');
+  if ((!stored&&!exactTime&&(minutes%15||source.duration%15)) || !Number.isSafeInteger(source.duration) || source.duration < (stored||exactTime?1:15) || minutes+source.duration > 1440) invalid('Start time and duration must use 15-minute intervals and end within the same day.');
   if (!Array.isArray(source.weekdays) || !source.weekdays.length || source.weekdays.length > 7 || source.weekdays.some(day=>!Number.isInteger(day) || day<0 || day>6) || new Set(source.weekdays).size !== source.weekdays.length) invalid('Choose at least one different repeat weekday.');
   if (!['forever','date','count'].includes(source.endMode)) invalid('Choose a valid end condition.');
   if (source.endMode === 'date' && (!validDate(source.endDate) || source.endDate < source.startDate)) invalid('End date must be on or after the start date.');
@@ -178,8 +178,8 @@ export function createScheduleStore({database,transaction,resources,classTypes})
     if (since === revision) return {revision,unchanged:true};
     return {revision,schedules:database.prepare('SELECT * FROM schedules WHERE deleted_at IS NULL ORDER BY created_at,id').all().map(dto)};
   },'read');
-  const create = (input,actorId) => transaction(()=>{
-    administrator(actorId);const data=resolveClassType(resolveAssignments(validateSchedule(input)));
+  const create = (input,actorId,{exactTime=false}={}) => transaction(()=>{
+    administrator(actorId);const data=resolveClassType(resolveAssignments(validateSchedule(input,null,{exactTime})));
     const id=randomUUID(),now=new Date().toISOString(),{course,...stored}=data;
     database.prepare('INSERT INTO schedules(id,course_id,data,version,created_at,updated_at) VALUES (?,?,?,1,?,?)').run(id,course,JSON.stringify(stored),now,now);
     const schedule=get(id);audit(actorId,'schedule.create',schedule);return schedule;
@@ -349,5 +349,6 @@ export function createScheduleStore({database,transaction,resources,classTypes})
     if(restore)checkAffectedAssignments(next,current,sequence);
     return writeScoped(current,next,actorId,restore?'schedule.occurrence.restore':'schedule.occurrence.delete');
   });
-  return {list,get,create,update,editOccurrence,deleteOccurrence:(id,sequence,input,actorId)=>changeOccurrenceDeletion(id,sequence,input,actorId),restoreOccurrence:(id,sequence,input,actorId)=>changeOccurrenceDeletion(id,sequence,input,actorId,true),delete:(id,input,actorId)=>changeDeletion(id,input,actorId),restore:(id,input,actorId)=>changeDeletion(id,input,actorId,true),audit:()=>database.prepare('SELECT * FROM schedule_audit_log ORDER BY id').all().map(row=>({...row,snapshot:JSON.parse(row.snapshot)}))};
+  const createAvailableTime=(slot,actorId)=>create({course:slot.courseId,startDate:slot.date,time:slot.time,duration:slot.duration,weekdays:[new Date(slot.date+'T00:00:00Z').getUTCDay()],endMode:'count',count:1,teacherIds:slot.teacherIds,roomIds:slot.roomIds,capacity:slot.totalCapacity>0?slot.totalCapacity:null},actorId,{exactTime:true});
+  return {list,get,create,createAvailableTime,update,editOccurrence,deleteOccurrence:(id,sequence,input,actorId)=>changeOccurrenceDeletion(id,sequence,input,actorId),restoreOccurrence:(id,sequence,input,actorId)=>changeOccurrenceDeletion(id,sequence,input,actorId,true),delete:(id,input,actorId)=>changeDeletion(id,input,actorId),restore:(id,input,actorId)=>changeDeletion(id,input,actorId,true),audit:()=>database.prepare('SELECT * FROM schedule_audit_log ORDER BY id').all().map(row=>({...row,snapshot:JSON.parse(row.snapshot)}))};
 }

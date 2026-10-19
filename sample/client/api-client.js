@@ -103,6 +103,10 @@ export function createApiClient({ baseUrl = import.meta.env?.VITE_BEAMAL_API_BAS
         idempotencyKey: operationKey,
       });
     },
+    publicNews: () => request('/public/news'),
+    websiteNews: () => request('/news'),
+    saveWebsiteNews: (post,current,key) => request(current?'/news/'+encodeURIComponent(current.id):'/news',{method:current?'PATCH':'POST',body:{...post,...(current?{version:current.version}:{})},idempotencyKey:key}),
+    importWebsiteNews: (posts,key) => request('/news/import',{method:'POST',body:{posts},idempotencyKey:key}),
     publicCatalog: (revision = '') => request(`/public/catalog${revision ? '?since=' + encodeURIComponent(revision) : ''}`),
     publicTrialTimes: (courseId, revision = '') => request(`/public/courses/${encodeURIComponent(courseId)}/trial-times${revision ? '?since=' + encodeURIComponent(revision) : ''}`),
     createTrialApplication: application => request('/trial-applications', { method: 'POST', body: application }),
@@ -152,6 +156,8 @@ export function createApiClient({ baseUrl = import.meta.env?.VITE_BEAMAL_API_BAS
     studentAccountLinks: () => request('/student-account-links'),
     saveStudentAccountLink: (studentId, userId, version, operationKey) => request(`/people/${encodeURIComponent(studentId)}/account-link`, {method:'PATCH',body:{userId,version},idempotencyKey:operationKey}),
     studentProfile: () => request('/student/profile'),
+    studentReschedulingTimes: id => request('/student/lessons/'+encodeURIComponent(id)+'/rescheduling-times'),
+    availabilityRuleOptions: () => request('/availability-rule-options'),
     lessonRequests: () => request('/lesson-requests'),
     createLessonRequest: (fields, operationKey) => request('/lesson-requests', {method:'POST',body:fields,idempotencyKey:operationKey}),
     assignLessonRequest: (id, fields, operationKey) => request(`/lesson-requests/${encodeURIComponent(id)}/assign`, {method:'POST',body:fields,idempotencyKey:operationKey}),
@@ -176,6 +182,7 @@ export function createApiClient({ baseUrl = import.meta.env?.VITE_BEAMAL_API_BAS
     sendParentMessage: (id,fields,operationKey) => request('/student-sessions/'+encodeURIComponent(id)+'/parent-messages',{method:'POST',body:{revision:fields.revision,message:fields.message},idempotencyKey:operationKey}),
     parentMessagesInbox(query={},revision='') {const parameters=new URLSearchParams();for(const key of ['page','pageSize'])if(query[key]!==undefined)parameters.set(key,query[key]);if(revision)parameters.set('since',revision);return request('/parent-messages/inbox'+(parameters.size?'?'+parameters:''));},
     savePendingArrangement: (id, fields, operationKey) => request('/student-sessions/'+encodeURIComponent(id)+'/pending-arrangement',{method:'PATCH',body:fields,idempotencyKey:operationKey}),
+    availabilityPendingArrangements() {return request('/availability-pending-arrangements');},
     pendingArrangementWork(query={},revision='') {const parameters=new URLSearchParams();for(const key of ['page','pageSize'])if(query[key]!==undefined)parameters.set(key,query[key]);if(revision)parameters.set('since',revision);return request('/pending-arrangements'+(parameters.size?'?'+parameters:''));},
     catalog: (revision = '') => request(`/catalog${revision ? `?since=${encodeURIComponent(revision)}` : ''}`),
     materials: courseId => request(`/courses/${encodeURIComponent(courseId)}/materials`),
@@ -254,11 +261,14 @@ export function createApiClient({ baseUrl = import.meta.env?.VITE_BEAMAL_API_BAS
     deleteCourse: (current, operationKey) => request(`/courses/${encodeURIComponent(current.id)}`, { method: 'DELETE', body: { version: current.version }, idempotencyKey: operationKey }),
     restoreCourse: (current, operationKey) => request(`/courses/${encodeURIComponent(current.id)}/restore`, { method: 'POST', body: { version: current.version }, idempotencyKey: operationKey }),
     recordStudentAttendance: (sessionId, fields, operationKey) => request(`/student-sessions/${encodeURIComponent(sessionId)}/attendance`, { method: 'PATCH', body: fields, idempotencyKey: operationKey }),
+    dateNoteIndicators: (from,to) => request(`/date-notes?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
+    dateNote: date => request(`/date-notes/${encodeURIComponent(date)}`),
+    saveDateNote: (date, fields, operationKey) => request(`/date-notes/${encodeURIComponent(date)}`, {method:'PATCH',body:fields,idempotencyKey:operationKey}),
     lessonNote: (scheduleId, sequence) => request(`/schedules/${encodeURIComponent(scheduleId)}/occurrences/${encodeURIComponent(sequence)}/note`),
     saveLessonNote: (scheduleId, sequence, fields, operationKey) => request(`/schedules/${encodeURIComponent(scheduleId)}/occurrences/${encodeURIComponent(sequence)}/note`, { method: 'PATCH', body: fields, idempotencyKey: operationKey }),
     updateCourseMetadata: (id, fields, operationKey) => request(`/courses/${encodeURIComponent(id)}`, { method: 'PATCH', body: fields, idempotencyKey: operationKey }),
     saveCourse(course, current, operationKey) {
-      const fields = ['courseName', 'feeName', 'category', 'level', 'publicColor', 'classTypeId', 'classTypeVersion', 'pricingModel', 'price', 'months', 'duration', 'packageType', 'packageTotal', 'bookingExpiry', 'onlineStore'];
+      const fields = ['courseName', 'courseNameEn', 'feeName', 'feeNameEn', 'category', 'level', 'publicColor', 'classTypeId', 'classTypeVersion', 'pricingModel', 'price', 'months', 'duration', 'packageType', 'packageTotal', 'bookingExpiry', 'onlineStore'];
       const body = Object.fromEntries(fields.filter(key => course[key] !== undefined).map(key => [key, course[key]]));
       if (current) body.version = current.version;
       return request(current ? `/courses/${encodeURIComponent(current.id)}` : '/courses', { method: current ? 'PATCH' : 'POST', body, ...(!current ? { idempotencyKey: operationKey } : {}) });

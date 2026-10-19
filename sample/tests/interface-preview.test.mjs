@@ -393,8 +393,8 @@ test('order document previews use the current amount and version without contami
 function sharedStaffSnapshot(){return {ready:true,today:'2026-10-15',currentTime:'12:30',user:{id:'account-actual',role:'teacher',displayName:'Actual teacher',accessRevision:'access-1'},resources:[{id:'resource-actual',kind:'teacher',displayName:'Actual teacher'},{id:'actual-room',kind:'room',displayName:'Actual room'}],courses:[{id:'actual-course',courseName:'Actual art course'}],accounts:[],teacherLinks:[],occurrences:[{date:'2026-10-16',sequence:4,item:{id:'actual-schedule',course:'actual-course',time:'13:00',duration:60,capacity:10,teacherIds:['resource-actual'],roomIds:['actual-room']}}],rosters:new Map()};}
 
 test('shared staff host refreshes the actual schedule and opens its stable occurrence through the business callback',()=>{
- let snapshot=sharedStaffSnapshot(),opened=null;const p=preview({sharedSnapshot:()=>snapshot,onOpenStaffLesson:lesson=>opened=lesson});
- let html=p.ui.teacherPortal();assert.match(html,/Actual teacher/);assert.match(html,/Actual art course/);assert.match(html,/Actual room/);assert.doesNotMatch(html,/Chloe Ho|Sophie|Leo Chan/);
+ let snapshot={...sharedStaffSnapshot(),today:'2026-10-16'},opened=null;const p=preview({sharedSnapshot:()=>snapshot,onOpenStaffLesson:lesson=>opened=lesson});
+ p.ui.teacherPortal();p.ui.action({action:'ui-staff',uiCommand:'tab',uiTab:'class-schedule'});let html=p.ui.teacherPortal();assert.match(html,/Actual teacher/);assert.match(html,/Actual art course/);assert.match(html,/Actual room/);assert.doesNotMatch(html,/Chloe Ho|Sophie|Leo Chan/);
  snapshot.occurrences[0].item.time='15:15';snapshot.resources[1].displayName='Updated room';html=p.ui.teacherPortal();assert.match(html,/15:15/);assert.match(html,/Updated room/);
  p.ui.action({action:'ui-staff',uiCommand:'open-class',uiId:'actual-schedule:4'});
  assert.deepEqual(opened,{scheduleId:'actual-schedule',sequence:4,date:'2026-10-16'});assert.equal(p.ui.isOpen,false);assert.equal(p.html,'');
@@ -1090,4 +1090,15 @@ test('an annotation-only save keeps canonical unmarked attendance and does not i
 });
 test('lost attendance acknowledgement retries the original versions and key after a poll sees the committed row',async()=>{
  let count=0;const p=recordableAttendancePreview(async payload=>{if(++count===1)throw Object.assign(new Error('truncated'),{status:200,code:'service_unavailable'});return attendanceAck(payload);});await p.ui.action({action:'ui-shared-lesson',uiCommand:'save'});p.facts.lesson.sessionVersion=2;p.ui.refreshSharedLesson();await p.ui.action({action:'ui-shared-lesson',uiCommand:'save'});assert.equal(p.calls.length,2);assert.deepEqual(p.calls[0][0],p.calls[1][0]);assert.equal(p.calls[0][1].operationKey,p.calls[1][1].operationKey);assert.equal(p.ui.isOpen,false);
+});
+
+test('parent request loads permitted times and submits only its selected available-time identity',async()=>{
+ const current={t,role:'student',sharedMode:true,sharedIdentity:'parent',sharedReady:true,students:[{id:'child',displayName:'Child'}],lessons:[{id:'paid-session',studentId:'child',scheduleId:'original',sequence:1,date:'2090-01-01',time:'10:00',courseName:'Art'}]};
+ const times=[{id:'allowed-time',courseName:'Art',date:'2090-02-01',time:'12:30',roomNames:['Room A']}];let submitted;
+ const p=preview({context:()=>current,onReadStudentReschedulingTimes:async fields=>{assert.equal(fields.studentSessionId,'paid-session');return times;},onSubmitStudentRequest:async fields=>{submitted=fields;return {id:'request-id'}}});
+ p.ui.action({action:'ui-lesson',uiCommand:'launch',uiView:'student-request',uiId:'paid-session'});await new Promise(resolve=>setImmediate(resolve));
+ assert.match(p.html,/name="preferredSlotId" required/);assert.match(p.html,/allowed-time/);assert.doesNotMatch(p.html,/name="preferredDate"/);
+ p.ui.submit({id:'ui-lesson-form',dataset:{uiCommand:'review'},values:{requestType:'reschedule',preferredSlotId:'forged',reason:''}});assert.doesNotMatch(p.html,/Review request/);
+ p.ui.submit({id:'ui-lesson-form',dataset:{uiCommand:'review'},values:{requestType:'reschedule',preferredSlotId:'allowed-time',reason:'Family appointment'}});assert.match(p.html,/Review request/);assert.match(p.html,/2090-02-01/);
+ await p.ui.action({action:'ui-lesson',uiCommand:'submit-request'});assert.equal(submitted.preferredSlotId,'allowed-time');assert.match(p.html,/Request submitted/);
 });

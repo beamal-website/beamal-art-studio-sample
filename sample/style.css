@@ -117,6 +117,7 @@
 .portal-main{animation:none;padding:0;max-width:none;min-height:calc(100dvh - 126px);background:#faf7ef}.portal-shell{display:grid;grid-template-columns:244px minmax(0,1fr);min-height:calc(100dvh - 126px);transition:grid-template-columns .28s cubic-bezier(.2,.7,.2,1)}
 .portal-sidebar{overflow:hidden;min-width:0;display:flex;flex-direction:column;gap:0;background:#e9eee5;border-right:1px solid #d9ddd2;padding:16px 12px;align-self:stretch}.portal-sidebar button{display:flex;align-items:center;gap:14px;min-height:60px;width:100%;padding:14px 16px;background:transparent;border:0;border-radius:35px;text-align:left;color:#526a60;font-size:16px;line-height:1.35;transition:background .15s,color .15s,padding .28s cubic-bezier(.2,.7,.2,1),gap .28s cubic-bezier(.2,.7,.2,1)}.portal-sidebar span{flex:1;min-width:0;white-space:normal;overflow-wrap:anywhere;max-width:100%;opacity:1;transform:translateX(0);transition:opacity .18s ease,transform .28s ease,max-width .28s ease}.portal-sidebar svg{width:27px;height:27px;flex-shrink:0}.portal-sidebar button:hover{background:#dce6d9;filter:none}.portal-sidebar button.active{background:var(--teal);color:#fff}.portal-sidebar button:focus-visible{outline-offset:-3px}
 .portal-shell.is-menu-open{grid-template-columns:76px minmax(0,1fr)}.portal-shell.is-menu-open .portal-sidebar button{justify-content:center;gap:0;padding:14px 0}.portal-shell.is-menu-open .portal-sidebar span{flex:0;max-width:0;overflow:hidden;opacity:0;transform:translateX(-8px)}
+@media(min-width:781px){.portal-shell.is-menu-open .portal-sidebar>button,.portal-shell.is-menu-open .portal-sales-parent{flex:0 0 60px;height:60px;min-height:60px;padding:0}.portal-shell.is-menu-open .portal-sidebar button>span{pointer-events:none}.portal-shell.is-menu-open .portal-sidebar>.portal-sales-group{flex:none}}
 .portal-content{min-width:0;color:#253d3b}.portal-page-heading{min-height:82px;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;gap:18px;border-bottom:1px solid #d9ddd2;background:#fff}.portal-page-heading h1{font-size:24px;font-weight:500;line-height:1.4;margin:0}.portal-page-actions{display:flex;gap:10px;flex-wrap:wrap}.portal-content button{border-radius:3px;font-size:15px;padding:12px 20px;background:var(--teal);border:0;color:white;box-shadow:0 2px 3px #0002}.portal-content .portal-secondary{background:#f0ebdc;color:#526a60;box-shadow:none}.portal-content button:disabled{cursor:not-allowed;box-shadow:none;color:#7c8578;background:#f0ebdc;filter:none}.portal-content select:disabled{color:#687770;opacity:1;cursor:not-allowed}.portal-course-body{padding:24px}.portal-filters{display:grid;grid-template-columns:123px minmax(190px,290px) 188px 188px;gap:10px;align-items:center;margin-bottom:10px}.portal-filters select,.portal-search{height:50px;border:1px solid #bdcbc1;border-radius:2px;background:#fffdf8}.portal-filters select:first-child{border:0;background:#f0ebdc;font-weight:600}.portal-search{display:flex;align-items:center;overflow:hidden}.portal-search input{order:2;border:0;border-radius:0;padding:10px 4px;width:100%;background:transparent;font-size:16px}.portal-search input::placeholder{color:#7c8578}.portal-content .portal-search button{order:1;display:grid;place-items:center;padding:10px 13px;background:transparent;color:#687770;box-shadow:none}.portal-search svg{width:24px;height:24px}.portal-search:focus-within{outline:2px solid #27777b;outline-offset:2px}
 .portal-course-table table{min-width:900px;background:#faf7ef;table-layout:fixed}.portal-course-table th{background:#e9eee5;color:#253d3b;font-size:15px;font-weight:600;height:68px;padding:15px 12px;white-space:nowrap;border-bottom:1px solid #bdcbc1}.portal-course-table th:nth-child(2){width:22%}.portal-course-table td{padding:20px 12px;font-size:15px;height:74px;border-color:#e2e3d7}.portal-course-table .portal-select-cell{width:58px;text-align:center}.portal-select-cell input{width:20px;height:20px;margin:0;padding:0;accent-color:var(--teal)}.portal-content .portal-course-name{padding:0;box-shadow:none;color:var(--teal);background:transparent;text-align:left;font-weight:500;border-radius:0}.portal-course-name:hover{text-decoration:underline}.portal-course-links{padding:20px 0}.portal-course-empty{min-height:430px;display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;gap:18px}.portal-course-empty h2{margin:0;font-size:25px}.portal-empty-icon{display:grid;place-items:center;width:52px;height:52px;border-radius:10px;background:#e9eee5;color:var(--teal)}.portal-empty-icon svg{width:32px;height:32px}.portal-blank-page{min-height:70dvh}.portal-content-padding{padding:24px;min-width:0}.portal-content-padding .title{font-size:28px}.portal-content-padding .panel{background:#fffdf8;border-color:#d9ddd2;border-radius:3px}.portal-content-padding .ghost{background:#f0ebdc;color:#526a60;box-shadow:none}.portal-content-padding .stat{border-radius:3px}.portal-content-padding .calendar-card{background:#fff;margin:0}.calendar-dates-scroll{min-width:0;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain}.calendar-dates-scroll:focus-visible{outline:2px solid var(--teal);outline-offset:-2px}.portal-content-padding .calendar-heading{padding:24px}.portal-content-padding .calendar-controls{min-width:0;max-width:100%;flex-wrap:wrap}.portal-content-padding .calendar-controls h2{min-width:0;max-width:280px;line-height:1.5;overflow-wrap:anywhere}.portal-content-padding .calendar-controls button{display:grid;place-items:center;flex:none;min-height:44px;padding:8px 16px}.portal-content-padding .calendar-controls button[aria-label]{width:44px;height:44px;padding:0}.portal-content-padding .calendar-card>.tt-range-personal-controls{margin:0;padding:0 24px 24px}.portal-content-padding .calendar-card>.resource-note{margin:0;padding:0 24px 24px}.portal-content-padding .table-wrap{max-width:100%}
 @media(max-width:1200px){.portal-shell{grid-template-columns:220px minmax(0,1fr)}.portal-sidebar button{font-size:15px}.portal-filters{grid-template-columns:105px minmax(150px,1fr) minmax(120px,.65fr) minmax(120px,.65fr)}.portal-topbar{gap:18px}.portal-brand{font-size:21px}}
@@ -903,6 +904,13 @@
 .availability-course-panel{min-width:0;padding:24px}
 .availability-course-panel>h2{margin:0 0 16px;font-size:22px;line-height:1.4}
 .availability-course-panel>.availability-toolbar{margin-bottom:16px}
+.tt-calendar-controls{display:flex;align-items:center;gap:16px;min-width:0;padding:12px 24px;border-bottom:1px solid #d9ddd2;background:#fffdf8}
+.tt-calendar-controls:empty{display:none}
+.tt-calendar-controls>.availability-toolbar{flex:1 1 auto;min-width:0}
+.tt-calendar-controls>.class-type-filter{flex:0 0 auto;margin:0 0 0 auto;padding:0;gap:10px;white-space:nowrap}
+.tt-calendar-controls>.class-type-filter select{width:200px;max-width:100%}
+@media(max-width:780px){.tt-calendar-controls{flex-wrap:wrap;padding:12px 16px}.tt-calendar-controls>.class-type-filter{display:flex;flex:1 1 100%;margin:0;white-space:normal}.tt-calendar-controls>.class-type-filter select{flex:1;width:auto}}
+
 .availability-course-panel>[data-slot-id]{display:block;max-width:100%;margin-top:12px;white-space:normal;text-align:left}
 @media(max-width:780px){.teacher-timetable>.availability-toolbar,.availability-course-panel{padding:16px}}
 @media(max-width:600px){.availability-toolbar>button{flex:1 1 180px}}
@@ -1122,9 +1130,15 @@
 .lesson-dialog .lesson-student-name:enabled:hover { text-decoration: underline; }
 
 /* Keep the calendar usable while displaying independently named filter groups. */
+.tt-sidebar>.tt-mini-calendar,.tt-sidebar>.tt-resources { flex:none; }
+.tt-sidebar>.tt-resources { min-height:0; }
+.tt-sidebar .tt-resource-body,.tt-sidebar .tt-hide-empty { flex:none; }
+.tt-sidebar .tt-hide-empty { margin-top:0; align-items:flex-start; }
+.tt-sidebar .tt-hide-empty input { margin-top:2px; }
+.tt-sidebar .tt-hide-empty span { min-width:0; overflow-wrap:anywhere; }
 .tt-resource-option { display:flex; align-items:center; gap:8px; min-width:0; margin:6px 0; }
 .tt-resource-options .tt-resource-option label { flex:1; min-width:0; min-height:44px; margin:0; overflow-wrap:anywhere; }
-.tt-resource-option .tt-filter-eye { flex:0 0 44px; width:44px; margin:0; padding:9px; }
+.portal-content .tt-resource-option>.tt-filter-eye,.portal-content .tt-named-preset>.tt-filter-eye { flex:0 0 44px; width:44px; height:44px; min-height:44px; margin:0; padding:0; }
 .tt-advanced-filters { flex:none; min-width:0; grid-column:1/-1; border-top:1px solid #d9ddd2; }
 .tt-advanced-filters>summary { min-height:48px; padding:14px; font-size:14px; font-weight:600; color:var(--teal); cursor:pointer; overflow-wrap:anywhere; }
 .tt-filter-presets h3 { margin:0; font-size:15px; }
@@ -1132,19 +1146,30 @@
 .tt-named-status p { flex-basis:100%; margin:0; }
 
 /* Internal date notes sit beside their date, never inside a lesson button. */
-.tt-grid-heading.tt-note-date-heading{height:84px}
-.tt-note-date-heading .tt-day-heading{display:flex;flex-direction:column;justify-content:center;gap:0;min-width:0}
-.tt-note-date-heading .tt-day-heading>span{padding:3px 6px}
-.tt-note-month-heading{display:flex;align-items:center;justify-content:space-between;gap:4px;min-height:44px;margin-bottom:4px}
-.portal-content .tt-note-month-heading .tt-month-date{width:44px;height:44px;min-width:44px;min-height:44px;margin:0 0 0 auto}
+.tt-grid-heading.tt-note-date-heading{height:64px}
+.tt-note-date-heading .tt-day-heading{display:flex;flex-direction:row;align-items:center;justify-content:center;gap:4px;min-width:0}
+.tt-note-date-heading .tt-day-heading>span{padding:3px 0;min-width:0;white-space:normal;text-align:center;line-height:1.35}
+.tt-note-month-heading{display:flex;align-items:center;justify-content:flex-start;gap:4px;min-height:44px;margin-bottom:4px}
+.portal-content .tt-note-month-heading .tt-month-date{width:44px;height:44px;min-width:44px;min-height:44px;margin:0}
 .tt-note-list-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0}
-.portal-content .tt-note-icon,.lesson-header-actions .tt-note-icon{min-width:44px;width:44px;height:44px;min-height:44px;margin:0;padding:0;background:transparent;color:var(--teal);box-shadow:none}
+.portal-content .tt-note-icon,.lesson-header-actions .tt-note-icon{min-width:44px;width:44px;height:44px;min-height:44px;margin:0;padding:0;background:transparent;color:var(--tt-note-icon-colour,var(--teal));box-shadow:none}
+.portal-content .tt-note-icon.tt-note-empty{--tt-note-icon-colour:#749395}
+.portal-content .tt-note-icon.tt-note-present{--tt-note-icon-colour:var(--teal)}
 .lesson-header-actions:has(.tt-note-icon){flex-wrap:wrap;gap:8px}
 @media print{.tt-grid-heading.tt-note-date-heading{height:36px}.tt-note-month-heading{min-height:30px}}
 
 /* Per-student markers are separate from the teacher's lesson colour. */
 .lesson-student-sticker{display:inline-block;flex:none;width:10px;height:10px;margin-inline-end:6px;vertical-align:baseline;border:1px solid #253d3b55;border-radius:50%;background:var(--student-sticker)}
 .tt-list-student-note{display:block;max-width:32rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;line-height:1.6;color:var(--slw-muted,#687770)}
+
+/* Temporary quick fill for the three local sample accounts. */
+.login-with-shortcuts{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,550px) minmax(0,1fr);align-items:center;gap:24px;margin:20px auto}
+.login-with-shortcuts>.form{grid-column:2;width:100%;min-width:0;margin:0}
+.login-sample-shortcuts{grid-column:3;display:flex;flex-direction:column;gap:10px;width:180px;min-width:0;padding:16px;border:1px solid #d9ddd2;border-radius:8px;background:#eef3ee}
+.login-sample-shortcuts p{margin:0 0 2px;color:#253d3b;font-size:14px;font-weight:600;line-height:1.6}
+.login-sample-shortcuts button{width:100%;min-height:44px;margin:0;padding:10px 12px;border-radius:6px;background:#fffdf8;font-size:14px}
+.login-sample-shortcuts small{color:#526a60;font-size:12px;line-height:1.6}
+@media(max-width:1000px){.login-with-shortcuts{grid-template-columns:minmax(0,1fr);gap:16px;max-width:550px}.login-with-shortcuts>.form,.login-sample-shortcuts{grid-column:1}.login-sample-shortcuts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;width:100%}.login-sample-shortcuts p,.login-sample-shortcuts small{grid-column:1/-1}.login-sample-shortcuts button{padding-inline:8px}}
 
 /* Keep the timetable aligned with the full portal column when navigation is taller. */
 @media screen and (min-width:781px){
@@ -1205,6 +1230,10 @@
 .tt-display-group>.class-type-filter>span{position:absolute;top:0;left:0;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 .tt-display-group>.class-type-filter select{width:100%;min-width:0;max-width:100%;min-height:44px;font-size:13px}
 
+/* Messages is intentionally an empty white workspace. */
+.portal-content:has(>.portal-messages-blank){background:#fff}
+.portal-messages-blank{min-height:100%;background:#fff}
+
 /* Keep dropdown cues inset consistently across public pages, portals and dialogs.
    Arrow longhands win over component background shorthands without changing field colors. */
 select:not([multiple]):is(:not([size]),[size="1"]) {
@@ -1251,6 +1280,9 @@ select:not([multiple]):is(:not([size]),[size="1"]) {
   }
 }
 
+
+
+
 /* One cue inset for public pages, all portal roles and their dialogs. */
 :root {--control-cue-inset:24px;--control-cue-space:52px;}
 select:not([multiple]):is(:not([size]),[size="1"]) {
@@ -1275,9 +1307,31 @@ body :is(.course-slot-editor,.resource-picker-details,.ui-staff-todo-group,.slw-
 @container (min-width:1201px) {
   .tt-toolbar .tt-view-control {width:176px;min-width:176px;}
 }
+
 @media (min-width:781px) {
   body .ops-page .ops-settings-nav button {padding-inline-end:var(--control-cue-inset);}
 }
+
 @media (forced-colors:active) {
   .tt-toolbar .tt-view-control select {appearance:none;-webkit-appearance:none;}
 }
+
+/* Available time: choose purpose before time and access settings. */
+.availability-purpose{margin-top:0;padding-top:0;border-top:0}
+.availability-purpose-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:16px 0 24px}
+.availability-purpose-choice{display:flex;align-items:flex-start;gap:10px;padding:16px;border:1px solid var(--availability-border);border-radius:8px;cursor:pointer}
+.availability-purpose-choice:has(input:checked){border-color:var(--teal,#287980);background:#edf4f1}
+.availability-purpose-choice input[type=checkbox]{flex:none;width:20px;height:20px;min-height:0;margin:3px 0 0;padding:0;accent-color:var(--teal)}
+.availability-purpose-choice span{min-width:0}.availability-purpose-choice strong,.availability-purpose-choice small{display:block}
+.availability-purpose-choice small{margin-top:8px;line-height:1.5;color:var(--availability-note)}
+@media(max-width:600px){.availability-purpose-options{grid-template-columns:minmax(0,1fr)}}
+
+.availability-headcount-equation{display:flex;align-items:flex-end;gap:16px;margin:16px 0}
+.availability-headcount-equation>fieldset{flex:1;min-width:0;margin:0;padding:0;border:0}
+.availability-headcount-equation .availability-field{margin:0}
+.availability-headcount-operator{padding-bottom:12px;font-size:22px;font-weight:600}
+.availability-headcount-total{flex:1;min-width:0}
+.availability-headcount-total>span{display:block;margin-bottom:8px;font-size:14px;color:var(--availability-muted)}
+.availability-headcount-total output{display:block;min-height:48px;padding:10px 12px;background:var(--availability-tint);font-size:18px;font-weight:600;line-height:1.5}
+.availability-headcount-equation>[hidden]{display:none}
+@media(max-width:600px){.availability-headcount-equation{gap:8px;flex-wrap:wrap}.availability-headcount-equation>fieldset{flex:1 1 100px}.availability-headcount-total{flex:1 1 80px}}

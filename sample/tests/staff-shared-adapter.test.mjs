@@ -40,11 +40,12 @@ test('staff and workspace use shared IDs, explicit account links, six real cours
   assert.equal(state.classes[0].students[0].sessionId,'session-1');
   assert.equal(state.classes[0].students[1].attendance,'absent');
   assert.equal(source.rosters.get('schedule-maya:1').students[0].id,'session-1');
-  const html=staffPortalMarkup(state,en);
-  assert.match(html,/Upcoming classes/);
+  const html=staffPortalMarkup({...state,portalTab:'class-schedule',today:'2026-10-16'},en);
+  assert.match(html,/Today’s classes/);
   assert.match(html,/Art course 1/);
   assert.match(html,/Studio A/);
-  assert.match(html,/2 students/);
+  assert.doesNotMatch(html,/2 students/);
+  assert.match(staffPortalMarkup({...state,portalTab:'classes'},en),/2 students/);
   assert.doesNotMatch(html,/Art course 2|Sophie|Ryan|Noah|Mia Chan|Checkpoint|\(preview\)/);
   assert.doesNotMatch(staffDirectoryMarkup(state,en),/\[object Object\]/);
   assert.match(staffDirectoryMarkup(state,en),/Linked login account/);
@@ -62,8 +63,15 @@ test('administrator to-do projects each pending student lesson request with its 
  assert.equal(state.todosReady,true);assert.equal(task.id,'request-1');assert.equal(task.studentName,'Chloe actual');
  assert.equal(task.courseName,'Art course 1');assert.deepEqual(task.availableTimes,source.studentRequests[0].availableTimes);
  assert.match(task.detail.en,/2026-10-16 13:00/);assert.match(task.detail.en,/2026-10-18/);assert.match(task.detail.en,/Family schedule/);
- assert.match(html,/Chloe actual/);assert.match(html,/Rescheduling request/);assert.match(html,/Family schedule/);
- const dialog=staffDialogMarkup({...state,dialog:{kind:'task',id:'request-1'}},en);assert.match(dialog,/Other available times for this course/);assert.match(dialog,/Art course 1/);assert.match(dialog,/2026-10-23 · 15:00/);assert.match(dialog,/2 seats available/);assert.match(dialog,/data-ui-command="assign-lesson-request"/);assert.match(dialog,/Move paid lesson here/);assert.match(dialog,/frees the original seat and adds no charge/);
+ assert.match(html,/Chloe actual/);assert.match(html,/Original lesson/);assert.match(html,/Art course 1/);assert.match(html,/2026-10-16/);assert.match(html,/data-ui-command="open-task"/);
+ const dialog=staffDialogMarkup({...state,dialog:{kind:'task',id:'request-1'}},en);assert.match(dialog,/Eligible rescheduling times/);assert.match(dialog,/Art course 1/);assert.match(dialog,/2026-10-23 · 15:00/);assert.match(dialog,/2 seats available/);assert.match(dialog,/data-ui-command="assign-lesson-request"/);assert.match(dialog,/Move paid lesson here/);assert.match(dialog,/frees the original seat and adds no charge/);
+});
+
+test('request projection keeps the submitted lesson snapshots and request time without choosing an available alternative',()=>{
+ const request={id:'request-snapshots',studentName:'Applicant',type:'reschedule',status:'pending',createdAt:'2026-10-19T03:20:00Z',lesson:{courseName:'Original art',date:'2026-10-20',time:'10:00',duration:60},preferredSlot:{courseName:'Requested art',date:'2026-10-22',time:'15:00',duration:45},preferredDate:'2026-10-22',availableTimes:[{courseName:'Another option',date:'2026-10-23',time:'16:00'}]};
+ const state=staffSharedState({}, {...snapshot(),studentRequestsReady:true,studentRequests:[request]}),task=state.todos[0].tasks[0];
+ assert.equal(task.createdAt,request.createdAt);assert.deepEqual(task.originalLesson,request.lesson);assert.deepEqual(task.preferredLesson,request.preferredSlot);assert.equal(task.preferredDate,request.preferredDate);
+ const html=staffPortalMarkup({...state,portalTab:'todo'},en);assert.match(html,/Original art/);assert.match(html,/Requested art/);assert.doesNotMatch(html,/Another option/);
 });
 
 test('live lesson time, room and roster changes update without replacing the open staff access summary',()=>{
@@ -103,7 +111,7 @@ test('teacher workspace respects the exact authorized occurrence subset and does
   assert.deepEqual(state.classes.map(row=>row.id),['schedule-leo:2']);
   assert.ok(state.staff.every(member=>member.role==='teacher'&&!member.accountId));
   assert.equal(state.classes[0].rosterReady,false);assert.equal(state.classes[0].occupied,null);
-  const html=staffPortalMarkup(state,en);assert.match(html,/Art course 2/);assert.match(html,/Student list not loaded/);assert.doesNotMatch(html,/Art course 1|0 students/);
+  const html=staffPortalMarkup({...state,portalTab:'class-schedule',today:'2026-10-17'},en);assert.match(html,/Art course 2/);assert.doesNotMatch(html,/Student list not loaded/);assert.match(staffPortalMarkup({...state,portalTab:'classes'},en),/Student list not loaded/);assert.doesNotMatch(html,/Art course 1|0 students/);
   source.user.role='admin';const admin=staffSharedState({},source);assert.deepEqual(admin.classes,[],'administrator personal classes require an explicit teacher link');
 });
 
@@ -193,7 +201,7 @@ test('refreshing saved staff remains visible and retry is disabled until the rea
   const source=snapshot(),previous=staffSharedState({},source);
   const next=staffSharedState(previous,{...source,ready:false,hasSavedData:true,loading:true,error:'previous error'});
   assert.equal(next.sharedReady,true);assert.equal(next.sharedLoading,true);
-  const html=staffPortalMarkup(next,en);
+  const html=staffPortalMarkup({...next,portalTab:'class-schedule',today:'2026-10-16'},en);
   assert.match(html,/Updating workspace/);assert.match(html,/Art course 1/);
   assert.match(html,/data-ui-command="retry"[^>]*disabled/);
   assert.doesNotMatch(html,/Could not load|No classes scheduled/);
@@ -215,7 +223,7 @@ test('source gaps in staff employment, pay and clock never borrow fixture defaul
   assert.match(teaching,/Employment[\s\S]*Pending confirmation/);assert.doesNotMatch(teaching,/Part-time|Full-time/);
   for(const portalTab of ['payroll','clock']){
     const html=staffPortalMarkup({...state,portalTab},en);
-    assert.match(html,portalTab==='payroll'?/Payroll records are not available yet/:/Clock records are not available yet/);
+    assert.match(html,portalTab==='payroll'?/Payroll records are not available yet/:/ui-staff-clock-placeholder/);
     assert.doesNotMatch(html,/No (?:payroll )?records yet|HK\$0|Estimated total/);
   }
 });

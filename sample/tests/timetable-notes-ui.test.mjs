@@ -6,7 +6,7 @@ const date=()=>({kind:'date',date:'2026-10-16',draft:{text:'Confirm workshop mat
 const lesson=()=>({...date(),kind:'lesson',scheduleId:'schedule-exact',sequence:3,courseName:'Watercolour exploration',time:'13:20'});
 
 test('date note edit clearly identifies its day and provides a labelled bounded native textarea',()=>{
- const html=dialog(date(),en);assert.match(html,/Date note/);assert.match(html,/<time datetime="2026-10-16">2026-10-16<\/time>/);assert.match(html,/id="tt-note-form"/);assert.match(html,/<label[^>]*for="tt-note-text"/);assert.match(html,/<textarea[^>]*id="tt-note-text"[^>]*name="text"[^>]*maxlength="2000"/);assert.match(html,/Confirm workshop materials\.\nAsk the studio manager\./);assert.doesNotMatch(html,/<form[^>]*data-action=/);assert.match(html,/data-action="tt-note-close"/);assert.match(html,/data-action="tt-note-cancel"/);assert.match(html,/Review/);
+ const html=dialog(date(),en);assert.match(html,/Date note/);assert.match(html,/<time datetime="2026-10-16">2026-10-16<\/time>/);assert.match(html,/id="tt-note-form"/);assert.match(html,/<label[^>]*for="tt-note-text"/);assert.match(html,/<textarea[^>]*id="tt-note-text"[^>]*name="text"[^>]*maxlength="2000"/);assert.match(html,/Confirm workshop materials\.\nAsk the studio manager\./);assert.doesNotMatch(html,/<form[^>]*data-action=/);assert.match(html,/data-action="tt-note-close"/);assert.match(html,/data-action="tt-note-cancel"/);assert.match(html,/>Save<\/button>/);assert.doesNotMatch(html,/>Review<\/button>/);assert.match(html,/data-ui-command="tt-note-save"/);assert.match(dialog(date(),zh),/>儲存<\/button>/);
 });
 
 test('lesson note context is exact and readable without exposing opaque scheduling IDs as product copy',()=>{
@@ -38,11 +38,11 @@ test('local errors are accessible natural messages and never reveal raw diagnost
 });
 
 test('date and lesson launchers are small native icon controls with complete accessible context',()=>{
- const day=button(date(),en),slot=button(lesson(),en);assert.match(day,/class="tt-note-icon"/);assert.match(day,/data-action="tt-note-open"/);assert.match(day,/data-note-kind="date"/);assert.match(day,/data-date="2026-10-16"/);assert.match(day,/aria-label="Date note: 2026-10-16"/);assert.match(day,/<svg[^>]*aria-hidden="true"/);assert.match(slot,/data-schedule-id="schedule-exact"/);assert.match(slot,/data-sequence="3"/);assert.match(slot,/data-time="13:20"/);assert.match(slot,/aria-label="Lesson note: Watercolour exploration, 2026-10-16, 13:20, Lesson 3"/);assert.doesNotMatch(day,/>Date note<|>2026-10-16</);
+ const day=button(date(),en),slot=button(lesson(),en);assert.match(day,/class="tt-note-icon tt-note-empty"/);assert.match(day,/data-action="tt-note-open"/);assert.match(day,/data-note-kind="date"/);assert.match(day,/data-date="2026-10-16"/);assert.match(day,/aria-label="Date note: 2026-10-16"/);assert.match(day,/<svg[^>]*aria-hidden="true"/);assert.match(slot,/data-schedule-id="schedule-exact"/);assert.match(slot,/data-sequence="3"/);assert.match(slot,/data-time="13:20"/);assert.match(slot,/aria-label="Lesson note: Watercolour exploration, 2026-10-16, 13:20, Lesson 3"/);assert.doesNotMatch(day,/>Date note<|>2026-10-16</);
 });
 
 test('review invalid text cannot expose an enabled final submit or claim any storage action happened',()=>{
- for(const m of [{...date(),stage:'review',draft:{text:''}},{...lesson(),stage:'review',draft:{text:'z'.repeat(2001)}}]){const html=dialog(m,en);assert.match(html,/role="alert"/);assert.match(html,/data-action="tt-note-save"[^>]*disabled/);assert.doesNotMatch(html,/Saved|No notes|No records/);}
+ for(const m of [{...lesson(),stage:'review',draft:{text:''}},{...lesson(),stage:'review',draft:{text:'z'.repeat(2001)}}]){const html=dialog(m,en);assert.match(html,/role="alert"/);assert.match(html,/data-action="tt-note-save"[^>]*disabled/);assert.doesNotMatch(html,/Saved|No notes|No records/);}
 });
 
 const serviceLesson=(extra={})=>({...lesson(),courseId:'course-exact',sourceVersion:7,sourceStatus:'ready',capabilities:{save:true},note:{scheduleId:'schedule-exact',sequence:3,courseId:'course-exact',date:'2026-10-16',time:'13:20',sourceVersion:7,version:0,text:'',updatedAt:null,canWrite:true},...extra});
@@ -52,7 +52,7 @@ test('an exact ready writable lesson enables only its valid Review Save without 
  const model=serviceLesson({stage:'review'}),before=JSON.stringify(model),html=dialog(model,en);assert.ok(action(html,'tt-note-save'));assert.equal(disabled(action(html,'tt-note-save')),false);assert.match(action(html,'tt-note-save'),/type="button"/);assert.match(html,/This note has not been saved/);assert.doesNotMatch(html,/Note saved|Saved successfully/);assert.match(html,/id="tt-note-body"[^>]*tabindex="0"/);assert.equal(JSON.stringify(model),before);
 });
 test('date and legacy lesson drafts never gain persistence from a capability or a forged note object',()=>{
- for(const model of [{...date(),...serviceLesson(),kind:'date',stage:'review'},{...lesson(),capabilities:{save:true},stage:'review'}])assert.ok(disabled(action(dialog(model,en),'tt-note-save')));
+ const forgedDate=dialog({...serviceLesson(),kind:'date',stage:'edit'},en);assert.doesNotMatch(forgedDate,/<textarea|id="tt-note-save"/);assert.ok(disabled(action(dialog({...lesson(),capabilities:{save:true},stage:'review'},en),'tt-note-save')));
  for(const save of [undefined,false,1,'true',null]){const html=dialog(serviceLesson({capabilities:{save},stage:'review'}),en);assert.ok(!action(html,'tt-note-save')||disabled(action(html,'tt-note-save')));}
 });
 test('invalid or mismatched persisted note facts never expose another lesson text or enable Save',()=>{
@@ -89,4 +89,19 @@ test('a stale writable note retains the raw draft when save capability is tempor
 test('a known writable note remains locally editable after a failed poll without allowing Review Save or unauthorized editing',()=>{
  const model=serviceLesson({sourceStatus:'error',capabilities:{save:false},draft:{text:' Original native\n可續寫草稿 '}}),before=JSON.stringify(model),html=dialog(model,en),textarea=html.match(/<textarea\b[^>]*>/)?.[0];assert.ok(textarea);assert.equal(disabled(textarea),false);assert.match(html,/ Original native\n可續寫草稿 /);assert.match(html,/Could not update/);assert.ok(disabled(html.match(/<button\b[^>]*id="tt-note-review"[^>]*>/)?.[0]));assert.ok(disabled(action(dialog({...model,stage:'review'},en),'tt-note-save')));assert.equal(JSON.stringify(model),before);
  assert.match(dialog({...model,busy:true},en),/<textarea[^>]*disabled/);for(const sourceStatus of ['loading','error'])assert.doesNotMatch(dialog({...model,sourceStatus,note:null},en),/<form\b|<textarea|No note yet/);assert.doesNotMatch(dialog({...model,note:{...model.note,canWrite:false}},en),/<textarea|<form\b|可續寫草稿/);
+});
+
+test('a loaded date note saves directly from its textarea and preserves Cancel in both languages',()=>{
+ const model={...date(),sourceStatus:'ready',capabilities:{save:true},note:{date:'2026-10-16',version:1,text:'Saved note',updatedAt:'2026-10-16T01:02:03.000Z',canWrite:true}};
+ for(const ctx of [en,zh]){
+  const html=dialog(model,ctx);assert.match(html,/<textarea/);assert.match(html,/data-ui-command="tt-note-save"/);assert.match(html,/id="tt-note-save"[^>]*>(Save|儲存)<\/button>/);assert.doesNotMatch(html,/id="tt-note-save"[^>]*disabled|>Review<|>核對</);assert.ok(action(html,'tt-note-cancel'));
+ }
+ for(const patch of [{busy:true},{stale:true},{sourceStatus:'error'},{note:{...model.note,date:'2026-10-17'}}])assert.doesNotMatch(dialog({...model,...patch},en),/id="tt-note-save"(?![^>]*disabled)[^>]*>/);
+ const cleared={...model,draft:{text:''}};assert.equal(validate(cleared),'');assert.equal(validate({...cleared,note:{...model.note,version:0,updatedAt:null}}),'text');
+});
+
+test('date note icons distinguish saved content from empty or unknown dates without changing lesson icons',()=>{
+ const present=button({...date(),hasNote:true},en),empty=button({...date(),hasNote:false},en),unknown=button(date(),en);
+ assert.match(present,/tt-note-present/);assert.match(present,/aria-description="Has a saved note"/);assert.match(empty,/tt-note-empty/);assert.match(empty,/aria-description="No saved note"/);assert.match(unknown,/data-note-status="unknown"/);
+ assert.doesNotMatch(button({...lesson(),hasNote:false},en),/tt-note-empty|data-note-status=/);assert.match(button({...date(),hasNote:true},zh),/已有備忘/);
 });

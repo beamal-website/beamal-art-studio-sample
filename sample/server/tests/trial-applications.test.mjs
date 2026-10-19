@@ -96,7 +96,7 @@ test('new submissions fail on stale exact range and private source changes witho
  app.store.availableSlots.update(app.slot.id,{version:1,publicVisibility:'hide'},app.admin.id);
  fail(()=>app.store.trialApplications.submit(input,{key:key()}),409,'TRIAL_SOURCE_UNAVAILABLE');assert.deepEqual(counts(app.databasePath),before);
  app.store.availableSlots.update(app.slot.id,{version:2,publicVisibility:'show',trialEnabled:false},app.admin.id);
- fail(()=>app.store.trialApplications.submit(submission(app),{key:key()}),409,'TRIAL_SOURCE_UNAVAILABLE');assert.deepEqual(counts(app.databasePath),before);
+ fail(()=>app.store.trialApplications.submit(input,{key:key()}),409,'TRIAL_SOURCE_UNAVAILABLE');assert.deepEqual(counts(app.databasePath),before);
  app.store.availableSlots.update(app.slot.id,{version:3,trialEnabled:true,active:false},app.admin.id);
  fail(()=>app.store.trialApplications.submit(input,{key:key()}),409,'TRIAL_SOURCE_UNAVAILABLE');assert.deepEqual(counts(app.databasePath),before);
 });

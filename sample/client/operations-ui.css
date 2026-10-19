@@ -102,3 +102,61 @@
 .ops-message-bubble p,.ops-message-preview-content,.ops-thread-copy>span{overflow-wrap:anywhere}
 .ops-composer button,.ops-dialog-footer .ops-message-send{min-height:44px}
 .ops-dialog-footer .ops-message-send:disabled{cursor:not-allowed;opacity:.6;box-shadow:none}
+
+/* Product catalogue follows the familiar heading, tabs, filters and table layout. */
+.ops-product-reference .ops-page-heading{min-height:88px;padding:18px 24px;border-bottom:0;align-items:center}
+.ops-product-reference .ops-heading-icon{display:none}
+.ops-product-reference .ops-heading-copy h1{font-size:24px}
+.ops-product-page-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ops-product-reference .ops-product-tabs{margin:0;padding:0 24px;border-bottom:1px solid var(--ops-border);background:var(--ops-surface,#fffdf8)}
+.ops-product-reference .ops-product-tabs button{min-height:52px;padding:12px 20px;border:0;border-bottom:3px solid transparent;border-radius:0;background:transparent;color:var(--ops-muted);box-shadow:none}
+.ops-product-reference .ops-product-tabs button[aria-pressed=true]{border-bottom-color:var(--ops-accent);color:var(--ops-accent)}
+.ops-product-reference .ops-body{padding:20px 24px}
+.ops-product-reference .ops-workspace{border:0;border-radius:0;background:transparent;box-shadow:none}
+.ops-product-reference .ops-products-filters{display:grid;grid-template-columns:140px minmax(180px,330px) minmax(150px,215px) auto;justify-content:start;align-items:center;gap:12px;padding:0;margin:0 0 12px;border:0;background:transparent}
+.ops-product-reference .ops-products-filters .ops-field{gap:0;margin:0;position:relative}
+.ops-product-reference .ops-products-filters .ops-field>span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+.ops-product-reference .ops-products-filters input,.ops-product-reference .ops-products-filters select{min-height:48px;background:#fffdf8;border-radius:3px}
+.ops-product-reference .ops-products-filters .ops-field:first-child select{background:#f0ebdc;border-color:transparent}
+.ops-product-overview-table table{min-width:900px;width:100%;border-collapse:collapse}
+.ops-product-reference .ops-products-table th{height:64px;padding:10px 18px;background:#e9eee5;color:#253d3b;border-bottom:1px solid var(--ops-border);font-size:14px;white-space:nowrap}
+.ops-product-reference .ops-products-table td{padding:20px 18px;font-size:14px;border-bottom:1px solid var(--ops-border)}
+.ops-product-overview-table td:first-child{min-width:44px;width:44px;max-width:none}
+.ops-product-overview-table input[type=checkbox]{width:20px;height:20px;margin:0}
+.ops-product-overview-table td:nth-child(3){min-width:180px}
+.ops-product-overview-table td>strong{font-weight:500}
+.ops-product-overview-table td>small{display:block;margin-top:6px;color:var(--ops-muted)}
+.ops-product-reference .ops-product-list-bottom{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-top:16px}
+.ops-product-list-bottom .ops-products-footer{flex:1 1 500px;padding:0;border:0}
+.ops-product-list-bottom>.ops-field{margin:0;min-width:100px}
+.ops-product-list-bottom>.ops-field>span{font-size:12px}
+.ops-product-empty{min-height:380px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px 16px}
+.ops-product-empty-icon{width:52px;height:52px;display:grid;place-items:center;background:#eee9d8;border-radius:8px;color:var(--ops-accent)}
+.ops-product-empty-icon svg{width:30px;height:30px}
+.ops-product-empty h2{font-size:22px;margin:16px 0 8px}
+.ops-product-empty p{color:var(--ops-muted);line-height:1.8;margin:0 0 24px}
+.ops-product-empty>div{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+@media(max-width:780px){.ops-product-reference .ops-page-heading{padding:16px;gap:12px}.ops-product-reference .ops-body{padding:16px}.ops-product-reference .ops-product-tabs{padding-inline:16px}.ops-product-reference .ops-products-filters{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.ops-product-reference .ops-products-filters>.ops-field:nth-child(2){grid-column:1/-1;grid-row:1}.ops-product-page-actions{gap:6px}.ops-product-page-actions button{padding:10px 12px}.ops-product-reference .ops-product-list-bottom{align-items:flex-end}}
+
+.ops-accounting-reference{min-height:100%;background:#fffdf8}
+.ops-accounting-reference-body{padding:24px}
+.ops-accounting-reference-filters{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:0;margin-bottom:12px;border:0;background:transparent}
+.ops-accounting-reference-filters label{margin:0}
+.ops-accounting-reference-filters select{min-width:145px;background:#f0ebdc;border:0}
+.ops-accounting-reference-filters input[type=search]{width:min(330px,100%);min-width:180px}
+.ops-accounting-reference-filters select,.ops-accounting-reference-filters input,.ops-accounting-date summary{min-height:48px;border-radius:3px;font-size:15px}
+.ops-accounting-date{position:relative}
+.ops-accounting-date summary{display:flex;align-items:center;gap:16px;padding:12px 16px;border:1px solid #bdcbc1;background:#fffdf8;cursor:pointer;list-style:none}
+.ops-accounting-date summary::-webkit-details-marker{display:none}
+.ops-accounting-date>div{position:absolute;z-index:4;top:calc(100% + 8px);left:0;display:grid;gap:12px;width:260px;padding:16px;background:#fffdf8;border:1px solid #bdcbc1;box-shadow:0 4px 14px #253d3b18}
+.ops-accounting-date label{display:grid;gap:6px;font-size:13px}
+.ops-accounting-reference-table{width:100%;min-width:760px;border-collapse:collapse;font-size:14px}
+.ops-accounting-reference-table th{height:64px;background:#e9eee5;padding:18px;text-align:left;font-weight:600;white-space:nowrap}
+.ops-accounting-reference-table td{padding:22px 18px;border-bottom:1px solid #d9ddd2;line-height:1.7}
+.ops-accounting-reference-table input[type=checkbox]{width:20px;height:20px;margin:0}
+.ops-accounting-reference-table .ops-accounting-reference-empty{height:150px;text-align:center;color:#687770}
+@media(max-width:780px){.ops-accounting-reference-body{padding:16px}.ops-accounting-reference-filters{gap:8px}.ops-accounting-reference-filters>label:has(input[type=search]){flex:1 1 180px}.ops-accounting-reference-filters input[type=search]{width:100%}}
+
+.ops-page .ops-accounting-reference-table th{font-size:14px}
+.ops-accounting-reference-filters>label:has(input[type=search]){width:330px;max-width:100%}
+.ops-accounting-reference-filters input[type=search]{width:100%}

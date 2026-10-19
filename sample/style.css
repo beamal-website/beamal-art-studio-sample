@@ -1207,7 +1207,7 @@
 
 /* Keep dropdown cues inset consistently across public pages, portals and dialogs.
    Arrow longhands win over component background shorthands without changing field colors. */
-select:not([multiple]):not([size]) {
+select:not([multiple]):is(:not([size]),[size="1"]) {
   appearance:none;-webkit-appearance:none;
   padding-right:44px !important;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23253d3b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
@@ -1226,7 +1226,7 @@ select:not([multiple]):not([size]) {
   background:transparent;color:var(--teal,#27777b);border:0;box-shadow:none;
 }
 @media (forced-colors:active) {
-  select:not([multiple]):not([size]) {appearance:auto;-webkit-appearance:auto;background-image:none !important;}
+  select:not([multiple]):is(:not([size]),[size="1"]) {appearance:auto;-webkit-appearance:auto;background-image:none !important;}
 }
 
 /* Saved advanced filters follow the same name-and-eye layout as Display. */
@@ -1249,4 +1249,35 @@ select:not([multiple]):not([size]) {
   .tt-sidebar :is(.tt-resource-option,.tnf-compact-list .tnf-row):hover {
     background:#e2efea;box-shadow:none;
   }
+}
+
+/* One cue inset for public pages, all portal roles and their dialogs. */
+:root {--control-cue-inset:24px;--control-cue-space:52px;}
+select:not([multiple]):is(:not([size]),[size="1"]) {
+  padding-right:var(--control-cue-space) !important;
+  background-position:right var(--control-cue-inset) center !important;
+}
+/* This select uses a separate SVG instead of a background cue. */
+.tt-toolbar .tt-view-control>svg {right:var(--control-cue-inset);}
+.tt-toolbar .tt-view-control {min-width:132px;}
+body :is(.course-slot-editor,.resource-picker-details,.ui-staff-todo-group,.slw-date,.lw-date,.ops-accounting-date)>summary {
+  padding-inline-end:var(--control-cue-inset);
+}
+/* Display groups already sit inside a 14px sidebar gutter. */
+.tt-sidebar .tt-display-group>summary {padding-inline-end:10px;}
+/* Do not squeeze the add-menu cue against its edge on small screens. */
+.tt-toolbar .tt-add-menu>summary {padding-inline:12px;gap:6px;white-space:normal;line-height:1.2;text-align:center;}
+/* Reserve text width as well as cue space in the compact catalogue filters. */
+.portal-filters {grid-template-columns:132px minmax(150px,1fr) minmax(132px,.65fr) minmax(132px,.65fr);}
+@media (max-width:780px) {
+  .portal-filters {grid-template-columns:132px minmax(0,1fr);}
+}
+@container (min-width:1201px) {
+  .tt-toolbar .tt-view-control {width:176px;min-width:176px;}
+}
+@media (min-width:781px) {
+  body .ops-page .ops-settings-nav button {padding-inline-end:var(--control-cue-inset);}
+}
+@media (forced-colors:active) {
+  .tt-toolbar .tt-view-control select {appearance:none;-webkit-appearance:none;}
 }

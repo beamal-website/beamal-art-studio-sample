@@ -1,0 +1,122 @@
+{
+  "sample/src.js": {
+    "selectMarkupSites": 24,
+    "summaryMarkupSites": 14
+  },
+  "sample/client/sales-workspace-ui.js": {
+    "selectMarkupSites": 3,
+    "summaryMarkupSites": 0
+  },
+  "sample/client/staff-calendar-sharing-ui.js": {
+    "selectMarkupSites": 1,
+    "summaryMarkupSites": 0
+  },
+  "sample/client/shared-lesson-workflow-ui.js": {
+    "selectMarkupSites": 0,
+    "summaryMarkupSites": 3
+  },
+  "sample/client/timetable-filters.js": {
+    "selectMarkupSites": 4,
+    "summaryMarkupSites": 0
+  },
+  "sample/client/student-portal-ui.js": {
+    "selectMarkupSites": 1,
+    "summaryMarkupSites": 0
+  },
+  "sample/client/availability-ui.js": {
+    "selectMarkupSites": 6,
+    "summaryMarkupSites": 0
+  },
+  "sample/client/scheduling-resources-ui.js": {
+    "selectMarkupSites": 1,
+    "summaryMarkupSites": 1
+  },
+  "sample/client/staff-payroll-ui.js": {
+    "selectMarkupSites": 1,
+    "summaryMarkupSites": 0
+  },
+  "sample/client/enrollment-orders-ui.js": {
+    "selectMarkupSites": 4,
+    "summaryMarkupSites": 0
+  },
+  "sample/client/accounting-reference-ui.js": {
+    "selectMarkupSites": 1,
+    "summaryMarkupSites": 1
+  },
+  "sample/client/timetable-range.js": {
+    "selectMarkupSites": 1,
+    "summaryMarkupSites": 0
+  },
+  "sample/client/trial-application-ui.js": {
+    "selectMarkupSites": 1,
+    "summaryMarkupSites": 0
+  },
+  "sample/client/public-trial-ui.js": {
+    "selectMarkupSites": 1,
+    "summaryMarkupSites": 0
+  },
+  "sample/client/reports-ui.js": {
+    "selectMarkupSites": 3,
+    "summaryMarkupSites": 0
+  },
+  "sample/client/public-timetable-ui.js": {
+    "selectMarkupSites": 3,
+    "summaryMarkupSites": 0
+  },
+  "sample/client/staff-portal-ui.js": {
+    "selectMarkupSites": 2,
+    "summaryMarkupSites": 1
+  },
+  "sample/client/access-control-ui.js": {
+    "selectMarkupSites": 7,
+    "summaryMarkupSites": 0
+  },
+  "sample/client/materials-ui.js": {
+    "selectMarkupSites": 1,
+    "summaryMarkupSites": 0
+  },
+  "sample/client/staff-profile-ui.js": {
+    "selectMarkupSites": 1,
+    "summaryMarkupSites": 0
+  },
+  "sample/client/staff-attendance-ui.js": {
+    "selectMarkupSites": 1,
+    "summaryMarkupSites": 0
+  },
+  "sample/client/staff-roster-groups-ui.js": {
+    "selectMarkupSites": 1,
+    "summaryMarkupSites": 0
+  },
+  "sample/client/staff-roster-ui.js": {
+    "selectMarkupSites": 1,
+    "summaryMarkupSites": 0
+  },
+  "sample/client/course-schedule-ui.js": {
+    "selectMarkupSites": 0,
+    "summaryMarkupSites": 1
+  },
+  "sample/client/operations-ui.js": {
+    "selectMarkupSites": 5,
+    "summaryMarkupSites": 0
+  },
+  "sample/client/class-type-ui.js": {
+    "selectMarkupSites": 2,
+    "summaryMarkupSites": 0
+  },
+  "sample/client/lesson-workflow-ui.js": {
+    "selectMarkupSites": 1,
+    "summaryMarkupSites": 1
+  },
+  "sample/client/data-tools-ui.js": {
+    "selectMarkupSites": 3,
+    "summaryMarkupSites": 0
+  },
+  "sample/client/people-ui.js": {
+    "selectMarkupSites": 3,
+    "summaryMarkupSites": 0
+  },
+  "sample/client/staff-leave-ui.js": {
+    "selectMarkupSites": 1,
+    "summaryMarkupSites": 0
+  }
+}

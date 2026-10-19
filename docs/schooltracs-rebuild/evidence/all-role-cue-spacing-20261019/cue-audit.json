@@ -1,0 +1,1598 @@
+[
+  {
+    "role": "admin",
+    "screen": "course-list-desktop",
+    "metrics": [
+      {
+        "class": "",
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Account menu",
+        "padding": "0px",
+        "right": 1068,
+        "width": 44
+      },
+      {
+        "class": "",
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Course status",
+        "padding": "52px",
+        "right": 349,
+        "width": 105
+      },
+      {
+        "class": "",
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Category",
+        "padding": "52px",
+        "right": 863.28125,
+        "width": 194.71875
+      },
+      {
+        "class": "",
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Level",
+        "padding": "52px",
+        "right": 1067.9921875,
+        "width": 194.7109375
+      }
+    ]
+  },
+  {
+    "role": "admin",
+    "screen": "timetable-desktop",
+    "metrics": [
+      {
+        "class": "",
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Account menu",
+        "padding": "0px",
+        "right": 1068,
+        "width": 44
+      },
+      {
+        "class": "",
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Timetable view",
+        "padding": "52px",
+        "right": 1068,
+        "width": 178.65625
+      },
+      {
+        "class": "",
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Add Schedule ▾",
+        "padding": "12px",
+        "right": 1032,
+        "width": 142.65625
+      },
+      {
+        "class": "",
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Attendance",
+        "padding": "0px",
+        "right": 1068,
+        "width": 28
+      },
+      {
+        "class": "",
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Room",
+        "padding": "10px",
+        "right": 415,
+        "width": 181
+      },
+      {
+        "class": "",
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Teacher",
+        "padding": "10px",
+        "right": 415,
+        "width": 181
+      },
+      {
+        "class": "",
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Class",
+        "padding": "10px",
+        "right": 415,
+        "width": 181
+      },
+      {
+        "class": "",
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Advanced filters",
+        "padding": "14px",
+        "right": 429,
+        "width": 209
+      }
+    ]
+  },
+  {
+    "role": "admin",
+    "screen": "course-list-adjusted",
+    "metrics": [
+      {
+        "class": "",
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Account menu",
+        "padding": "0px",
+        "right": 1068,
+        "width": 44
+      },
+      {
+        "class": "",
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Course status",
+        "padding": "52px",
+        "right": 376,
+        "width": 132
+      },
+      {
+        "class": "",
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Category",
+        "padding": "52px",
+        "right": 870.90625,
+        "width": 187.0859375
+      },
+      {
+        "class": "",
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Level",
+        "padding": "52px",
+        "right": 1067.9921875,
+        "width": 187.0859375
+      }
+    ]
+  },
+  {
+    "role": "admin",
+    "screen": "schedule-dialog-desktop",
+    "metrics": [
+      {
+        "class": "",
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Account menu",
+        "padding": "0px",
+        "right": 1068,
+        "width": 44
+      },
+      {
+        "class": "",
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Timetable view",
+        "padding": "52px",
+        "right": 1068,
+        "width": 178.65625
+      },
+      {
+        "class": "",
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Add Schedule ▾",
+        "padding": "12px",
+        "right": 1032,
+        "width": 142.65625
+      },
+      {
+        "class": "",
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Attendance",
+        "padding": "0px",
+        "right": 1068,
+        "width": 28
+      },
+      {
+        "class": "",
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Room",
+        "padding": "10px",
+        "right": 415,
+        "width": 181
+      },
+      {
+        "class": "",
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Teacher",
+        "padding": "10px",
+        "right": 415,
+        "width": 181
+      },
+      {
+        "class": "",
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Class",
+        "padding": "10px",
+        "right": 415,
+        "width": 181
+      },
+      {
+        "class": "",
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Advanced filters",
+        "padding": "14px",
+        "right": 429,
+        "width": 209
+      },
+      {
+        "class": "",
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Course *",
+        "padding": "52px",
+        "right": 853,
+        "width": 775
+      },
+      {
+        "class": "",
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Class type",
+        "padding": "52px",
+        "right": 997,
+        "width": 902
+      },
+      {
+        "class": "",
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Start time *",
+        "padding": "52px",
+        "right": 538,
+        "width": 460
+      },
+      {
+        "class": "",
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Duration (min) *",
+        "padding": "52px",
+        "right": 1014,
+        "width": 460
+      },
+      {
+        "class": "",
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Unassigned⌄",
+        "padding": "24px",
+        "right": 537,
+        "width": 458
+      },
+      {
+        "class": "",
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Unassigned⌄",
+        "padding": "24px",
+        "right": 1013,
+        "width": 458
+      }
+    ]
+  },
+  {
+    "role": "admin",
+    "screen": "schedule-dialog-mobile",
+    "metrics": [
+      {
+        "class": "",
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Account menu",
+        "padding": "0px",
+        "right": 374,
+        "width": 44
+      },
+      {
+        "class": "",
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Timetable view",
+        "padding": "52px",
+        "right": 382,
+        "width": 132
+      },
+      {
+        "class": "",
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Add Schedule ▾",
+        "padding": "12px",
+        "right": 338,
+        "width": 88
+      },
+      {
+        "class": "",
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Attendance",
+        "padding": "0px",
+        "right": 374,
+        "width": 28
+      },
+      {
+        "class": "",
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Room",
+        "padding": "10px",
+        "right": 380,
+        "width": 175
+      },
+      {
+        "class": "",
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Teacher",
+        "padding": "10px",
+        "right": 380,
+        "width": 175
+      },
+      {
+        "class": "",
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Class",
+        "padding": "10px",
+        "right": 380,
+        "width": 175
+      },
+      {
+        "class": "",
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Advanced filters",
+        "padding": "14px",
+        "right": 390,
+        "width": 390
+      },
+      {
+        "class": "",
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Course *",
+        "padding": "52px",
+        "right": 262,
+        "width": 234
+      },
+      {
+        "class": "",
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Class type",
+        "padding": "52px",
+        "right": 347,
+        "width": 304
+      },
+      {
+        "class": "",
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Start time *",
+        "padding": "52px",
+        "right": 362,
+        "width": 334
+      },
+      {
+        "class": "",
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Duration (min) *",
+        "padding": "52px",
+        "right": 362,
+        "width": 334
+      },
+      {
+        "class": "",
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Unassigned⌄",
+        "padding": "24px",
+        "right": 361,
+        "width": 332
+      },
+      {
+        "class": "",
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Unassigned⌄",
+        "padding": "24px",
+        "right": 361,
+        "width": 332
+      }
+    ]
+  },
+  {
+    "role": "admin",
+    "screen": "Courses-desktop",
+    "metrics": [
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Account menu",
+        "padding": "0px",
+        "right": 1068,
+        "width": 44
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Course status",
+        "padding": "52px",
+        "right": 376,
+        "width": 132
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Category",
+        "padding": "52px",
+        "right": 870.90625,
+        "width": 187.0859375
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Level",
+        "padding": "52px",
+        "right": 1067.9921875,
+        "width": 187.0859375
+      }
+    ]
+  },
+  {
+    "role": "admin",
+    "screen": "Fees-desktop",
+    "metrics": [
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Account menu",
+        "padding": "0px",
+        "right": 1068,
+        "width": 44
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Fee type",
+        "padding": "52px",
+        "right": 376,
+        "width": 132
+      }
+    ]
+  },
+  {
+    "role": "admin",
+    "screen": "Students-desktop",
+    "metrics": [
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Account menu",
+        "padding": "0px",
+        "right": 1068,
+        "width": 44
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Sort by",
+        "padding": "52px",
+        "right": 884,
+        "width": 164
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Order",
+        "padding": "52px",
+        "right": 1064,
+        "width": 164
+      }
+    ]
+  },
+  {
+    "role": "admin",
+    "screen": "Leads-desktop",
+    "metrics": [
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Account menu",
+        "padding": "0px",
+        "right": 1068,
+        "width": 44
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Sort by",
+        "padding": "52px",
+        "right": 884,
+        "width": 164
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Order",
+        "padding": "52px",
+        "right": 1064,
+        "width": 164
+      }
+    ]
+  },
+  {
+    "role": "admin",
+    "screen": "Accounting-desktop",
+    "metrics": [
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Account menu",
+        "padding": "0px",
+        "right": 1068,
+        "width": 44
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Invoice status",
+        "padding": "52px",
+        "right": 389,
+        "width": 145
+      },
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "All dates ▦",
+        "padding": "24px",
+        "right": 533.1953125,
+        "width": 132.1953125
+      }
+    ]
+  },
+  {
+    "role": "admin",
+    "screen": "Reports-desktop",
+    "metrics": [
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Account menu",
+        "padding": "0px",
+        "right": 1068,
+        "width": 44
+      }
+    ]
+  },
+  {
+    "role": "admin",
+    "screen": "Staffs-desktop",
+    "metrics": [
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Account menu",
+        "padding": "0px",
+        "right": 1068,
+        "width": 44
+      }
+    ]
+  },
+  {
+    "role": "admin",
+    "screen": "Settings-desktop",
+    "metrics": [
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Account menu",
+        "padding": "0px",
+        "right": 1068,
+        "width": 44
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Time zone",
+        "padding": "52px",
+        "right": 741,
+        "width": 286
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Default language",
+        "padding": "52px",
+        "right": 1043,
+        "width": 286
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Currency",
+        "padding": "52px",
+        "right": 741,
+        "width": 286
+      }
+    ]
+  },
+  {
+    "role": "admin",
+    "screen": "staff-Roster-desktop",
+    "metrics": [
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Account menu",
+        "padding": "0px",
+        "right": 1068,
+        "width": 44
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Teacher",
+        "padding": "52px",
+        "right": 509.328125,
+        "width": 261.328125
+      }
+    ]
+  },
+  {
+    "role": "admin",
+    "screen": "staff-Leave-desktop",
+    "metrics": [
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Account menu",
+        "padding": "0px",
+        "right": 1068,
+        "width": 44
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Teacher",
+        "padding": "52px",
+        "right": 856,
+        "width": 192
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Status",
+        "padding": "52px",
+        "right": 1064,
+        "width": 192
+      }
+    ]
+  },
+  {
+    "role": "admin",
+    "screen": "staff-Clock records-desktop",
+    "metrics": [
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Account menu",
+        "padding": "0px",
+        "right": 1068,
+        "width": 44
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Teacher",
+        "padding": "52px",
+        "right": 732,
+        "width": 152
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Clock label",
+        "padding": "52px",
+        "right": 900,
+        "width": 152
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Location status",
+        "padding": "52px",
+        "right": 1068,
+        "width": 152
+      }
+    ]
+  },
+  {
+    "role": "admin",
+    "screen": "staff-Payroll-desktop",
+    "metrics": [
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Account menu",
+        "padding": "0px",
+        "right": 1068,
+        "width": 44
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Teacher",
+        "padding": "52px",
+        "right": 648,
+        "width": 192
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Status",
+        "padding": "52px",
+        "right": 856,
+        "width": 192
+      }
+    ]
+  },
+  {
+    "role": "teacher",
+    "screen": "To-do-desktop",
+    "metrics": [
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Account menu",
+        "padding": "0px",
+        "right": 1068,
+        "width": 44
+      }
+    ]
+  },
+  {
+    "role": "teacher",
+    "screen": "My classes-desktop",
+    "metrics": [
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Account menu",
+        "padding": "0px",
+        "right": 1068,
+        "width": 44
+      }
+    ]
+  },
+  {
+    "role": "teacher",
+    "screen": "Roster-desktop",
+    "metrics": [
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Account menu",
+        "padding": "0px",
+        "right": 1068,
+        "width": 44
+      }
+    ]
+  },
+  {
+    "role": "teacher",
+    "screen": "Clock-desktop",
+    "metrics": [
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Account menu",
+        "padding": "0px",
+        "right": 1068,
+        "width": 44
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Clock label",
+        "padding": "52px",
+        "right": 732,
+        "width": 152
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Location status",
+        "padding": "52px",
+        "right": 900,
+        "width": 152
+      }
+    ]
+  },
+  {
+    "role": "teacher",
+    "screen": "Leave-desktop",
+    "metrics": [
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Account menu",
+        "padding": "0px",
+        "right": 1068,
+        "width": 44
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Status",
+        "padding": "52px",
+        "right": 858,
+        "width": 194
+      }
+    ]
+  },
+  {
+    "role": "teacher",
+    "screen": "Payroll-desktop",
+    "metrics": [
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Account menu",
+        "padding": "0px",
+        "right": 1068,
+        "width": 44
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Status",
+        "padding": "52px",
+        "right": 788,
+        "width": 264
+      }
+    ]
+  },
+  {
+    "role": "teacher",
+    "screen": "Courses-desktop",
+    "metrics": [
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Account menu",
+        "padding": "0px",
+        "right": 1068,
+        "width": 44
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Course status",
+        "padding": "52px",
+        "right": 376,
+        "width": 132
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Category",
+        "padding": "52px",
+        "right": 870.90625,
+        "width": 187.0859375
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Level",
+        "padding": "52px",
+        "right": 1067.9921875,
+        "width": 187.0859375
+      }
+    ]
+  },
+  {
+    "role": "teacher",
+    "screen": "Fees-desktop",
+    "metrics": [
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Account menu",
+        "padding": "0px",
+        "right": 1068,
+        "width": 44
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Fee type",
+        "padding": "52px",
+        "right": 376,
+        "width": 132
+      }
+    ]
+  },
+  {
+    "role": "teacher",
+    "screen": "Settings-desktop",
+    "metrics": [
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Account menu",
+        "padding": "0px",
+        "right": 1068,
+        "width": 44
+      }
+    ]
+  },
+  {
+    "role": "teacher",
+    "screen": "timetable-custom-range-desktop",
+    "metrics": [
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Account menu",
+        "padding": "0px",
+        "right": 1068,
+        "width": 44
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Timetable view",
+        "padding": "52px",
+        "right": 1068,
+        "width": 178.65625
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Consecutive days",
+        "padding": "52px",
+        "right": 482.5078125,
+        "width": 117
+      },
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Add Schedule ▾",
+        "padding": "12px",
+        "right": 1032,
+        "width": 142.65625
+      },
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Attendance",
+        "padding": "0px",
+        "right": 1068,
+        "width": 28
+      },
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Room",
+        "padding": "10px",
+        "right": 415,
+        "width": 181
+      },
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Teacher",
+        "padding": "10px",
+        "right": 415,
+        "width": 181
+      },
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Class",
+        "padding": "10px",
+        "right": 415,
+        "width": 181
+      },
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Advanced filters",
+        "padding": "14px",
+        "right": 429,
+        "width": 209
+      }
+    ]
+  },
+  {
+    "role": "teacher",
+    "screen": "timetable-mobile",
+    "metrics": [
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Account menu",
+        "padding": "0px",
+        "right": 374,
+        "width": 44
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Timetable view",
+        "padding": "52px",
+        "right": 382,
+        "width": 132
+      },
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Add Schedule ▾",
+        "padding": "12px",
+        "right": 338,
+        "width": 88
+      },
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Attendance",
+        "padding": "0px",
+        "right": 374,
+        "width": 28
+      },
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Room",
+        "padding": "10px",
+        "right": 380,
+        "width": 175
+      },
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Teacher",
+        "padding": "10px",
+        "right": 380,
+        "width": 175
+      },
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Class",
+        "padding": "10px",
+        "right": 380,
+        "width": 175
+      },
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Advanced filters",
+        "padding": "14px",
+        "right": 390,
+        "width": 390
+      }
+    ]
+  },
+  {
+    "role": "student",
+    "screen": "calendar-desktop",
+    "metrics": [
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Account menu",
+        "padding": "0px",
+        "right": 1068,
+        "width": 44
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "My calendar view",
+        "padding": "52px",
+        "right": 449,
+        "width": 180
+      }
+    ]
+  },
+  {
+    "role": "student",
+    "screen": "calendar-custom-range-desktop",
+    "metrics": [
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Account menu",
+        "padding": "0px",
+        "right": 1068,
+        "width": 44
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "My calendar view",
+        "padding": "52px",
+        "right": 449,
+        "width": 180
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Consecutive days",
+        "padding": "52px",
+        "right": 896.0078125,
+        "width": 113.5
+      }
+    ]
+  },
+  {
+    "role": "student",
+    "screen": "calendar-settings-dialog",
+    "metrics": [
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Account menu",
+        "padding": "0px",
+        "right": 1068,
+        "width": 44
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "My calendar view",
+        "padding": "52px",
+        "right": 449,
+        "width": 180
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Consecutive days",
+        "padding": "52px",
+        "right": 531,
+        "width": 325
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Calendar Type",
+        "padding": "52px",
+        "right": 531,
+        "width": 325
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Students Numbering",
+        "padding": "52px",
+        "right": 531,
+        "width": 325
+      }
+    ]
+  },
+  {
+    "role": "student",
+    "screen": "calendar-settings-mobile",
+    "metrics": [
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Account menu",
+        "padding": "0px",
+        "right": 374,
+        "width": 44
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "My calendar view",
+        "padding": "52px",
+        "right": 189,
+        "width": 156
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Consecutive days",
+        "padding": "52px",
+        "right": 201.265625,
+        "width": 171.265625
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Calendar Type",
+        "padding": "52px",
+        "right": 201.265625,
+        "width": 171.265625
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Students Numbering",
+        "padding": "52px",
+        "right": 201.265625,
+        "width": 171.265625
+      }
+    ]
+  },
+  {
+    "role": "student",
+    "screen": "My classes-desktop",
+    "metrics": [
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Account menu",
+        "padding": "0px",
+        "right": 1068,
+        "width": 44
+      }
+    ]
+  },
+  {
+    "role": "student",
+    "screen": "Payment History-desktop",
+    "metrics": [
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Account menu",
+        "padding": "0px",
+        "right": 1068,
+        "width": 44
+      }
+    ]
+  },
+  {
+    "role": "student",
+    "screen": "Profile & family-desktop",
+    "metrics": [
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Account menu",
+        "padding": "0px",
+        "right": 1068,
+        "width": 44
+      }
+    ]
+  },
+  {
+    "role": "student",
+    "screen": "My requests-desktop",
+    "metrics": [
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Account menu",
+        "padding": "0px",
+        "right": 1068,
+        "width": 44
+      }
+    ]
+  },
+  {
+    "role": "student",
+    "screen": "Courses & events-desktop",
+    "metrics": [
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Account menu",
+        "padding": "0px",
+        "right": 1068,
+        "width": 44
+      }
+    ]
+  },
+  {
+    "role": "student",
+    "screen": "reschedule-dialog-desktop",
+    "metrics": [
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Account menu",
+        "padding": "0px",
+        "right": 1068,
+        "width": 44
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "My calendar view",
+        "padding": "52px",
+        "right": 449,
+        "width": 180
+      }
+    ]
+  },
+  {
+    "role": "student",
+    "screen": "calendar-zh-desktop",
+    "metrics": [
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "帳戶選單",
+        "padding": "0px",
+        "right": 1068,
+        "width": 44
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "我的課表顯示方式",
+        "padding": "52px",
+        "right": 449,
+        "width": 180
+      }
+    ]
+  },
+  {
+    "role": "admin",
+    "screen": "settings-custom-cues",
+    "metrics": {
+      "buttons": [
+        {
+          "gap": 16,
+          "label": "一般資料›",
+          "padding": "16px"
+        },
+        {
+          "gap": 16,
+          "label": "課程設定›",
+          "padding": "16px"
+        },
+        {
+          "gap": 16,
+          "label": "通知設定›",
+          "padding": "16px"
+        },
+        {
+          "gap": 16,
+          "label": "付款設定›",
+          "padding": "16px"
+        },
+        {
+          "gap": 16,
+          "label": "單據樣式›",
+          "padding": "16px"
+        },
+        {
+          "gap": 16,
+          "label": "優惠券範本›",
+          "padding": "16px"
+        },
+        {
+          "gap": 16,
+          "label": "預設電郵範本›",
+          "padding": "16px"
+        },
+        {
+          "gap": 16,
+          "label": "公開時段顯示›",
+          "padding": "16px"
+        }
+      ],
+      "className": "ops-settings-nav"
+    }
+  },
+  {
+    "role": "admin",
+    "screen": "timetable-wide-1600",
+    "metrics": [
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "帳戶選單",
+        "padding": "0px",
+        "right": 1576,
+        "width": 44
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "時間表顯示方式",
+        "padding": "52px",
+        "right": 1061.78125,
+        "width": 176
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "連續日子",
+        "padding": "52px",
+        "right": 1233.28125,
+        "width": 99.5
+      },
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "新增時間 ▾",
+        "padding": "12px",
+        "right": 1540,
+        "width": 104.21875
+      },
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "出席",
+        "padding": "0px",
+        "right": 1576,
+        "width": 28
+      },
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "課室",
+        "padding": "10px",
+        "right": 469,
+        "width": 211
+      },
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "老師",
+        "padding": "10px",
+        "right": 469,
+        "width": 211
+      },
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "課程",
+        "padding": "10px",
+        "right": 469,
+        "width": 211
+      },
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "進階篩選",
+        "padding": "14px",
+        "right": 483,
+        "width": 239
+      }
+    ]
+  },
+  {
+    "role": "public",
+    "screen": "trial-form-desktop",
+    "metrics": []
+  },
+  {
+    "role": "public",
+    "screen": "faq-desktop",
+    "metrics": [
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "How do I choose a class?",
+        "padding": "0px",
+        "right": 1060,
+        "width": 1028
+      },
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "How do I enrol?",
+        "padding": "0px",
+        "right": 1060,
+        "width": 1028
+      },
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Can I pay here?",
+        "padding": "0px",
+        "right": 1060,
+        "width": 1028
+      },
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Can I change a class?",
+        "padding": "0px",
+        "right": 1060,
+        "width": 1028
+      },
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "How do I log in?",
+        "padding": "0px",
+        "right": 1060,
+        "width": 1028
+      }
+    ]
+  },
+  {
+    "role": "public",
+    "screen": "news-desktop",
+    "metrics": [
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Studio news8 Oct 2026Student Art ShowcaseA space to sha",
+        "padding": "0px",
+        "right": 1059,
+        "width": 1026
+      },
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Studio news5 Oct 2026Art Award HighlightsA place to sha",
+        "padding": "0px",
+        "right": 1059,
+        "width": 1026
+      },
+      {
+        "inset": "0% 0%",
+        "kind": "SUMMARY",
+        "label": "Studio news1 Oct 2026Studio UpdatesA place for exhibiti",
+        "padding": "0px",
+        "right": 1059,
+        "width": 1026
+      }
+    ]
+  },
+  {
+    "role": "public",
+    "screen": "public-timetable-final-desktop",
+    "metrics": [
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Days to show",
+        "padding": "52px",
+        "right": 389.9921875,
+        "width": 171
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Time type",
+        "padding": "52px",
+        "right": 576.9921875,
+        "width": 171
+      },
+      {
+        "inset": "calc(100% - 24px) 50%",
+        "kind": "SELECT",
+        "label": "Course",
+        "padding": "52px",
+        "right": 763.9921875,
+        "width": 171
+      }
+    ]
+  }
+]

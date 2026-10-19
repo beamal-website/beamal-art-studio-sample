@@ -1151,3 +1151,10 @@
  .portal-content>.teacher-timetable{display:flex;flex-direction:column;min-height:100%}
  .teacher-timetable>.tt-workspace{flex-grow:1}
 }
+
+/* The desktop navigation and workspace scroll independently below the header. */
+@media screen and (min-width:781px){
+ .portal-main>.portal-shell{height:calc(100dvh - 76px);min-height:0;overflow:hidden}
+ .portal-shell>.portal-sidebar,.portal-shell>.portal-content{min-height:0;overflow-y:auto;overscroll-behavior-y:contain}
+ .portal-shell>.portal-sidebar>*{flex-shrink:0}
+}

@@ -4255,3 +4255,10 @@ test('the calendar teacher list follows current staff teaching eligibility and n
  remote.resources[0].teachingAllowed=false;remote.revision++;await a.set('refreshSharedResources()');assert.equal(a.read("timetableResourceOptions('teachers').some(row=>row.id==='qualified')"),false);
  remote.resources.at(-1).active=false;remote.revision++;await a.set('refreshSharedResources()');assert.equal(a.read("timetableResourceOptions('teachers').some(row=>row.id==='new-staff')"),false);
 });
+
+test('display filter status sits below the sidebar search and above selection without a top banner',()=>{
+ const a=app({},'2026-10-08T12:00:00');a.set("role='teacher';tab='overview';location.pathname='/account';timetableNamedFilters.hiddenPresets=['regular'];render()");
+ const panel=a.read('timetableResourcePanel()');assert.match(panel,/class="tt-named-status"/);assert.ok(panel.indexOf('</form>')<panel.indexOf('class="tt-named-status"'));assert.ok(panel.indexOf('class="tt-named-status"')<panel.indexOf('class="tt-resource-select-all"'));
+ const page=a.read('teacherTimetable()');assert.equal((page.match(/class="tt-named-status"/g)||[]).length,1);assert.ok(page.indexOf('class="tt-named-status"')>page.indexOf('<aside class="tt-sidebar"'));
+ a.click({action:'tt-named-clear'});assert.doesNotMatch(a.read('timetableResourcePanel()'),/class="tt-named-status"/);assert.deepEqual(a.read('timetableNamedFilters.hiddenPresets'),[]);
+});

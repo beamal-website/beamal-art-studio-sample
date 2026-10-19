@@ -1186,3 +1186,21 @@
 .portal-content .tt-display>.tt-named-status>button{min-height:44px;padding:4px 0;font-size:12px;line-height:1.4;background:transparent;color:var(--teal);box-shadow:none;text-align:left}
 .tt-advanced-filters>.tt-hide-empty{margin:0;border-top:0;border-bottom:1px solid #d9ddd2;font-size:12px}
 @media(max-width:780px){.tt-sidebar>.tt-display{grid-column:2;grid-row:1;padding:12px 10px}.tt-display>h2{font-size:15px}.tt-display-group{margin-bottom:14px}}
+
+/* Disclosure groups and icon-only display visibility controls. */
+.tt-sidebar>.tt-display{display:block;min-height:0}
+.tt-display>summary,.tt-display-group>summary{display:flex;align-items:center;justify-content:space-between;gap:8px;list-style:none;cursor:pointer;min-height:32px;color:#687770;font-size:12px;font-weight:400;line-height:1.5}
+.tt-display>summary{margin-bottom:10px;color:#253d3b;font-size:16px}
+.tt-display>summary h2{margin:0;font:inherit;font-weight:500}
+.tt-display>summary::-webkit-details-marker,.tt-display-group>summary::-webkit-details-marker{display:none}
+.tt-display>summary::after,.tt-display-group>summary::after{content:'›';font-size:20px;line-height:1;transform:rotate(0deg)}
+.tt-display[open]>summary::after,.tt-display-group[open]>summary::after{transform:rotate(90deg)}
+.tt-display>summary:focus-visible,.tt-display-group>summary:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.tt-display:not([open])>summary{margin-bottom:0}
+.tt-display-group{margin-bottom:10px}
+.tt-resource-name{flex:1;min-width:0;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.portal-content .tt-display .tt-filter-eye,.portal-content .tt-display .tt-filter-eye:hover,.portal-content .tt-display .tt-filter-eye:focus-visible{background:transparent;color:var(--teal);border:0;box-shadow:none}
+.portal-content .tt-display .tt-filter-eye:focus-visible{outline:2px solid var(--teal);outline-offset:-4px}
+.tt-display-group>.class-type-filter{position:relative;display:grid;gap:0;margin:4px 0 0;padding:0;min-width:0}
+.tt-display-group>.class-type-filter>span{position:absolute;top:0;left:0;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.tt-display-group>.class-type-filter select{width:100%;min-width:0;max-width:100%;min-height:44px;font-size:13px}

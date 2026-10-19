@@ -85,3 +85,7 @@ test('enabled student gender age and current fee inputs show canonical options a
 test('canonical two-decimal fee amounts retain cent accuracy at ordinary fractions and the supported maximum',()=>{
  for(const amount of [0.29,10.01,9999999999.97,9999999999.99])assert.equal(matches(record({feePrices:[{amount,basis:'package'}]}),filter({conditions:[{field:'price',value:String(amount),basis:'package'}]})),true,String(amount));
 });
+
+test('course visibility normalizes stable IDs and filters only the selected course',()=>{
+ const n=normalize(state({hiddenCourses:['course-2','course-2','',null]}));assert.deepEqual(n.hiddenCourses,['course-2']);assert.equal(visible(record(),n),false);assert.equal(visible(record({courseId:'course-3'}),n),true);assert.deepEqual(normalize(state({hiddenCourses:[]})),state());assert.deepEqual(normalize(state()),state());
+});

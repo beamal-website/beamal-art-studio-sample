@@ -44,7 +44,8 @@ export function normalizeTimetableFilterState(raw){
  // An invalid explicit reference cannot mean "show everything". The empty
  // reference is intentionally unmatched; valid filter IDs cannot be empty.
  const only=raw.only===undefined||raw.only===null?null:id(raw.only)?raw.only:'';
- return {version:1,hiddenResources:{teachers:ids(raw.hiddenResources?.teachers),rooms:ids(raw.hiddenResources?.rooms)},hiddenPresets:Array.isArray(raw.hiddenPresets)?[...new Set(raw.hiddenPresets.filter(value=>presets.has(value)))]:[],filters,only};
+ const hiddenCourses=ids(raw.hiddenCourses);
+ return {version:1,...(hiddenCourses.length?{hiddenCourses}:{}),hiddenResources:{teachers:ids(raw.hiddenResources?.teachers),rooms:ids(raw.hiddenResources?.rooms)},hiddenPresets:Array.isArray(raw.hiddenPresets)?[...new Set(raw.hiddenPresets.filter(value=>presets.has(value)))]:[],filters,only};
 }
 function kindMatches(record,value){
  if(value==='class'||value==='available')return record.kind===value;
@@ -83,6 +84,7 @@ export function matchesTimetableFilter(record,filter){
 }
 export function matchesTimetableFilterState(record,raw){
  if(!object(record))return false;const state=normalizeTimetableFilterState(raw);
+ if(state.hiddenCourses?.includes(record.courseId))return false;
  for(const [plural,key]of [['teachers','teacherIds'],['rooms','roomIds']])if(Array.isArray(record[key])&&record[key].some(value=>state.hiddenResources[plural].includes(value)))return false;
  if(state.hiddenPresets.some(value=>kindMatches(record,value))||state.filters.some(filter=>!filter.visible&&matchesTimetableFilter(record,filter)))return false;
  if(state.only!==null){const filter=state.filters.find(filter=>filter.id===state.only);return !!filter&&matchesTimetableFilter(record,filter);}

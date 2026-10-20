@@ -24,3 +24,12 @@
 .tt-switch-track::after{transition:none;transform:none;left:-1px}
 .tt-settings-switch input:checked+.tt-switch-track::after{transform:none;left:19px}
 @media(max-width:600px){.tt-settings-switch input:checked+.tt-switch-track::after{left:15px}}
+
+/* Class lists share the actual paid lesson rosters. */
+.staff-assigned-classes article{padding:20px 0;border-bottom:1px solid #d9ddd2}
+.staff-assigned-classes article:first-child{padding-top:0}.staff-assigned-classes h3{margin:0 0 8px;font-size:20px}.staff-assigned-classes h4{margin:20px 0 10px;font-size:16px}
+.staff-assigned-classes p{margin:8px 0;color:#687770}.staff-assigned-classes ul{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px 24px;padding:0;list-style:none}.staff-class-dates{display:flex;flex-wrap:wrap;gap:8px}.staff-class-dates button{min-height:44px;margin:0;padding:8px 12px;border-radius:4px}
+/* Keep close glyphs centered within their hover target in profile headers. */
+.portal-content .people-profile .people-profile-close,.ui-staff-dialog.staff-ref-profile-dialog>header button{display:inline-flex;align-items:center;justify-content:center;line-height:1;flex-shrink:0;padding:0;min-width:44px;height:44px;min-height:44px}
+.staff-teaching-records{margin-top:28px}.staff-teaching-records>summary{cursor:pointer;padding:12px 0;font-size:18px}.staff-teaching-records article{padding:16px 0;border-top:1px solid #d9ddd2}.staff-teaching-records h3{font-size:16px;margin:0 0 8px}.staff-teaching-records p{margin:8px 0;line-height:1.7}
+.enrollment-report-summary{padding:24px}.enrollment-report-summary table{width:100%;border-collapse:collapse;min-width:560px}.enrollment-report-summary th,.enrollment-report-summary td{text-align:left;padding:12px;border-bottom:1px solid #d9ddd2}

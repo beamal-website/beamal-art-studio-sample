@@ -1,3 +1,4 @@
+import {sharedAccountingData} from './shared-accounting.js';
 import {staffReferenceMarkup} from './staff-reference-ui.js';
 import {accountingReferenceMarkup} from './accounting-reference-ui.js';
 import {operationsPageMarkup,operationsDialogMarkup,getOperationsPreviewData,advanceOperationsPreview,accountingEntrySummaryMarkup,accountingEntryStudentMarkup} from './operations-ui.js';
@@ -17,13 +18,14 @@ import {staffSharedState} from './staff-shared-adapter.js';
 
 // Presentation drafts are deliberately separate from shared business records.
 // No API client, browser storage, account changes or message delivery lives here.
-export function createInterfacePreview({context,showModal,cacheModal=()=>{},repaint,dom=document,Form=FormData,sharedSnapshot,onOpenStaffLesson,onEditStaff,onManageStaffAccess,onRetryStaff,onCopyCalendarSharing,resolveSharedLesson,onCloseSharedLesson,onSaveSharedAttendance,onSaveSharedPending,onSubmitStudentRequest,onReadStudentReschedulingTimes,onAssignStudentRequest}) {
+export function createInterfacePreview({context,showModal,cacheModal=()=>{},repaint,dom=document,Form=FormData,sharedSnapshot,onReadStaffClasses,onOpenStaffLesson,onEditStaff,onManageStaffAccess,onRetryStaff,onCopyCalendarSharing,resolveSharedLesson,onCloseSharedLesson,onSaveSharedAttendance,onSaveSharedPending,onSubmitStudentRequest,onReadStudentReschedulingTimes,onAssignStudentRequest}) {
   let sharedAttendanceJob=null,sharedPendingJob=null;
   let productOwner=null,productEditPosition=null,productDetailPosition=null,productListReturn=null,productSourceProvided=false,productRendering=false;
   let operations,staff,student,documentPreview=null,account=null,lesson=null,dataTools=null,overlay=null,returnFocus=null,accountingReturns=[],accountingListReturn=null,messageListReturn=null,messageComposeReturn=null,staffReturn=null,staffManagementSection='directory',staffReferenceUi={},staffHrReturn=null,staffHrContext='',staffHrPositions=[],calendarCopyEpoch=0,sharedLesson=null,sharedLessonTicket=null,sharedLessonEditPosition=null;
   const fresh=()=>{productOwner=null;productEditPosition=null;productDetailPosition=null;productListReturn=null;productSourceProvided=false;calendarCopyEpoch++;messageListReturn=null;messageComposeReturn=null;operations={data:getOperationsPreviewData(),today:context()?.today,query:'',status:'all',category:'all',accountingTab:'invoices',selectedThreadId:'thread-1',settingsTab:'general',dialog:null,notice:''};staff=staffInterfacePreviewState();student={data:getStudentPortalData(),section:'profile',requestFilter:'all',notificationFilter:'all',query:'',selectedStudentId:'child-1',dialog:null,notice:''};account=null;lesson=null;dataTools=null;overlay=null;sharedLesson=null;sharedLessonTicket=null;sharedLessonEditPosition=null;};
   fresh();
   const ctx=()=>{const current=context()||{};return {...current,esc:current.esc||(value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char])))};};
+  const syncSharedAccounting=()=>{const current=ctx();if(!current.sharedMode)return;const source=current.sharedAccounting;Object.assign(operations.data,sharedAccountingData(current.role==='admin'&&source?.ready?source.orders:[]));};
   const productDialog=dialog=>['product','view-product','create-product','edit-product','stock-product','product-review','stock-product-review'].includes(dialog?.type);
   const productContextKey=()=>{
     const current=ctx();
@@ -793,6 +795,7 @@ export function createInterfacePreview({context,showModal,cacheModal=()=>{},repa
       return advanceHr(kind,d.uiCommand,{...hrDraft(kind),...fields,...extra});
     }
     if(d.action==='ui-operations'){
+      if(d.uiSection==='accounting'||ctx().accountingReference)syncSharedAccounting();
       if(overlay==='order-document'){
         if(['close','cancel-accounting'].includes(d.uiCommand)&&cancelAccountingDialog())return true;
         const previous=documentPreview.dialog,position=accountingDialogPosition(previous);
@@ -848,8 +851,8 @@ export function createInterfacePreview({context,showModal,cacheModal=()=>{},repa
         if(!resourceId||staff.staff.some(member=>member.id===resourceId)){const ticket=suspendStaffReturn(resourceId);onEditStaff({resourceId},ticket);}
         return true;
       }
-      if(staff.shared&&['open-class','open-roster-class'].includes(d.uiCommand)&&typeof onOpenStaffLesson==='function'){
-        const selected=(d.uiCommand==='open-roster-class'?staff.teachingLessons:staff.classes)?.find(row=>row.id===d.uiId);
+      if(staff.shared&&['open-class','open-roster-class','open-assigned-class'].includes(d.uiCommand)&&typeof onOpenStaffLesson==='function'){
+        const selected=(d.uiCommand==='open-assigned-class'?staff.assignedClasses:d.uiCommand==='open-roster-class'?staff.teachingLessons:staff.classes)?.find(row=>row.id===d.uiId);
         if(selected){close();onOpenStaffLesson({scheduleId:selected.scheduleId,sequence:selected.sequence,date:selected.date});}
         return true;
       }
@@ -859,8 +862,11 @@ export function createInterfacePreview({context,showModal,cacheModal=()=>{},repa
         return true;
       }
       if(d.uiCommand==='workflow'){const facts=staffWorkflowFacts(staff,d.uiId);if(!facts)return true;staff.dialog=null;openLesson(d.uiView||'arrange',facts);return true;}
+      if(staff.shared&&d.uiCommand==='reload-assigned-classes'){onReadStaffClasses?.({staffId:staff.dialog?.id});return true;}
       staff=advanceStaffPreview(staff,d.uiCommand,fields);
       overlay=staff.dialog?'staff':null;repaint();redrawOverlay();
+      if(staff.shared&&d.uiCommand==='tab'&&staff.portalTab==='classes')onReadStaffClasses?.({});
+      if(staff.shared&&staff.dialog?.kind==='detail'&&staff.dialog.tab==='classes')onReadStaffClasses?.({staffId:staff.dialog.id});
       if(d.uiCommand==='detail-tab')[...dom.querySelectorAll('.ui-staff-detail-tabs button')].find(node=>node.dataset?.uiTab===d.uiTab)?.focus({preventScroll:true});
       return true;
     }
@@ -1005,7 +1011,7 @@ export function createInterfacePreview({context,showModal,cacheModal=()=>{},repa
   };
   return {
     salesProducts:()=>{syncProductSource();return JSON.parse(JSON.stringify(operations.data.products||[]));},
-    operations:section=>{guardStudentRequest();if(section==='products')syncProductSource();if(ctx().accountingReference&&['accounting','accounting-receipts'].includes(section)){operations.accountingTab=section==='accounting-receipts'?'payments':'invoices';return accountingReferenceMarkup(operations,ctx());}return operationsPageMarkup(section,operations,ctx());},
+    operations:section=>{guardStudentRequest();if(['accounting','accounting-receipts'].includes(section))syncSharedAccounting();if(section==='products')syncProductSource();if(ctx().accountingReference&&['accounting','accounting-receipts'].includes(section)){operations.accountingTab=section==='accounting-receipts'?'payments':'invoices';return accountingReferenceMarkup(operations,ctx());}return operationsPageMarkup(section,operations,ctx());},
     directory:(accountActions='',section='')=>{guardStudentRequest();syncStaff();if(ctx().staffReference===true&&staff.viewer?.role==='admin'&&['directory','roster','payroll'].includes(section))staffManagementSection=section;return staffManagementMarkup(accountActions);},
     teacherPortal:()=>{guardStudentRequest();syncStaff();if(!staff.shared)staff={...staff,viewerId:ctx().role==='admin'?'maya':'leo'};return staffPortalMarkup(staff,ctx());},
     studentPage:section=>{guardStudentRequest();return studentPortalPageMarkup(section,student,ctx());},

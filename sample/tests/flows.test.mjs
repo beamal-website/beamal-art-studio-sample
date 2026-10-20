@@ -4713,3 +4713,11 @@ test('Display heading toggles all display groups without changing visibility fil
  await a.click({action:'tt-display-toggle-all'});assert.equal(a.read("['rooms','teachers','classes'].every(key=>timetableDisplayExpanded[key]===true)"),true);assert.match(a.read('timetableResourcePanel()'),/Collapse all display groups/);
  assert.equal(a.read('JSON.stringify(timetableNamedFilters)'),filters);assert.equal(a.read('JSON.stringify(db.schedules)'),lessons);
 });
+
+test('failed teacher record reads clear stale records and wait for a poll or schedule revision before retrying',async()=>{
+ let calls=0;const a=app({},undefined,false,{health:async()=>{throw Error('isolated');},teachingStudentRecords:async()=>{calls++;throw Error('unavailable');}});
+ await new Promise(resolve=>setImmediate(resolve));
+ a.set("sharedMode=true;authUser={id:'teacher-user',role:'teacher'};sharedSchedulesRevision='revision-one';tab='overview';teachingRecordsCache={identity:sessionIdentityKey(authUser),ready:false,loading:false,records:[{studentId:'old-student'}],error:''}");
+ await a.set('refreshTeachingRecords()');await a.set('refreshTeachingRecords()');assert.equal(calls,1);assert.deepEqual(a.read('teachingRecordsCache.records'),[]);assert.equal(a.read('teachingRecordsCache.ready'),false);
+ await a.set('refreshTeachingRecords({force:true})');assert.equal(calls,2);a.set("sharedSchedulesRevision='revision-two'");await a.set('refreshTeachingRecords()');assert.equal(calls,3);
+});

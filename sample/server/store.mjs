@@ -503,7 +503,7 @@ async function initializeStore({ databasePath, seedUsers, seedCourses, attachmen
     lessonParentMessages = createLessonParentMessageStore({ database, transaction, enrollmentOrders });
     parentMessageTemplates = createParentMessageTemplateStore({ database, transaction });
     studentLessonRequests = createStudentLessonRequestStore({ database, transaction, schedules, getCourse, getStudentLesson: enrollmentOrders.studentLesson, postgres, rescheduling:createReschedulingAvailability({database,transaction,availableSlots,schedules,getCourse,postgres}) });
-    studentRecords=createStudentRecordStore({database,transaction,people,enrollmentOrders});
+    studentRecords=createStudentRecordStore({database,transaction,people,enrollmentOrders,schedules,accessControl});
     classCapacityStatuses.setOccupancySource?.(enrollmentOrders.occupied);
   }
   catch (error) { await attachments?.close(); closeDatabase(); throw error; }

@@ -1112,10 +1112,10 @@ test('staff reference directory retains real profile actions, filters and month 
  p.ui.action({action:'ui-staff',uiCommand:'staff-reference-payroll-tab',uiTab:'policy'});assert.match(p.ui.directory('','payroll'),/Unset salaries are not treated as zero/);assert.equal(JSON.stringify(snapshot),original);
 });
 
-test('reference employee dialog is titled with the selected name and has three tabs while retaining real profile and permission actions',()=>{
+test('reference employee dialog is titled with the selected name and has four tabs including Class while retaining real profile and permission actions',()=>{
  const snapshot=sharedStaffSnapshot();snapshot.user.role='admin';snapshot.staffProfileReady=true;snapshot.staffProfileRecords=[{staffId:'resource-actual',staffNumber:'ST-007',fullName:'Selected employee full name',phone:'21000000',detail:'Existing profile details'}];
  const p=preview({context:()=>({t,role:'admin',staffReference:true,staffViewKey:'management'}),sharedSnapshot:()=>snapshot,onManageStaffAccess:()=>{},onEditStaff:()=>{}});p.ui.directory('','directory');p.ui.action({action:'ui-staff',uiCommand:'open-detail',uiId:'resource-actual'});
- assert.match(p.html,/<h2 id="ui-staff-dialog-title">Actual teacher<\/h2>/);assert.match(p.html,/staff-ref-profile-dialog/);assert.equal((p.html.match(/data-ui-command="detail-tab"/g)||[]).length,3);for(const text of ['Calendar Sharing','Personal information','Contact information','Other information','ST-007','Selected employee full name','Edit personal details','Edit scheduling details','Manage login and lesson access'])assert.ok(p.html.includes(text),text);assert.doesNotMatch(p.html,/Account Owner/);
+ assert.match(p.html,/<h2 id="ui-staff-dialog-title">Actual teacher<\/h2>/);assert.match(p.html,/staff-ref-profile-dialog/);assert.equal((p.html.match(/data-ui-command="detail-tab"/g)||[]).length,4);for(const text of ['Calendar Sharing','Personal information','Contact information','Other information','ST-007','Selected employee full name','Edit personal details','Edit scheduling details','Manage login and lesson access'])assert.ok(p.html.includes(text),text);assert.doesNotMatch(p.html,/Account Owner/);
  p.ui.action({action:'ui-staff',uiCommand:'detail-tab',uiId:'resource-actual',uiTab:'roster'});assert.match(p.html,/Belongs to Roster Group/);assert.match(p.html,/Monthly roster calendar/);assert.doesNotMatch(p.html,/09:00|20:00|Other employee/);p.ui.action({action:'ui-roster',uiCommand:'roster-next-month'});assert.match(p.html,/value="2026-11"/);
  p.ui.action({action:'ui-staff',uiCommand:'detail-tab',uiId:'resource-actual',uiTab:'calendar-sharing'});assert.match(p.html,/Actual teacher/);assert.match(p.html,/calendar-sharing/);assert.equal(snapshot.staffProfileRecords[0].fullName,'Selected employee full name');
 });
@@ -1140,4 +1140,11 @@ test('workspace reference keeps one flat child page through refresh and its mobi
  p.ui.refreshSharedStaff();assert.match(p.ui.teacherPortal(),/data-todo-category="trial"/);
  p.ui.change({dataset:{uiCommand:'workspace-select'},value:'todo:other'});assert.match(p.ui.teacherPortal(),/data-todo-category="other"/);
  p.ui.action({action:'ui-staff',uiCommand:'tab',uiTab:'todo'});assert.match(p.ui.teacherPortal(),/data-todo-category="rescheduling"/);
+});
+
+test('teacher My classes requests canonical rosters even without client-side self resource links',()=>{
+ const snapshot=sharedStaffSnapshot(),calls=[];
+ const p=preview({context:()=>({t,role:'teacher',sharedMode:true,sharedIdentity:'actual'}),sharedSnapshot:()=>snapshot,onReadStaffClasses:request=>calls.push(request)});
+ p.ui.teacherPortal();p.ui.action({action:'ui-staff',uiCommand:'tab',uiTab:'classes'});assert.equal(calls.length,1);assert.deepEqual(calls[0],{});
+ snapshot.rosters.set('actual-schedule:4',{ready:true,students:[{id:'session',studentId:'student',displayName:'Actual student'}],occupied:1,capacity:10});p.ui.refreshSharedStaff();assert.match(p.ui.teacherPortal(),/1 students/);assert.doesNotMatch(p.ui.teacherPortal(),/Student list not loaded/);
 });

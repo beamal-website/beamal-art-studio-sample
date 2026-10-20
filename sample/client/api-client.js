@@ -176,6 +176,7 @@ export function createApiClient({ baseUrl = import.meta.env?.VITE_BEAMAL_API_BAS
     studentTimetable(range, revision='') {const parameters=new URLSearchParams();for(const key of ['from','to'])if(range?.[key])parameters.set(key,range[key]);if(revision)parameters.set('since',revision);return request(`/student/timetable?${parameters}`);},
     timetableFilterFacts(range, revision='') {const parameters=new URLSearchParams();for(const key of ['from','to'])if(range?.[key])parameters.set(key,range[key]);if(revision)parameters.set('since',revision);return request(`/timetable/filter-facts?${parameters}`);},
     staffPersonalProfiles: (revision='') => request(`/staff/personal-profiles${revision?'?since='+encodeURIComponent(revision):''}`),
+    teachingStudentRecords: () => request('/teacher/student-records'),
     lessonStudents: (scheduleId, sequence) => request(`/schedules/${encodeURIComponent(scheduleId)}/occurrences/${encodeURIComponent(sequence)}/students`),
     pendingArrangement: id => request('/student-sessions/'+encodeURIComponent(id)+'/arrangement'),
     parentMessageContext: id => request('/student-sessions/'+encodeURIComponent(id)+'/parent-message-context'),

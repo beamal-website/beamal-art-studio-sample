@@ -49,3 +49,13 @@ export function staffReferenceMarkup(section,{staff={},roster:workRoster={},payr
  if(staff.viewer?.role!=='admin')return '';
  return `<section class="staff-ref-page ui-staff-page">${section==='roster'?staffReferenceRosterMarkup(workRoster,ctx):section==='payroll'?(pay.ready===true?payrollPageMarkup(pay,ctx):payroll(pay,ui,ctx)):directory(staff,ctx)}</section>`;
 }
+
+export function staffReferenceClassesMarkup(state,member,ctx){
+ const {t,esc}=ctx,groups=new Map();
+ for(const row of state.assignedClasses||[]){if(!row.teacherIds?.includes(member.id))continue;if(!groups.has(row.scheduleId))groups.set(row.scheduleId,[]);groups.get(row.scheduleId).push(row);}
+ if(!groups.size)return `<p role="status">${esc(t('暫未有獲指派的課堂。','No assigned classes yet.'))}</p>`;
+ return `<section class="staff-assigned-classes" aria-label="${esc(t('任教班別及學生','Assigned classes and students'))}">${[...groups.values()].map(rows=>{
+  rows.sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time));const first=rows[0],students=new Map();for(const lesson of rows)for(const student of lesson.students||[])students.set(student.studentId,student);const complete=rows.every(row=>row.rosterReady),failed=rows.some(row=>row.rosterError);
+  return `<article><h3>${esc(typeof first.courseName==='object'?t(first.courseName.zh,first.courseName.en):first.courseName)}</h3><p>${esc(first.room||'—')} · ${esc(first.time)}–${esc(first.endTime)}</p><div class="staff-class-dates">${rows.map(row=>`<button type="button" class="ghost" data-action="ui-staff" data-ui-command="open-assigned-class" data-ui-id="${esc(row.id)}">${esc(row.date)} · ${esc(row.time)}</button>`).join('')}</div><h4>${esc(t('學生名冊','Students'))}${complete?` (${students.size})`:''}</h4>${complete?students.size?`<ul>${[...students.values()].sort((a,b)=>a.displayName.localeCompare(b.displayName)).map(student=>`<li>${esc(student.displayName)}</li>`).join('')}</ul>`:`<p>${esc(t('暫未有已報名學生。','No enrolled students yet.'))}</p>`:`<p role="status">${esc(failed?t('名冊未能載入，請重試。','Could not load the roster. Please retry.'):t('正在載入學生名冊…','Loading students…'))}</p>${failed?`<button type="button" class="ghost" data-action="ui-staff" data-ui-command="reload-assigned-classes" data-ui-id="${esc(member.id)}">${esc(t('重試','Retry'))}</button>`:''}`}</article>`;
+ }).join('')}</section>`;
+}

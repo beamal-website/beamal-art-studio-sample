@@ -2,7 +2,7 @@ const escape=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<'
 const number=value=>(typeof value==='number'||typeof value==='string'&&value.trim())&&Number.isFinite(Number(value))?Number(value):null;
 function invoiceTotal(row){if(!row?.items?.length||row.items.some(item=>number(item.quantity)===null||number(item.unitPrice)===null)||row.discount!==undefined&&number(row.discount)===null)return null;return Math.max(0,row.items.reduce((sum,item)=>sum+Number(item.quantity)*Number(item.unitPrice),0)-Number(row.discount||0));}
 export function accountingReferenceMarkup(state={},context={}){
- const t=context.t||((_zh,en)=>en),esc=context.esc||escape,data=state.data||{},receipts=state.accountingTab==='payments',filters=state.accountingReferenceFilters||{},activeStatus=filters.status||'awaiting-payment',unknown=t('未提供','Not provided');
+ const t=context.t||((_zh,en)=>en),esc=context.esc||escape,data=state.data||{},receipts=state.accountingTab==='payments',filters=state.accountingReferenceFilters||{},activeStatus=filters.status||(context.sharedMode?'all':'awaiting-payment'),unknown=t('未提供','Not provided');
  const title=receipts?t('收據','Receipts'):t('單據','Invoices'),student=id=>{const row=(data.students||[]).find(row=>row.id===id);return row?t(row.nameZh||row.nameEn,row.nameEn||row.nameZh):unknown;};
  const amount=value=>value===null?'—':new Intl.NumberFormat('en-HK',{maximumFractionDigits:2}).format(value);
  const paid=id=>{const rows=(data.payments||[]).filter(row=>row.invoiceId===id&&row.status==='verified');return rows.some(row=>number(row.amount)===null)?null:rows.reduce((sum,row)=>sum+Number(row.amount),0);};

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {staffProfilePageMarkup as page,staffProfileDialogMarkup as dialog,advanceStaffProfileUi as advance} from '../client/staff-profile-ui.js';
+import {staffProfilePageMarkup as page,staffReferenceInfoMarkup as referenceInfo,staffProfileDialogMarkup as dialog,advanceStaffProfileUi as advance} from '../client/staff-profile-ui.js';
 const en={t:(_zh,en)=>en},zh={t:zh=>zh};
 const model=()=>({viewer:{id:'admin-user',role:'admin',teacherResourceIds:['first']},staff:[{id:'first',displayName:'First teacher',userId:'admin-user',email:'first-login@example.test',active:true,representativeColor:'#376b58'},{id:'second',displayName:'Exact second teacher',userId:'teacher-user',email:'account-login@example.test',role:'teacher',active:false,representativeColor:'#27777b',position:'RESOURCE POSITION'}],profileStaffId:'second',records:[{staffId:'first',staffNumber:'FIRST-001',fullName:'Private first full name',citizenId:'PRIVATE FIRST ID'},{staffId:'second',staffNumber:'STAFF-002',fullName:'Second Full Name',localName:'第二位老師',citizenId:'C123456(7)',gender:'Unspecified',contactEmail:'contact@example.test',phone:'2345 6789',mobile:'9123 4567',position:'Studio teacher',employment:'full-time',joined:'2024-02-29',detail:'Individual detail',remarks:'Personal remarks'}],ready:true,loading:false,error:'',dialog:null,formError:''});
 const open=(m=model(),fields={id:'second'})=>advance(m,'staff-profile-open',fields,en);
@@ -34,4 +34,15 @@ test('canonical birth date and age are readable and use the supplied day without
 
 test('missing invalid future birth dates or unknown today never turn age into zero or borrow another person',()=>{
  for(const [dateOfBirth,today]of [[undefined,'2026-10-15'],['2026-02-30','2026-10-15'],['2030-01-01','2026-10-15'],['1996-10-16',''],['1996-10-16','2026-02-30']]){const source=model();source.records[0].dateOfBirth='1985-01-01';source.records[1].dateOfBirth=dateOfBirth;source.today=today;const html=page(source,en);assert.match(html,/Age<\/dt><dd>—<\/dd>/);assert.doesNotMatch(html,/0 years|41 years|1985-01-01/);}
+});
+
+
+test('reference profile groups exact employee data without inventing branch ownership or changing login access',()=>{
+ const source=model();Object.assign(source.staff[1],{accountId:'teacher-user',accountRole:'teacher',accountLinkKnown:true,teaching:true});
+ const html=referenceInfo(source,en);for(const label of ['Personal information','Contact information','Other information','Default branch access','Login access','STAFF-002','Exact second teacher','Second Full Name','Individual detail','Personal remarks','#27777b'])assert.ok(html.includes(label),label);
+ assert.match(html,/<input type="checkbox" disabled checked>/);assert.match(html,/account-login@example.test/);assert.doesNotMatch(html,/PRIVATE FIRST|Private first full name|System Administrator|Account Owner|Main<\/dd>/);
+});
+test('reference personal information preserves source authorization and cannot expose another teachers profile',()=>{
+ const source=model();source.viewer={id:'first-login',role:'teacher',teacherResourceIds:['first']};assert.doesNotMatch(referenceInfo(source,en),/Second Full Name|C123456|contact@example.test|Individual detail/);
+ const unknown=referenceInfo({...model(),ready:false},en);assert.doesNotMatch(unknown,/Second Full Name|C123456|contact@example.test|Individual detail/);assert.match(unknown,/Personal details are not available yet/);
 });

@@ -3349,18 +3349,18 @@ test('staff source failures show a real retry which refetches the catalog, sched
  }
 });
 
-test('shared staff cancel and saved acknowledgement return to the exact second teacher teaching tab',async()=>{
+test('shared staff cancel and saved acknowledgement return to the exact second teacher info tab',async()=>{
  for(const save of [false,true]){
   const remote={resources:[schedulingResource('first-staff','teacher','First teacher'),schedulingResource('second-staff','teacher','Second teacher')],revision:1};
   const a=await resourceUiApp(remote,{accessControl:async()=>({accounts:[],teacherLinks:[],grants:[],revision:'links'})},{preview:true});
   a.set("tab='management';sharedCatalogRevision='catalog';teacherAccessReady=true;render()");
   await a.click({action:'ui-staff',uiCommand:'open-detail',uiId:'second-staff'});
-  await a.click({action:'ui-staff',uiCommand:'detail-tab',uiId:'second-staff',uiTab:'teaching'});
+  await a.click({action:'ui-staff',uiCommand:'detail-tab',uiId:'second-staff',uiTab:'contact'});
   await a.click({action:'ui-staff',uiCommand:'open-edit',uiId:'second-staff'});
   assert.equal(a.read('resourceDraft.current.id'),'second-staff');
   if(save){const form=resourceEditorForm(a,{displayName:'Second teacher saved'});a.client.schedulingResources=async()=>{throw new Error('Offline after accepted save')};await a.submit(form.id,form.values,form);for(let turn=0;turn<10;turn++)await Promise.resolve();}
   else await a.click({action:'resource-editor-cancel'});
-  const html=a.read('modal');assert.match(html,save?/Second teacher saved/:/Second teacher/);assert.match(html,/data-ui-tab="teaching" aria-current="page"/);assert.doesNotMatch(html,/First teacher|scheduling-resource-editor/);
+  const html=a.read('modal');assert.match(html,save?/Second teacher saved/:/Second teacher/);assert.match(html,/data-ui-tab="contact" aria-current="page"/);assert.doesNotMatch(html,/First teacher|scheduling-resource-editor/);
   assert.equal(a.read('resourceDraft'),null);assert.equal(a.resourceCalls.length,save?1:0);
  }
 });

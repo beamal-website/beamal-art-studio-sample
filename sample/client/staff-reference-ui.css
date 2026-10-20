@@ -12,3 +12,22 @@
 .staff-ref-account-actions{margin-left:auto}.staff-ref-account-actions button{margin:0;min-height:44px}
 @media(max-width:780px){.staff-ref-account-actions{margin-left:0}}
 @media(max-width:780px){.staff-ref-filters>label{flex:1 1 190px;min-width:0}.staff-ref-filters input[type=month]{min-width:0}}
+.staff-ref-profile-modal.modal{padding:16px}
+.ui-staff-dialog.staff-ref-profile-dialog{width:100%;max-width:none;height:calc(100dvh - 32px);max-height:calc(100dvh - 32px);border-radius:5px}
+.ui-staff-dialog.staff-ref-profile-dialog>header{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:18px 26px;border-bottom:0;flex:none}
+.ui-staff-dialog.staff-ref-profile-dialog>header h2{font-size:26px;font-weight:500;margin:0;overflow-wrap:anywhere}.ui-staff-dialog.staff-ref-profile-dialog>header>div{display:flex;align-items:center;gap:20px;flex:none}.staff-ref-profile-role{color:#687770;font-size:15px}
+.ui-staff-dialog.staff-ref-profile-dialog>header button{background:transparent;color:#687770;box-shadow:none;border:0;width:44px;height:44px;padding:0;margin:0;font-size:28px}.ui-staff-dialog.staff-ref-profile-dialog>header button:hover{background:#e9eee5;filter:none}
+.ui-staff-dialog.staff-ref-profile-dialog .staff-ref-profile-tabs{display:flex;flex:none;gap:8px;margin:0;padding:0 20px;border-bottom:1px solid #d9ddd2;overflow-x:auto;overscroll-behavior:contain}
+.ui-staff-dialog.staff-ref-profile-dialog .staff-ref-profile-tabs>button{width:auto;min-height:48px;white-space:nowrap;margin:0;padding:12px 18px;background:transparent;border:0;border-bottom:3px solid transparent;border-radius:0;color:#687770;box-shadow:none;font-size:16px}
+.ui-staff-dialog.staff-ref-profile-dialog .staff-ref-profile-tabs>button[aria-current=page]{color:var(--teal);border-bottom-color:var(--teal)}.ui-staff-dialog.staff-ref-profile-dialog .staff-ref-profile-tabs>button:hover{background:#e9eee5;filter:none}
+.ui-staff-dialog.staff-ref-profile-dialog .staff-ref-profile-body{padding:26px;overflow:auto;overscroll-behavior:contain;flex:1;min-height:0}
+.staff-ref-info-section{margin:0 0 30px}.staff-ref-info-section h3{font-size:20px;margin:0 0 24px;font-weight:600}
+.staff-ref-info .staff-profile-facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:22px 14px;margin:0}
+.staff-ref-info .staff-profile-facts>div{position:relative;min-width:0;min-height:64px;padding:16px 14px 10px;border:1px solid #bdcbc1;border-radius:2px;background:transparent;margin:0}
+.staff-ref-info .staff-profile-facts dt{position:absolute;top:-10px;left:12px;max-width:calc(100% - 24px);padding:0 5px;background:#fffdf8;color:#687770;font-size:13px;line-height:20px}
+.staff-ref-info .staff-profile-facts dd{font-size:16px;margin:0;white-space:pre-wrap;overflow-wrap:anywhere;color:#253d3b}
+.staff-ref-login-status{display:flex;align-items:center;gap:10px;margin:0 0 24px;color:#687770;font-size:15px}.staff-ref-login-status input{margin:0;width:18px;height:18px;min-height:18px;accent-color:var(--teal)}
+.staff-ref-profile-roster.staff-ref-body{padding:0}.staff-ref-profile-roster .staff-ref-profile-import{margin-left:auto}.staff-ref-profile-roster .staff-ref-profile-import button{margin:0;min-height:48px}.staff-ref-profile-roster .staff-ref-roster-group{min-width:210px}
+.ui-staff-dialog.staff-ref-profile-dialog>footer{display:flex;justify-content:flex-end;gap:12px;padding:16px 26px;flex:none}.ui-staff-dialog.staff-ref-profile-dialog>footer button{margin:0;min-height:44px}
+@media(max-width:1000px){.staff-ref-info .staff-profile-facts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:680px){.staff-ref-profile-modal.modal{padding:8px}.ui-staff-dialog.staff-ref-profile-dialog{height:calc(100dvh - 16px);max-height:calc(100dvh - 16px)}.ui-staff-dialog.staff-ref-profile-dialog>header{padding:12px 16px}.ui-staff-dialog.staff-ref-profile-dialog>header h2{font-size:22px}.ui-staff-dialog.staff-ref-profile-dialog>header>div{gap:8px}.staff-ref-profile-role{font-size:12px}.ui-staff-dialog.staff-ref-profile-dialog .staff-ref-profile-body{padding:24px 16px}.ui-staff-dialog.staff-ref-profile-dialog>footer{padding:12px 16px;flex-wrap:wrap}.ui-staff-dialog.staff-ref-profile-dialog .staff-ref-profile-tabs{padding:0 8px;gap:0}.ui-staff-dialog.staff-ref-profile-dialog .staff-ref-profile-tabs>button{font-size:14px;padding:12px 14px}.staff-ref-info .staff-profile-facts{grid-template-columns:minmax(0,1fr)}.staff-ref-profile-roster .staff-ref-profile-import{margin-left:0}.staff-ref-info-section h3{font-size:19px}}

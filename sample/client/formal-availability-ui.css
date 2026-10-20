@@ -10,3 +10,20 @@
 .formal-lesson-controls{padding:22px 28px;border-bottom:1px solid #d9e1dc}.formal-lesson-controls h3{margin:0;font-size:20px}.formal-actions{display:flex;gap:12px;justify-content:flex-end;margin-top:18px}.formal-actions button{border-radius:4px}
 .formal-applicants{margin:18px 0;padding:16px 0;border-top:1px solid #d9e1dc}.formal-applicants ul{padding:0;list-style:none}.formal-applicants li{padding:8px 0;display:flex;gap:18px;justify-content:space-between}
 @media(max-width:640px){.formal-availability-fields{grid-template-columns:minmax(0,1fr)}.formal-lesson-controls{padding:18px 16px}}
+/* Single-lesson settings share the basic information surface. */
+.lesson-dialog .formal-lesson-controls{background:var(--portal-muted,#e9eee5);padding:16px 30px;border:0}
+.formal-lesson-controls details,.formal-lesson-controls form{background:transparent}
+.formal-lesson-controls summary{display:flex;align-items:center;justify-content:space-between;gap:16px;cursor:pointer;list-style:none;padding:8px 12px 8px 0;font-size:18px;font-weight:600}
+.formal-lesson-controls summary::-webkit-details-marker{display:none}
+.formal-lesson-controls summary:focus-visible{outline:2px solid var(--brand,#27777b);outline-offset:4px}
+.formal-chevron{width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);margin:0 4px 4px;flex:none}
+.formal-lesson-controls details[open] .formal-chevron{transform:rotate(225deg);margin-bottom:-4px}
+.formal-lesson-controls .formal-lesson-fields{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;margin:12px 0 0;padding:0;border:0;background:transparent}
+.formal-lesson-row{display:grid;grid-template-columns:minmax(0,1fr) 88px;gap:16px;align-items:center}
+.formal-lesson-fields .formal-lesson-row label{display:flex;justify-content:space-between;gap:16px;margin:0;font-size:16px}
+.formal-lesson-fields .formal-lesson-row input[type=number]{box-sizing:border-box;width:88px;min-width:0;height:40px;margin:0;padding:8px 10px}
+.formal-lesson-fields .formal-lesson-row input[type=number]:disabled{opacity:1;background:rgba(104,119,112,.08);border-color:transparent;color:#78857f;cursor:default}
+.formal-equation{display:block;text-align:center;font-size:14px;color:#687770;margin-top:4px;font-variant-numeric:tabular-nums}
+.formal-lesson-controls .formal-actions{margin-top:12px;gap:8px}
+.formal-lesson-controls .formal-actions button{font-size:14px;min-height:36px;padding:8px 14px}
+@media(max-width:640px){.lesson-dialog .formal-lesson-controls{padding:14px 18px}.formal-lesson-row{grid-template-columns:minmax(0,1fr) 72px;gap:12px}.formal-lesson-fields .formal-lesson-row input[type=number]{width:72px}.formal-lesson-controls summary{font-size:17px}}

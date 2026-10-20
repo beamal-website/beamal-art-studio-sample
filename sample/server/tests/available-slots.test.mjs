@@ -20,17 +20,32 @@ async function series(app,extra={}){const reply=await send(app.admin,'/api/sched
 const linked=(schedule,extra={})=>({scheduleId:schedule.id,sequence:1,...config(),...extra});
 function hold(database,id,kind='trial',state='held'){database.prepare('INSERT INTO availability_reservations(id,slot_id,kind,state) VALUES (?,?,?,?)').run(randomUUID(),id,kind,state);}
 
-test('scope facts skip participant lookups while normal availability responses retain them',async t=>{
- const app=await setup(t),created=await add(app);
+test('scope and public course facts skip participant and capacity lookups while normal availability responses retain participants',async t=>{
+ const app=await setup(t),schedule=await series(app),created=await add(app,linked(schedule));let capacityLookups=0;
+ app.store.classCapacityStatuses.setOccupancySource(()=>{capacityLookups++;return 0;});
  const scopeFact=app.store.availableSlots.scopeFacts().find(slot=>slot.id===created.body.slot.id);
  assert.ok(scopeFact);
  assert.equal(Object.hasOwn(scopeFact,'participants'),false);
  assert.equal(Object.hasOwn(scopeFact,'trialConfirmed'),false);
  assert.equal(scopeFact.sourceAvailable,true);
+ assert.equal(capacityLookups,0);
+ assert.ok(app.store.availableSlots.publicCourses().courses.some(course=>course.id==='public-course'));
+ assert.equal(capacityLookups,0);
  const listed=(await list(app.admin)).slots.find(slot=>slot.id===created.body.slot.id);
  assert.ok(listed);
+ assert.equal(capacityLookups,1);
  assert.deepEqual(listed.participants,{trials:[],rescheduling:[]});
  assert.equal(listed.trialConfirmed,0);
+});
+
+test('public detail batches paid-seat counts without per-slot participant lookups',async t=>{
+ const app=await setup(t),schedule=await series(app);await add(app,linked(schedule));let capacityLookups=0,batchReads=0;
+ app.store.classCapacityStatuses.setOccupancySource(()=>{capacityLookups++;return 0;},()=>{batchReads++;return new Map([[JSON.stringify([schedule.id,1]),0]]);});
+ const result=app.store.availableSlots.publicDetail('public-course',{from:'2026-10-15',days:7});
+ assert.equal(batchReads,1);
+ assert.equal(capacityLookups,0);
+ assert.equal(result.slots[0].classAvailability,'available');
+ assert.equal(result.slots[0].trialRemaining,2);
 });
 
 test('public detail supports every requested 7–30 day projection with exact boundaries and range-specific revisions',async t=>{

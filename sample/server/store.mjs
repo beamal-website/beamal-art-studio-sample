@@ -515,7 +515,7 @@ async function initializeStore({ databasePath, seedUsers, seedCourses, attachmen
     if(category==='other'&&kind==='available'&&user.role==='admin'){availableSlots.get(id,user);return;}
     throw new ApplicationError(404,'STATUS_ITEM_NOT_FOUND','This workspace item is not available.');
   }});
-    classCapacityStatuses.setOccupancySource?.(enrollmentOrders.occupied);
+    classCapacityStatuses.setOccupancySource?.(enrollmentOrders.occupied,enrollmentOrders.occupiedMap);
   }
   catch (error) { await attachments?.close(); closeDatabase(); throw error; }
   if (postgres) console.log('PostgreSQL schema and application stores ready.');

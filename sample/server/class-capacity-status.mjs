@@ -27,7 +27,7 @@ export function classCapacityStatusDTO(occurrence,row=null,occupied=null) {
 }
 
 export function createClassCapacityStatusStore({database,transaction,accessControl}) {
-  let occupancySource=null;
+  let occupancySource=null,occupancyMapSource=null;
   database.exec(`
     CREATE TABLE IF NOT EXISTS class_capacity_statuses(
       schedule_id TEXT NOT NULL REFERENCES schedules(id),sequence INTEGER NOT NULL CHECK(sequence>0),
@@ -51,18 +51,19 @@ export function createClassCapacityStatusStore({database,transaction,accessContr
     if(!occurrence||person.role==='teacher'&&!accessControl.scopeFor(person).permits(occurrence))throw new ApplicationError(404,'CLASS_STATUS_NOT_FOUND','The active authorized lesson was not found.');return occurrence;
   };
   const record=(id,sequence)=>database.prepare('SELECT * FROM class_capacity_statuses WHERE schedule_id=? AND sequence=?').get(id,sequence);
-  const project=(occurrence,row)=>classCapacityStatusDTO(occurrence,row,occupancySource?.(occurrence.item.id,occurrence.sequence)??null);
+  const project=(occurrence,row,occupancies=null)=>classCapacityStatusDTO(occurrence,row,occupancies instanceof Map?(occupancies.get(recordKey(occurrence.item.id,occurrence.sequence))??0):(occupancySource?.(occurrence.item.id,occurrence.sequence)??null));
   const get=(id,sequence,user)=>transaction(()=>{const occurrence=target(id,sequence,reader(user));return project(occurrence,record(id,sequence));},'read');
   const rawMap=()=>new Map(database.prepare('SELECT * FROM class_capacity_statuses ORDER BY schedule_id,sequence').all().map(row=>[recordKey(row.schedule_id,row.sequence),row]));
+  const occupancyMap=()=>{const snapshot=occupancyMapSource?.()??null;if(snapshot!==null&&!(snapshot instanceof Map))throw new TypeError('Paid-seat snapshots must be maps.');return snapshot;};
   const list=(user,input)=>transaction(()=>{
     const person=reader(user),{from,to,courseId,since}=validateClassStatusQuery(input),scope=accessControl.scopeFor(person),statuses=[];
-    const stored=rawMap(),rows=database.prepare('SELECT schedules.* FROM schedules JOIN courses ON courses.id=schedules.course_id WHERE schedules.deleted_at IS NULL AND courses.deleted_at IS NULL ORDER BY schedules.id').all();
+    const stored=rawMap(),occupancies=occupancyMap(),rows=database.prepare('SELECT schedules.* FROM schedules JOIN courses ON courses.id=schedules.course_id WHERE schedules.deleted_at IS NULL AND courses.deleted_at IS NULL ORDER BY schedules.id').all();
     for(const row of rows){
       if(courseId&&row.course_id!==courseId)continue;
       const schedule={...JSON.parse(row.data),id:row.id,course:row.course_id,version:row.version};
       for(const occurrence of scheduleOccurrences(schedule,from,to)){
         const status=stored.get(recordKey(row.id,occurrence.sequence));
-        if((occupancySource||status)&&(person.role==='admin'||scope.permits(occurrence)))statuses.push(project(occurrence,status));
+        if((occupancySource||status)&&(person.role==='admin'||scope.permits(occurrence)))statuses.push(project(occurrence,status,occupancies));
       }
     }
     statuses.sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time)||a.scheduleId.localeCompare(b.scheduleId)||a.sequence-b.sequence);
@@ -76,5 +77,10 @@ export function createClassCapacityStatusStore({database,transaction,accessContr
     const now=new Date().toISOString();if(current)database.prepare('UPDATE class_capacity_statuses SET manual_status=?,version=version+1,updated_at=? WHERE schedule_id=? AND sequence=? AND version=?').run(data.manualStatus,now,id,sequence,data.version);else database.prepare('INSERT INTO class_capacity_statuses VALUES (?,?,?,1,?,?)').run(id,sequence,data.manualStatus,now,now);
     const status=project(occurrence,record(id,sequence));database.prepare('INSERT INTO class_capacity_status_audit_log(actor_id,schedule_id,sequence,action,version,snapshot,created_at) VALUES (?,?,?,?,?,?,?)').run(person.id,id,sequence,'class-capacity-status.update',status.version,JSON.stringify(status),now);return status;
   });
-  return {get,list,update,rawMap,project,setOccupancySource:read=>{if(typeof read!=='function')throw new TypeError('A paid-seat reader is required.');occupancySource=read;},audit:()=>database.prepare('SELECT * FROM class_capacity_status_audit_log ORDER BY id').all().map(row=>({...row,snapshot:JSON.parse(row.snapshot)}))};
+  const setOccupancySource=(read,readMap=null)=>{
+    if(typeof read!=='function')throw new TypeError('A paid-seat reader is required.');
+    if(readMap!==null&&typeof readMap!=='function')throw new TypeError('A paid-seat snapshot reader is required.');
+    occupancySource=read;occupancyMapSource=readMap;
+  };
+  return {get,list,update,rawMap,occupancyMap,project,setOccupancySource,audit:()=>database.prepare('SELECT * FROM class_capacity_status_audit_log ORDER BY id').all().map(row=>({...row,snapshot:JSON.parse(row.snapshot)}))};
 }

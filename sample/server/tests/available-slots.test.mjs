@@ -20,6 +20,19 @@ async function series(app,extra={}){const reply=await send(app.admin,'/api/sched
 const linked=(schedule,extra={})=>({scheduleId:schedule.id,sequence:1,...config(),...extra});
 function hold(database,id,kind='trial',state='held'){database.prepare('INSERT INTO availability_reservations(id,slot_id,kind,state) VALUES (?,?,?,?)').run(randomUUID(),id,kind,state);}
 
+test('scope facts skip participant lookups while normal availability responses retain them',async t=>{
+ const app=await setup(t),created=await add(app);
+ const scopeFact=app.store.availableSlots.scopeFacts().find(slot=>slot.id===created.body.slot.id);
+ assert.ok(scopeFact);
+ assert.equal(Object.hasOwn(scopeFact,'participants'),false);
+ assert.equal(Object.hasOwn(scopeFact,'trialConfirmed'),false);
+ assert.equal(scopeFact.sourceAvailable,true);
+ const listed=(await list(app.admin)).slots.find(slot=>slot.id===created.body.slot.id);
+ assert.ok(listed);
+ assert.deepEqual(listed.participants,{trials:[],rescheduling:[]});
+ assert.equal(listed.trialConfirmed,0);
+});
+
 test('public detail supports every requested 7–30 day projection with exact boundaries and range-specific revisions',async t=>{
  const app=await setup(t),dates=['2026-12-28','2027-01-03','2027-01-04','2027-01-10','2027-01-26','2027-01-27'],ids=[];
  for(const date of dates)ids.push((await add(app,standalone(app,{date}))).body.slot.id);

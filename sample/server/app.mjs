@@ -89,7 +89,7 @@ export async function createApplication({ databasePath = ':memory:', databaseUrl
   const insideStatic = path => staticRoot && (path === staticRoot || path.startsWith(`${staticRoot}${sep}`));
   if (storagePath && insideStatic(await physicalPath(storagePath))) throw new Error('Attachment storage must be outside the public static directory.');
   const store = await createStore({ databasePath, databaseUrl, seedUsers, seedCourses, attachmentsDir, trialFormPolicy });
-  const authUser = user => user ? { ...user, accessRevision: store.accessControl.revisionFor(user), teacherResourceIds: store.accessControl.ownTeacherResourceIds(user) } : null;
+  const authUser = (user, measure) => user ? { ...user, accessRevision: measure('accessRevision', () => store.accessControl.revisionFor(user)), teacherResourceIds: measure('teacherResourceIds', () => store.accessControl.ownTeacherResourceIds(user)) } : null;
   const materials = store.materials;
   const attachments = store.attachments;
   try {
@@ -213,7 +213,7 @@ export async function createApplication({ databasePath = ':memory:', databaseUrl
       if (pathname === '/api/health' && request.method === 'GET') { json(response, 200, { mode: 'shared-test', service: 'Beamal', storage: 'sqlite' }); return; }
       if (pathname === '/api/auth/session' && request.method === 'GET') {
         const token = sessionToken(request), session = token ? timeAuthStage('sessionLookup', () => store.getSession(tokenHash(token))) : null;
-        json(response, 200, session ? { user: authUser(session.user), csrfToken: csrfForToken(token) } : { user: null }); return;
+        json(response, 200, session ? { user: authUser(session.user, timeAuthStage), csrfToken: csrfForToken(token) } : { user: null }); return;
       }
       if (pathname === '/api/auth/login' && request.method === 'POST') {
         requireOrigin(request);
@@ -228,7 +228,7 @@ export async function createApplication({ databasePath = ':memory:', databaseUrl
         const token = randomToken(), csrfToken = csrfForToken(token);
         timeAuthStage('sessionCreate', () => store.createSession({ tokenHash: tokenHash(token), userId: user.id, csrfHash: tokenHash(csrfToken), expiresAt: Date.now() + SESSION_SECONDS * 1000 }));
         response.setHeader('Set-Cookie', cookie(token, SESSION_SECONDS));
-        json(response, 200, { user: authUser(store.publicUser(user)), csrfToken }); return;
+        json(response, 200, { user: authUser(store.publicUser(user), timeAuthStage), csrfToken }); return;
       }
       if (pathname === '/api/auth/logout' && request.method === 'POST') {
         const session = requireMutation(request);

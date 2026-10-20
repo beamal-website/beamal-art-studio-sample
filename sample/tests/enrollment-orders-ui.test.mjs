@@ -47,21 +47,14 @@ test('order details scrolling summary is keyboard focusable without making each 
  assert.match(html,/<div class="enrollment-order-summary"[^>]*tabindex="0"/);assert.doesNotMatch(html,/<dl\b[^>]*tabindex=/);assert.doesNotMatch(html,/<ol\b[^>]*tabindex=/);
 });
 
-test('My classes exposes an order button only for each exact authorized, successful lesson source',()=>{
- const first={id:'session-first',studentId:'child-a',orderId:'paid-order',courseId:'course-a',scheduleId:'schedule-a',sequence:1,date:'2026-10-23',time:'13:30',duration:60,teachers:[],rooms:[],studentName:'Same child',courseName:'Same course'},second={...first,id:'session-second',sequence:2,date:'2026-10-30'};
- const cache={ready:true,error:'',students:[{id:'child-a'}],lessons:[first,second]};
- const html=sharedStudentClassesMarkup(cache,en);
- assert.equal((html.match(/data-action="orders-open-student-class"/g)||[]).length,2);
- for(const id of ['session-first','session-second'])assert.match(html,new RegExp(`data-action="orders-open-student-class"[^>]*data-session-id="${id}"[^>]*data-student-id="child-a"[^>]*data-order-id="paid-order"`));
- assert.match(html,/View order/);
- assert.match(sharedStudentClassesMarkup(cache,{t:z=>z}),/查看訂單/);
- for(const source of [{...cache,ready:false},{...cache,error:'Read failed'},{...cache,students:[]},{...cache,lessons:[first,{...first}]}])assert.doesNotMatch(sharedStudentClassesMarkup(source,en),/orders-open-student-class/);
+test('Class groups each course into its own column without exposing order links',()=>{
+ const first={id:'first',studentId:'a',orderId:'private-order',courseId:'one',courseName:'Course 1',date:'2026-10-23',time:'13:00',duration:60,teachers:[],rooms:[]};
+ const html=sharedStudentClassesMarkup({ready:true,lessons:[first,{...first,id:'second',date:'2026-10-24'},{...first,id:'third',courseId:'two',courseName:'Course 2'}]},en);
+ assert.equal((html.match(/class="student-course-column"/g)||[]).length,2);assert.equal((html.match(/data-student-class-session-id=/g)||[]).length,3);assert.match(html,/<h2>Course 1<\/h2>/);assert.match(html,/<h2>Course 2<\/h2>/);assert.doesNotMatch(html,/View order|orders-open|private-order|>Order</);
 });
-
-test('My classes order button IDs and accessible lesson context are escaped without borrowing a sibling',()=>{
- const row={id:'session"evil',studentId:'child-a',orderId:'order"evil',courseId:'course-a',scheduleId:'schedule-a',sequence:1,date:'2026-10-23',time:'13:30',duration:60,teachers:[],rooms:[],studentName:'A <child>',courseName:'Art & <print>'},html=sharedStudentClassesMarkup({ready:true,students:[{id:'child-a'}],lessons:[row]},en);
- assert.match(html,/data-session-id="session&quot;evil"/);assert.match(html,/data-order-id="order&quot;evil"/);assert.match(html,/aria-label="[^"]*Art &amp; &lt;print&gt;[^"]*2026-10-23[^"]*13:30/);
- assert.doesNotMatch(html,/<child>|<print>|data-session-id="session"evil/);
+test('Class escapes course, student and lesson identifiers in grouped lists',()=>{
+ const html=sharedStudentClassesMarkup({ready:true,lessons:[{id:'session"evil',courseId:'course"evil',courseName:'Art & <print>',studentName:'A <child>',date:'2026-10-23',time:'13:00',duration:60}]},en);
+ assert.match(html,/data-student-class-session-id="session&quot;evil"/);assert.match(html,/Art &amp; &lt;print&gt;/);assert.doesNotMatch(html,/<child>|<print>|orders-open/);
 });
 
 test('My classes read error offers an explicit bilingual retry and no stale order entry',()=>{

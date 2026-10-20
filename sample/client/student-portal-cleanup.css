@@ -1,7 +1,7 @@
 /* Student pages use the same simple tables and spacing as management lists. */
 .shared-student-classes .title{margin:0 0 24px}
 .student-class-table-scroll{max-width:100%;overflow-x:auto}
-.student-class-table{width:100%;min-width:760px;border-collapse:collapse;font-size:16px}
+.student-class-table{width:100%;min-width:360px;border-collapse:collapse;font-size:16px}
 .student-class-table th,.student-class-table td{padding:16px;text-align:left;border-bottom:1px solid #d9ddd2;vertical-align:middle}
 .student-class-table th{background:var(--portal-muted,#e9eee5);font-weight:600;white-space:nowrap}
 .student-class-table td button{white-space:nowrap}
@@ -21,3 +21,14 @@
 .lw-dialog textarea[name=reason]::placeholder{color:#7a8580;opacity:1}
 @media(max-width:760px){.student-payment-history .enrollment-order-card{grid-template-columns:minmax(0,1fr);gap:12px}.student-portfolio-details{padding:18px}.student-portfolio-details dl{grid-template-columns:repeat(2,minmax(0,1fr))}.modal.student-order-modal{padding:8px}.modal.student-order-modal>.enrollment-order-dialog{max-height:calc(100dvh - 16px)}}
 @media(max-width:380px){.student-portfolio-details dl{grid-template-columns:minmax(0,1fr)}}
+
+.student-course-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:32px;align-items:start}
+.student-course-column{min-width:0}
+.student-course-column h2{font-size:21px;margin:0 0 16px}
+.student-course-column .student-class-table{font-size:15px}
+.student-course-column .student-class-table th,.student-course-column .student-class-table td{padding:14px 10px}
+.student-course-column td span,.student-course-column td small{display:block;margin-top:6px}
+.student-course-column td small{color:#687770}
+.student-nav-emoji{font-style:normal;display:inline-flex;justify-content:center;align-items:center;width:24px;flex:0 0 24px;font-size:22px;line-height:1}
+@media(max-width:1000px){.student-course-columns{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:640px){.student-course-column .student-class-table{min-width:0;font-size:13px}.student-course-column .student-class-table th,.student-course-column .student-class-table td{padding:12px 8px}.student-course-column .student-class-table th{white-space:normal}}

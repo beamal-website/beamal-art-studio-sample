@@ -10,3 +10,8 @@
 .tt-display-heading>button svg{width:18px;height:18px}
 .portal-content .tt-display-heading>button:hover{background:var(--portal-muted,#e9eee5);filter:none}
 .tt-display-heading>button:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+
+/* Keep the reset action visible above the collapsible Display groups. */
+.portal-content .tt-display>.tt-named-status{justify-content:center;margin:0 0 14px;padding:0;border:0;border-radius:0;background:transparent;text-align:center}
+.portal-content .tt-display>.tt-named-status>button[data-action="tt-named-clear"]{padding:6px 10px;border:0;border-radius:4px;background:transparent;color:#b33a36;box-shadow:none;text-align:center}
+.portal-content .tt-display>.tt-named-status>button[data-action="tt-named-clear"]:hover{background:#b33a360c;filter:none}

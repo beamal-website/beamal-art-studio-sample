@@ -1732,7 +1732,46 @@ async function refreshLessonStudents({paint=true}={}){
  catch(error){if(generation!==enrollmentGeneration||dataEpoch!==enrollmentDataEpoch||error.code==='AUTH_SUPERSEDED')return;lessonStudentCaches.set(key,{scheduleId:record.item.id,sequence:record.sequence,students:[],ready:false,error:enrollmentError(error)});interfacePreview?.refreshSharedLesson?.();repaint();}})();lessonStudentReads.set(key,pending);try{await pending;}finally{if(lessonStudentReads.get(key)===pending)lessonStudentReads.delete(key);}
 }
 
-function ensureSharedPolling(){if(!sharedMode||sharedPollingStarted)return;sharedPollingStarted=true;const refresh=async()=>{if(websiteNewsVisible())await refreshWebsiteNews();await refreshPublicStudioCatalog();if(publicTrialOverlay)await refreshPublicTrialSource();else if(isPublicAvailabilityView())await refreshPublicAvailability();if(await refreshSharedSession())await Promise.all([trialWorkVisible()?refreshAvailabilityPendingWork():Promise.resolve(),trialWorkVisible()?refreshTrialWork():Promise.resolve(),trialWorkVisible()?refreshPendingArrangementWork():Promise.resolve(),trialRequestOverlay?readTrialRequests({poll:true}):Promise.resolve(),parentMessaging.isOpen()?parentMessaging.refresh():Promise.resolve(),authUser?.role==='student'&&tab==='notifications'?parentMessaging.readInbox():Promise.resolve(),timetableNoteDraft?.kind==='lesson'?readTimetableNote({poll:true}):Promise.resolve(),isAvailabilityView()?refreshSharedAvailability():Promise.resolve(),isPeopleView()?(accountPersonId()?refreshPersonProfile(accountPersonId()):refreshSharedPeople()):Promise.resolve(),refreshSharedCourses(),refreshActiveMaterials(),refreshSharedSchedules(),isTimetableFilterFactsView()?refreshTimetableFilterFacts():Promise.resolve(),timetableDateNotesView()?refreshTimetableDateNoteIndicators({force:true}):Promise.resolve(),isSharedStaffView()?refreshSharedStaffProfiles():Promise.resolve(),isClassStatusView()?refreshClassCapacityStatuses():Promise.resolve(),classTypesEnabled()?refreshSharedClassTypes():Promise.resolve(),teacherAccessManager||isSharedStaffView()?refreshTeacherAccess():Promise.resolve(),isEnrollmentView()?refreshEnrollmentOrders():Promise.resolve(),authUser?.role==='student'?refreshStudentTimetable():Promise.resolve(),['student','admin'].includes(authUser?.role)?refreshLessonRequests():Promise.resolve(),(selectedTimetableLesson||sharedLessonReturn)&&!enrollmentOverlay?refreshLessonStudents():Promise.resolve()]);};window.setInterval(refresh,5000);window.addEventListener('focus',refresh);}
+function ensureSharedPolling(){
+ if(!sharedMode||sharedPollingStarted)return;
+ sharedPollingStarted=true;
+ let refreshing=false;
+ const refresh=async()=>{
+  if(loginPending||refreshing)return;
+  refreshing=true;
+  try{
+   if(websiteNewsVisible())await refreshWebsiteNews();
+   await refreshPublicStudioCatalog();
+   if(publicTrialOverlay)await refreshPublicTrialSource();else if(isPublicAvailabilityView())await refreshPublicAvailability();
+   if(await refreshSharedSession())await Promise.all([
+    trialWorkVisible()?refreshAvailabilityPendingWork():Promise.resolve(),
+    trialWorkVisible()?refreshTrialWork():Promise.resolve(),
+    trialWorkVisible()?refreshPendingArrangementWork():Promise.resolve(),
+    trialRequestOverlay?readTrialRequests({poll:true}):Promise.resolve(),
+    parentMessaging.isOpen()?parentMessaging.refresh():Promise.resolve(),
+    authUser?.role==='student'&&tab==='notifications'?parentMessaging.readInbox():Promise.resolve(),
+    timetableNoteDraft?.kind==='lesson'?readTimetableNote({poll:true}):Promise.resolve(),
+    isAvailabilityView()?refreshSharedAvailability():Promise.resolve(),
+    isPeopleView()?(accountPersonId()?refreshPersonProfile(accountPersonId()):refreshSharedPeople()):Promise.resolve(),
+    refreshSharedCourses(),
+    refreshActiveMaterials(),
+    refreshSharedSchedules(),
+    isTimetableFilterFactsView()?refreshTimetableFilterFacts():Promise.resolve(),
+    timetableDateNotesView()?refreshTimetableDateNoteIndicators({force:true}):Promise.resolve(),
+    isSharedStaffView()?refreshSharedStaffProfiles():Promise.resolve(),
+    isClassStatusView()?refreshClassCapacityStatuses():Promise.resolve(),
+    classTypesEnabled()?refreshSharedClassTypes():Promise.resolve(),
+    teacherAccessManager||isSharedStaffView()?refreshTeacherAccess():Promise.resolve(),
+    isEnrollmentView()?refreshEnrollmentOrders():Promise.resolve(),
+    authUser?.role==='student'?refreshStudentTimetable():Promise.resolve(),
+    ['student','admin'].includes(authUser?.role)?refreshLessonRequests():Promise.resolve(),
+    (selectedTimetableLesson||sharedLessonReturn)&&!enrollmentOverlay?refreshLessonStudents():Promise.resolve(),
+   ]);
+  }finally{refreshing=false;}
+ };
+ window.setInterval(refresh,5000);
+ window.addEventListener('focus',refresh);
+}
 async function initialiseSharedService(){
  if(!sharedClient)return;
  let generation=sharedGeneration,discarded=false;

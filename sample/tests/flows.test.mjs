@@ -1744,6 +1744,17 @@ test('shared timetable lets an authenticated teacher read lessons but blocks cre
  assert.equal(a.scheduleCalls.filter(call=>call.operation==='save').length,0);assert.equal(a.remote.rows[0].time,'10:00');
 });
 
+test('shared background polling skips login and does not overlap an unfinished refresh',async()=>{
+ const polls=[],a=await sharedApp({}, {}, {onInterval:(handler,ms)=>{polls.push({handler,ms});return polls.length;}});
+ assert.equal(polls.length,1);assert.equal(polls[0].ms,5000);
+ const session=deferred();let sessions=0;a.client.session=()=>{sessions++;return session.promise;};
+ a.set('loginPending=true');await polls[0].handler();assert.equal(sessions,0,'Background polling must not compete with the login request.');
+ a.set('loginPending=false');
+ const pending=polls[0].handler();await until(()=>sessions===1,'The scheduled refresh must check the current session.');
+ await polls[0].handler();assert.equal(sessions,1,'A slow refresh must not start a second concurrent polling cycle.');
+ session.resolve({user:copy(sharedTestUser)});await pending;
+});
+
 test('shared timetable polling checks the session before private reads and clears editor state when a successful session changes ID or role',async()=>{
  for(const change of ['id','role','student','signed-out']){
   const a=await sharedScheduleApp({rows:[sharedScheduleRecord()],revision:1}),session=deferred(),rows=deferred();let sessions=0,reads=0;

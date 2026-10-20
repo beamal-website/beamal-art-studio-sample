@@ -1,3 +1,5 @@
+import './client/search-clear.js';
+import './client/search-clear.css';
 import {enrollmentReportSummary} from './client/shared-accounting.js';
 import {workspacePendingCounts} from './client/workspace-notification.js';
 import './client/staff-reference-ui.css';

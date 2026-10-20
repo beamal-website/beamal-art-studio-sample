@@ -1,0 +1,11 @@
+.search-clear-field.search-clear-field{position:relative;inset:auto;font-size:inherit;display:inline-flex;align-items:center;min-width:0;max-width:100%;width:100%;flex:1}
+.search-clear-field.search-clear-field>input{min-width:0;width:100%}
+.search-clear-field.has-search-value>input{padding-inline-start:44px!important}
+.search-clear-field.search-clear-field>.search-clear-button{position:absolute;inset-inline-start:6px;top:50%;transform:translateY(-50%);display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;min-height:32px;min-width:32px;padding:0;border:0;border-radius:5px;background:transparent;box-shadow:none;color:var(--ink,#234140);font:24px/1 sans-serif;cursor:pointer;transition:background-color .15s}
+.search-clear-field.search-clear-field>.search-clear-button[hidden]{display:none}
+.search-clear-field.search-clear-field>.search-clear-button:hover{background:rgba(36,116,121,.1);transform:translateY(-50%);box-shadow:none}
+.search-clear-field.search-clear-field>.search-clear-button:focus-visible{outline:2px solid #247479;outline-offset:1px}
+.search-clear-field.search-clear-field>input::-webkit-search-cancel-button{-webkit-appearance:none}
+.search-clear-field.search-clear-field>input::-ms-clear{display:none}
+
+.staff-ref-search:has(.has-search-value)>span:not(.search-clear-field){visibility:hidden}

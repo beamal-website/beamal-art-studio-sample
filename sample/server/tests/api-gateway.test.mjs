@@ -78,19 +78,24 @@ test('gateway serves health independently of a blocked database-backed worker an
       Origin: 'https://beamal-art-studio-sample.vercel.app',
       Cookie: 'beamal_session=test-session',
       'X-Beamal-Client-Address': 'forged-address',
+      'X-Beamal-Gateway-Received-At': 'forged-time',
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ ping: true }),
   });
   assert.equal(proxied.status, 200);
   assert.equal(proxied.headers.get('set-cookie'), 'gateway-test=present; Path=/');
-  assert.deepEqual(await proxied.json(), {
+  const proxiedBody = await proxied.json();
+  assert.deepEqual(proxiedBody, {
     method: 'POST',
     body: '{"ping":true}',
     origin: 'https://beamal-art-studio-sample.vercel.app',
     cookie: 'beamal_session=test-session',
     clientAddress: '127.0.0.1',
+    gatewayReceivedAt: proxiedBody.gatewayReceivedAt,
   });
+  assert.match(proxiedBody.gatewayReceivedAt, /^\d+$/);
+  assert.notEqual(proxiedBody.gatewayReceivedAt, 'forged-time');
 });
 
 test('gateway reports startup readiness and rejects invalid worker ports', async t => {

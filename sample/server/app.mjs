@@ -177,6 +177,21 @@ export async function createApplication({ databasePath = ':memory:', databaseUrl
     response.end(data);
   };
   const server = createServer({ maxHeaderSize: 16 * 1024, requestTimeout: 600000 }, async (request, response) => {
+    const handlerStartedAt = Date.now();
+    const requestPath = (request.url || '/').split('?', 1)[0];
+    const authRoute = /^\/api\/auth\/(login|session)$/.exec(requestPath)?.[1];
+    const authTimings = {};
+    const gatewayReceivedAt = Number(request.headers['x-beamal-gateway-received-at']);
+    const timeAuthStage = (name, operation) => {
+      const startedAt = Date.now();
+      try { return operation(); }
+      finally { authTimings[name] = Date.now() - startedAt; }
+    };
+    const timeAuthStageAsync = async (name, operation) => {
+      const startedAt = Date.now();
+      try { return await operation(); }
+      finally { authTimings[name] = Date.now() - startedAt; }
+    };
     response.setHeader('Cache-Control', 'no-store');
     response.setHeader('X-Content-Type-Options', 'nosniff');
     response.setHeader('Referrer-Policy', 'same-origin');
@@ -197,21 +212,21 @@ export async function createApplication({ databasePath = ':memory:', databaseUrl
       }
       if (pathname === '/api/health' && request.method === 'GET') { json(response, 200, { mode: 'shared-test', service: 'Beamal', storage: 'sqlite' }); return; }
       if (pathname === '/api/auth/session' && request.method === 'GET') {
-        const token = sessionToken(request), session = token ? store.getSession(tokenHash(token)) : null;
+        const token = sessionToken(request), session = token ? timeAuthStage('sessionLookup', () => store.getSession(tokenHash(token))) : null;
         json(response, 200, session ? { user: authUser(session.user), csrfToken: csrfForToken(token) } : { user: null }); return;
       }
       if (pathname === '/api/auth/login' && request.method === 'POST') {
         requireOrigin(request);
-        const input = await body(request), email = normaliseEmail(input?.email);
+        const input = await timeAuthStageAsync('bodyRead', () => body(request)), email = normaliseEmail(input?.email);
         if (!input || typeof input !== 'object' || Array.isArray(input) || Object.keys(input).some(key => !['email', 'password'].includes(key)) || !email || email.length > 254 || typeof input.password !== 'string' || !input.password || input.password.length > 1024) throw new ApplicationError(400, 'INVALID_LOGIN', 'Enter an email address and password.');
         throttle(request, email);
-        const user = store.userByEmail(email);
-        const valid = await verifyPassword(input.password, user?.password_hash || dummyHash);
+        const user = timeAuthStage('userLookup', () => store.userByEmail(email));
+        const valid = await timeAuthStageAsync('passwordVerify', () => verifyPassword(input.password, user?.password_hash || dummyHash));
         if (!user || !valid) throw new ApplicationError(401, 'LOGIN_FAILED', 'The email address or password is incorrect.');
         const previous = sessionToken(request);
-        if (previous) store.deleteSession(tokenHash(previous));
+        if (previous) timeAuthStage('previousSessionDelete', () => store.deleteSession(tokenHash(previous)));
         const token = randomToken(), csrfToken = csrfForToken(token);
-        store.createSession({ tokenHash: tokenHash(token), userId: user.id, csrfHash: tokenHash(csrfToken), expiresAt: Date.now() + SESSION_SECONDS * 1000 });
+        timeAuthStage('sessionCreate', () => store.createSession({ tokenHash: tokenHash(token), userId: user.id, csrfHash: tokenHash(csrfToken), expiresAt: Date.now() + SESSION_SECONDS * 1000 }));
         response.setHeader('Set-Cookie', cookie(token, SESSION_SECONDS));
         json(response, 200, { user: authUser(store.publicUser(user)), csrfToken }); return;
       }
@@ -800,6 +815,18 @@ export async function createApplication({ databasePath = ':memory:', databaseUrl
       } else {
         console.error('Unhandled API request error.', error);
         json(response, 500, { error: { code: 'INTERNAL_ERROR', message: 'Could not complete this request. Please try again.' } });
+      }
+    } finally {
+      if (authRoute) {
+        const totalMs = Date.now() - handlerStartedAt;
+        const gatewayQueueMs = Number.isSafeInteger(gatewayReceivedAt) && gatewayReceivedAt > 0
+          ? Math.max(0, handlerStartedAt - gatewayReceivedAt)
+          : null;
+        const stages = Object.entries(authTimings).map(([name, elapsed]) => `${name}=${elapsed}ms`);
+        if (totalMs >= 1000 || (gatewayQueueMs ?? 0) >= 1000 || Object.values(authTimings).some(elapsed => elapsed >= 1000)) {
+          const queue = gatewayQueueMs === null ? '' : `, gatewayQueue=${gatewayQueueMs}ms`;
+          console.warn(`Authentication diagnostics ${request.method} /api/auth/${authRoute}: handler=${totalMs}ms${queue}${stages.length ? `, ${stages.join(', ')}` : ''}.`);
+        }
       }
     }
   });

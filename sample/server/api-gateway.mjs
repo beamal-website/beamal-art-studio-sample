@@ -49,6 +49,7 @@ export function createApiGateway({ storage = 'sqlite' } = {}) {
       ...request.headers,
       host: `127.0.0.1:${backendPort}`,
       'x-beamal-client-address': request.socket.remoteAddress || 'unknown',
+      'x-beamal-gateway-received-at': String(startedAt),
     };
     for (const header of hopByHopHeaders) delete headers[header];
     const upstream = proxyRequest({

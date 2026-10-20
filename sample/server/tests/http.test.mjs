@@ -58,6 +58,35 @@ test('real password verification rejects invalid credentials and returns only th
   publicUser(session.body.user);noCredentials(session);
 });
 
+test('slow authentication diagnostics identify queue and auth stages without logging credentials',async t=>{
+  const app=await fixture(t),client=app.client(),messages=[];
+  const warning=t.mock.method(console,'warn',(...values)=>messages.push(values.join(' ')));
+  const receivedAt=String(Date.now()-1500);
+  const response=await client.request('/api/auth/login',{
+    method:'POST',
+    body:{email:users[0].email,password:users[0].password},
+    csrf:false,
+    headers:{'x-beamal-gateway-received-at':receivedAt},
+  });
+  assert.equal(response.status,200,response.text);
+  assert.equal(warning.mock.callCount(),1);
+  assert.match(messages[0],/Authentication diagnostics POST \/api\/auth\/login:/);
+  assert.match(messages[0],/gatewayQueue=\d+ms/);
+  assert.match(messages[0],/userLookup=\d+ms/);
+  assert.match(messages[0],/passwordVerify=\d+ms/);
+  assert.match(messages[0],/sessionCreate=\d+ms/);
+  assert.ok(!messages[0].includes(users[0].email));
+  assert.ok(!messages[0].includes(users[0].password));
+  const session=await client.request('/api/auth/session',{headers:{'x-beamal-gateway-received-at':String(Date.now()-1500)}});
+  assert.equal(session.status,200,session.text);
+  assert.equal(warning.mock.callCount(),2);
+  assert.match(messages[1],/Authentication diagnostics GET \/api\/auth\/session:/);
+  assert.match(messages[1],/gatewayQueue=\d+ms/);
+  assert.match(messages[1],/sessionLookup=\d+ms/);
+  assert.ok(!messages[1].includes(users[0].email));
+  assert.ok(!messages[1].includes(users[0].password));
+});
+
 test('separate admin and student sessions retain their own identity and logging out does not log out another browser',async t=>{
   const app=await fixture(t),first=app.client(),second=app.client(),student=app.client();
   const firstLogin=await first.login(0),secondLogin=await second.login(1),studentLogin=await student.login(3);

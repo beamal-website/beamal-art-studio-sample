@@ -18,6 +18,7 @@ const server = createServer((request, response) => {
       origin: request.headers.origin || null,
       cookie: request.headers.cookie || null,
       clientAddress: request.headers['x-beamal-client-address'] || null,
+      gatewayReceivedAt: request.headers['x-beamal-gateway-received-at'] || null,
     }));
   });
 });

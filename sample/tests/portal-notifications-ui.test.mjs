@@ -14,3 +14,8 @@ test('notification responses from an old signed-in identity cannot populate anot
  const controller=createPortalNotificationsController({api:{notifications:()=>{reads++;return new Promise(resolve=>finish=resolve);}},context:()=>({identity,t:(_zh,en)=>en}),dom});
  controller.afterRender();assert.equal(reads,1);identity='';controller.afterRender();finish({revision:'old',notifications:[],unread:9});for(let i=0;i<10;i++)await Promise.resolve();assert.equal(badge.hidden,true);assert.equal(badge.textContent,'');
 });
+test('notification polling pauses in hidden tabs and runs at a lower background frequency',()=>{
+ let interval,reads=0;const dom={body:{},visibilityState:'hidden',defaultView:{setInterval(callback,delay){interval={callback,delay};}},querySelector:()=>null,querySelectorAll:()=>[],addEventListener(){}};
+ createPortalNotificationsController({api:{notifications:async()=>{reads++;return {revision:'r',notifications:[],unread:0};}},context:()=>({identity:'admin-a',t:(_zh,en)=>en}),dom});
+ assert.equal(interval.delay,30000);interval.callback();assert.equal(reads,0);dom.visibilityState='visible';interval.callback();assert.equal(reads,1);
+});

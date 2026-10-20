@@ -495,7 +495,7 @@ async function initializeStore({ databasePath, seedUsers, seedCourses, attachmen
     dateNotes = createDateNoteStore({ database, transaction });
     websiteNews = createWebsiteNewsStore({database,transaction,seed:seedNews});
     materials = createMaterialStore({ database, transaction, attachments, accessControl });
-    people = createPeopleStore({ database, transaction });
+    people = createPeopleStore({ database, transaction, postgres });
     trialInquiries = createTrialInquiryStore({ database, transaction });
     classCapacityStatuses = createClassCapacityStatusStore({ database, transaction, accessControl });
     availableSlots = createAvailableSlotStore({ database, transaction, accessControl, classCapacityStatuses, postgres, getParticipants:(id,date)=>enrollmentOrders&&trialApplications?.participants(id,date)||{trials:[],rescheduling:[]}, getParticipantsBatch:slots=>trialApplications?.participantsForSlots(slots)||new Map(slots.map(slot=>[slot.id,{trials:[],rescheduling:[]}])) });

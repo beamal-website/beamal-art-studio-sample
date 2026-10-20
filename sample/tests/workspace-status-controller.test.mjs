@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import {createWorkspaceStatusController} from '../client/workspace-status-ui.js';
 import {defaultStatusTags} from '../shared/workspace-status.js';
 const tick=async()=>{for(let i=0;i<15;i++)await Promise.resolve();};
-function setup(api){let root=null,identity='teacher-a',inputs=[];const events={},header={dataset:{wsHeader:'trial'},getBoundingClientRect:()=>({left:100,bottom:150})},cell={dataset:{wsCategory:'trial',wsKey:'trial:a'},innerHTML:''};const dom={defaultView:{innerWidth:1024,innerHeight:768},body:{append(node){root=node;}},createElement:()=>({style:{},setAttribute(){},remove(){root=null;},innerHTML:''}),querySelector(selector){if(selector==='#workspace-status-popup')return root;if(selector.includes('[data-ws-header='))return header;return null;},querySelectorAll(selector){return selector.includes('input[name="status-name"]')?inputs:selector==='[data-ws-header]'?[header]:selector.startsWith('.workspace-status-cell')?[cell]:[];},addEventListener(type,callback){events[type]=callback;}};
+function setup(api){let root=null,identity='teacher-a',inputs=[],interval;const events={},header={dataset:{wsHeader:'trial'},getBoundingClientRect:()=>({left:100,bottom:150})},cell={dataset:{wsCategory:'trial',wsKey:'trial:a'},innerHTML:''},dom={visibilityState:'visible',defaultView:{innerWidth:1024,innerHeight:768,setInterval(callback,delay){interval={callback,delay};}},body:{append(node){root=node;}},createElement:()=>({style:{},setAttribute(){},remove(){root=null;},innerHTML:''}),querySelector(selector){if(selector==='#workspace-status-popup')return root;if(selector.includes('[data-ws-header='))return header;return null;},querySelectorAll(selector){return selector.includes('input[name="status-name"]')?inputs:selector==='[data-ws-header]'?[header]:selector.startsWith('.workspace-status-cell')?[cell]:[];},addEventListener(type,callback){events[type]=callback;}};
  const controller=createWorkspaceStatusController({api,dom,context:()=>({identity,role:'teacher',t:(_zh,en)=>en}),newKey:()=> 'random-operation-id'});
- return {controller,events,cell,header,root:()=>root,inputs:value=>inputs=value,identity:value=>identity=value,event(target){return {target,clientX:100,clientY:150,preventDefault(){}};}};
+ return {controller,events,cell,header,root:()=>root,inputs:value=>inputs=value,identity:value=>identity=value,visibility:value=>dom.visibilityState=value,poll:()=>interval,event(target){return {target,clientX:100,clientY:150,preventDefault(){}};}};
 }
 const data=tagId=>({tags:defaultStatusTags(),version:0,items:[{key:'trial:a',tagId,version:0}]});
 test('Status settings open only on right-click, save through the shared API and leave the surrounding table alone',async()=>{
@@ -17,6 +17,10 @@ test('Status settings open only on right-click, save through the shared API and 
 });
 test('an old colleague or identity response cannot replace the current account status',async()=>{
  let resolve;const a=setup({workspaceStatuses:()=>new Promise(done=>{resolve=done;})});a.controller.afterRender();await tick();a.identity('');a.controller.afterRender();resolve(data('done'));await tick();assert.doesNotMatch(a.cell.innerHTML,/Done/);
+});
+test('workspace status polling pauses in hidden tabs and runs at a lower background frequency',async()=>{
+ let reads=0;const a=setup({workspaceStatuses:async()=>{reads++;return data(null);}});a.controller.afterRender();await tick();assert.equal(reads,1);assert.equal(a.poll().delay,30000);
+ a.visibility('hidden');a.poll().callback();await tick();assert.equal(reads,1);a.visibility('visible');a.poll().callback();await tick();assert.equal(reads,2);
 });
 
 test('choosing a row status uses its own version and updates just that row after the shared acknowledgement',async()=>{

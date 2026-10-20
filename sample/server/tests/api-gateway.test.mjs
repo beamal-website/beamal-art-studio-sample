@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createServer } from 'node:http';
 import { Worker } from 'node:worker_threads';
 import { performance } from 'node:perf_hooks';
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
@@ -108,6 +109,30 @@ test('gateway reports startup readiness and rejects invalid worker ports', async
   const unavailable = await fetch(`${url}/api/auth/login`, { method: 'POST', body: '{}' });
   assert.equal(unavailable.status, 503);
   assert.throws(() => gateway.setBackendPort(0), /valid TCP port/);
+});
+
+test('gateway balances read requests across PostgreSQL workers and pins mutations to the primary', async t => {
+  const gateway = createApiGateway({ storage: 'postgres' });
+  const url = await listen(gateway.server);
+  const backends = ['primary', 'secondary'].map(name => createServer((request, response) => {
+    request.resume();
+    response.end(name);
+  }));
+  const backendUrls = await Promise.all(backends.map(backend => listen(backend)));
+  gateway.setBackendPorts(backendUrls.map(backendUrl => Number(new URL(backendUrl).port)));
+  t.after(async () => {
+    gateway.server.closeAllConnections();
+    for (const backend of backends) backend.closeAllConnections();
+    await Promise.all([closeServer(gateway.server), ...backends.map(closeServer)]);
+  });
+
+  const reads = [];
+  for (let index = 0; index < 4; index++) reads.push(await (await fetch(`${url}/api/catalog`)).text());
+  assert.deepEqual(reads, ['primary', 'secondary', 'primary', 'secondary']);
+  for (const method of ['POST', 'PATCH', 'DELETE']) {
+    assert.equal(await (await fetch(`${url}/api/test`, { method, body: 'mutation' })).text(), 'primary');
+  }
+  assert.throws(() => gateway.setBackendPorts([0]), /valid TCP ports/);
 });
 
 test('application worker starts the existing API behind the gateway', async t => {

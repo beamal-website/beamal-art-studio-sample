@@ -5,6 +5,7 @@ import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {DatabaseSync} from 'node:sqlite';
 import {fixture,error,users,grantTeacherAccess} from './helpers.mjs';
+import {createPeopleStore} from '../people.mjs';
 
 const fields=['displayName','dateOfBirth','parentName','whatsApp','email','school','referrer','localName','firstName','lastName','phone','address','level','remark','citizenId','fullName','gender','mobile','district','contact1Name','contact1Phone','contact1Email','contact2Name','contact2Phone','contact2Email','occupation','detail','billName','enrollmentDate','quitDate','promotion'];
 const sample=changes=>({displayName:'Fictional applicant',dateOfBirth:'2015-02-28',parentName:'Fictional guardian',whatsApp:'+852 0000 0000',email:'fictional-contact@example.test',school:'Fictional school',referrer:'Fictional referral',localName:'虛構學生',firstName:'Fictional',lastName:'Applicant',phone:'0000 0000',address:'Fictional district',level:'Primary',remark:'Private preparation notes',citizenId:'FICTIONAL-NOT-REAL',fullName:'Fictional Applicant',gender:'Optional recorded gender',mobile:'0000 0000',district:'Fictional district',contact1Name:'Fictional contact one',contact1Phone:'0000 0001',contact1Email:'fictional-contact-one@example.test',contact2Name:'Fictional contact two',contact2Phone:'0000 0002',contact2Email:'fictional-contact-two@example.test',occupation:'Student',detail:'Detailed fictional preparation\n'.repeat(40).trim(),billName:'Fictional billing name',enrollmentDate:'2026-10-14',quitDate:null,promotion:null,...changes});
@@ -14,6 +15,12 @@ async function create(app,profile=sample(),key){const result=await send(app.admi
 async function list(client,query=''){const result=await client.request('/api/people'+query);assert.equal(result.status,200,result.text);return result.body;}
 async function history(client,id){const result=await client.request(`/api/people/${id}/history`);assert.equal(result.status,200,result.text);return result.body.history;}
 function personDTO(person){assert.match(person.id,/^[a-f0-9-]{36}$/);assert.ok(['applicant','student'].includes(person.kind));assert.ok(Number.isSafeInteger(person.version)&&person.version>=1);for(const key of['createdAt','updatedAt'])assert.ok(Number.isFinite(Date.parse(person[key])));assert.deepEqual(Object.keys(person).sort(),[...fields,'id','kind','version','createdAt','updatedAt','convertedAt','convertedBy'].sort());}
+
+test('PostgreSQL upgrades the person audit actor column for anonymous public trial applicants',()=>{
+ const statements=[],database={exec:sql=>statements.push(sql),prepare:sql=>({all:()=>sql.includes('table_info(people)')?[{name:'archived_at'}]:[],get:()=>undefined,run:()=>({changes:0})})};
+ createPeopleStore({database,transaction:callback=>callback(),postgres:true});
+ assert.ok(statements.includes('ALTER TABLE person_audit_log ALTER COLUMN actor_id DROP NOT NULL'));
+});
 
 test('administrator applicant CRUD preserves one profile identity and immutable history without creating a login enrollment or payment',async t=>{
  const app=await manager(t),accounts=app.store.listUsers(),catalog=(await app.admin.request('/api/catalog')).body,created=await create(app,{displayName:'  Fictional child  '}),person=created.body.person;personDTO(person);assert.equal(person.displayName,'Fictional child');assert.equal(person.kind,'applicant');assert.equal(person.version,1);assert.equal(person.dateOfBirth,null);assert.equal(person.convertedAt,null);assert.equal(person.convertedBy,null);assert.equal(person.enrollmentDate,null);assert.equal(person.quitDate,null);assert.equal(person.promotion,null);for(const key of fields.filter(key=>!['displayName','dateOfBirth','enrollmentDate','quitDate','promotion'].includes(key)))assert.equal(person[key],'');

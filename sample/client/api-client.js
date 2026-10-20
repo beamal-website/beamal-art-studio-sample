@@ -29,7 +29,7 @@ export function createApiClient({ baseUrl = import.meta.env?.VITE_BEAMAL_API_BAS
     authMutation = pending.catch(() => {});
     return pending;
   }
-  async function request(path, { method = 'GET', body, idempotencyKey, authOperation, timeoutMs = 10000 } = {}) {
+  async function request(path, { method = 'GET', body, idempotencyKey, authOperation, timeoutMs = 30000 } = {}) {
     let epoch = authEpoch;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -125,7 +125,7 @@ export function createApiClient({ baseUrl = import.meta.env?.VITE_BEAMAL_API_BAS
     },
     publicCourses: (revision = '') => request(`/public/courses${revision ? '?since=' + encodeURIComponent(revision) : ''}`),
     publicTrialPolicy: () => request('/public/trial-form-policy'),
-    submitPublicTrial: (input, operationKey) => request('/public/trial-applications', { method: 'POST', body: input, idempotencyKey: operationKey }),
+    submitPublicTrial: (input, operationKey) => request('/public/trial-applications', { method: 'POST', body: input, idempotencyKey: operationKey, timeoutMs: 45000 }),
     trialApplications(query = {}, revision = '') {
       const params = new URLSearchParams();
       for (const key of ['personId','status','page','pageSize']) if (query[key] !== undefined && query[key] !== '') params.set(key,String(query[key]));

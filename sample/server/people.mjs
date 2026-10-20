@@ -49,7 +49,7 @@ export function validatePeopleQuery(input={}) {
   return {kind,q:q.trim(),page,pageSize,sort,direction,since};
 }
 
-export function createPeopleStore({database,transaction}) {
+export function createPeopleStore({database,transaction,postgres=false}) {
   database.exec(`
     CREATE TABLE IF NOT EXISTS people (
       id TEXT PRIMARY KEY,kind TEXT NOT NULL CHECK(kind IN ('applicant','student')),
@@ -69,7 +69,8 @@ export function createPeopleStore({database,transaction}) {
   if(!database.prepare('PRAGMA table_info(people)').all().some(column=>column.name==='archived_at'))database.exec('ALTER TABLE people ADD COLUMN archived_at TEXT');
   // Public form submissions have no user account. Preserve every old audit row,
   // index, trigger and AUTOINCREMENT high-water mark when removing NOT NULL.
-  if(database.prepare('PRAGMA table_info(person_audit_log)').all().find(column=>column.name==='actor_id')?.notnull)transaction(()=>{
+  if(postgres)database.exec('ALTER TABLE person_audit_log ALTER COLUMN actor_id DROP NOT NULL');
+  else if(database.prepare('PRAGMA table_info(person_audit_log)').all().find(column=>column.name==='actor_id')?.notnull)transaction(()=>{
     const objects=database.prepare("SELECT sql FROM sqlite_master WHERE tbl_name='person_audit_log' AND type IN ('index','trigger') AND sql IS NOT NULL").all();
     const sequence=database.prepare("SELECT seq FROM sqlite_sequence WHERE name='person_audit_log'").get()?.seq??0;
     database.exec(`CREATE TABLE person_audit_log_nullable (

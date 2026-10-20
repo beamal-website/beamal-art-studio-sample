@@ -1,4 +1,5 @@
 import {WORKSPACE_STATUS_CATEGORIES,WORKSPACE_STATUS_COLOURS,validateStatusTags} from '../shared/workspace-status.js';
+const POLL_INTERVAL_MS=30000;
 const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 export function workspaceStatusHeader(category){return `<th scope="col" class="workspace-status-column" data-ws-header="${esc(category)}" tabindex="0" aria-description="右擊設定 / Right-click to configure">Status</th>`;}
 export function workspaceStatusCell(category,key){return `<td class="workspace-status-cell" data-ws-category="${esc(category)}" data-ws-key="${esc(key)}"><button type="button" disabled>—</button></td>`;}
@@ -27,6 +28,7 @@ export function createWorkspaceStatusController({api,context,dom=document,newKey
  dom.addEventListener('click',event=>{const header=event.target.closest?.('[data-ws-header]'),cell=event.target.closest?.('[data-ws-pick]');if(header){if(!popup?.busy)close();return;}if(cell&&!cell.disabled){open(cell.dataset.wsPick,'pick',cell.dataset.wsKey,event);return;}const root=event.target.closest?.('#workspace-status-popup');if(!root){if(!popup?.busy)close();return;}const button=event.target.closest?.('button');if(!button||button.disabled)return;if(button.hasAttribute('data-ws-assign')){assign(button.dataset.wsAssign);return;}capture();const action=button.dataset.wsCommand;if(action==='color'){const index=Number(button.dataset.index),color=button.dataset.color;if(popup.kind==='edit'&&!popup.busy&&popup.tags[index]&&Object.hasOwn(WORKSPACE_STATUS_COLOURS,color)){popup.tags[index].color=color;draw();dom.querySelector(`#workspace-status-popup [data-index="${index}"][data-color="${color}"]`)?.focus();}}else if(action==='close')close();else if(action==='add'){popup.tags.push({id:newKey(),name:'',color:'light-gray'});draw();}else if(action==='remove'){popup.tags.splice(Number(button.dataset.index),1);draw();}else if(action==='reload'){const active=popup;load(popup.category,visibleKeys(popup.category),true).then(()=>{if(popup!==active)return;const current=state(popup.category);popup.tags=current.tags.map(tag=>({...tag}));popup.version=current.version;popup.error=current.error;draw();});}});
  dom.addEventListener('submit',event=>{if(event.target.id==='workspace-status-form'){event.preventDefault();save();}});
  dom.addEventListener('keydown',event=>{if(event.key==='Escape'&&popup&&!popup.busy&&!event.isComposing){event.preventDefault();close();}});
- dom.defaultView?.setInterval?.(()=>afterRender(true),8000);
+ dom.defaultView?.setInterval?.(()=>{if(dom.visibilityState!=='hidden')afterRender(true);},POLL_INTERVAL_MS);
+ dom.addEventListener('visibilitychange',()=>{if(dom.visibilityState!=='hidden')afterRender(true);});
  return {header:workspaceStatusHeader,cell:workspaceStatusCell,afterRender,refresh:()=>afterRender(true),close};
 }

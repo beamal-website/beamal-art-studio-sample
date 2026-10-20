@@ -20,11 +20,11 @@ function routeLabel(pathname) {
 
 export function createApiGateway({ storage = 'sqlite' } = {}) {
   if (!['sqlite', 'postgres'].includes(storage)) throw new TypeError('API gateway storage must be sqlite or postgres.');
-  let backendPort = null;
+  let backendPorts = [], nextReadBackend = 0;
   const server = createServer((request, response) => {
     const pathname = (request.url || '/').split('?', 1)[0];
     if (pathname === '/api/health' && request.method === 'GET') {
-      const ready = backendPort !== null;
+      const ready = backendPorts.length > 0;
       response.writeHead(ready ? 200 : 503, {
         'Content-Type': 'application/json; charset=utf-8',
         'Cache-Control': 'no-store',
@@ -38,12 +38,16 @@ export function createApiGateway({ storage = 'sqlite' } = {}) {
       }));
       return;
     }
-    if (backendPort === null) {
+    const method = request.method || 'GET';
+    if (backendPorts.length === 0) {
       sendJson(response, 503, { error: { code: 'SERVICE_UNAVAILABLE', message: 'The application is starting. Please retry shortly.' } });
       return;
     }
 
-    const startedAt = Date.now(), method = request.method || 'GET', route = routeLabel(pathname);
+    const backendPort = method === 'GET'
+      ? backendPorts[nextReadBackend++ % backendPorts.length]
+      : backendPorts[0];
+    const startedAt = Date.now(), route = routeLabel(pathname);
     let clientDisconnected = false;
     const headers = {
       ...request.headers,
@@ -94,14 +98,21 @@ export function createApiGateway({ storage = 'sqlite' } = {}) {
     request.pipe(upstream);
   });
 
+  const setBackendPorts = ports => {
+    if (!Array.isArray(ports) || ports.some(port => !Number.isInteger(port) || port < 1 || port > 65535)) throw new TypeError('Application worker ports must be valid TCP ports.');
+    backendPorts = [...new Set(ports)];
+    nextReadBackend = 0;
+  };
+
   return {
     server,
     setBackendPort(port) {
-      if (!Number.isInteger(port) || port < 1 || port > 65535) throw new TypeError('Application worker port must be a valid TCP port.');
-      backendPort = port;
+      setBackendPorts([port]);
     },
+    setBackendPorts,
     clearBackendPort() {
-      backendPort = null;
+      backendPorts = [];
+      nextReadBackend = 0;
     },
   };
 }

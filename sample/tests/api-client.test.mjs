@@ -126,14 +126,17 @@ async function login(client, wire, name) {
   return client.login(`${name}@example.test`, `FictionalPassword-${name}`);
 }
 
-test('login requests wait beyond the PostgreSQL query timeout while other API requests keep their normal timeout',async t=>{
+test('API and public trial requests wait through measured queue delays while login keeps its PostgreSQL timeout',async t=>{
  const wire=network(t),client=createApiClient(),previousSetTimeout=globalThis.setTimeout,previousClearTimeout=globalThis.clearTimeout,timeouts=[];
  globalThis.setTimeout=(_callback,delay)=>{timeouts.push(delay);return timeouts.length;};globalThis.clearTimeout=()=>{};
  try{
   wire.reply('/api/auth/session',session('A'));await client.session();
   wire.reply('/api/auth/login',session('A'));await client.login('A@example.test','FictionalPassword-A');
+  wire.reply('/api/public/trial-applications',{reference:'TR-FICTIONAL',outcome:'received'},201);
+  await client.submitPublicTrial({courseId:'fictional-course'},'fictional-idempotency-key');
  }finally{globalThis.setTimeout=previousSetTimeout;globalThis.clearTimeout=previousClearTimeout;}
- assert.deepEqual(timeouts,[10000,35000]);
+ assert.deepEqual(timeouts,[30000,35000,45000]);
+ const call=wire.calls.at(-1);assert.equal(call.headers.get('Idempotency-Key'),'fictional-idempotency-key');assert.equal(JSON.parse(call.body).courseId,'fictional-course');
 });
 
 test('fee history reads encode the exact target and use authenticated GET without save payloads',async t=>{

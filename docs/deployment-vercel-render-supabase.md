@@ -15,6 +15,8 @@ In PostgreSQL mode, expired temporary uploads are cleaned when the API starts ra
 
 The Render listener now runs as a lightweight gateway separate from the database-backed application worker. `/api/health` stays responsive while the worker is busy with a PostgreSQL query, and reports `503` during worker startup instead of timing out. A worker restart is logged and retried with a short backoff; check the worker startup lines for PostgreSQL initialization errors if the health endpoint remains unavailable.
 
+Slow API responses log only the HTTP method, a privacy-safe route label and duration. PostgreSQL slow-query logs include the operation and duration, never SQL parameters. If clients disconnect while waiting, the gateway logs that separately from worker-forwarding errors.
+
 ## Integrated trial and lesson workflows
 
 The public course enquiry form saves an unreserved enquiry in `trial_inquiries`. It does not reserve a seat. The exact-slot application flow uses `trial_applications`, applicant records, reservation records and teacher follow-up. Its `trialFormPolicy` remains explicit; the default does not open new exact-slot submissions.

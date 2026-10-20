@@ -76,22 +76,25 @@ export async function createPostgresDatabase(connectionString){
  let requestId=0,closed=false;
  const send=(action,sql='',values=[])=>{
   if(closed)throw new Error('The PostgreSQL connection is closed.');
-  const id=++requestId,signalBuffer=new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT),signal=new Int32Array(signalBuffer),deadline=Date.now()+postgresQueryTimeoutMs;
+  const startedAt=Date.now(),id=++requestId,signalBuffer=new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT),signal=new Int32Array(signalBuffer),deadline=startedAt+postgresQueryTimeoutMs;
   channel.port1.postMessage({id,action,sql,values,signal:signalBuffer});let packet;
   while(!packet){
    packet=receiveMessageOnPort(channel.port1);if(packet)break;
    const remaining=deadline-Date.now();
    if(remaining<=0){
+    console.error(`PostgreSQL worker timed out during ${action} after ${Date.now()-startedAt} ms; marking the adapter unavailable.`);
     closed=true;channel.port1.close();
     worker.terminate().catch(error=>console.error('Could not stop the PostgreSQL worker after a query timeout.',error));
     throw new Error(`PostgreSQL worker did not respond to ${action} within ${postgresQueryTimeoutMs} ms.`);
    }
    const wait=Atomics.wait(signal,0,0,Math.min(1000,remaining));
    if(wait==='timed-out'&&worker.threadId===-1){
+    console.error(`PostgreSQL worker exited during ${action} after ${Date.now()-startedAt} ms.`);
     closed=true;channel.port1.close();
     throw new Error('The PostgreSQL worker exited unexpectedly.');
    }
   }
+  const elapsed=Date.now()-startedAt;if(elapsed>=5000)console.warn(`Slow PostgreSQL ${action} response: ${elapsed} ms.`);
   const message=packet.message;if(message.id!==id)throw new Error('PostgreSQL worker returned an out-of-order response.');
   if(message.error)throw Object.assign(new Error(message.error.message||'PostgreSQL query failed.'),{code:message.error.code,detail:message.error.detail});
   return message;

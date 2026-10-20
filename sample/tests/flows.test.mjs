@@ -1,3 +1,4 @@
+import {workspacePendingCount,workspacePendingCounts} from '../client/workspace-notification.js';
 import {createStudentRecordsController} from '../client/student-records-controller.js';
 import * as studentManagementUI from '../client/student-management-ui.js';
 import * as sidebarMotion from '../client/sidebar-motion.js';
@@ -42,7 +43,7 @@ import {timetableGridMinimum,timetableCreateCells,timetableCreateCellMarkup} fro
 import {resolveSharedLessonContext} from '../client/shared-lesson-context.js';
 
 const createVmContext=vm.createContext.bind(vm);
-vm.createContext=(sandbox,options)=>createVmContext({createStudentRecordsController,...studioCourses,...sidebarMotion,...studentManagementUI,trialApplicationMarkup,...sandbox},options);
+vm.createContext=(sandbox,options)=>createVmContext({workspacePendingCount,workspacePendingCounts,createStudentRecordsController,...studioCourses,...sidebarMotion,...studentManagementUI,trialApplicationMarkup,...sandbox},options);
 
 test('same-revision authenticated teacher mapping changes refresh the session and clear stale private identity state',async()=>{
  const user={...sharedTestUser,teacherResourceIds:['linked-before']},a=await sharedApp({session:async()=>({user})});
@@ -245,7 +246,7 @@ test('older saved classes migrate from date limits to lesson counts without losi
 });
 
 test('teacher and student logins open role-appropriate pages with the unchanged yellow notice',()=>{
- for(const username of ['1','2']){const a=app();a.set("lang='en'");a.submit('login',{username,password:''});const html=a.nodes['#app'].innerHTML;assert.match(html,/class="portal-topbar"/);assert.match(html,/beamal-logo.jpg/);assert.match(html,/beamal-login_icon.png/);assert.match(html,/portal-environment/);assert.doesNotMatch(html,/INTERNAL SAMPLE — FOR REVIEW ONLY/);assert.match(html,/banner-reset/);const nav=html.match(/<nav id="portal-sidebar"[\s\S]*?<\/nav>/)[0];
+ for(const username of ['1','2']){const a=app();a.set("lang='en'");a.submit('login',{username,password:''});const html=a.nodes['#app'].innerHTML;assert.match(html,/class="portal-topbar"/);assert.match(html,/beamal-logo.jpg/);assert.match(html,/beamal-login_icon.png/);assert.doesNotMatch(html,/portal-environment/);assert.doesNotMatch(html,/INTERNAL SAMPLE — FOR REVIEW ONLY/);assert.match(html,/banner-reset/);const nav=html.match(/<nav id="portal-sidebar"[\s\S]*?<\/nav>/)[0];
   if(username==='2'){assert.equal(a.read('tab'),'catalog');assert.match(nav,/data-tab="catalog" class="active"/);assert.ok(nav.indexOf('Sales')<nav.indexOf('Timetable'));for(const label of ['Courses','Fees','Products','Messages','Students','Leads','Accounting','Reports','Staffs','Channels','Settings'])assert.ok(nav.includes(label));assert.equal((html.match(/<th(?:\s[^>]*)?>/g)||[]).filter(tag=>!tag.includes('portal-select-cell')).length,8,'Count the seven course data columns and row actions separately from the selection checkbox')}
   else{assert.equal(a.read('tab'),'overview');assert.match(nav,/data-tab="overview" class="active"/);assert.deepEqual(a.read('portalItems().map(item=>item[0])'),['overview','courses','payments']);assert.match(html,/My Calendar/);assert.doesNotMatch(nav,/Sales|Products|Messages|Students|Leads|Accounting|Reports|Staffs|Channels|Settings/);assert.doesNotMatch(html,/Meeting link|Follows term|Online Store/)}
   assert.doesNotMatch(html,/Help &amp; Support|Switch branch|Guided Setup|Days left in trial|footer-social/);
@@ -3210,15 +3211,15 @@ test('student calendar actions carry the chosen lesson rather than silently taki
 });
 
 
-test('notifications move from the sidebar to the account menu for every shared role in both languages',async()=>{
+test('staff use workspace badges while the student keeps the family notification inbox in both languages',async()=>{
  for(const accountRole of ['admin','teacher','student']){
   const a=await sharedApp({session:async()=>({user:{...sharedTestUser,role:accountRole}})},{},{preview:true,initialQuerySelectorAll:()=>[]});
   for(const lang of ['en','zh']){
    a.set(`lang='${lang}';render()`);const html=a.nodes['#app'].innerHTML;
    const sidebar=html.match(/<nav id="portal-sidebar"[\s\S]*?<\/nav>/)[0],profile=html.match(/<details class="portal-profile"[\s\S]*?<\/details>/)[0];
    assert.doesNotMatch(sidebar,/data-tab="notifications"/);
-   assert.match(profile,new RegExp(`data-tab="notifications"[^>]*>${lang==='en'?'Notifications':'通知中心'}<`));
-   assert.ok(profile.indexOf('data-tab="notifications"')<profile.indexOf('data-action="logout"'));
+   if(accountRole==='student'){assert.match(profile,new RegExp(`data-tab="notifications"[^>]*>${lang==='en'?'Notifications':'通知中心'}<`));assert.ok(profile.indexOf('data-tab="notifications"')<profile.search(/data-action="logout(?:-request)?"/));}else assert.doesNotMatch(profile,/data-tab="notifications"/);
+   assert.doesNotMatch(profile,/Demo workspace|示範環境/);
   }
  }
 });
@@ -4503,7 +4504,7 @@ test('all import export and Excel output entry points stay disabled without bloc
 });
 
 test('Display stays visible and Class lists live active courses with persistent independent eye filters',async()=>{
- const a=await classTypeUiApp();a.set("lang='en';tab='overview';location.pathname='/account';render()");let html=a.read('timetableResourcePanel()');assert.match(html,/<section class="tt-resources tt-display"><h2>Display<\/h2>/);assert.doesNotMatch(html,/data-tt-display-group="display"/);assert.match(html,/<summary>Class<\/summary>/);assert.doesNotMatch(html,/data-tt-display-group="classType"/);
+ const a=await classTypeUiApp();a.set("lang='en';tab='overview';location.pathname='/account';render()");let html=a.read('timetableResourcePanel()');assert.match(html,/<section class="tt-resources tt-display"><div class="tt-display-heading"><h2>Display<\/h2>/);assert.doesNotMatch(html,/data-tt-display-group="display"/);assert.match(html,/<summary>Class<\/summary>/);assert.doesNotMatch(html,/data-tt-display-group="classType"/);
  a.set("db.courseSettings.push({id:'new-class',courseName:'New custom class'},{id:'deleted-class',courseName:'Deleted class',deletedAt:'2026-10-18'});render()");html=a.read('timetableResourcePanel()');assert.match(html,/data-course-id="new-class"/);assert.doesNotMatch(html,/data-course-id="deleted-class"/);const originalType=a.read('timetableClassTypeFilter');await a.click({action:'tt-named-course',courseId:'new-class'});assert.deepEqual(a.read('timetableNamedFilters.hiddenCourses'),['new-class']);assert.equal(a.read("namedTimetableMatches({course:'new-class',time:'10:00'},'2026-10-19')"),false);assert.equal(a.read('timetableClassTypeFilter'),originalType);assert.match(a.read('namedTimetableStatus()'),/1 lesson groups hidden/);
  a.set("db.courseSettings.find(course=>course.id==='new-class').courseName='Renamed custom class';timetableDisplayExpanded.classes=false;render()");html=a.read('timetableResourcePanel()');assert.match(html,/Renamed custom class/);assert.match(html,/data-tt-display-group="classes"><summary>Class/);assert.deepEqual(a.read('loadNamedTimetableFilters().hiddenCourses'),['new-class']);await a.click({action:'tt-named-clear'});assert.equal(a.read("namedTimetableMatches({course:'new-class',time:'10:00'},'2026-10-19')"),true);assert.equal(a.read('namedTimetableHasFilters()'),false);
 });
@@ -4690,4 +4691,25 @@ test('an open employee roster refreshes assigned lesson times when the schedule 
  a.set("db.schedules[0].time='16:00';sharedSchedulesRevision='roster-v2';paintSharedStaffReadState(true)");
  assert.match(a.nodes['#modal-root'].innerHTML,/16:00–17:00/);assert.doesNotMatch(a.nodes['#modal-root'].innerHTML,/13:00–14:00/);
  a.set("db.schedules[0].exceptions=[{sequence:1,cancelled:true}];sharedSchedulesRevision='roster-v3';paintSharedStaffReadState(true)");assert.doesNotMatch(a.nodes['#modal-root'].innerHTML,/16:00–17:00/);assert.match(a.nodes['#modal-root'].innerHTML,/No assigned lessons/);
+});
+
+test('workspace red dot refreshes trial work away from the workspace and clears after pending work resolves',async()=>{
+ const a=await resourceUiApp({resources:[],revision:1},{accessControl:async()=>({accounts:[],teacherLinks:[],grants:[],revision:'links'})},{preview:true}),dot={hidden:true};
+ a.ctx.document.querySelectorAll=selector=>selector==='.workspace-pending-dot'?[dot]:[];
+ a.set("tab='fees';lang='en';render()");
+ assert.doesNotMatch(a.read('portalHeader()'),/Demo workspace|data-tab="notifications"/);assert.match(a.read('portalNavigationItem([\"teacher-home\",\"staffs\",\"我的工作台\",\"My workspace\"])'),/workspace-pending-dot/);
+ a.client.trialWork=async()=>({requests:[],notifications:[],pendingTotal:1,revision:'new-pending'});
+ await a.set('refreshTrialWork()');assert.equal(dot.hidden,false);assert.equal(a.read('tab'),'fees');
+ a.client.trialWork=async()=>({requests:[],notifications:[],pendingTotal:0,revision:'resolved'});
+ await a.set('refreshTrialWork()');assert.equal(dot.hidden,true);
+ a.set("applySharedUser({id:'new-admin',role:'admin',displayName:'Other admin'})");assert.equal(a.read('workspacePendingTotal()'),0);
+});
+
+test('Display heading toggles all display groups without changing visibility filters or lessons',async()=>{
+ const a=await classTypeUiApp();a.set("lang='en';tab='overview';location.pathname='/account';render()");
+ const filters=a.read('JSON.stringify(timetableNamedFilters)'),lessons=a.read('JSON.stringify(db.schedules)');
+ assert.match(a.read('timetableResourcePanel()'),/data-action="tt-display-toggle-all"/);
+ await a.click({action:'tt-display-toggle-all'});assert.equal(a.read("['rooms','teachers','classes'].every(key=>timetableDisplayExpanded[key]===false)"),true);assert.match(a.read('timetableResourcePanel()'),/Expand all display groups/);
+ await a.click({action:'tt-display-toggle-all'});assert.equal(a.read("['rooms','teachers','classes'].every(key=>timetableDisplayExpanded[key]===true)"),true);assert.match(a.read('timetableResourcePanel()'),/Collapse all display groups/);
+ assert.equal(a.read('JSON.stringify(timetableNamedFilters)'),filters);assert.equal(a.read('JSON.stringify(db.schedules)'),lessons);
 });

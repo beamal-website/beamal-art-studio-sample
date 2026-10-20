@@ -980,6 +980,7 @@ export function createInterfacePreview({context,showModal,cacheModal=()=>{},repa
     return false;
   };
   const change=target=>{
+    if(target.dataset?.uiCommand==='workspace-select'){const [kind,id]=String(target.value||'').split(':');if(kind==='todo')staff=advanceStaffPreview(staff,'todo-category',{id});else if(kind==='tab'&&['class-schedule','classes','clock','leave'].includes(id))staff=advanceStaffPreview(staff,'tab',{tab:id});repaint();return true;}
     if(target.dataset?.uiCommand==='staff-reference-filter'){syncStaff();if(staff.viewer?.role==='admin'&&['active','inactive','all'].includes(target.value)){staff=advanceStaffPreview(staff,'filter',{value:target.value});repaint();}return true;}
     if(captureProductControl(target))return true;
     if(overlay==='shared-lesson'&&target.closest?.('#shared-lesson-workflow-form')){if(syncSharedLesson({capture:false})==='invalid')return true;captureSharedLessonDraft(target.closest('form'));if(target.dataset?.uiCommand==='filter-date'){const position=sharedLessonPosition();sharedLesson=advanceSharedLessonWorkflow(sharedLesson,'filter-date',{date:target.value});redrawOverlay();restoreSharedLessonPosition(position);}return true;}

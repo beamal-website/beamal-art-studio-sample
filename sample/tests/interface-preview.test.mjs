@@ -1130,3 +1130,14 @@ test('staff assigned lessons follow the selected month and exact profile and ope
  p.ui.action({action:'ui-roster',uiCommand:'roster-next-month'});assert.match(p.html,/datetime="2026-11-16"/);assert.equal(months.at(-1),'2026-11');
  p.ui.action({action:'ui-staff',uiCommand:'open-roster-class',uiId:'actual-schedule:4'});assert.deepEqual(opened,[{scheduleId:'actual-schedule',sequence:4,date:'2026-11-16'}]);
 });
+
+test('workspace reference keeps one flat child page through refresh and its mobile picker uses the same navigation',()=>{
+ const source=sharedStaffSnapshot();source.user.role='admin';
+ const p=preview({context:()=>({t,role:'admin',workspacePending:{rescheduling:0,trial:1,payment:0,other:0}}),sharedSnapshot:()=>source});
+ assert.match(p.ui.teacherPortal(),/workspace-reference/);
+ p.ui.action({action:'ui-staff',uiCommand:'todo-category',uiId:'trial'});
+ let html=p.ui.teacherPortal();assert.match(html,/data-todo-category="trial"/);assert.doesNotMatch(html,/data-todo-category="rescheduling"/);
+ p.ui.refreshSharedStaff();assert.match(p.ui.teacherPortal(),/data-todo-category="trial"/);
+ p.ui.change({dataset:{uiCommand:'workspace-select'},value:'todo:other'});assert.match(p.ui.teacherPortal(),/data-todo-category="other"/);
+ p.ui.action({action:'ui-staff',uiCommand:'tab',uiTab:'todo'});assert.match(p.ui.teacherPortal(),/data-todo-category="rescheduling"/);
+});

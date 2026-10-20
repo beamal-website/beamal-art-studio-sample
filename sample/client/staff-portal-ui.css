@@ -89,3 +89,32 @@
 .ui-staff-todo-column .trial-work-card button{padding:6px 0;border:0;border-radius:0;background:transparent;box-shadow:none;font-size:13px}
 .ui-staff-todo-column .trial-work-card button:hover{color:var(--staff-teal);text-decoration:underline;background:transparent}
 @media(max-width:600px){.ui-staff-todo-column{padding-block:16px}.ui-staff-task-table th,.ui-staff-task-table td{padding:10px 8px}}
+
+/* Workspace indicators and shared punctuation. */
+.ui-staff-todo-column[data-todo-category=other]>.ui-staff-todo-column-body>.trial-work-card+.trial-work-card{margin-top:32px;padding-top:24px;border-top:1px solid var(--staff-line)}
+/* Give apostrophes narrow Latin glyphs across the website and all portals. */
+@font-face{font-family:'Beamal UI punctuation';src:local('Arial');unicode-range:U+0027,U+2019;font-display:swap}
+:root{font-family:'Beamal UI punctuation','Noto Sans TC',sans-serif}
+.portal-sidebar .workspace-pending-dot,.ui-staff-todo-nav .workspace-pending-dot{display:inline-block;flex:none;width:8px;height:8px;margin-left:auto;margin-right:8px;border-radius:50%;background:#d9363e}
+.portal-sidebar .workspace-pending-dot[hidden],.ui-staff-todo-nav .workspace-pending-dot[hidden]{display:none}
+
+/* Match the Settings page: a flat category rail and a single content pane. */
+.portal-content:has(>.workspace-reference){overflow:hidden;background:#fafafa}
+.portal-content .workspace-reference{display:grid;grid-template-columns:230px minmax(0,1fr);height:calc(100dvh - 76px);min-height:440px;margin:0;border:0;border-radius:0;background:#fafafa;font-size:14px;line-height:1.6}
+.portal-content .workspace-reference .workspace-category-nav{display:block;min-height:0;overflow:auto;overscroll-behavior:contain;padding:12px 0 32px;margin:0;border:0;border-right:1px solid #deded9;background:#fafafa}
+.portal-content .workspace-reference .workspace-category-nav button{display:flex;align-items:center;justify-content:flex-start;gap:8px;width:100%;min-height:44px;margin:0;padding:10px 20px;border:0;border-radius:0;background:none;color:#253d3b;text-align:left;font-size:14px;font-weight:400;box-shadow:none;white-space:normal}
+.portal-content .workspace-reference .workspace-category-nav button[aria-current=page]{color:var(--teal);font-weight:600;background:#eaf1ec66}
+.portal-content .workspace-reference .workspace-category-nav button:hover{background:#eaf1ec;filter:none}
+.portal-content .workspace-reference .ui-staff-todo-nav>button{min-height:32px;padding:12px 20px 6px;color:#999f9b;font-size:11px;font-weight:500;text-transform:uppercase;background:none}
+.portal-content .workspace-reference #workspace-todo-subnav{display:grid;gap:0;padding:0;margin:0 0 22px;border:0}
+.portal-content .workspace-reference #workspace-todo-subnav[hidden]{display:none}
+.portal-content .workspace-reference #workspace-todo-subnav button{padding:10px 20px;font-size:14px}
+.workspace-reference .workspace-main{display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden}
+.workspace-reference .workspace-page-header{display:flex;align-items:center;flex:none;min-height:64px;padding:16px 20px;background:#fff;border-bottom:1px solid #deded9}
+.workspace-reference .workspace-page-header h1{margin:0;font-size:20px;font-weight:500;line-height:1.4}
+.workspace-reference .workspace-content{flex:1;min-width:0;min-height:0;overflow:auto;overscroll-behavior:contain;padding:24px 32px 32px;scrollbar-gutter:stable}
+.workspace-reference .ui-staff-todo-column{padding:0;border:0;border-radius:0;background:none}
+.workspace-reference .ui-staff-todo-board>.ui-staff-section-heading{display:none}
+.workspace-reference .ui-staff-task-table{font-size:14px}
+.workspace-mobile-picker{display:none}
+@media(max-width:760px){.portal-content .workspace-reference{grid-template-columns:minmax(0,1fr);grid-template-rows:74px minmax(0,1fr);min-height:400px}.portal-content .workspace-reference .workspace-category-nav{display:none}.workspace-reference .workspace-mobile-picker{display:block;margin:0;padding:8px 16px;border-bottom:1px solid #deded9;background:#fff;font-size:12px}.workspace-mobile-picker>span{display:block;margin-bottom:4px;color:#7b817e}.workspace-mobile-picker select{width:100%;min-height:34px;margin:0;padding:6px 10px;border:1px solid #deded9;border-radius:2px;background:#fff;font:inherit}.workspace-reference .workspace-page-header{min-height:60px;padding:12px 16px}.workspace-reference .workspace-page-header h1{font-size:18px}.workspace-reference .workspace-content{padding:20px 16px}}

@@ -1,0 +1,12 @@
+/* Readable workspace navigation, preserving the Settings-style flat layout. */
+.portal-content .workspace-reference .workspace-category-nav button,
+.portal-content .workspace-reference #workspace-todo-subnav button{min-height:50px;padding:12px 20px;font-size:16px;line-height:1.5}
+.portal-content .workspace-reference .ui-staff-todo-nav>button{min-height:42px;padding:14px 20px 8px;font-size:13px}
+/* Nudge labels only; retain the existing icons, alignment and pill dimensions. */
+.portal-sidebar button>span:not(.workspace-pending-dot){position:relative;left:4px}
+.tt-display-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px}
+.tt-display-heading h2{margin:0;font-size:16px;font-weight:500;line-height:1.4}
+.portal-content .tt-display-heading>button{display:inline-flex;align-items:center;justify-content:center;flex:none;width:28px;min-height:28px;margin:0;padding:4px;border:0;border-radius:4px;background:transparent;color:#687770;box-shadow:none}
+.tt-display-heading>button svg{width:18px;height:18px}
+.portal-content .tt-display-heading>button:hover{background:var(--portal-muted,#e9eee5);filter:none}
+.tt-display-heading>button:focus-visible{outline:2px solid var(--teal);outline-offset:2px}

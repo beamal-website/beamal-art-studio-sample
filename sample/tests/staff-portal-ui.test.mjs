@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {staffDirectoryMarkup,staffPortalMarkup,staffDialogMarkup,staffInterfacePreviewState} from '../client/staff-portal-ui.js';
+import {staffDirectoryMarkup,staffPortalMarkup,staffDialogMarkup,staffInterfacePreviewState,advanceStaffPreview} from '../client/staff-portal-ui.js';
 const en={t:(_zh,text)=>text},zh={t:text=>text};
 test('staff directory keeps staff identities and routes permission settings through individual profiles',()=>{const html=staffDirectoryMarkup(staffInterfacePreviewState(),en);assert.match(html,/Maya Lam/);assert.match(html,/Leo Chan/);assert.match(html,/admin@gmail.com/);assert.match(html,/teacher@gmail.com/);assert.match(html,/data-ui-command="open-detail"[^>]*data-ui-id="leo"/);assert.doesNotMatch(html,/Interface preview|Preview profile|data-ui-command="open-permissions"/);assert.doesNotMatch(html,/000000|<img|fetch\(/);});
 test('directory search filters visible cards and escapes names and attributes',()=>{const state=staffInterfacePreviewState();state.query='leo';let html=staffDirectoryMarkup(state,en);assert.match(html,/Leo Chan/);assert.doesNotMatch(html,/Maya Lam/);state.staff=[{id:'"><script>',displayName:'<script>bad</script>',role:'teacher',active:true}];state.query='';html=staffDirectoryMarkup(state,en);assert.match(html,/&lt;script&gt;bad&lt;\/script&gt;/);assert.doesNotMatch(html,/<script>/);});
-test('Teacher home prioritizes actionable To-do and classes without clock actions',()=>{const html=staffPortalMarkup(staffInterfacePreviewState(),en);assert.match(html,/Other matters/);assert.match(html,/Chloe Ho/);assert.doesNotMatch(html,/<h2>Today’s classes<\/h2>/);assert.doesNotMatch(html,/data-ui-command="open-clock"/);assert.match(html,/data-ui-command="open-task"/);assert.doesNotMatch(html,/data-ui-command="open-class"/);assert.doesNotMatch(html,/navigator.geolocation|access-control\/|Confirm verified payment/);});
+test('Teacher home prioritizes actionable To-do and classes without clock actions',()=>{const html=staffPortalMarkup({...staffInterfacePreviewState(),todoCategory:'other'},en);assert.match(html,/Other/);assert.match(html,/Chloe Ho/);assert.doesNotMatch(html,/<h2>Today’s classes<\/h2>/);assert.doesNotMatch(html,/data-ui-command="open-clock"/);assert.match(html,/data-ui-command="open-task"/);assert.doesNotMatch(html,/data-ui-command="open-class"/);assert.doesNotMatch(html,/navigator.geolocation|access-control\/|Confirm verified payment/);});
 test('permissions dialog uses module-specific own/all read/edit scopes without pretending to save backend permissions',()=>{const state=staffInterfacePreviewState();state.dialog={kind:'permissions',id:'leo'};const html=staffDialogMarkup(state,en);assert.match(html,/id="ui-staff-form"/);assert.match(html,/data-ui-form="permissions"/);assert.match(html,/name="timetable_read"/);assert.match(html,/name="timetable_edit"/);assert.match(html,/value="own"/);assert.match(html,/value="all"/);assert.match(html,/>Save<\/button>/);assert.doesNotMatch(html,/Interface preview|Save preview/);assert.match(html,/role="dialog"/);assert.match(html,/aria-modal="true"/);assert.doesNotMatch(html,/type="password"|Grant administrator/);});
 test('leave form has required dates and reason, bilingual rendering and preview-only submission',()=>{const state=staffInterfacePreviewState();state.dialog={kind:'leave',id:'leo'};const html=staffDialogMarkup(state,en);assert.match(html,/name="from"[^>]*required/);assert.match(html,/name="to"[^>]*required/);assert.match(html,/name="reason"[^>]*required/);assert.match(html,/>Submit request<\/button>/);assert.match(staffDialogMarkup(state,zh),/請假申請/);});
 test('payroll retains unknown monthly pay while the Clock page stays blank',()=>{
@@ -211,9 +211,9 @@ test('missing shared employment is not selected as part-time in profile or a for
 test('workspace uses a left navigation shell with only overview tasks classes clock and leave',()=>{
  for(const locale of [en,zh]){
   const html=staffPortalMarkup(staffInterfacePreviewState(),locale);
-  const nav=html.match(/<nav class="ui-staff-portal-tabs"[\s\S]*?<\/nav>/)?.[0]||'';
-  assert.match(html,/class="ui-staff-workspace-shell"/);
-  assert.match(html,/class="ui-staff-workspace-content"/);
+  const nav=html.match(/<nav class="workspace-category-nav ui-staff-portal-tabs"[\s\S]*?<\/nav>/)?.[0]||'';
+  assert.match(html,/workspace-reference/);
+  assert.match(html,/class="workspace-content"/);
   for(const key of ['todo','class-schedule','classes','clock','leave'])assert.match(nav,new RegExp('data-ui-tab="'+key+'"'));
   assert.doesNotMatch(nav,/data-ui-tab="(?:roster|payroll)"/);
   assert.doesNotMatch(html,/students · Capacity/);
@@ -225,20 +225,20 @@ test('workspace uses a left navigation shell with only overview tasks classes cl
 test('four-column task board keeps requests in the right group and excludes another teacher tasks',()=>{
  const state={...staffInterfacePreviewState(),todos:[{id:'student-requests',tasks:[{id:'move',staffId:'leo',requestType:'reschedule',title:'MOVE_ONLY',studentName:'MOVE_ONLY'},{id:'sick',staffId:'leo',requestType:'sick',title:'SICK_ONLY'},{id:'private',staffId:'maya',title:'PRIVATE_OTHER_TEACHER'}]},{id:'payment',tasks:[{id:'pay',staffId:'leo',title:'PAY_ONLY',payerName:'PAY_ONLY'}]}]};
  const html=staffPortalMarkup(state,en);
- const column=key=>html.split('data-todo-category="'+key+'"')[1].split('</section>')[0];
- assert.equal((html.match(/data-todo-category=/g)||[]).length,4);
+ const column=key=>staffPortalMarkup({...state,todoCategory:key},en).split('data-todo-category="'+key+'"')[1].split('</section>')[0];
+ assert.equal((html.match(/data-todo-category=/g)||[]).length,1);
  assert.match(column('rescheduling'),/MOVE_ONLY/);assert.doesNotMatch(column('rescheduling'),/SICK_ONLY|PAY_ONLY/);
  assert.match(column('other'),/SICK_ONLY/);assert.match(column('payment'),/PAY_ONLY/);
  assert.doesNotMatch(html,/PRIVATE_OTHER_TEACHER/);
- for(const label of ['Rescheduling requests','Trial applications','Payment requests','Other matters'])assert.ok(html.includes(label));
+ for(const label of ['Rescheduling requests','Trial applications','Payment requests','Other'])assert.ok(html.includes(label));
 });
 
 test('workspace opens only To-do and keeps today’s classes as a separate inner page',()=>{
  const state=staffInterfacePreviewState(),home=staffPortalMarkup(state,en),schedule=staffPortalMarkup({...state,portalTab:'class-schedule'},en);
  assert.equal(state.portalTab,'todo');
- assert.match(home,/<h1>My workspace<\/h1>/);assert.match(home,/id="ui-staff-todo-board-title"/);
+ assert.match(home,/<h1 id="ui-staff-todo-board-title">Rescheduling requests<\/h1>/);assert.match(home,/id="ui-staff-todo-board-title"/);
  assert.doesNotMatch(home,/data-ui-tab="home"|data-ui-command="open-class"/);
- assert.match(schedule,/<h1>My workspace<\/h1>/);assert.match(schedule,/<h2>Today’s classes<\/h2>/);
+ assert.match(schedule,/<h1 id="workspace-page-title">Today’s classes<\/h1>/);
  assert.match(schedule,/data-ui-command="open-class"/);assert.doesNotMatch(schedule,/id="ui-staff-todo-board-title"/);
  assert.match(staffPortalMarkup({...state,portalTab:'home'},en),/id="ui-staff-todo-board-title"/);
 });
@@ -273,3 +273,14 @@ test('rescheduling lists preserve original and chosen lessons and open read-only
  }
  const all=staffPortalMarkup({...state,portalTab:'classes'},en);assert.match(all,/PAST_ONLY/);assert.match(all,/FUTURE_ONLY/);
  });
+
+test('To-do opens its first child and switches between four independent pages with pending indicators',()=>{
+ let state=staffInterfacePreviewState();state=advanceStaffPreview(state,'todo-category',{id:'trial'});
+ const ctx={...en,workspacePending:{rescheduling:0,trial:2,payment:0,other:1}},html=staffPortalMarkup(state,ctx);
+ assert.equal((html.match(/data-ui-command="todo-category"/g)||[]).length,4);
+ assert.match(html,/data-ui-id="trial" aria-current="page"/);assert.match(html,/data-workspace-category="trial" role="status"/);
+ assert.match(html,/data-workspace-category="rescheduling" hidden/);assert.match(html,/data-workspace-category="all" role="status"/);
+ assert.equal((html.match(/data-todo-category=/g)||[]).length,1);assert.match(html,/data-todo-category="trial"/);assert.doesNotMatch(html,/data-todo-category="rescheduling"/);
+ state=advanceStaffPreview(state,'tab',{tab:'todo'});assert.equal(state.todoCategory,'rescheduling');
+ assert.match(staffPortalMarkup(state,en),/data-todo-category="rescheduling"/);
+});

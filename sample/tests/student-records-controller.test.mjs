@@ -12,3 +12,11 @@ test('late save after navigation cannot repaint or disclose an old record',async
 test('assessment and case filters send the requested status and category to the server',async()=>{const queries=[],s=setup({studentRecords:async query=>{queries.push(query);return {records:[],total:0};},saveStudentRecord(){}});await s.c.loadPage('student-assessments',{filter:'pending'});await s.c.loadPage('student-cases',{panel:'enrollment',query:'Chan',page:2});assert.equal(queries[0].status,'draft');assert.equal(queries[1].type,'enrollment');assert.equal(queries[1].status,'open');assert.equal(queries[1].q,'Chan');assert.equal(queries[1].page,2);});
 test('family signing failure remains visible even after records were loaded',()=>{const html=studentFamilyRecords({ready:true,error:'Read the latest version',students:[],records:[]},{esc,t:(_,en)=>en});assert.match(html,/role="alert"[^>]*>Read the latest version/);assert.match(html,/data-action="sr-retry"/);});
 test('record editor fixes existing student ownership and escapes content; profile payment tab excludes unpaid orders',()=>{const ctx={esc,t:(_,en)=>en};const html=studentRecordEditor({kind:'journal',current:{studentId:'a',studentName:'<Student>'},draft:{content:'<script>',visibility:'internal'}},ctx);assert.match(html,/type="hidden" name="studentId" value="a"/);assert.doesNotMatch(html,/<select name="studentId"|<script>|<Student>/);const payments=studentProfileRelated('payments',{ready:true,orders:[{id:'unpaid-order',paymentStatus:'unpaid'},{id:'paid-order',paymentStatus:'paid',amountCents:30000}]},ctx);assert.doesNotMatch(payments,/unpaid-order/);assert.match(payments,/paid-order/);assert.match(payments,/300\.00/);});
+
+test('portfolio refresh updates changed shared records without repainting unchanged reads',async()=>{
+ let records=[{id:'shared',kind:'journal',content:'Before'}],reads=0;
+ const s=setup({studentFamilyRecords:async()=>{reads++;return {students:[{id:'student-a',displayName:'A'}],records};}});s.role('student');
+ await s.c.loadFamily();const initial=s.paint;await s.c.loadFamily();assert.equal(reads,1);
+ await s.c.loadFamily({force:true});assert.equal(reads,2);assert.equal(s.paint,initial);
+ records=[{id:'shared',kind:'journal',content:'Teacher update'}];await s.c.loadFamily({force:true});assert.equal(s.paint,initial+1);assert.match(s.c.familyMarkup(),/Teacher update/);
+});

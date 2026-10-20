@@ -46,3 +46,14 @@ test('student record boundaries reject forged owners, invalid queries, unsafe wr
  error(await a.admin.request('/api/student-records?kind=journal&userId=other'),400);error(await a.admin.request('/api/student-records?kind=journal&pageSize=101'),400);error(await a.admin.request('/api/student-records',{method:'POST',body:journal(),csrf:false}),403);error(await a.admin.request('/api/student-records',{method:'DELETE',body:{}}),405);
  const created=await save(a.admin,journal('First'));const id=created.body.record.id;const replies=await Promise.all([save(a.admin,{version:1,content:'A'},id),save(a.admin,{version:1,content:'B'},id)]);assert.deepEqual(replies.map(r=>r.status).sort(),[200,409]);
 });
+
+test('portfolio returns only owned profile fields, follows saved updates and never permits student edits',async t=>{
+ const a=await setup(t),db=new DatabaseSync(a.databasePath);
+ const own={displayName:'Fictional student A',fullName:'Student Full Name',localName:'學生甲',phone:'12345678',dateOfBirth:'2017-04-18',school:'Current school',remark:'INTERNAL PROFILE NOTE',detail:'INTERNAL DETAIL'};
+ db.prepare('UPDATE people SET profile=? WHERE id=?').run(JSON.stringify(own),'student-a');
+ db.prepare('UPDATE people SET profile=? WHERE id=?').run(JSON.stringify({fullName:'OTHER FAMILY PRIVATE'}),'student-b');
+ const first=await a.family.request('/api/student/records');assert.equal(first.status,200);assert.equal(first.body.students[0].fullName,own.fullName);assert.equal(first.body.students[0].phone,'12345678');assert.ok(!first.text.includes('INTERNAL'));assert.ok(!first.text.includes('OTHER FAMILY'));
+ db.prepare('UPDATE people SET profile=? WHERE id=?').run(JSON.stringify({...own,school:'Updated school'}),'student-a');
+ assert.equal((await a.family.request('/api/student/records')).body.students[0].school,'Updated school');
+ error(await a.family.request('/api/people/student-a',{method:'PATCH',body:{version:1,school:'Student edit'}}),403);db.close();
+});

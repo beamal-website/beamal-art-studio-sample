@@ -64,7 +64,8 @@ export function createStudentRecordStore({database,transaction,people,enrollment
    else if(!ids.has(record.studentId)||record.visibility!=='student'||record.kind==='assessment'&&record.status!=='graded')continue;
    records.push(record);
   }
-  return {students,records};
+  const fields=['citizenId','promotion','referrer','localName','firstName','lastName','fullName','gender','dateOfBirth','parentName','whatsApp','email','phone','mobile','address','district','contact1Name','contact1Phone','contact1Email','contact2Name','contact2Phone','contact2Email','school','level','occupation','billName','enrollmentDate','quitDate'];
+  return {students:students.map(student=>{const raw=database.prepare('SELECT profile FROM people WHERE id=?').get(student.id),profile=JSON.parse(raw.profile);return {...student,...Object.fromEntries(fields.map(key=>[key,profile[key]??'']))};}),records};
  },'read');
  const sign=(id,input,user)=>transaction(()=>{const ids=owned(user).map(student=>student.id),value=row(id);if(!value||value.kind!=='notice')fail(404,'STUDENT_RECORD_NOT_FOUND','This notice is not available.');const record=project(value);if(!plain(input)||Object.keys(input).some(key=>!['studentId','version'].includes(key))||!ids.includes(input.studentId)||!record.studentIds.includes(input.studentId)||record.status!=='published'||record.date>today())fail(404,'STUDENT_RECORD_NOT_FOUND','This notice is not available.');if(input.version!==record.version)fail(409,'VERSION_CONFLICT','Read the latest notice before signing.');if(record.signDeadline&&record.signDeadline<today())fail(409,'NOTICE_SIGNING_CLOSED','The signing deadline has passed.');database.prepare('INSERT INTO student_notice_signatures(record_id,student_id,version,user_id,signed_at) VALUES (?,?,?,?,?) ON CONFLICT(record_id,student_id,version) DO NOTHING').run(id,input.studentId,record.version,user.id,new Date().toISOString());return {signed:true};});
  const teaching=user=>transaction(()=>{

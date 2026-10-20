@@ -26,7 +26,7 @@ const sharedLesson={id:'session-chloe-1',studentId:sharedChild.id,studentName:sh
 const sharedContext=overrides=>({...en,role:'student',sharedMode:true,sharedReady:true,students:[sharedChild],student:sharedChild,lessons:[sharedLesson],...overrides});
 test('shared student profile uses only explicitly linked people and current lessons without fixture claims',()=>{
  const state={data:getStudentPortalData(),selectedStudentId:'child-2'},html=studentPortalPageMarkup('profile',state,sharedContext());
- assert.match(html,/Chloe Ho/);assert.match(html,new RegExp('data-ui-id="'+sharedChild.id+'"'));assert.match(html,/Creative Art/);assert.match(html,/Beamal Primary/);assert.match(html,/Leo Chan/);assert.match(html,/Studio A/);
+ assert.match(html,/Chloe Ho/);assert.match(html,/Beamal Primary/);assert.doesNotMatch(html,/Current student|Lesson overview|Lesson arrangements|Creative Art|<svg|edit-profile/);
  assert.doesNotMatch(html,/Ethan Ho|child-1|child-2|Drawing foundations|Watercolour discoveries|family@example\.test|PREVIEW20|Example balances|Remaining 5 of 12|Interface preview/);
 });
 test('shared registered profile updates replace stale identity drafts and do not invent unavailable fields',()=>{
@@ -66,10 +66,10 @@ test('shared student request history distinguishes loading, errors and a loaded 
  assert.match(studentPortalPageMarkup('requests',{}, {...context,studentRequestsReady:true,studentRequests:[saved]}),/Creative Art/);
 });
 
-test('shared lesson moves render from the latest projection without changing student identity',()=>{
- const state={data:getStudentPortalData(),selectedStudentId:sharedChild.id},moved={...sharedLesson,date:'2026-10-18',time:'15:30',teachers:[{id:'teacher-maya',displayName:'Maya Lam'}],rooms:[{id:'room-b',displayName:'Studio B'}]};
+test('portfolio keeps student details without duplicating lesson arrangements',()=>{
+ const state={data:getStudentPortalData(),selectedStudentId:sharedChild.id},moved={...sharedLesson,date:'2026-10-18',time:'15:30'};
  const before=studentPortalPageMarkup('profile',state,sharedContext()),after=studentPortalPageMarkup('profile',state,sharedContext({lessons:[moved]}));
- assert.match(before,/2026-10-16/);assert.match(before,/13:00/);assert.match(after,/2026-10-18/);assert.match(after,/15:30/);assert.match(after,/Maya Lam/);assert.match(after,/Studio B/);assert.doesNotMatch(after,/2026-10-16|13:00|Studio A/);assert.match(after,new RegExp('data-ui-id="'+sharedChild.id+'"'));
+ assert.equal(before,after);assert.match(after,/Chloe Ho/);assert.doesNotMatch(after,/Lesson arrangements|Lesson overview|Current student|data-ui-command="edit-profile"/);
 });
 
 
@@ -82,7 +82,7 @@ test('a shared initial read failure shows escaped error and a real reload entry 
 });
 test('a shared refresh error preserves last authorized profile and lessons while offering reload',()=>{
  const html=studentPortalPageMarkup('profile',{data:getStudentPortalData()},sharedContext({sharedError:'Could not refresh. Please retry.'}));
- assert.match(html,/role="alert"/);assert.match(html,/Could not refresh/);assert.match(html,/data-action="orders-refresh"/);assert.match(html,/Chloe Ho/);assert.match(html,/Creative Art/);assert.match(html,/Beamal Primary/);
+ assert.match(html,/role="alert"/);assert.match(html,/Could not refresh/);assert.match(html,/data-action="orders-refresh"/);assert.match(html,/Chloe Ho/);assert.match(html,/Beamal Primary/);
  assert.doesNotMatch(html,/Ethan Ho|Example balances|Drawing foundations|family@example\.test/);
 });
 

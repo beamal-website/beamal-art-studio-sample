@@ -29,10 +29,10 @@ export function createApiClient({ baseUrl = import.meta.env?.VITE_BEAMAL_API_BAS
     authMutation = pending.catch(() => {});
     return pending;
   }
-  async function request(path, { method = 'GET', body, idempotencyKey, authOperation } = {}) {
+  async function request(path, { method = 'GET', body, idempotencyKey, authOperation, timeoutMs = 10000 } = {}) {
     let epoch = authEpoch;
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
       const response = await fetch(`${apiBaseUrl}/api${path}`, {
         method,
@@ -74,7 +74,7 @@ export function createApiClient({ baseUrl = import.meta.env?.VITE_BEAMAL_API_BAS
     health: () => request('/health'),
     session: () => request('/auth/session'),
     invalidateSession,
-    login: (email, password) => mutateAuth(() => request('/auth/login', { method: 'POST', body: { email, password }, authOperation: 'login' })),
+    login: (email, password) => mutateAuth(() => request('/auth/login', { method: 'POST', body: { email, password }, authOperation: 'login', timeoutMs: 35000 })),
     logout: () => mutateAuth(async epoch => { const result = await request('/auth/logout', { method: 'POST', authOperation: 'logout' }); if (epoch === authEpoch) csrfToken = ''; return result; }),
     courses: () => request('/courses'),
     fees: () => request('/fees'),

@@ -126,6 +126,16 @@ async function login(client, wire, name) {
   return client.login(`${name}@example.test`, `FictionalPassword-${name}`);
 }
 
+test('login requests wait beyond the PostgreSQL query timeout while other API requests keep their normal timeout',async t=>{
+ const wire=network(t),client=createApiClient(),previousSetTimeout=globalThis.setTimeout,previousClearTimeout=globalThis.clearTimeout,timeouts=[];
+ globalThis.setTimeout=(_callback,delay)=>{timeouts.push(delay);return timeouts.length;};globalThis.clearTimeout=()=>{};
+ try{
+  wire.reply('/api/auth/session',session('A'));await client.session();
+  wire.reply('/api/auth/login',session('A'));await client.login('A@example.test','FictionalPassword-A');
+ }finally{globalThis.setTimeout=previousSetTimeout;globalThis.clearTimeout=previousClearTimeout;}
+ assert.deepEqual(timeouts,[10000,35000]);
+});
+
 test('fee history reads encode the exact target and use authenticated GET without save payloads',async t=>{
  const wire=network(t),client=createApiClient();await login(client,wire,'B');const id='fee / 費用',path='/api/fees/'+encodeURIComponent(id)+'/history',history={feeId:id,records:[]};
  assert.equal(typeof client.feeHistory,'function');wire.reply(path,history);assert.deepEqual(await client.feeHistory(id),history);

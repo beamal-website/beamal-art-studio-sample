@@ -20,7 +20,7 @@ const shiftDate = (value, days) => {
   return date.toISOString().slice(0, 10);
 };
 
-export function studioCourseDetailsMarkup({ course, serviceCourse = null, slots = [], from = '', to = '', loading = false, error = '' } = {}, { t, esc, trialPreview = false }) {
+export function studioCourseDetailsMarkup({ course, serviceCourse = null, slots = [], from = '', to = '', loading = false, error = '', timesMarkup = null, backToTimetable = false } = {}, { t, esc, trialPreview = false }) {
   const age = course.ageZh ? `<div><dt>${esc(t('適合年齡', 'Age'))}</dt><dd>${esc(t(course.ageZh, course.ageEn))}</dd></div>` : '';
   const category = course.category ? `<div><dt>${esc(t('類別', 'Category'))}</dt><dd>${esc(course.category)}</dd></div>` : '';
   const level = course.level ? `<div><dt>${esc(t('程度', 'Level'))}</dt><dd>${esc(course.level)}</dd></div>` : '';
@@ -44,5 +44,5 @@ export function studioCourseDetailsMarkup({ course, serviceCourse = null, slots 
         }).join('')}</div><p class="studio-trial-note">${esc(t('目前提供試堂申請預覽；尚未正式送出預約。', 'Trial booking is a preview and is not submitted yet.'))}</p>` : `<p class="studio-time-state">${esc(t('這七天暫未有可約試堂時段。', 'No trial times are available in this seven-day period.'))}</p>`}</div>`
         : `<p class="studio-time-state">${esc(t('試堂時間尚未公開，請稍後再查看。', 'Trial times have not been published yet.'))}</p>`;
 
-  return `<article class="studio-course-detail"><a class="studio-back-link" href="/classes" data-go="/classes">← ${esc(t('返回課程', 'Back to classes'))}</a><header><p>${esc(t(course.room.nameZh, course.room.nameEn))}</p><h1>${esc(t(course.nameZh, course.nameEn))}</h1></header><section class="studio-course-info" aria-labelledby="studio-course-info-title"><h2 id="studio-course-info-title">${esc(t('課程資料', 'Course information'))}</h2><dl>${age}${category}${level}${formatInfo}</dl></section><section class="studio-trial-times" aria-labelledby="studio-trial-title"><header><div><h2 id="studio-trial-title">${esc(t('可預約試堂時段', 'Available trial times'))}</h2><p>${esc(t('只顯示已公開的真實時段。', 'Only published times are shown.'))}</p></div>${bookButton()}</header>${timeList}</section></article>`;
+  return `<article class="studio-course-detail">${backToTimetable?`<button type="button" class="ghost studio-back-link" data-action="availability-public-back">← ${esc(t('返回時間表','Back to timetable'))}</button>`:`<a class="studio-back-link" href="/classes" data-go="/classes">← ${esc(t('返回課程', 'Back to classes'))}</a>`}<header><p>${esc(t(course.room.nameZh, course.room.nameEn))}</p><h1>${esc(t(course.nameZh, course.nameEn))}</h1></header><section class="studio-course-info" aria-labelledby="studio-course-info-title"><h2 id="studio-course-info-title">${esc(t('課程資料', 'Course information'))}</h2><dl>${age}${category}${level}${formatInfo}</dl></section>${timesMarkup!==null?timesMarkup:`<section class="studio-trial-times" aria-labelledby="studio-trial-title"><header><div><h2 id="studio-trial-title">${esc(t('可預約試堂時段', 'Available trial times'))}</h2><p>${esc(t('只顯示已公開的真實時段。', 'Only published times are shown.'))}</p></div></header>${timeList}</section>`}</article>`;
 }

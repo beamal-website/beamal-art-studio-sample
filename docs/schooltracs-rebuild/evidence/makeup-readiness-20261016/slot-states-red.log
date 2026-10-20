@@ -1,0 +1,515 @@
+TAP version 13
+# Subtest: attendance shows only its supplied student and exact session with six explicit states and no automatic present
+ok 1 - attendance shows only its supplied student and exact session with six explicit states and no automatic present
+  ---
+  duration_ms: 6.819708
+  type: 'test'
+  ...
+# Subtest: attendance review and Back retain the draft without changing canonical records or falsely saving
+ok 2 - attendance review and Back retain the draft without changing canonical records or falsely saving
+  ---
+  duration_ms: 1.213667
+  type: 'test'
+  ...
+# Subtest: unchanged unmarked attendance and bounded remarks validate locally while preserving raw drafts and checkbox clearing
+ok 3 - unchanged unmarked attendance and bounded remarks validate locally while preserving raw drafts and checkbox clearing
+  ---
+  duration_ms: 0.193625
+  type: 'test'
+  ...
+# Subtest: draft updates cannot overwrite the source student lesson view or capabilities
+ok 4 - draft updates cannot overwrite the source student lesson view or capabilities
+  ---
+  duration_ms: 0.275958
+  type: 'test'
+  ...
+# Subtest: forged final operations never produce completion or mutate business facts even when save capability is forged true
+ok 5 - forged final operations never produce completion or mutate business facts even when save capability is forged true
+  ---
+  duration_ms: 0.539541
+  type: 'test'
+  ...
+# Subtest: missing or malformed canonical session cannot render an unrelated default or accept a draft
+ok 6 - missing or malformed canonical session cannot render an unrelated default or accept a draft
+  ---
+  duration_ms: 0.137917
+  type: 'test'
+  ...
+# Subtest: all private text is escaped in form review and slot context
+ok 7 - all private text is escaped in form review and slot context
+  ---
+  duration_ms: 0.345875
+  type: 'test'
+  ...
+# Subtest: unknown loading and failed availability never claim zero available slots or borrow fixtures
+ok 8 - unknown loading and failed availability never claim zero available slots or borrow fixtures
+  ---
+  duration_ms: 0.292292
+  type: 'test'
+  ...
+# Subtest: only unique explicitly verified eligible slots appear and full or unknown capacities cannot be selected
+ok 9 - only unique explicitly verified eligible slots appear and full or unknown capacities cannot be selected
+  ---
+  duration_ms: 14.569541
+  type: 'test'
+  ...
+# Subtest: arrangement date accordions sort dates and times and a date filter preserves the selected session
+ok 10 - arrangement date accordions sort dates and times and a date filter preserves the selected session
+  ---
+  duration_ms: 0.885958
+  type: 'test'
+  ...
+# Subtest: selected replacement Review and Back preserve the exact target and never reserve or write
+ok 11 - selected replacement Review and Back preserve the exact target and never reserve or write
+  ---
+  duration_ms: 0.367
+  type: 'test'
+  ...
+# Subtest: Pending is only a same-student same-session review draft and is possible when availability is unavailable
+ok 12 - Pending is only a same-student same-session review draft and is possible when availability is unavailable
+  ---
+  duration_ms: 0.067708
+  type: 'test'
+  ...
+# Subtest: a removed or no-longer-eligible selected target cannot survive as a valid Review
+ok 13 - a removed or no-longer-eligible selected target cannot survive as a valid Review
+  ---
+  duration_ms: 0.123833
+  type: 'test'
+  ...
+# Subtest: bilingual native form buttons use one integration contract and final notices appear only in Review
+ok 14 - bilingual native form buttons use one integration contract and final notices appear only in Review
+  ---
+  duration_ms: 0.123292
+  type: 'test'
+  ...
+# Subtest: a same-session loading or source error keeps typed drafts editable but blocks native and forged Review
+ok 15 - a same-session loading or source error keeps typed drafts editable but blocks native and forged Review
+  ---
+  duration_ms: 0.148291
+  type: 'test'
+  ...
+# Subtest: source failure during an arrangement Review permits Back and recovery without losing the exact target
+ok 16 - source failure during an arrangement Review permits Back and recovery without losing the exact target
+  ---
+  duration_ms: 0.16425
+  type: 'test'
+  ...
+# Subtest: native form controls never resolve the host delegated action selector to the ancestor form
+ok 17 - native form controls never resolve the host delegated action selector to the ancestor form
+  ---
+  duration_ms: 0.682917
+  type: 'test'
+  ...
+# Subtest: known canonical sticker and display preference initialize the editor while missing or malformed settings remain unknown
+ok 18 - known canonical sticker and display preference initialize the editor while missing or malformed settings remain unknown
+  ---
+  duration_ms: 0.23775
+  type: 'test'
+  ...
+# Subtest: student lesson details show the exact canonical student and lesson read-only with only a return action
+ok 19 - student lesson details show the exact canonical student and lesson read-only with only a return action
+  ---
+  duration_ms: 0.27225
+  type: 'test'
+  ...
+# Subtest: student age is shown only from a complete explicit age snapshot including zero and its reference date
+ok 20 - student age is shown only from a complete explicit age snapshot including zero and its reference date
+  ---
+  duration_ms: 0.20725
+  type: 'test'
+  ...
+# Subtest: remaining balance preserves minutes or visits and known zero without deriving lessons or inventing an unknown zero
+ok 21 - remaining balance preserves minutes or visits and known zero without deriving lessons or inventing an unknown zero
+  ---
+  duration_ms: 0.262209
+  type: 'test'
+  ...
+# Subtest: student attendance distinguishes every source status, unmarked and unknown while sticker never borrows draft values
+ok 22 - student attendance distinguishes every source status, unmarked and unknown while sticker never borrows draft values
+  ---
+  duration_ms: 0.11625
+  type: 'test'
+  ...
+# Subtest: student remarks distinguish known blank from unknown and long private text is escaped and collapsible
+ok 23 - student remarks distinguish known blank from unknown and long private text is escaped and collapsible
+  ---
+  duration_ms: 0.117666
+  type: 'test'
+  ...
+# Subtest: read-only student detail retains source facts during loading or failure without editable drafts or raw errors
+ok 24 - read-only student detail retains source facts during loading or failure without editable drafts or raw errors
+  ---
+  duration_ms: 0.082125
+  type: 'test'
+  ...
+# Subtest: student detail rejects invalid canonical context and supports a clean Chinese read-only view
+ok 25 - student detail rejects invalid canonical context and supports a clean Chinese read-only view
+  ---
+  duration_ms: 0.100542
+  type: 'test'
+  ...
+# Subtest: long remark disclosures have stable semantic identities across source updates rather than positional identities
+ok 26 - long remark disclosures have stable semantic identities across source updates rather than positional identities
+  ---
+  duration_ms: 0.5395
+  type: 'test'
+  ...
+# Subtest: an explicit attendance save capability enables only a valid ready Review and keeps final writes in the host
+ok 27 - an explicit attendance save capability enables only a valid ready Review and keeps final writes in the host
+  ---
+  duration_ms: 0.218834
+  type: 'test'
+  ...
+# Subtest: attendance save rejects missing readiness malformed capability invalid draft stale source and busy state
+ok 28 - attendance save rejects missing readiness malformed capability invalid draft stale source and busy state
+  ---
+  duration_ms: 1.195208
+  type: 'test'
+  ...
+# Subtest: busy attendance shows a busy form and locks Close Back Review and Save without changing the draft
+ok 29 - busy attendance shows a busy form and locks Close Back Review and Save without changing the draft
+  ---
+  duration_ms: 0.266708
+  type: 'test'
+  ...
+# Subtest: attendance save errors are escaped focusable visible feedback outside the bounded reading body
+ok 30 - attendance save errors are escaped focusable visible feedback outside the bounded reading body
+  ---
+  duration_ms: 0.155625
+  type: 'test'
+  ...
+# Subtest: stale attendance explains changed information and blocks Review Save while preserving Back and Close
+ok 31 - stale attendance explains changed information and blocks Review Save while preserving Back and Close
+  ---
+  duration_ms: 0.451083
+  type: 'test'
+  ...
+# Subtest: an unmarked student can review changed annotations without inventing an attendance status
+ok 32 - an unmarked student can review changed annotations without inventing an attendance status
+  ---
+  duration_ms: 0.551458
+  type: 'test'
+  ...
+# Subtest: annotation-only review requires known unmarked attendance and a real change to an annotation
+ok 33 - annotation-only review requires known unmarked attendance and a real change to an annotation
+  ---
+  duration_ms: 0.084458
+  type: 'test'
+  ...
+# Subtest: annotation-only review still validates raw notes sticker and visibility without mutating the canonical source
+ok 34 - annotation-only review still validates raw notes sticker and visibility without mutating the canonical source
+  ---
+  duration_ms: 0.118333
+  type: 'test'
+  ...
+# Subtest: stale attendance with revoked save capability explains changed details instead of claiming saving is not available yet
+ok 35 - stale attendance with revoked save capability explains changed details instead of claiming saving is not available yet
+  ---
+  duration_ms: 0.482833
+  type: 'test'
+  ...
+# Subtest: Pending Confirmation has its own explicit Save command for exactly one student session even when replacement slots are unknown
+ok 36 - Pending Confirmation has its own explicit Save command for exactly one student session even when replacement slots are unknown
+  ---
+  duration_ms: 0.143459
+  type: 'test'
+  ...
+# Subtest: pending Save needs an explicit capability and ready current source while selecting a replacement never enables Confirm
+ok 37 - pending Save needs an explicit capability and ready current source while selecting a replacement never enables Confirm
+  ---
+  duration_ms: 0.905958
+  type: 'test'
+  ...
+# Subtest: only a host acknowledgement for the exact student session renders saved Pending Confirmation
+ok 38 - only a host acknowledgement for the exact student session renders saved Pending Confirmation
+  ---
+  duration_ms: 0.399875
+  type: 'test'
+  ...
+# Subtest: saved pending can continue viewing slots without duplicate saving or enabling target confirmation
+ok 39 - saved pending can continue viewing slots without duplicate saving or enabling target confirmation
+  ---
+  duration_ms: 0.38875
+  type: 'test'
+  ...
+# Subtest: busy pending locks every draft control and navigation without changing source or draft
+ok 40 - busy pending locks every draft control and navigation without changing source or draft
+  ---
+  duration_ms: 0.17375
+  type: 'test'
+  ...
+# Subtest: uncertain pending preserves the original retry command and locks changes while stale source requires reopening
+ok 41 - uncertain pending preserves the original retry command and locks changes while stale source requires reopening
+  ---
+  duration_ms: 0.815459
+  type: 'test'
+  ...
+# Subtest: pending failures use the focusable escaped error marker and preserve the exact context and raw draft
+ok 42 - pending failures use the focusable escaped error marker and preserve the exact context and raw draft
+  ---
+  duration_ms: 0.157625
+  type: 'test'
+  ...
+# Subtest: a newly capable Pending flow cannot borrow legacy implied readiness when no source status was supplied
+ok 43 - a newly capable Pending flow cannot borrow legacy implied readiness when no source status was supplied
+  ---
+  duration_ms: 0.181833
+  type: 'test'
+  ...
+# Subtest: replacement loading failure unknown and unconfirmed policy have distinct accurate states without claiming a known empty list
+not ok 44 - replacement loading failure unknown and unconfirmed policy have distinct accurate states without claiming a known empty list
+  ---
+  duration_ms: 0.567042
+  type: 'test'
+  location: '/Users/yausiuhei/Documents/ChatGPT/Beamal Art studio solution/sample/tests/shared-lesson-workflow-ui.test.mjs:265:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /Loading replacement slots/. Input:
+    
+    '<div class="modal slw-modal" role="dialog" aria-modal="true" aria-labelledby="slw-title"><div class="dialog slw-dialog"><header class="slw-header"><h2 id="slw-title">Make Up This Class</h2><button type="button" class="slw-button slw-icon" data-action="ui-shared-lesson" data-ui-command="close" aria-label="Close">×</button></header><p id="slw-save-error" class="slw-source-state slw-error" role="alert" tabindex="-1" hidden></p><form id="shared-lesson-workflow-form" novalidate data-ui-command="review"><div id="slw-body" class="slw-body" tabindex="0"><section class="slw-context" aria-label="Current student and lesson" data-student-id="student-second" data-session-id="session-second"><strong>Isla &lt;Second&gt;</strong><p>Print &amp; colour</p><p><time datetime="2026-11-02">2026-11-02</time> · 15:15 · 45 min</p><small>Teacher: Teacher B · Room: Studio 2</small></section><label class="slw-field slw-date-filter"><span>Date (optional)</span><input type="date" name="date" value="" data-ui-command="filter-date"></label><div class="slw-dates"><p class="slw-status" role="status">Loading slots…</p></div><section class="slw-pending"><div><strong>Arrange a time later</strong><p>Review a pending arrangement for this student and lesson.</p></div><button type="button" class="slw-button slw-secondary" data-action="ui-shared-lesson" data-ui-command="pending">Pending Confirmation</button></section></div><footer class="slw-footer"><button type="button" class="slw-button slw-secondary" data-action="ui-shared-lesson" data-ui-command="close">Cancel</button><button type="submit" class="slw-button slw-primary" data-action="ui-shared-lesson" data-ui-command="review">Review</button></footer></form></div></div>'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: '<div class="modal slw-modal" role="dialog" aria-modal="true" aria-labelledby="slw-title"><div class="dialog slw-dialog"><header class="slw-header"><h2 id="slw-title">Make Up This Class</h2><button type="button" class="slw-button slw-icon" data-action="ui-shared-lesson" data-ui-command="close" aria-label="Close">×</button></header><p id="slw-save-error" class="slw-source-state slw-error" role="alert" tabindex="-1" hidden></p><form id="shared-lesson-workflow-form" novalidate data-ui-command="review"><div id="slw-body" class="slw-body" tabindex="0"><section class="slw-context" aria-label="Current student and lesson" data-student-id="student-second" data-session-id="session-second"><strong>Isla &lt;Second&gt;</strong><p>Print &amp; colour</p><p><time datetime="2026-11-02">2026-11-02</time> · 15:15 · 45 min</p><small>Teacher: Teacher B · Room: Studio 2</small></section><label class="slw-field slw-date-filter"><span>Date (optional)</span><input type="date" name="date" value="" data-ui-command="filter-date"></label><div class="slw-dates"><p class="slw-status" role="status">Loading slots…</p></div><section class="slw-pending"><div><strong>Arrange a time later</strong><p>Review a pending arrangement for this student and lesson.</p></div><button type="button" class="slw-button slw-secondary" data-action="ui-shared-lesson" data-ui-command="pending">Pending Confirmation</button></section></div><footer class="slw-footer"><button type="button" class="slw-button slw-secondary" data-action="ui-shared-lesson" data-ui-command="close">Cancel</button><button type="submit" class="slw-button slw-primary" data-action="ui-shared-lesson" data-ui-command="review">Review</button></footer></form></div></div>'
+  operator: 'match'
+  stack: |-
+    TestContext.<anonymous> (file:///Users/yausiuhei/Documents/ChatGPT/Beamal%20Art%20studio%20solution/sample/tests/shared-lesson-workflow-ui.test.mjs:267:155)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: malformed or ambiguous ready replacement facts fail closed as a whole and never become a known empty source
+not ok 45 - malformed or ambiguous ready replacement facts fail closed as a whole and never become a known empty source
+  ---
+  duration_ms: 0.148792
+  type: 'test'
+  location: '/Users/yausiuhei/Documents/ChatGPT/Beamal Art studio solution/sample/tests/shared-lesson-workflow-ui.test.mjs:269:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /Could not load replacement slots|not available/. Input:
+    
+    '<div class="modal slw-modal" role="dialog" aria-modal="true" aria-labelledby="slw-title"><div class="dialog slw-dialog"><header class="slw-header"><h2 id="slw-title">Make Up This Class</h2><button type="button" class="slw-button slw-icon" data-action="ui-shared-lesson" data-ui-command="close" aria-label="Close">×</button></header><p id="slw-save-error" class="slw-source-state slw-error" role="alert" tabindex="-1" hidden></p><form id="shared-lesson-workflow-form" novalidate data-ui-command="review"><div id="slw-body" class="slw-body" tabindex="0"><section class="slw-context" aria-label="Current student and lesson" data-student-id="student-second" data-session-id="session-second"><strong>Isla &lt;Second&gt;</strong><p>Print &amp; colour</p><p><time datetime="2026-11-02">2026-11-02</time> · 15:15 · 45 min</p><small>Teacher: Teacher B · Room: Studio 2</small></section><label class="slw-field slw-date-filter"><span>Date (optional)</span><input type="date" name="date" value="" data-ui-command="filter-date"></label><div class="slw-dates"><p class="slw-status">No eligible slots are available.</p></div><section class="slw-pending"><div><strong>Arrange a time later</strong><p>Review a pending arrangement for this student and lesson.</p></div><button type="button" class="slw-button slw-secondary" data-action="ui-shared-lesson" data-ui-command="pending">Pending Confirmation</button></section></div><footer class="slw-footer"><button type="button" class="slw-button slw-secondary" data-action="ui-shared-lesson" data-ui-command="close">Cancel</button><button type="submit" class="slw-button slw-primary" data-action="ui-shared-lesson" data-ui-command="review">Review</button></footer></form></div></div>'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: '<div class="modal slw-modal" role="dialog" aria-modal="true" aria-labelledby="slw-title"><div class="dialog slw-dialog"><header class="slw-header"><h2 id="slw-title">Make Up This Class</h2><button type="button" class="slw-button slw-icon" data-action="ui-shared-lesson" data-ui-command="close" aria-label="Close">×</button></header><p id="slw-save-error" class="slw-source-state slw-error" role="alert" tabindex="-1" hidden></p><form id="shared-lesson-workflow-form" novalidate data-ui-command="review"><div id="slw-body" class="slw-body" tabindex="0"><section class="slw-context" aria-label="Current student and lesson" data-student-id="student-second" data-session-id="session-second"><strong>Isla &lt;Second&gt;</strong><p>Print &amp; colour</p><p><time datetime="2026-11-02">2026-11-02</time> · 15:15 · 45 min</p><small>Teacher: Teacher B · Room: Studio 2</small></section><label class="slw-field slw-date-filter"><span>Date (optional)</span><input type="date" name="date" value="" data-ui-command="filter-date"></label><div class="slw-dates"><p class="slw-status">No eligible slots are available.</p></div><section class="slw-pending"><div><strong>Arrange a time later</strong><p>Review a pending arrangement for this student and lesson.</p></div><button type="button" class="slw-button slw-secondary" data-action="ui-shared-lesson" data-ui-command="pending">Pending Confirmation</button></section></div><footer class="slw-footer"><button type="button" class="slw-button slw-secondary" data-action="ui-shared-lesson" data-ui-command="close">Cancel</button><button type="submit" class="slw-button slw-primary" data-action="ui-shared-lesson" data-ui-command="review">Review</button></footer></form></div></div>'
+  operator: 'match'
+  stack: |-
+    TestContext.<anonymous> (file:///Users/yausiuhei/Documents/ChatGPT/Beamal%20Art%20studio%20solution/sample/tests/shared-lesson-workflow-ui.test.mjs:271:192)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: query and reload only appear for a real host loading capability and remain inert pure commands
+not ok 46 - query and reload only appear for a real host loading capability and remain inert pure commands
+  ---
+  duration_ms: 3.986792
+  type: 'test'
+  location: '/Users/yausiuhei/Documents/ChatGPT/Beamal Art studio solution/sample/tests/shared-lesson-workflow-ui.test.mjs:274:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The expression evaluated to a falsy value:
+    
+      assert.ok(commandNode(html,'query-slots'))
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (file:///Users/yausiuhei/Documents/ChatGPT/Beamal%20Art%20studio%20solution/sample/tests/shared-lesson-workflow-ui.test.mjs:275:118)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: selected replacement Review labels original lesson and new time without duplicating or changing their facts
+not ok 47 - selected replacement Review labels original lesson and new time without duplicating or changing their facts
+  ---
+  duration_ms: 0.197625
+  type: 'test'
+  location: '/Users/yausiuhei/Documents/ChatGPT/Beamal Art studio solution/sample/tests/shared-lesson-workflow-ui.test.mjs:281:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /Original lesson/. Input:
+    
+    '<div class="modal slw-modal" role="dialog" aria-modal="true" aria-labelledby="slw-title"><div class="dialog slw-dialog"><header class="slw-header"><h2 id="slw-title">Make Up This Class</h2><button type="button" class="slw-button slw-icon" data-action="ui-shared-lesson" data-ui-command="close" aria-label="Close">×</button></header><p id="slw-save-error" class="slw-source-state slw-error" role="alert" tabindex="-1" hidden></p><div class="slw-content"><div id="slw-body" class="slw-body" tabindex="0"><section class="slw-context" aria-label="Current student and lesson" data-student-id="student-second" data-session-id="session-second"><strong>Isla &lt;Second&gt;</strong><p>Print &amp; colour</p><p><time datetime="2026-11-02">2026-11-02</time> · 15:15 · 45 min</p><small>Teacher: Teacher B · Room: Studio 2</small></section><article class="slw-slot"><div><strong>2026-11-10 · 13:20 · 45 min</strong><p>Authorized target &lt;name&gt;</p><small>Teacher: Target teacher · Room: Studio 1</small><p class="slw-places">Available places: 2</p></div></article><p id="slw-save-note" class="slw-save-note">Changes have not been saved. Saving is not available yet.</p></div><footer class="slw-footer"><button type="button" class="slw-button slw-secondary" data-action="ui-shared-lesson" data-ui-command="back">Back to edit</button><button type="button" class="slw-button slw-primary" data-action="ui-shared-lesson" data-ui-command="final-confirm" disabled aria-describedby="slw-save-note">Confirm arrangement</button></footer></div></div></div>'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: '<div class="modal slw-modal" role="dialog" aria-modal="true" aria-labelledby="slw-title"><div class="dialog slw-dialog"><header class="slw-header"><h2 id="slw-title">Make Up This Class</h2><button type="button" class="slw-button slw-icon" data-action="ui-shared-lesson" data-ui-command="close" aria-label="Close">×</button></header><p id="slw-save-error" class="slw-source-state slw-error" role="alert" tabindex="-1" hidden></p><div class="slw-content"><div id="slw-body" class="slw-body" tabindex="0"><section class="slw-context" aria-label="Current student and lesson" data-student-id="student-second" data-session-id="session-second"><strong>Isla &lt;Second&gt;</strong><p>Print &amp; colour</p><p><time datetime="2026-11-02">2026-11-02</time> · 15:15 · 45 min</p><small>Teacher: Teacher B · Room: Studio 2</small></section><article class="slw-slot"><div><strong>2026-11-10 · 13:20 · 45 min</strong><p>Authorized target &lt;name&gt;</p><small>Teacher: Target teacher · Room: Studio 1</small><p class="slw-places">Available places: 2</p></div></article><p id="slw-save-note" class="slw-save-note">Changes have not been saved. Saving is not available yet.</p></div><footer class="slw-footer"><button type="button" class="slw-button slw-secondary" data-action="ui-shared-lesson" data-ui-command="back">Back to edit</button><button type="button" class="slw-button slw-primary" data-action="ui-shared-lesson" data-ui-command="final-confirm" disabled aria-describedby="slw-save-note">Confirm arrangement</button></footer></div></div></div>'
+  operator: 'match'
+  stack: |-
+    TestContext.<anonymous> (file:///Users/yausiuhei/Documents/ChatGPT/Beamal%20Art%20studio%20solution/sample/tests/shared-lesson-workflow-ui.test.mjs:283:9)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: stale arrangement cannot change date selection or draft while Back and Close remain usable
+not ok 48 - stale arrangement cannot change date selection or draft while Back and Close remain usable
+  ---
+  duration_ms: 1.116667
+  type: 'test'
+  location: '/Users/yausiuhei/Documents/ChatGPT/Beamal Art studio solution/sample/tests/shared-lesson-workflow-ui.test.mjs:285:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected "actual" to be reference-equal to "expected":
+    + actual - expected
+    ... Skipped lines
+    
+      {
+        availability: {
+          ready: true,
+          slots: [
+            {
+    ...
+        },
+    +   filterDate: '2026-11-10',
+    -   filterDate: '2026-11-09',
+        lesson: {
+          courseId: 'course-second',
+          courseName: 'Print & colour',
+          date: '2026-11-02',
+          duration: 45,
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    view: 'arrange'
+    step: 'edit'
+    student:
+      id: 'student-second'
+      displayName: 'Isla <Second>'
+      attendance: 'unmarked'
+      remark: 'Existing session note'
+    lesson:
+      id: 'session-second'
+      scheduleId: 'series-second'
+      sequence: 3
+      courseId: 'course-second'
+      courseName: 'Print & colour'
+      date: '2026-11-02'
+      time: '15:15'
+      duration: 45
+      teacher: 'Teacher B'
+      room: 'Studio 2'
+    draft:
+      arrangement: 'selected'
+      selectedSlotId: 'slot-second'
+    availability:
+      ready: true
+      slots:
+        0:
+          id: 'slot-second'
+          eligible: true
+          date: '2026-11-09'
+          time: '15:30'
+          duration: 45
+          courseName: 'Print & colour'
+          teacher: 'Teacher C'
+          room: 'Studio 1'
+          available: 2
+    capabilities:
+      save: false
+    stale: true
+    filterDate: '2026-11-09'
+    dateFilter: '2026-11-09'
+  actual:
+    view: 'arrange'
+    step: 'edit'
+    student:
+      id: 'student-second'
+      displayName: 'Isla <Second>'
+      attendance: 'unmarked'
+      remark: 'Existing session note'
+    lesson:
+      id: 'session-second'
+      scheduleId: 'series-second'
+      sequence: 3
+      courseId: 'course-second'
+      courseName: 'Print & colour'
+      date: '2026-11-02'
+      time: '15:15'
+      duration: 45
+      teacher: 'Teacher B'
+      room: 'Studio 2'
+    draft:
+      arrangement: 'selected'
+      selectedSlotId: 'slot-second'
+    availability:
+      ready: true
+      slots:
+        0:
+          id: 'slot-second'
+          eligible: true
+          date: '2026-11-09'
+          time: '15:30'
+          duration: 45
+          courseName: 'Print & colour'
+          teacher: 'Teacher C'
+          room: 'Studio 1'
+          available: 2
+    capabilities:
+      save: false
+    stale: true
+    filterDate: '2026-11-10'
+    dateFilter: '2026-11-09'
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///Users/yausiuhei/Documents/ChatGPT/Beamal%20Art%20studio%20solution/sample/tests/shared-lesson-workflow-ui.test.mjs:287:87)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: replacement read failure or unconfirmed policy does not remove the independent real Pending save flow
+ok 49 - replacement read failure or unconfirmed policy does not remove the independent real Pending save flow
+  ---
+  duration_ms: 0.19975
+  type: 'test'
+  ...
+# Subtest: invalid raw date disables a real query without erasing selection and no capability can fabricate final replacement confirmation
+not ok 50 - invalid raw date disables a real query without erasing selection and no capability can fabricate final replacement confirmation
+  ---
+  duration_ms: 0.175375
+  type: 'test'
+  location: '/Users/yausiuhei/Documents/ChatGPT/Beamal Art studio solution/sample/tests/shared-lesson-workflow-ui.test.mjs:293:1'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of undefined (reading 'attributes')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    TestContext.<anonymous> (file:///Users/yausiuhei/Documents/ChatGPT/Beamal%20Art%20studio%20solution/sample/tests/shared-lesson-workflow-ui.test.mjs:294:229)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+1..50
+# tests 50
+# suites 0
+# pass 44
+# fail 6
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 113.88125

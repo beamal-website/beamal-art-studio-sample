@@ -87,6 +87,9 @@ export function createApiClient({ baseUrl = import.meta.env?.VITE_BEAMAL_API_BAS
       if (revision) query.set('since', revision);
       return request(`/available-slots?${query}`);
     },
+    workspaceStatuses:(category,keys=[])=>request('/workspace-status/'+encodeURIComponent(category)+'?keys='+encodeURIComponent(JSON.stringify(keys))),
+    saveWorkspaceStatusTags:(category,tags,version,key)=>request('/workspace-status/'+encodeURIComponent(category),{method:'PATCH',body:{tags,version},idempotencyKey:key}),
+    assignWorkspaceStatus:(category,item,key)=>request('/workspace-status/'+encodeURIComponent(category)+'/item',{method:'PATCH',body:item,idempotencyKey:key}),
     availableSlot: id => request(`/available-slots/${encodeURIComponent(id)}`),
     lessonAvailability:(id,sequence)=>request(`/schedules/${encodeURIComponent(id)}/occurrences/${sequence}/availability`),
     saveLessonAvailability:(id,sequence,policy,current,key)=>request(`/schedules/${encodeURIComponent(id)}/occurrences/${sequence}/availability`,{method:'PATCH',body:{...policy,version:current.slot.version,sourceVersion:current.sourceVersion},idempotencyKey:key}),
@@ -108,6 +111,7 @@ export function createApiClient({ baseUrl = import.meta.env?.VITE_BEAMAL_API_BAS
     publicNews: () => request('/public/news'),
     websiteNews: () => request('/news'),
     saveWebsiteNews: (post,current,key) => request(current?'/news/'+encodeURIComponent(current.id):'/news',{method:current?'PATCH':'POST',body:{...post,...(current?{version:current.version}:{})},idempotencyKey:key}),
+    deleteWebsiteNews: (post,key) => request('/news/'+encodeURIComponent(post.id),{method:'DELETE',body:{version:post.version},idempotencyKey:key}),
     importWebsiteNews: (posts,key) => request('/news/import',{method:'POST',body:{posts},idempotencyKey:key}),
     publicCatalog: (revision = '') => request(`/public/catalog${revision ? '?since=' + encodeURIComponent(revision) : ''}`),
     publicTrialTimes: (courseId, revision = '') => request(`/public/courses/${encodeURIComponent(courseId)}/trial-times${revision ? '?since=' + encodeURIComponent(revision) : ''}`),
@@ -130,6 +134,9 @@ export function createApiClient({ baseUrl = import.meta.env?.VITE_BEAMAL_API_BAS
     },
     trialApplication: id => request('/trial-applications/' + encodeURIComponent(id)),
     trialWork: (revision = '') => request('/trial-applications/work' + (revision ? '?since=' + encodeURIComponent(revision) : '')),
+    acceptTrialApplication: (id, version, operationKey) => request('/trial-applications/' + encodeURIComponent(id) + '/accept', { method:'POST',body:{version},idempotencyKey:operationKey }),
+    notifications: (revision='')=>request('/notifications'+(revision?'?since='+encodeURIComponent(revision):'')),
+    markNotificationRead: id=>request('/notifications/'+encodeURIComponent(id)+'/read',{method:'POST',body:{}}),
     rejectTrialApplication: (id, version, operationKey) => request('/trial-applications/' + encodeURIComponent(id) + '/reject', { method:'POST',body:{version},idempotencyKey:operationKey }),
     publicCourseDetails(id, from, revision = '', days) {
       const query = new URLSearchParams();
@@ -179,6 +186,7 @@ export function createApiClient({ baseUrl = import.meta.env?.VITE_BEAMAL_API_BAS
     timetableFilterFacts(range, revision='') {const parameters=new URLSearchParams();for(const key of ['from','to'])if(range?.[key])parameters.set(key,range[key]);if(revision)parameters.set('since',revision);return request(`/timetable/filter-facts?${parameters}`);},
     staffPersonalProfiles: (revision='') => request(`/staff/personal-profiles${revision?'?since='+encodeURIComponent(revision):''}`),
     teachingStudentRecords: () => request('/teacher/student-records'),
+    courseStudents: courseId => request(`/courses/${encodeURIComponent(courseId)}/students`),
     lessonStudents: (scheduleId, sequence) => request(`/schedules/${encodeURIComponent(scheduleId)}/occurrences/${encodeURIComponent(sequence)}/students`),
     pendingArrangement: id => request('/student-sessions/'+encodeURIComponent(id)+'/arrangement'),
     parentMessageContext: id => request('/student-sessions/'+encodeURIComponent(id)+'/parent-message-context'),

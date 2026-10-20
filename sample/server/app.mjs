@@ -274,6 +274,21 @@ export async function createApplication({ databasePath = ':memory:', databaseUrl
         const session=requireSession(request),query=enrollmentQuery(['page','pageSize','since']);
         json(response,200,store.lessonParentMessages.inbox(query,session.user));return;
       }
+      const notificationReadMatch=/^\/api\/notifications\/([^/]+)\/read$/.exec(pathname);
+      if(pathname==='/api/notifications'&&request.method==='GET'){
+        const session=requireSession(request),query=enrollmentQuery(['since']);json(response,200,store.portalNotifications.list(session.user,query));return;
+      }
+      if(notificationReadMatch&&request.method==='POST'){
+        const session=requireMutation(request);enrollmentQuery([]);const input=await body(request);if(!input||typeof input!=='object'||Array.isArray(input)||Object.keys(input).length)throw new ApplicationError(400,'INVALID_NOTIFICATION','Provide an empty read acknowledgement.');
+        json(response,200,store.portalNotifications.markRead(decodeId(notificationReadMatch[1]),session.user));return;
+      }
+      const trialAcceptMatch=/^\/api\/trial-applications\/([^/]+)\/accept$/.exec(pathname);
+      if(trialAcceptMatch&&request.method==='POST'){
+        const session=requireMutation(request);enrollmentQuery([]);const id=decodeId(trialAcceptMatch[1]),input=await body(request),key=idempotencyKey(request);
+        store.trialApplications.authorizeAccept(id,session.user);
+        const result=store.mutateOnce({userId:session.user.id,route:'POST /api/trial-applications/'+encodeURIComponent(id)+'/accept',key,payloadHash:payloadHash(input),status:200},()=>({application:store.trialApplications.accept(id,input,session.user)}));
+        json(response,result.status,result.body);return;
+      }
       const trialRejectMatch = /^\/api\/trial-applications\/([^/]+)\/reject$/.exec(pathname);
       if (pathname === '/api/public/trial-form-policy' && request.method === 'GET') {
         enrollmentQuery([]);json(response,200,store.trialApplications.policy());return;
@@ -339,6 +354,10 @@ export async function createApplication({ databasePath = ':memory:', databaseUrl
         if(requireSession(request).user.role!=='admin')throw new ApplicationError(403,'ROLE_FORBIDDEN','Only an administrator may assign a student to another lesson.');
         const result=store.mutateOnce({userId:session.user.id,route,key,payloadHash:payloadHash(input),status:200},()=>({request:store.studentLessonRequests.assign(id,input,session.user)}));
         json(response,result.status,result.body);return;
+      }
+      const courseStudentsMatch=/^\/api\/courses\/([^/]+)\/students$/.exec(pathname);
+      if(courseStudentsMatch&&request.method==='GET'){
+        const session=requireSession(request);enrollmentQuery([]);json(response,200,store.enrollmentOrders.courseStudents(decodeId(courseStudentsMatch[1]),session.user));return;
       }
       if (pathname === '/api/timetable/filter-facts' && request.method === 'GET') {
         const session=requireSession(request);
@@ -517,14 +536,20 @@ export async function createApplication({ databasePath = ':memory:', databaseUrl
         json(response,201,{application:{id:saved.id,status:saved.status,createdAt:saved.createdAt}});return;
       }
       const websiteNewsMatch=/^\/api\/news\/([^/]+)$/.exec(pathname);
+      const workspaceStatusMatch=/^\/api\/workspace-status\/(rescheduling|trial|payment|other)(\/item)?$/.exec(pathname);
+      if(workspaceStatusMatch&&['GET','PATCH'].includes(request.method)){
+        const session=request.method==='GET'?requireSession(request):requireMutation(request),category=workspaceStatusMatch[1];
+        if(request.method==='GET'&&!workspaceStatusMatch[2]){let keys=[];try{keys=JSON.parse(requestUrl.searchParams.get('keys')||'[]');}catch{throw new ApplicationError(400,'INVALID_STATUS_ITEMS','Provide workspace item keys.');}json(response,200,store.workspaceStatus.read(category,keys,session.user));return;}
+        if(request.method==='PATCH'){const input=await body(request),key=idempotencyKey(request),result=store.mutateOnce({userId:session.user.id,route:request.method+' '+pathname,key,payloadHash:payloadHash(input),status:200},()=>workspaceStatusMatch[2]?{item:store.workspaceStatus.assign(category,input,session.user)}:{settings:store.workspaceStatus.saveTags(category,input,session.user)});json(response,result.status,result.body);return;}
+      }
       if(['/api/public/news','/api/news'].includes(pathname)&&request.method==='GET'){
         if(requestUrl.search)throw new ApplicationError(400,'INVALID_QUERY','News does not accept query parameters.');
         json(response,200,store.websiteNews.list({publicOnly:pathname==='/api/public/news',user:pathname==='/api/news'?requireSession(request).user:null}));return;
       }
-      if((pathname==='/api/news'||pathname==='/api/news/import')&&request.method==='POST'||websiteNewsMatch&&request.method==='PATCH'){
+      if((pathname==='/api/news'||pathname==='/api/news/import')&&request.method==='POST'||websiteNewsMatch&&['PATCH','DELETE'].includes(request.method)){
         const session=requireMutation(request);if(session.user.role!=='admin')throw new ApplicationError(403,'ROLE_FORBIDDEN','Only administrators can manage website news.');
         const input=await body(request,2*1024*1024),key=idempotencyKey(request),route=request.method+' '+pathname,status=pathname==='/api/news'?201:200;
-        const result=store.mutateOnce({userId:session.user.id,route,key,payloadHash:payloadHash(input),status},()=>pathname==='/api/news/import'?store.websiteNews.importLegacy(input,session.user):{post:websiteNewsMatch?store.websiteNews.update(decodeId(websiteNewsMatch[1]),input,session.user):store.websiteNews.create(input,session.user)});
+        const result=store.mutateOnce({userId:session.user.id,route,key,payloadHash:payloadHash(input),status},()=>pathname==='/api/news/import'?store.websiteNews.importLegacy(input,session.user):{post:websiteNewsMatch?(request.method==='DELETE'?store.websiteNews.remove:store.websiteNews.update)(decodeId(websiteNewsMatch[1]),input,session.user):store.websiteNews.create(input,session.user)});
         json(response,result.status,result.body);return;
       }
       if (pathname === '/api/public/catalog' && request.method === 'GET') {
@@ -759,7 +784,7 @@ export async function createApplication({ databasePath = ':memory:', databaseUrl
         json(response, 200, store.updateFee(id, fee, version, session.user.id, true)); return;
       }
       if (pathname === '/api' || pathname.startsWith('/api/')) {
-        const known = studentRecordMatch || studentRecordSignMatch || studentWorkspaceMatch || ['/api/student-records','/api/student/records','/api/teacher/student-records'].includes(pathname) || reschedulingTimesMatch || pathname==='/api/availability-rule-options' || pathname==='/api/availability-pending-arrangements' || ['/api/news','/api/public/news','/api/news/import'].includes(pathname) || websiteNewsMatch || pathname === '/api/date-notes' || publicTrialTimesMatch || parentTemplateMatch || parentTemplateActionMatch || pathname === '/api/parent-message-templates' || parentMessageContextMatch || parentMessageMatch || pathname === '/api/parent-messages/inbox' || packageContentsMatch || pendingArrangementMatch || pathname === '/api/pending-arrangements' || trialApplicationMatch || trialRejectMatch || ['/api/public/trial-form-policy','/api/public/trial-applications','/api/trial-applications','/api/trial-applications/work'].includes(pathname) || studentLinkMatch || orderMatch || orderActionMatch || studentRosterMatch || dateNoteMatch || lessonNoteMatch || match || feeMatch || courseMaterialMatch || materialMatch || uploadMatch || attachmentMatch || scheduleMatch || occurrenceMatch || courseLifecycleMatch || schedulingResourceMatch || personMatch || personHistoryMatch || teacherLinkMatch || accessGrantMatch || availableSlotMatch || publicCourseMatch || capacityStatusMatch || classTypeMatch || ['/api/student-account-links', '/api/student/profile', '/api/student/timetable', '/api/timetable/filter-facts', '/api/staff/personal-profiles', '/api/orders', '/api/class-types', '/api/class-capacity-statuses', '/api/available-slots', '/api/availability-public-settings', '/api/public/courses', '/api/public/timetable', '/api/public/catalog', '/api/people', '/api/access-control', '/api/access-control/grants', '/api/health', '/api/auth/session', '/api/auth/login', '/api/auth/logout', '/api/courses', '/api/fees', '/api/catalog', '/api/schedules', '/api/scheduling-resources'].includes(pathname);
+        const known = courseStudentsMatch || pathname==='/api/notifications'||notificationReadMatch||trialAcceptMatch||pathname.startsWith('/api/workspace-status/') || studentRecordMatch || studentRecordSignMatch || studentWorkspaceMatch || ['/api/student-records','/api/student/records','/api/teacher/student-records'].includes(pathname) || reschedulingTimesMatch || pathname==='/api/availability-rule-options' || pathname==='/api/availability-pending-arrangements' || ['/api/news','/api/public/news','/api/news/import'].includes(pathname) || websiteNewsMatch || pathname === '/api/date-notes' || publicTrialTimesMatch || parentTemplateMatch || parentTemplateActionMatch || pathname === '/api/parent-message-templates' || parentMessageContextMatch || parentMessageMatch || pathname === '/api/parent-messages/inbox' || packageContentsMatch || pendingArrangementMatch || pathname === '/api/pending-arrangements' || trialApplicationMatch || trialRejectMatch || ['/api/public/trial-form-policy','/api/public/trial-applications','/api/trial-applications','/api/trial-applications/work'].includes(pathname) || studentLinkMatch || orderMatch || orderActionMatch || studentRosterMatch || dateNoteMatch || lessonNoteMatch || match || feeMatch || courseMaterialMatch || materialMatch || uploadMatch || attachmentMatch || scheduleMatch || occurrenceMatch || courseLifecycleMatch || schedulingResourceMatch || personMatch || personHistoryMatch || teacherLinkMatch || accessGrantMatch || availableSlotMatch || publicCourseMatch || capacityStatusMatch || classTypeMatch || ['/api/student-account-links', '/api/student/profile', '/api/student/timetable', '/api/timetable/filter-facts', '/api/staff/personal-profiles', '/api/orders', '/api/class-types', '/api/class-capacity-statuses', '/api/available-slots', '/api/availability-public-settings', '/api/public/courses', '/api/public/timetable', '/api/public/catalog', '/api/people', '/api/access-control', '/api/access-control/grants', '/api/health', '/api/auth/session', '/api/auth/login', '/api/auth/logout', '/api/courses', '/api/fees', '/api/catalog', '/api/schedules', '/api/scheduling-resources'].includes(pathname);
         throw new ApplicationError(known ? 405 : 404, known ? 'METHOD_NOT_ALLOWED' : 'NOT_FOUND', 'API route or method is not available.');
       }
       await serveStatic(request, response, pathname);

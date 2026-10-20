@@ -1,3 +1,5 @@
+import {createPortalNotificationStore} from './portal-notifications.mjs';
+import {createWorkspaceStatusStore} from './workspace-status.mjs';
 import {createStudentRecordStore} from './student-records.mjs';
 import {createReschedulingAvailability} from './rescheduling-availability.mjs';
 import {createWebsiteNewsStore} from './website-news.mjs';
@@ -480,7 +482,7 @@ async function initializeStore({ databasePath, seedUsers, seedCourses, attachmen
       createCourse(validateCourse(input), null, seed.id);
     }
   } catch (error) { closeDatabase(); throw error; }
-  let materials, attachments, schedules, schedulingResources, accessControl, people, availableSlots, classCapacityStatuses, enrollmentOrders, staffPersonalProfiles, lessonNotes, dateNotes, trialApplications, packageContents, lessonParentMessages, parentMessageTemplates, studentLessonRequests, trialInquiries, websiteNews, studentRecords;
+  let materials, attachments, schedules, schedulingResources, accessControl, people, availableSlots, classCapacityStatuses, enrollmentOrders, staffPersonalProfiles, lessonNotes, dateNotes, trialApplications, packageContents, lessonParentMessages, parentMessageTemplates, studentLessonRequests, trialInquiries, websiteNews, studentRecords, workspaceStatus, portalNotifications;
   try {
     createMaterialSchema(database);
     attachments = await createAttachmentStore({ database, transaction, directory: attachmentsDir || (databasePath === ':memory:' ? undefined : `${resolve(databasePath)}.attachments`), postgres });
@@ -496,20 +498,29 @@ async function initializeStore({ databasePath, seedUsers, seedCourses, attachmen
     people = createPeopleStore({ database, transaction });
     trialInquiries = createTrialInquiryStore({ database, transaction });
     classCapacityStatuses = createClassCapacityStatusStore({ database, transaction, accessControl });
-    availableSlots = createAvailableSlotStore({ database, transaction, accessControl, classCapacityStatuses, postgres });
+    availableSlots = createAvailableSlotStore({ database, transaction, accessControl, classCapacityStatuses, postgres, getParticipants:(id,date)=>enrollmentOrders&&trialApplications?.participants(id,date)||{trials:[],rescheduling:[]} });
     trialApplications = createTrialApplicationStore({ database, transaction, availableSlots, people, accessControl, trialFormPolicy });
     accessControl.setSlotSource(() => availableSlots.scopeFacts());
     enrollmentOrders = createEnrollmentOrderStore({ database, transaction, schedules, resources: schedulingResources, accessControl, getCourse, getFee, postgres });
     lessonParentMessages = createLessonParentMessageStore({ database, transaction, enrollmentOrders });
     parentMessageTemplates = createParentMessageTemplateStore({ database, transaction });
     studentLessonRequests = createStudentLessonRequestStore({ database, transaction, schedules, getCourse, getStudentLesson: enrollmentOrders.studentLesson, postgres, rescheduling:createReschedulingAvailability({database,transaction,availableSlots,schedules,getCourse,postgres}) });
+    portalNotifications=createPortalNotificationStore({database,transaction,trialApplications,accessControl,schedules});
     studentRecords=createStudentRecordStore({database,transaction,people,enrollmentOrders,schedules,accessControl});
+  workspaceStatus=createWorkspaceStatusStore({database,transaction,authorizeItem(category,key,user){
+    const split=key.indexOf(':'),kind=key.slice(0,split),id=key.slice(split+1);
+    if(category==='trial'&&kind==='trial'){trialApplications.get(id,user);return;}
+    if((category==='rescheduling'||category==='other')&&kind==='request'){const row=studentLessonRequests.list(user).requests.find(row=>row.id===id);if(row&&((row.type==='sick')===(category==='other')))return;}
+    if(category==='other'&&kind==='arrangement'){enrollmentOrders.getArrangement(id,user);return;}
+    if(category==='other'&&kind==='available'&&user.role==='admin'){availableSlots.get(id,user);return;}
+    throw new ApplicationError(404,'STATUS_ITEM_NOT_FOUND','This workspace item is not available.');
+  }});
     classCapacityStatuses.setOccupancySource?.(enrollmentOrders.occupied);
   }
   catch (error) { await attachments?.close(); closeDatabase(); throw error; }
   if (postgres) console.log('PostgreSQL schema and application stores ready.');
   return {
-    listCourses, getCourse, createCourse, updateCourse, deleteCourse: (id, version, actor) => changeCourseDeletion(id, version, actor), restoreCourse: (id, version, actor) => changeCourseDeletion(id, version, actor, true), listFees, getFee, createFee, updateFee, createOnce, mutateOnce, catalogSnapshot, materials, attachments, schedules, schedulingResources, accessControl, people, availableSlots, classCapacityStatuses, classTypes, enrollmentOrders, studentLessonRequests, staffPersonalProfiles, lessonNotes, dateNotes, trialApplications, packageContents, lessonParentMessages, parentMessageTemplates,trialInquiries,websiteNews,studentRecords,
+    listCourses, getCourse, createCourse, updateCourse, deleteCourse: (id, version, actor) => changeCourseDeletion(id, version, actor), restoreCourse: (id, version, actor) => changeCourseDeletion(id, version, actor, true), listFees, getFee, createFee, updateFee, createOnce, mutateOnce, catalogSnapshot, materials, attachments, schedules, schedulingResources, accessControl, people, availableSlots, classCapacityStatuses, classTypes, enrollmentOrders, studentLessonRequests, staffPersonalProfiles, lessonNotes, dateNotes, trialApplications, packageContents, lessonParentMessages, parentMessageTemplates,trialInquiries,websiteNews,studentRecords,workspaceStatus,portalNotifications,
     listUsers: () => database.prepare('SELECT * FROM users WHERE archived_at IS NULL ORDER BY email').all().map(publicUser),
     userByEmail: email => database.prepare('SELECT * FROM users WHERE email = ? AND archived_at IS NULL').get(email),
     publicUser,

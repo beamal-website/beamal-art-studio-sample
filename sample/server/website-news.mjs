@@ -26,15 +26,23 @@ export function createWebsiteNewsStore({database,transaction,seed=true}){
  if(seed)transaction(()=>{for(const post of sampleNews()){const existing=row(post.id);if(!existing)insert(post.id,post,'seed:'+post.id);else if(existing.source_key==='seed:'+post.id&&!JSON.parse(existing.data).categoryZh){const content={...JSON.parse(existing.data),categoryZh:post.categoryZh,categoryEn:post.categoryEn};database.prepare('UPDATE website_news SET data=?,version=version+1 WHERE id=? AND version=?').run(JSON.stringify(content),post.id,existing.version);}}});
  const list=({publicOnly=false,user=null}={})=>transaction(()=>{
   if(!publicOnly)admin(user);
-  return {posts:database.prepare('SELECT * FROM website_news ORDER BY updated_at DESC,id').all().map(project).filter(post=>!publicOnly||post.releaseDate<=today()).sort((a,b)=>b.releaseDate.localeCompare(a.releaseDate)||b.publishedAt.localeCompare(a.publishedAt)||a.id.localeCompare(b.id))};
+  return {posts:database.prepare('SELECT * FROM website_news ORDER BY updated_at DESC,id').all().map(project).filter(post=>!post.deletedAt&&(!publicOnly||post.releaseDate<=today())).sort((a,b)=>b.releaseDate.localeCompare(a.releaseDate)||b.publishedAt.localeCompare(a.publishedAt)||a.id.localeCompare(b.id))};
  },'read');
  const create=(input,user)=>transaction(()=>{admin(user);return insert(randomUUID(),validateNews(input));});
  const update=(id,input,user)=>transaction(()=>{
-  admin(user);const post=validateNews(input),current=row(id);if(!current)fail(404,'NEWS_NOT_FOUND','This news item no longer exists.');
+  admin(user);const post=validateNews(input),current=row(id);if(!current||JSON.parse(current.data).deletedAt)fail(404,'NEWS_NOT_FOUND','This news item no longer exists.');
   if(!Number.isSafeInteger(input.version)||input.version!==current.version)fail(409,'VERSION_CONFLICT','This news item changed. Reload it before saving.');
   const saved={...post,...Object.fromEntries(['categoryZh','categoryEn'].filter(key=>typeof JSON.parse(current.data)[key]==='string').map(key=>[key,JSON.parse(current.data)[key]]))};
   const changed=database.prepare('UPDATE website_news SET data=?,version=version+1,updated_at=? WHERE id=? AND version=?').run(JSON.stringify(saved),new Date().toISOString(),id,input.version);
   if(changed.changes!==1)fail(409,'VERSION_CONFLICT','This news item changed. Reload it before saving.');return project(row(id));
+ });
+ const remove=(id,input,user)=>transaction(()=>{
+  admin(user);if(!input||typeof input!=='object'||Array.isArray(input)||Object.keys(input).some(key=>key!=='version')||!Number.isSafeInteger(input.version))fail(400,'INVALID_NEWS','Provide the current news version.');
+  const current=row(id);if(!current||JSON.parse(current.data).deletedAt)fail(404,'NEWS_NOT_FOUND','This news item no longer exists.');
+  if(input.version!==current.version)fail(409,'VERSION_CONFLICT','This news item changed. Reload it before deleting.');
+  const now=new Date().toISOString(),data={...JSON.parse(current.data),deletedAt:now};
+  const changed=database.prepare('UPDATE website_news SET data=?,version=version+1,updated_at=? WHERE id=? AND version=?').run(JSON.stringify(data),now,id,input.version);
+  if(changed.changes!==1)fail(409,'VERSION_CONFLICT','This news item changed. Reload it before deleting.');return project(row(id));
  });
  const importLegacy=(input,user)=>transaction(()=>{
   admin(user);if(!input||Object.keys(input).some(key=>key!=='posts')||!Array.isArray(input.posts)||input.posts.length>100)fail(400,'INVALID_NEWS','Import at most 100 news items.');
@@ -47,6 +55,7 @@ export function createWebsiteNewsStore({database,transaction,seed=true}){
    const post={...validateNews(legacy),...Object.fromEntries(['categoryZh','categoryEn'].filter(key=>typeof old[key]==='string').map(key=>[key,old[key].slice(0,200)]))},hash=createHash('sha256').update(JSON.stringify([old.id,post])).digest('hex');
    if(database.prepare('SELECT news_id FROM website_news_imports WHERE content_hash=?').get(hash))continue;
    let id=old.id,current=row(id);
+   if(current&&JSON.parse(current.data).deletedAt)continue;
    if(old.sample&&current?.source_key==='seed:'+id&&current.version>1){/* Keep the original shared sample. */}
    else if(current?.source_key==='seed:'+id&&current.version===1){const changed=database.prepare('UPDATE website_news SET data=?,version=version+1,updated_at=? WHERE id=? AND version=1').run(JSON.stringify(post),new Date().toISOString(),id);if(changed.changes!==1&&!old.sample){id='legacy-'+hash;insert(id,post,'legacy:'+hash);}imported++;}
    else{id='legacy-'+hash; if(!row(id)){insert(id,post,'legacy:'+hash);imported++;}}
@@ -54,5 +63,5 @@ export function createWebsiteNewsStore({database,transaction,seed=true}){
   }
   return {imported};
  });
- return {list,create,update,importLegacy};
+ return {list,create,update,remove,importLegacy};
 }

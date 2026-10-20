@@ -13,14 +13,14 @@
 .staff-payroll-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;min-width:44px;padding:10px 16px;border:1px solid var(--payroll-teal);border-radius:6px;background:var(--payroll-teal);color:#fff;font:inherit;font-size:14px;line-height:1.5;cursor:pointer;max-width:100%;overflow-wrap:anywhere}
 .staff-payroll-secondary{background:var(--payroll-paper);color:var(--payroll-teal);border-color:#bacdc3}
 .staff-payroll-button:hover{filter:brightness(.95)}
-.staff-payroll-button:disabled,.staff-payroll-button:disabled:hover{background:#eef0e9;color:var(--payroll-muted);border-color:var(--payroll-line);cursor:not-allowed;filter:none}
+.staff-payroll-button:disabled,.staff-payroll-button:disabled:hover{background:var(--portal-muted,#eef0e9);color:var(--payroll-muted);border-color:var(--payroll-line);cursor:not-allowed;filter:none}
 .staff-payroll-button:focus-visible,.staff-payroll-field input:focus-visible,.staff-payroll-field select:focus-visible,.staff-payroll-field textarea:focus-visible,.staff-payroll-table-wrap:focus-visible{outline:3px solid #b79b45;outline-offset:3px}
 .staff-payroll-source,.staff-payroll-feedback{padding:16px;margin:0 0 20px;border:1px solid var(--payroll-line);border-radius:7px;background:#edf2e8;font-size:14px;line-height:1.8;overflow-wrap:anywhere}
 .staff-payroll-error{background:#fbebe3;color:#963e30;border-color:#e7c7b4}
 .staff-payroll-table-wrap{width:100%;max-width:100%;overflow-x:auto;border:1px solid var(--payroll-line);border-radius:8px;background:var(--payroll-paper);scrollbar-width:thin}
 .staff-payroll-table{width:100%;min-width:1060px;border-collapse:collapse;text-align:left}
 .staff-payroll-table th,.staff-payroll-table td{padding:14px 16px;vertical-align:top;border-bottom:1px solid var(--payroll-line);font-size:13px;line-height:1.7}
-.staff-payroll-table th{font-size:12px;font-weight:600;background:#eef2e8;color:var(--payroll-muted);white-space:nowrap}
+.staff-payroll-table th{font-size:12px;font-weight:600;background:var(--portal-muted,#eef2e8);color:var(--payroll-muted);white-space:nowrap}
 .staff-payroll-table td:not(:first-child){white-space:nowrap}
 .staff-payroll-table tr:last-child td{border-bottom:0}
 .staff-payroll-table td:first-child{min-width:180px}

@@ -1,0 +1,22 @@
+.portal-notification-modal{z-index:1500;padding:16px}
+.portal-notification-modal .portal-notification-dialog{display:flex;flex-direction:column;width:min(660px,100%);max-height:calc(100dvh - 32px);padding:0;border:1px solid #dfe2e5;border-radius:10px;background:#fff;color:#263d3b;overflow:hidden}
+.portal-notification-dialog *{box-sizing:border-box}
+.portal-notification-dialog header{display:flex;align-items:center;justify-content:space-between;gap:16px;width:100%;max-width:none;margin:0;padding:20px 24px;border-bottom:1px solid #dfe2e5;background:#fff}
+.portal-notification-dialog h2{margin:0;font-size:23px;line-height:1.4}
+.portal-notification-dialog header button{display:grid;place-items:center;width:36px;height:36px;min-height:36px;margin:0;padding:0;border:0;background:#f3f4f5;color:#263d3b;font-size:26px;box-shadow:none}
+.portal-notification-body{min-height:0;padding:8px 24px 24px;overflow:auto;overscroll-behavior:contain}
+.portal-notification-body ul{list-style:none;margin:0;padding:0}
+.portal-notification-body li{padding:20px 0;border-bottom:1px solid #dfe2e5}
+.portal-notification-body li:last-child{border-bottom:0}
+.portal-notification-body h3{margin:0 0 8px;font-size:16px;line-height:1.5}
+.portal-notification-body .is-unread h3:before{content:'';display:inline-block;width:8px;height:8px;margin-right:8px;border-radius:50%;background:#27777b}
+.portal-notification-body p{margin:8px 0;font-size:14px;line-height:1.8;white-space:pre-wrap;overflow-wrap:anywhere}
+.portal-notification-body time{display:block;margin-top:8px;color:#6d7b79;font-size:12px}
+.portal-notification-body button{margin:12px 0 0;padding:7px 10px;min-height:36px;border:1px solid #d5dddd;border-radius:4px;background:#fff;color:#27777b;box-shadow:none;font-size:13px}
+.portal-profile-menu [data-portal-notification=open]{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.portal-notification-badge{min-width:18px;padding:1px 5px;border-radius:12px;background:#27777b;color:#fff;text-align:center;font-size:11px}
+.portal-notification-badge[hidden]{display:none}
+@media(max-width:600px){.portal-notification-dialog header{padding:16px}.portal-notification-body{padding:4px 16px 16px}}
+
+.portal-confirmation-section{margin-bottom:24px;border:1px solid #dfe2e5;border-radius:6px;background:#fff}
+.portal-confirmation-section>h2{margin:0;padding:20px 24px 8px;font-size:18px}

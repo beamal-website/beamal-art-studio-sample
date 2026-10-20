@@ -192,7 +192,7 @@ test('public details navigates seven days and only displays real slot ids and qu
   assert.equal((html.match(/data-availability-date="/g) || []).length, 7);
   assert.match(html, /data-availability-slot-id="slot-a"/);
   assert.match(html, /2 places remaining/);
-  assert.match(html, /After submitting a trial application, please wait for a teacher to contact you/);
+  assert.doesNotMatch(html, /After submitting a trial application, please wait for a teacher to contact you/);
   assert.doesNotMatch(html, /Private note|private-person-a|totalCapacity|1234|API|SQLite|data-go="\/join|data-action="pay/);
 });
 
@@ -267,7 +267,7 @@ test('public course names and teacher names are escaped in both languages', () =
     assert.match(html, /&lt;Teacher&gt;/);
     assert.match(html, /&lt;Room&gt;/);
     assert.doesNotMatch(html, /<Course>|<Teacher>|<Room>/);
-    assert.match(html, language === 'en' ? /After submitting a trial application, please wait for a teacher to contact you/ : /提交試課申請後，請等候老師聯絡/);
+    assert.doesNotMatch(html, /After submitting a trial application|提交試課申請後/);
   }
 });
 
@@ -379,7 +379,7 @@ test('purpose comes first and only relevant trial or rescheduling settings are a
   assert.equal(/hidden disabled/.test(tagById(html,'availability-trial-settings')),!trial);
   assert.equal(/hidden disabled/.test(tagById(html,'availability-rescheduling-settings')),!rescheduling);
   assert.doesNotMatch(html,/設定摘要|availability-save-summary/);
-  assert.doesNotMatch(html,/type="radio"|name="purpose"/);
+  assert.doesNotMatch(html,/type="radio" name="(?:trialEnabled|reschedulingEnabled)"|name="purpose"/);
  }
  const inactive=availabilityEditorMarkup({slot:{...slot,trialEnabled:false,reschedulingEnabled:false}},ui('en'));
  assert.doesNotMatch(inactive,/name="(?:trialEnabled|reschedulingEnabled)" checked/);assert.match(tagById(inactive,'availability-save'),/disabled/);
@@ -411,4 +411,37 @@ test('trial publication has only public and private choices, defaults public, an
   assert.equal((select.match(/<option /g)||[]).length,2);assert.match(select,new RegExp(`value="${expected}" selected`));assert.doesNotMatch(select,/跟隨預設|value="default"/);
   assert.doesNotMatch(html,/設定摘要|availability-save-summary/);assert.match(html,/name="active"/);assert.match(html,/name="remark"/);
  }
+});
+
+
+test('available-time deferred choices disable resources and rooms use a single-choice group',()=>{
+ const html=availabilityEditorMarkup({resources},ui('en'));
+ assert.match(html,/<input type="checkbox" name="teacherIds"[^>]*disabled/);
+ assert.match(html,/<input type="radio" name="roomIds"[^>]*disabled/);
+ assert.match(html,/3. Capacity/);assert.match(html,/>Show on website</);assert.match(html,/>Hide from website</);
+ const assigned=availabilityEditorMarkup({slot,resources},ui('en'));
+ assert.doesNotMatch(assigned.match(/<input[^>]*name="roomIds"[^>]*>/)[0],/disabled/);
+ assert.ok(assigned.indexOf('id="availability-course"')<assigned.indexOf('id="availability-time"'));
+});
+
+
+test('editing a legacy multi-room time requires explicit room choice without guessing a replacement',()=>{
+ const html=availabilityEditorMarkup({slot:{...slot,roomIds:['room-a','room-b']},resources:[...resources,{id:'room-b',kind:'room',displayName:'Room B',active:true}]},ui('en'));
+ assert.match(html,/existing time has multiple rooms/);
+ for(const tag of html.match(/<input[^>]*name="roomIds"[^>]*>/g))assert.doesNotMatch(tag,/checked/);
+});
+
+test('embedded course timetable avoids a second course title back link and premature submission advice',()=>{
+ const html=publicCourseDetailsMarkup({course,slots:[slot],from:'2026-10-15'},{...ui('en'),trialPreview:true,embedded:true});assert.doesNotMatch(html,/<h1|availability-public-back|After submitting/);assert.match(html,/Request to Trial/);assert.match(html,/data-action="availability-trial-open"/);
+});
+
+test('course trial requests use chronological flat rows with Choose below the facts and no legend or empty date groups',()=>{
+ const html=publicCourseDetailsMarkup({course,slots:[{...slot,id:'later',date:'2026-10-17',time:'16:00'},{...slot,id:'earlier',date:'2026-10-15',time:'10:00',duration:45}],from:'2026-10-15'},{...ui('en'),embedded:true,trialPreview:true});
+ assert.match(html,/Request to Trial/);assert.match(html,/availability-trial-list/);assert.doesNotMatch(html,/availability-public-legend|availability-public-day[" ]|No available times|Enter trial details/);assert.equal((html.match(/class="availability-trial-list-row"/g)||[]).length,2);assert.ok(html.indexOf('data-availability-slot-id="earlier"')<html.indexOf('data-availability-slot-id="later"'));assert.match(html,/45 minutes/);assert.match(html,/>Choose<\/button>/);
+ const empty=publicCourseDetailsMarkup({course,slots:[],from:'2026-10-15'},{...ui('en'),embedded:true,trialPreview:true});assert.equal((empty.match(/No trial times/g)||[]).length,1);assert.doesNotMatch(empty,/availability-public-day[" ]/);
+});
+
+test('available time details list confirmed trial and rescheduling participants with age without treating pending holds as confirmed students',()=>{
+ const html=availabilityDetailMarkup({slot:{...slot,trialReserved:3,trialConfirmed:1,trialPending:2,participants:{trials:[{id:'t1',displayName:'Trial <student>',age:{years:8,months:2,asOf:slot.date}}],rescheduling:[{id:'r1',displayName:'Rescheduled student',age:null}]}},canEdit:true},ui('en'));
+ assert.match(html,/Trial list/);assert.match(html,/Rescheduling list/);assert.match(html,/Trial &lt;student&gt;/);assert.match(html,/8 years 2 months/);assert.match(html,/Rescheduled student/);assert.match(html,/Pending applications/);assert.doesNotMatch(html,/<student>/);
 });

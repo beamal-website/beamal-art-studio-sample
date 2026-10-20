@@ -1,4 +1,5 @@
 const fields = ['localName', 'fullName', 'dateOfBirth', 'gender', 'school', 'referrer', 'parentName', 'whatsapp', 'email', 'remark'];
+const requiredFields = ['localName', 'fullName', 'dateOfBirth', 'gender', 'whatsapp'];
 const limits = { localName: 200, fullName: 200, school: 200, referrer: 200, parentName: 200, whatsapp: 80, email: 254, remark: 2000 };
 const policies=new Set(['name-birth-whatsapp','name-whatsapp','name-contact']);
 const text = value => typeof value === 'string' ? value : '';
@@ -27,7 +28,7 @@ export function createPublicTrialDraft({ course = null, slot = null, today = '',
   return validSource(state) ? state : { ...state, sourceStatus: 'unavailable' };
 }
 
-function validation(draft, today, policy=null) {
+function validation(draft, today) {
   if (Object.entries(limits).some(([key, limit]) => draft[key].length > limit)) return 'length';
   if (draft.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(draft.email.trim())) return 'email';
   if (draft.dateOfBirth.trim()) {
@@ -36,18 +37,15 @@ function validation(draft, today, policy=null) {
     if (draft.dateOfBirth > today) return 'birth-future';
   }
   if (!['', 'male', 'female', 'unspecified'].includes(draft.gender)) return 'gender';
-  if(policies.has(policy)){
-    if(!draft.localName.trim()&&!draft.fullName.trim())return 'name-required';
-    if(policy==='name-birth-whatsapp'&&!draft.dateOfBirth.trim())return 'birth-required';
-    if(['name-birth-whatsapp','name-whatsapp'].includes(policy)&&!draft.whatsapp.trim())return 'whatsapp-required';
-    if(policy==='name-contact'&&!draft.whatsapp.trim()&&!draft.email.trim())return 'contact-required';
+  for (const [key, error] of [['localName','local-name-required'],['fullName','full-name-required'],['dateOfBirth','birth-required'],['gender','gender-required'],['whatsapp','whatsapp-required']]) {
+    if (!draft[key].trim()) return error;
   }
   return '';
 }
 const received=state=>state?.submission?.outcome==='received'&&typeof state.submission.reference==='string'&&!!state.submission.reference.trim()&&state.submission.reference.length<=100;
 const activePolicy=state=>state?.capabilities?.submit===true&&policies.has(state.policy)?state.policy:null;
 export function publicTrialCanSubmit(state={}){
-  return state.step==='review'&&state.capabilities?.submit===true&&policies.has(state.policy)&&!state.busy&&!state.stale&&!received(state)&&validSource(state)&&!validation(mergeDraft(state.draft),state.today,state.policy)&&(state.uncertain===true||sourceStatus(state)==='ready');
+  return state.step==='review'&&state.capabilities?.submit===true&&policies.has(state.policy)&&!state.busy&&!state.stale&&!received(state)&&validSource(state)&&!validation(mergeDraft(state.draft),state.today)&&(state.uncertain===true||sourceStatus(state)==='ready');
 }
 
 export function advancePublicTrial(state = {}, command, values = {}) {
@@ -56,7 +54,7 @@ export function advancePublicTrial(state = {}, command, values = {}) {
   const draft = mergeDraft(state.draft, values);
   if (command === 'draft') return { ...state, draft, error: '' };
   if (command === 'back') return { ...state, draft, step: 'details', error: '',stale:false,submitError:'' };
-  const error = sourceStatus(state) === 'ready' ? validation(draft, state.today,activePolicy(state)) : 'source';
+  const error = sourceStatus(state) === 'ready' ? validation(draft, state.today) : 'source';
   return { ...state, draft, step: error ? 'details' : 'review', error };
 }
 
@@ -70,7 +68,10 @@ const errorLabels = {
   'birth-date': ['請輸入有效的出生日期，或留空。', 'Enter a valid date of birth, or leave it blank.'],
   'birth-future': ['出生日期不能晚於今天。', 'Date of birth cannot be in the future.'],
   'birth-context': ['暫時無法核對出生日期，請重新載入時段。', 'The date of birth cannot be checked yet. Please reload this time.'],
-  gender: ['請選擇性別，或留空。', 'Choose a gender option, or leave it blank.'],
+  gender: ['請選擇有效的性別選項。', 'Choose a valid gender option.'],
+  'gender-required': ['請選擇性別。', 'Choose a gender option.'],
+  'local-name-required': ['請填寫中文姓名。', 'Enter a Chinese name.'],
+  'full-name-required': ['請填寫英文姓名。', 'Enter an English name.'],
   length: ['部分資料過長，請縮短後再核對。', 'Some entries are too long. Please shorten them before reviewing.'],
   source: ['暫時無法核對此時段，請重新載入。', 'This time cannot be checked yet. Please reload it.'],
   'name-required':['請填寫中文姓名或英文姓名。','Enter a Chinese or English name.'],
@@ -99,17 +100,18 @@ function summaryMarkup(state, { t, esc }) {
 }
 
 function formField(key, state, { t, esc }) {
-  const policy=activePolicy(state),required=key==='dateOfBirth'&&policy==='name-birth-whatsapp'||key==='whatsapp'&&['name-birth-whatsapp','name-whatsapp'].includes(policy),hint=policy&&['localName','fullName'].includes(key)?'public-trial-name-hint':policy==='name-contact'&&['whatsapp','email'].includes(key)?'public-trial-contact-hint':'';
-  const value = text(state.draft?.[key]), label = t(...labels[key]), invalid = key === 'fullName'&&state.error==='name-required'||key==='whatsapp'&&['whatsapp-required','contact-required'].includes(state.error)||key === 'email' && state.error === 'email' || key === 'dateOfBirth' && ['birth-date', 'birth-future', 'birth-context','birth-required'].includes(state.error) || key === 'gender' && state.error === 'gender',described=[hint,invalid?'public-trial-'+key+'-error':''].filter(Boolean).join(' ');
-  const shared = `id="public-trial-${key}" name="${key}"${required?' aria-required="true"':''}${invalid?' aria-invalid="true"':''}${described?` aria-describedby="${described}"`:''}${state.busy||state.uncertain===true?' disabled':''}`;
+  const required = requiredFields.includes(key);
+  const value = text(state.draft?.[key]), label = t(...labels[key]);
+  const fieldErrors = {localName:['local-name-required'],fullName:['full-name-required'],whatsapp:['whatsapp-required'],email:['email'],dateOfBirth:['birth-date','birth-future','birth-context','birth-required'],gender:['gender','gender-required']};
+  const invalid = fieldErrors[key]?.includes(state.error), described = invalid ? 'public-trial-'+key+'-error' : '';
+  const shared = `id="public-trial-${key}" name="${key}"${required?' aria-required="true" required':''}${invalid?' aria-invalid="true"':''}${described?` aria-describedby="${described}"`:''}${state.busy||state.uncertain===true?' disabled':''}`;
   let control;
-  if (key === 'gender') control = `<select ${shared}><option value=""${value === '' ? ' selected' : ''}>${esc(t('選擇（可留空）', 'Choose (optional)'))}</option>${Object.entries(genderLabels).map(([option, names]) => `<option value="${option}"${value === option ? ' selected' : ''}>${esc(t(...names))}</option>`).join('')}</select>`;
+  if (key === 'gender') control = `<select ${shared}><option value=""${value === '' ? ' selected' : ''}>${esc(t('請選擇', 'Choose'))}</option>${Object.entries(genderLabels).map(([option, names]) => `<option value="${option}"${value === option ? ' selected' : ''}>${esc(t(...names))}</option>`).join('')}</select>`;
   else if (key === 'remark') control = `<textarea ${shared} maxlength="2000" rows="4">${esc(value)}</textarea>`;
   else control = `<input ${shared} type="${key === 'dateOfBirth' ? 'date' : key === 'email' ? 'email' : 'text'}" value="${esc(value)}"${limits[key] ? ` maxlength="${limits[key]}"` : ''}${key === 'dateOfBirth' && validDate(state.today) ? ` max="${esc(state.today)}"` : ''}>`;
   const displayedAge = key === 'dateOfBirth' ? ageText(state, t) : '';
   const correction = invalid ? `<small id="public-trial-${key}-error" class="public-trial-field-error" role="alert">${esc(t(...errorLabels[state.error]))}</small>` : '';
-  const hintMarkup=hint&&key==='fullName'?`<small id="${hint}" class="public-trial-field-hint">${esc(t('中文或英文姓名至少填寫一項。','Enter a Chinese or English name.'))}</small>`:hint&&key==='whatsapp'?`<small id="${hint}" class="public-trial-field-hint">${esc(t('WhatsApp 或電郵至少填寫一項。','Enter a WhatsApp number or email address.'))}</small>`:'';
-  return `<label class="public-trial-field${key === 'remark' ? ' public-trial-wide' : ''}" for="public-trial-${key}"><span>${esc(label)}${required?' <span class="public-trial-required" aria-hidden="true">*</span>':''}</span>${control}${hintMarkup}${displayedAge ? `<small class="public-trial-age">${esc(displayedAge)} · ${esc(t('截至', 'As of'))} ${esc(state.today)}</small>` : ''}${correction}</label>`;
+  return `<label class="public-trial-field${key === 'remark' ? ' public-trial-wide' : ''}" for="public-trial-${key}"><span>${esc(label)}${required?' <span class="public-trial-required" aria-hidden="true">*</span>':''}</span>${control}${displayedAge ? `<small class="public-trial-age">${esc(displayedAge)} · ${esc(t('截至', 'As of'))} ${esc(state.today)}</small>` : ''}${correction}</label>`;
 }
 
 function reviewMarkup(state, { t, esc }) {
@@ -124,12 +126,12 @@ function reviewMarkup(state, { t, esc }) {
 
 export function publicTrialMarkup(state = {}, { t = (_zh, en) => en, esc = fallbackEscape } = {}) {
   const success=received(state),busy=!!state.busy,uncertain=state.uncertain===true,review=state.step==='review',ready=sourceStatus(state)==='ready',title=success?t('已收到試課申請','Application received'):review?t('核對試課資料','Review trial details'):t('試課資料','Trial details');
-  const inlineErrors=['email','birth-date','birth-future','birth-context','gender','name-required','birth-required','whatsapp-required','contact-required'],error=Object.hasOwn(errorLabels,state.error)&&!inlineErrors.includes(state.error)?errorLabels[state.error]:null,context={t,esc};
+  const inlineErrors=['email','birth-date','birth-future','birth-context','gender','gender-required','local-name-required','full-name-required','name-required','birth-required','whatsapp-required','contact-required'],error=Object.hasOwn(errorLabels,state.error)&&!inlineErrors.includes(state.error)?errorLabels[state.error]:null,context={t,esc};
   const message=uncertain?t('暫未確認提交結果，你填寫的資料已保留。','Submission has not been confirmed. Your details are retained.'):state.stale?t('所選時段資料已更新。請返回修改資料，再重新核對。','The selected time changed. Return to edit and review the details again.'):text(state.submitError);
   const feedback=`<p id="public-trial-submit-error" class="public-trial-error public-trial-submit-error" role="alert" tabindex="-1"${!success&&message?'':' hidden'}>${esc(!success?message:'')}</p>`;
   const notice=activePolicy(state)?review?`<p class="public-trial-note">${esc(t('申請尚未提交。','This application has not been submitted.'))}</p>`:'':`<p class="public-trial-note">${esc(t('試課申請暫未開放，可先填寫及核對資料。','Trial applications are not yet open. You can fill in and review the details first.'))}</p>`;
-  const body=success?`${summaryMarkup(state,context)}<section id="public-trial-success" class="public-trial-received" role="status" tabindex="-1"><p>${esc(t('我們已收到申請，將會聯絡你跟進。','We have received your application and will contact you.'))}</p><dl><div><dt>${esc(t('申請編號','Application reference'))}</dt><dd>${esc(state.submission.reference)}</dd></div></dl></section>`:`${summaryMarkup(state,context)}${notice}${uncertain?'':sourceMarkup(state,context)}${review?reviewMarkup(state,context):`<div class="public-trial-fields">${fields.map(key=>formField(key,state,context)).join('')}</div>`}${error?`<p id="public-trial-error" class="public-trial-error" role="alert" tabindex="-1">${esc(t(...error))}</p>`:''}`;
+  const body=success?`${summaryMarkup(state,context)}<section id="public-trial-success" class="public-trial-received" role="status" tabindex="-1"><p>${esc(t('我們已收到申請，將會聯絡你跟進。','We have received your application and will contact you.'))}</p><dl><div><dt>${esc(t('申請編號','Application reference'))}</dt><dd>${esc(state.submission.reference)}</dd></div></dl></section>`:`${summaryMarkup(state,context)}${notice}${uncertain?'':sourceMarkup(state,context)}${review?reviewMarkup(state,context):`<section class="public-trial-field-group" aria-labelledby="public-trial-required-heading"><h3 id="public-trial-required-heading">${esc(t('必填資料','Required information'))}</h3><div class="public-trial-fields">${requiredFields.map(key=>formField(key,state,context)).join('')}</div></section><section class="public-trial-field-group" aria-labelledby="public-trial-optional-heading"><h3 id="public-trial-optional-heading">${esc(t('選填資料','Optional information'))}</h3><div class="public-trial-fields">${fields.filter(key=>!requiredFields.includes(key)).map(key=>formField(key,state,context)).join('')}</div></section>`}${error?`<p id="public-trial-error" class="public-trial-error" role="alert" tabindex="-1">${esc(t(...error))}</p>`:''}`;
   const footer=success?buttonMarkup('close',t('返回課表','Return to timetable'),{esc}):review?`${buttonMarkup('back',t('修改資料','Edit details'),{esc,disabled:busy||uncertain})}${buttonMarkup('close',t('關閉','Close'),{esc,disabled:busy})}${buttonMarkup('submit',busy?t('正在提交…','Submitting…'):uncertain?t('重試提交','Retry submission'):t('提交申請','Submit application'),{esc,primary:true,disabled:!publicTrialCanSubmit(state)})}`:`${buttonMarkup('close',t('取消','Cancel'),{esc,disabled:busy})}${buttonMarkup('review',t('下一步：核對資料','Next: review details'),{esc,primary:true,disabled:!ready||busy||uncertain,submit:true})}`;
   const reading=review||success;
-  return `<div class="modal public-trial-modal" role="dialog" aria-modal="true" aria-labelledby="public-trial-title"><div class="dialog public-trial-dialog" tabindex="-1"><header class="public-trial-header"><h2 id="public-trial-title">${esc(title)}</h2>${buttonMarkup('close','×',{esc,disabled:busy,icon:true,ariaLabel:t('關閉','Close')})}</header>${feedback}${reading?`<div class="public-trial-content" aria-busy="${busy}">`:`<form id="public-trial-form" novalidate aria-busy="${busy}">`}<div id="public-trial-body" class="public-trial-body" tabindex="0" aria-busy="${sourceStatus(state)==='loading'||busy}">${body}</div><footer class="public-trial-footer">${footer}</footer>${reading?'</div>':'</form>'}</div></div>`;
+  return `<div class="modal public-trial-modal" role="dialog" aria-modal="true" aria-labelledby="public-trial-title"><div class="dialog public-trial-dialog" tabindex="-1"><header class="public-trial-header"><h2 id="public-trial-title">${esc(title)}</h2>${buttonMarkup('close','×',{esc,disabled:busy,icon:true,ariaLabel:t('關閉','Close')})}</header>${feedback}${reading?`<div class="public-trial-content" aria-busy="${busy}">`:`<form id="public-trial-form" novalidate aria-busy="${busy}">`}<div id="public-trial-body" class="public-trial-body" tabindex="0" aria-busy="${sourceStatus(state)==='loading'||busy}">${body}</div><footer class="public-trial-footer">${review&&!success?`<p class="public-trial-contact-note">${esc(t('提交試堂申請後，老師會聯絡你跟進安排。','A teacher will contact you after you submit your trial application.'))}</p>`:''}${footer}</footer>${reading?'</div>':'</form>'}</div></div>`;
 }

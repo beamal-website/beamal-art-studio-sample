@@ -1,0 +1,130 @@
+/* Authenticated workspaces share neutral surfaces. Public pages retain each
+   component's original fallback colour, including public booking dialogs. */
+.portal-header,
+.portal-main,
+.portal-main ~ #modal-root {
+  --portal-paper: #fff;
+  --portal-canvas: #fafafa;
+  --portal-muted: #f2f3f4;
+}
+
+.portal-main,
+.portal-content {
+  background: var(--portal-paper);
+}
+
+/* Match the masthead to the navigation sidebar. */
+.portal-header,
+.portal-header .portal-topbar {
+  background: #f3f4f5;
+  color: #253d3b;
+}
+
+.portal-header .portal-brand {
+  color: inherit;
+}
+
+.portal-header .portal-topbar > button:hover {
+  background: #dce0e3;
+}
+
+.portal-header :is(.portal-brand, .portal-menu-button, .portal-profile > summary):focus-visible {
+  outline-color: var(--teal);
+}
+
+.portal-main .portal-sidebar {
+  background: #f3f4f5;
+  border-right-color: #dfe2e5;
+}
+
+.portal-main .portal-sidebar .portal-solid-icon {
+  color: #455a64;
+  stroke: none;
+}
+
+.portal-main .portal-sidebar button.active .portal-solid-icon {
+  color: #fff;
+}
+
+.portal-main .portal-sidebar button:hover {
+  background: #e7e9eb;
+}
+
+.portal-main .portal-sidebar button.active {
+  background: var(--teal);
+}
+
+.portal-main :is(input, select, textarea),
+.portal-main ~ #modal-root :is(input, select, textarea) {
+  border-color: #d5dadd;
+}
+
+.portal-main :is(.panel, .portal-page-heading, .tt-toolbar, .tt-sidebar),
+.portal-main ~ #modal-root .dialog {
+  border-color: #dfe2e5;
+}
+
+/* Keep the account dropdown on a readable white surface. */
+.portal-header .portal-profile-menu {
+  background: var(--portal-paper);
+  border-color: #dfe2e5;
+}
+
+/* Plain account-menu actions, with unread counts aligned to the far edge. */
+.portal-header .portal-profile-menu :is([data-portal-notification="open"], [data-tab="notifications"], .portal-language) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  filter: none;
+  text-align: left;
+}
+
+.portal-header .portal-profile-menu .portal-notification-badge {
+  position: static;
+  flex: none;
+  margin-inline-start: auto;
+}
+
+.portal-header .portal-profile-menu .portal-logout {
+  background: transparent;
+  color: #b04435;
+  box-shadow: none;
+}
+
+.portal-header .portal-profile-menu .portal-logout:hover {
+  background: transparent;
+  color: #873326;
+  text-decoration: underline;
+}
+
+.portal-header .portal-profile-menu button:focus-visible {
+  outline-color: var(--teal);
+}
+
+.portal-logout-dialog {
+  background: var(--portal-paper, #fff);
+}
+
+.portal-logout-dialog h2 {
+  margin-top: 0;
+}
+
+.portal-logout-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.portal-logout-actions .portal-logout-confirm {
+  background: #b04435;
+  border-color: #b04435;
+  color: #fff;
+}

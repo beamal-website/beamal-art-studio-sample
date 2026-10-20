@@ -7,9 +7,9 @@
 .portal-sales-group.is-expanded .portal-sales-subnav-inner{padding:4px 0 10px}
 /* Animate explicit group toggles only; rebuilt expanded submenus stay open. */
 .portal-sidebar .portal-sales-subnav button{min-height:44px;padding:10px 18px 10px 58px;font-size:15px}
-.sales-workspace{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,32%);min-height:calc(100dvh - 76px);background:#fffdf8}
+.sales-workspace{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,32%);min-height:calc(100dvh - 76px);background:var(--portal-paper,#fffdf8)}
 .sales-catalogue{min-width:0}
-.sales-search{display:flex;gap:0;margin:24px 24px 16px;border:1px solid #bdcbc1;border-radius:3px;background:#fffdf8}
+.sales-search{display:flex;gap:0;margin:24px 24px 16px;border:1px solid #bdcbc1;border-radius:3px;background:var(--portal-paper,#fffdf8)}
 .sales-search input{min-width:0;border:0;background:transparent;padding:12px 14px;font-size:15px}
 .portal-content .sales-search button{flex:none;width:44px;padding:0;background:transparent;color:#526a60;box-shadow:none;font-size:25px}
 .sales-catalogue-tabs{display:flex;gap:4px;padding:0 24px;border-bottom:1px solid #d9ddd2;overflow-x:auto}
@@ -17,16 +17,16 @@
 .portal-content .sales-catalogue-tabs button[aria-pressed=true]{border-bottom-color:var(--teal);color:var(--teal)}
 .sales-catalogue-body{padding:20px 24px}
 .sales-category-row{display:flex;align-items:center;gap:10px;margin-bottom:20px}
-.sales-category-row select{width:auto;max-width:70%;min-height:42px;padding:8px 12px;border:0;border-radius:24px;background:#f0ebdc;font-size:14px}
+.sales-category-row select{width:auto;max-width:70%;min-height:42px;padding:8px 12px;border:0;border-radius:24px;background:var(--portal-muted,#f0ebdc);font-size:14px}
 .portal-content .sales-all-chip{min-height:42px;border-radius:24px;padding:8px 16px;box-shadow:none;font-size:14px}
 .sales-course-path{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px;font-size:14px}
 .portal-content .sales-course-path button{padding:6px 0;background:transparent;color:var(--teal);box-shadow:none;font-size:14px}
 .sales-catalogue-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(190px,100%),1fr));align-content:start;gap:12px}
-.portal-content .sales-catalogue-card{display:flex;flex-direction:column;justify-content:space-between;gap:20px;min-width:0;min-height:112px;padding:14px;border:1px solid #d9ddd2;border-left:4px solid #7aa57b;border-radius:4px;background:#fffdf8;color:#253d3b;box-shadow:none;text-align:left;overflow-wrap:anywhere}
+.portal-content .sales-catalogue-card{display:flex;flex-direction:column;justify-content:space-between;gap:20px;min-width:0;min-height:112px;padding:14px;border:1px solid #d9ddd2;border-left:4px solid #7aa57b;border-radius:4px;background:var(--portal-paper,#fffdf8);color:#253d3b;box-shadow:none;text-align:left;overflow-wrap:anywhere}
 .sales-catalogue-card strong{font-size:16px;font-weight:500;line-height:1.6}
 .sales-catalogue-card small{align-self:flex-end;color:#687770;font-size:13px;text-align:right}
 .portal-content .sales-catalogue-card[aria-pressed=true]{background:#e9f1ed;border-color:var(--teal)}
-.sales-checkout{display:flex;flex-direction:column;min-width:0;border-left:1px solid #d9ddd2;background:#f5f5f1}
+.sales-checkout{display:flex;flex-direction:column;min-width:0;border-left:1px solid #d9ddd2;background:var(--portal-muted,#f5f5f1)}
 .sales-student-picker{padding:24px 18px 16px}
 .sales-student-picker select{min-height:48px;font-size:15px}
 .sales-cart{flex:1;min-height:220px;padding:8px 18px 24px}
@@ -40,7 +40,7 @@
 .sales-lesson-picker{display:grid;gap:8px;margin:20px 0;font-size:14px}
 .sales-lesson-picker select{font-size:14px}
 .sales-help{margin:12px 0 0;font-size:12px;line-height:1.8;color:#687770;overflow-wrap:anywhere}
-.sales-checkout-footer{margin-top:auto;background:#fffdf8;border-top:1px solid #d9ddd2}
+.sales-checkout-footer{margin-top:auto;background:var(--portal-paper,#fffdf8);border-top:1px solid #d9ddd2}
 .sales-discount{padding:16px 18px;border-bottom:1px solid #d9ddd2;font-size:14px}
 .sales-discount summary{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;list-style:none}
 .sales-discount summary::-webkit-details-marker{display:none}
@@ -51,13 +51,13 @@
 .sales-checkout-footer>.sales-help{margin:0;padding:0 18px 18px}
 .sales-orders-body{padding:20px 24px}
 .sales-order-filters{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px}
-.sales-order-filters>select{flex:0 1 170px;width:auto;background:#f0ebdc;border-color:transparent;font-size:14px;min-height:44px}
+.sales-order-filters>select{flex:0 1 170px;width:auto;background:var(--portal-muted,#f0ebdc);border-color:transparent;font-size:14px;min-height:44px}
 .sales-order-filters>input{flex:1 1 180px;max-width:320px;font-size:14px;min-height:44px}
 .sales-order-date{display:flex;align-items:center;gap:8px;min-width:0;font-size:14px;white-space:nowrap}
 .sales-order-date input{width:160px;min-height:44px;font-size:14px}
 .portal-content .sales-order-filters button{min-height:44px;font-size:14px;padding:10px 14px}
-.sales-orders-table{min-width:760px;background:#fffdf8;font-size:14px}
-.sales-orders-table th{background:#e9eee5;color:#253d3b;padding:20px 14px;font-size:14px;font-weight:600}
+.sales-orders-table{min-width:760px;background:var(--portal-paper,#fffdf8);font-size:14px}
+.sales-orders-table th{background:var(--portal-muted,#e9eee5);color:#253d3b;padding:20px 14px;font-size:14px;font-weight:600}
 .sales-orders-table td{padding:18px 14px;vertical-align:top;font-size:14px;line-height:1.8}
 .sales-orders-table small,.sales-orders-table td>strong{display:block;margin-top:4px;font-size:12px;font-weight:400;color:#687770;overflow-wrap:anywhere}
 .sales-orders-table td:nth-child(2){max-width:240px}
@@ -70,7 +70,7 @@
 @media(max-width:780px){.sales-workspace{grid-template-columns:minmax(0,1fr);min-height:calc(100dvh - 66px)}.sales-catalogue-body{min-height:240px}.sales-catalogue-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.sales-checkout{border-left:0;border-top:1px solid #d9ddd2}.sales-cart{min-height:150px}.sales-student-picker{padding:18px 16px 8px}.sales-orders-body{padding:16px}.sales-order-filters{align-items:stretch}.sales-order-filters>select,.sales-order-date{flex:1 1 140px}.sales-order-date input{min-width:0;width:100%}.sales-order-filters>input{max-width:none}.sales-account-access{margin-inline:16px}.portal-sidebar .portal-sales-subnav button{padding-left:58px}}
 
 .sales-preview-notice{margin:0 0 16px;color:#526a60;font-size:14px;line-height:1.8}
-.portal-content .sales-catalogue-card:disabled{opacity:1;cursor:default;background:#fffdf8;color:#253d3b;filter:none;box-shadow:none}
+.portal-content .sales-catalogue-card:disabled{opacity:1;cursor:default;background:var(--portal-paper,#fffdf8);color:#253d3b;filter:none;box-shadow:none}
 .portal-content button.sales-discount:disabled{width:100%;margin:0;border-radius:0;background:transparent;color:#687770;text-align:left;box-shadow:none;cursor:not-allowed}
 
 

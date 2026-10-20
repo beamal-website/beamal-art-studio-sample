@@ -1,6 +1,6 @@
 .lesson-attendance-badge {
   --lesson-attendance-ink: #526a60;
-  --lesson-attendance-surface: #eef0e9;
+  --lesson-attendance-surface: var(--portal-muted,#eef0e9);
   display: inline-block;
   box-sizing: border-box;
   max-width: 100%;

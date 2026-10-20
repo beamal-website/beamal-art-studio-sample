@@ -11,11 +11,11 @@
 .staff-calendar-sharing-button{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;max-width:100%;padding:10px 16px;border:1px solid var(--sharing-teal);border-radius:6px;background:var(--sharing-teal);color:white;font:inherit;font-size:14px;line-height:1.5;cursor:pointer;overflow-wrap:anywhere}
 .staff-calendar-sharing-secondary{background:var(--sharing-paper);color:var(--sharing-teal);border-color:#bacdc3}
 .staff-calendar-sharing-button:hover{filter:brightness(.95)}
-.staff-calendar-sharing-button:disabled,.staff-calendar-sharing-button:disabled:hover{background:#eef0e9;color:var(--sharing-muted);border-color:var(--sharing-line);filter:none;cursor:not-allowed}
+.staff-calendar-sharing-button:disabled,.staff-calendar-sharing-button:disabled:hover{background:var(--portal-muted,#eef0e9);color:var(--sharing-muted);border-color:var(--sharing-line);filter:none;cursor:not-allowed}
 .staff-calendar-sharing-field{display:grid;gap:8px;min-width:0;font-size:13px;margin:0}
 .staff-calendar-sharing-field>span{color:var(--sharing-muted);line-height:1.6}
 .staff-calendar-sharing-field input,.staff-calendar-sharing-field select{display:block;width:100%;min-width:0;min-height:44px;padding:10px 12px;border:1px solid #b8c9bd;border-radius:6px;background:white;color:var(--sharing-ink);font:inherit;font-size:14px}
-.staff-calendar-sharing-field input[readonly]{background:#f4f6ef;cursor:text}
+.staff-calendar-sharing-field input[readonly]{background:var(--portal-muted,#f4f6ef);cursor:text}
 .staff-calendar-sharing-link{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:12px}
 .staff-calendar-sharing-button:focus-visible,.staff-calendar-sharing-field input:focus-visible,.staff-calendar-sharing-field select:focus-visible{outline:3px solid #b79b45;outline-offset:3px}
 .staff-calendar-sharing-status{font-size:14px;line-height:1.8;margin:0 0 20px;color:var(--sharing-muted)}

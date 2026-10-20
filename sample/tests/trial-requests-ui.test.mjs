@@ -38,3 +38,12 @@ test('a failed rejection can retry the same request while changed source require
 test('uncertain rejection preserves the request for same-operation retry and blocks Back or List without locking Close',()=>{
  const state=detail({step:'reject-review',uncertain:true,error:'Network error',sourceError:'Pending source poll',returnToList:true}),before=JSON.stringify(state),html=trialRequestDialogMarkup(state,en);assert.match(html,/not been confirmed/);assert.match(html,/Retry rejection/);assert.doesNotMatch(action(html,'reject'),/disabled/);assert.match(action(html,'back'),/disabled/);assert.doesNotMatch(action(html,'close'),/disabled/);const details=trialRequestDialogMarkup({...state,step:'details'},en);assert.match(action(details,'list'),/disabled/);for(const command of ['back','review-rejection','reject','list','complete'])assert.equal(advanceTrialRequest(state,command),state);assert.equal(JSON.stringify(state),before);
 });
+
+test('Admin has a solid rightmost Accept action; accepted records are read-only and distinguish confirmation from submission',()=>{
+ const html=trialRequestDialogMarkup(detail({record:record({canAccept:true})}),en);
+ assert.match(action(html,'accept'),/trial-request-primary/);assert.ok(html.indexOf('data-command="accept"')>html.indexOf('data-command="review-rejection"'));
+ const accepted=trialRequestDialogMarkup(detail({record:record({canAccept:false,canReject:false,status:'accepted',events:[{type:'accepted',createdAt:'2026-10-20T01:00:00Z'}]})}),en);
+ assert.match(accepted,/Accepted|Trial confirmed/);assert.equal(action(accepted,'accept'),'');assert.equal(action(accepted,'review-rejection'),'');
+ for(const patch of [{busy:true},{stale:true},{loading:true}])assert.match(action(trialRequestDialogMarkup(detail({...patch,record:record({canAccept:true})}),en),'accept'),/disabled/);
+ assert.equal(action(trialRequestDialogMarkup(detail({record:record({canAccept:false})}),en),'accept'),'');
+});

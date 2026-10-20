@@ -356,6 +356,22 @@ export function createEnrollmentOrderStore({database,transaction,schedules,resou
   const trialApplicants=trialRows.filter(row=>row.status==='accepted'),pendingTrialApplicants=trialRows.filter(row=>row.status!=='accepted');
   return {students,trialApplicants,pendingTrialApplicants,occupied:students.length,capacity:occurrence.item.capacity??null};
  },'read');
+ // A course roster is a read-only view of real paid lessons and confirmed trials.
+ const courseStudents=(courseId,user)=>transaction(()=>{
+  const actor=requireRole(user,['admin','teacher']),course=getCourse(courseId),scope=actor.role==='teacher'?accessControl.scopeFor(actor):null;
+  if(!course||course.deletedAt||scope&&!scope.courseIds.has(courseId))fail(404,'COURSE_NOT_FOUND','The authorized course was not found.');
+  const students=new Map(),add=(id,displayName)=>students.set(id,{id,displayName});
+  for(const row of database.prepare("SELECT sessions.schedule_id,sessions.sequence,people.id,people.display_name FROM student_sessions sessions JOIN enrollment_orders orders ON orders.id=sessions.order_id AND orders.student_id=sessions.student_id JOIN people ON people.id=sessions.student_id AND people.kind='student' WHERE orders.payment_status='paid' ORDER BY people.display_name,people.id").all()){
+   let occurrence;try{occurrence=currentOccurrence(row.schedule_id,row.sequence);}catch(error){if(error instanceof ApplicationError&&error.code==='ORDER_LESSON_UNAVAILABLE')continue;throw error;}
+   if(occurrence.item.course===courseId&&(!scope||scope.permits(occurrence)))add(row.id,row.display_name);
+  }
+  for(const row of database.prepare("SELECT people.id,people.display_name,slots.data FROM trial_application_acceptances accepted JOIN trial_applications applications ON applications.id=accepted.application_id JOIN available_slots slots ON slots.id=applications.slot_id JOIN people ON people.id=applications.person_id WHERE applications.status='pending'").all()){
+   const slot=JSON.parse(row.data);if(slot.courseId!==courseId||scope&&!scope.permitsSlot(slot))continue;
+   if(slot.scheduleId){let occurrence;try{occurrence=currentOccurrence(slot.scheduleId,slot.sequence);}catch(error){if(error instanceof ApplicationError&&error.code==='ORDER_LESSON_UNAVAILABLE')continue;throw error;}if(scope&&!scope.permits(occurrence))continue;}
+   add(row.id,row.display_name);
+  }
+  return {courseId,students:[...students.values()].sort((a,b)=>a.displayName.localeCompare(b.displayName)||a.id.localeCompare(b.id))};
+ },'read');
  const filterFacts=(user,input)=>transaction(()=>{
   const actor=requireRole(user,['admin','teacher']),{from,to,since}=validateTimetableFilterFactsQuery(input),scope=actor.role==='teacher'?accessControl.scopeFor(actor):null,entries=new Map();
   for(const schedule of scope?scope.schedules:schedules.list().schedules){
@@ -386,5 +402,5 @@ export function createEnrollmentOrderStore({database,transaction,schedules,resou
   const revision=hash({scope:scope?.revision??actor,from,to,facts,profiles:[...versions].sort(([a],[b])=>a.localeCompare(b)),sources:sorted.map(entry=>[entry.fact.scheduleId,entry.fact.sequence,entry.fact.date,entry.sourceVersion])});
   return since===revision?{revision,unchanged:true}:{revision,facts};
  },'read');
- return {managementSnapshot,setAccountLink,studentProfile,studentLesson,create,list,get,authorize:authorizedOrder,authorizeAttendance,saveAttendance,authorizedParentMessageContext,getArrangement,authorizePendingArrangement,savePendingArrangement,pendingArrangementWork,send,respond,confirmPayment,occupied,timetable,roster,filterFacts,audit:()=>database.prepare('SELECT * FROM enrollment_order_audit_log ORDER BY id').all().map(row=>({...row,snapshot:JSON.parse(row.snapshot)})),sales:()=>database.prepare('SELECT * FROM enrollment_sales ORDER BY created_at,id').all().map(row=>({id:row.id,orderId:row.order_id,studentId:row.student_id,amountCents:row.amount_cents,actorId:row.actor_id,createdAt:row.created_at}))};
+ return {managementSnapshot,setAccountLink,studentProfile,studentLesson,create,list,get,authorize:authorizedOrder,authorizeAttendance,saveAttendance,authorizedParentMessageContext,getArrangement,authorizePendingArrangement,savePendingArrangement,pendingArrangementWork,send,respond,confirmPayment,occupied,timetable,roster,courseStudents,filterFacts,audit:()=>database.prepare('SELECT * FROM enrollment_order_audit_log ORDER BY id').all().map(row=>({...row,snapshot:JSON.parse(row.snapshot)})),sales:()=>database.prepare('SELECT * FROM enrollment_sales ORDER BY created_at,id').all().map(row=>({id:row.id,orderId:row.order_id,studentId:row.student_id,amountCents:row.amount_cents,actorId:row.actor_id,createdAt:row.created_at}))};
 }

@@ -1,0 +1,255 @@
+/* Display-only controls stay legible while clearly unavailable. */
+.sales-search input:disabled,
+.sales-search button:disabled,
+.sales-order-filters input:disabled,
+.sales-order-filters button:disabled {
+  cursor: not-allowed;
+  background: #f0f2f3;
+  color: #87908d;
+  opacity: .65;
+}
+.ops-product-page-actions button:disabled,
+.ops-product-empty button:disabled,
+.portal-fees-page .portal-page-actions button:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+.portal-content .ops-products-table .ops-text-button:disabled {
+  background: transparent;
+  color: #526a60;
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+/* The standalone Fees list; Course fee management keeps its existing controls. */
+.portal-content .portal-fees-page { background: #fafafa; }
+.portal-fees-page .portal-page-heading { background: #fff; }
+.portal-fees-page .portal-course-body { padding: 20px 24px; }
+.portal-fees-page .fee-filters {
+  display: grid;
+  grid-template-columns: 170px minmax(190px, 340px);
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 12px;
+}
+.portal-fees-page .fee-filters > select,
+.portal-fees-page .portal-search { margin: 0; min-height: 46px; }
+.portal-fees-page .portal-fee-table { max-width: 100%; overflow-x: auto; }
+.portal-fees-page .portal-fee-table table {
+  width: 100%;
+  min-width: 780px;
+  table-layout: fixed;
+  background: transparent;
+  margin: 0;
+}
+.portal-fees-page .portal-fee-table th,
+.portal-fees-page .portal-fee-table td {
+  padding: 20px 16px;
+  vertical-align: top;
+  line-height: 1.55;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.portal-fees-page .portal-fee-table th { background: #eef0f2; }
+.portal-fees-page th:nth-child(1) { width: 27%; }
+.portal-fees-page th:nth-child(2) { width: 12%; }
+.portal-fees-page th:nth-child(3) { width: 23%; }
+.portal-fees-page th:nth-child(4) { width: 23%; }
+.portal-fees-page th:nth-child(5) { width: 15%; }
+.portal-content .portal-fees-page .portal-course-name:disabled {
+  display: inline;
+  padding: 0;
+  margin: 0;
+  min-height: 0;
+  background: transparent;
+  box-shadow: none;
+  text-align: left;
+  font-size: inherit;
+  line-height: inherit;
+  opacity: 1;
+  cursor: not-allowed;
+}
+.portal-fees-page .course-list-fee-model {
+  display: block;
+  margin-top: 5px;
+  color: #73807a;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.portal-content .portal-fees-page .fee-course-link {
+  display: block;
+  margin: 0 0 6px;
+  padding: 0;
+  min-height: 0;
+  text-align: left;
+  line-height: 1.55;
+  white-space: normal;
+}
+
+/* Order details: fixed header/footer and one independently scrolling body. */
+.enrollment-order-detail {
+  width: min(960px, 100%);
+  background: #fff;
+  color: #253d3b;
+}
+.enrollment-order-detail > header { padding: 18px 24px; background: #fff; }
+.enrollment-order-detail > header > button {
+  width: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #687770;
+  box-shadow: none;
+  font-size: 28px;
+}
+.enrollment-order-detail .enrollment-order-summary {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 24px;
+  background: #fff;
+}
+.enrollment-order-identity h3 { margin: 0; font-size: 23px; }
+.enrollment-order-identity p { margin: 6px 0 20px; color: #7a8580; overflow-wrap: anywhere; font-size: 13px; }
+.enrollment-order-detail .enrollment-order-metadata {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  padding: 18px 20px;
+  margin: 0 0 20px;
+  background: #f2f3f4;
+  border-radius: 4px;
+}
+.enrollment-order-metadata dt { font-size: 13px; color: #738079; margin-bottom: 6px; }
+.enrollment-order-metadata dd { margin: 0; text-align: left; font-size: 15px; overflow-wrap: anywhere; }
+.enrollment-order-metadata strong { font-size: 20px; }
+.enrollment-order-detail .enrollment-order-item {
+  padding: 20px 0;
+  margin: 20px 0;
+  border: 0;
+  border-top: 1px solid #dfe2e5;
+  border-bottom: 1px solid #dfe2e5;
+  border-radius: 0;
+  background: transparent;
+}
+.enrollment-order-item header h3 { margin: 0 0 5px; font-size: 19px; overflow-wrap: anywhere; }
+.enrollment-order-item header p { margin: 0 0 18px; color: #687770; }
+.enrollment-order-detail .order-package-summary {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) minmax(0, 2fr);
+  gap: 10px 20px;
+  margin: 0 0 20px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 14px;
+}
+.enrollment-order-detail .order-package-summary dt { color: #738079; }
+.enrollment-order-detail .order-package-summary dd { margin: 0; text-align: left; overflow-wrap: anywhere; }
+.enrollment-order-detail .enrollment-order-lessons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 0;
+  list-style: none;
+  max-height: 240px;
+  overflow: auto;
+}
+.enrollment-order-detail .enrollment-order-lessons li {
+  padding: 10px 12px;
+  margin: 0;
+  background: #f4f5f6;
+  border-radius: 3px;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+}
+.enrollment-order-detail > footer {
+  flex: none;
+  justify-content: flex-end;
+  margin: 0;
+  border-top: 1px solid #dfe2e5;
+  background: #fff;
+}
+.enrollment-order-detail > footer button:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Website Content opens News directly; edit/create is a single focused screen. */
+.portal-news-page { min-height: 100%; background: #fafafa; }
+.portal-news-page > .portal-page-heading { background: #fff; }
+.portal-news-body { padding: 24px; }
+.portal-news-body > .teacher-news-section { margin: 0; padding: 0; border: 0; }
+.portal-news-page .teacher-news-list { gap: 0; }
+.portal-news-page .teacher-news-list article {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 20px;
+  padding: 20px 0;
+  margin: 0;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid #dfe2e5;
+  border-radius: 0;
+}
+.portal-news-page .teacher-news-list article > img { width: 110px; height: 82px; object-fit: cover; border-radius: 3px; }
+.portal-news-page .teacher-news-list h3 { margin: 7px 0; font-size: 19px; line-height: 1.45; overflow-wrap: anywhere; }
+.portal-news-page .teacher-news-list p { margin: 0; line-height: 1.65; color: #687770; overflow-wrap: anywhere; }
+.portal-news-page .teacher-news-list time { font-size: 13px; color: #7a8580; }
+.portal-news-page .news-item-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.portal-content .portal-news-page .news-item-actions button {
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 1px solid #d5dadd;
+  background: #fff;
+  color: var(--teal);
+  box-shadow: none;
+}
+.portal-content .portal-news-page .news-item-actions .news-delete-button { color: #b04435; }
+.portal-news-body:has(.news-manager-editor) > .teacher-news-section { display: none; }
+.portal-news-page .news-manager-editor { max-width: none; margin: 0; padding: 24px; background: #fff; border: 1px solid #dfe2e5; }
+.portal-news-page .news-manager-editor h2 { font-size: 22px; }
+.portal-news-page .news-editor { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 28px; padding-top: 24px; }
+.portal-news-page .news-editor > label { min-width: 0; font-size: 14px; align-content: start; }
+.portal-news-page .news-editor :is(input, textarea) { font: inherit; font-weight: 400; line-height: 1.6; }
+.portal-news-page .news-editor > label:nth-of-type(1) { grid-column: 1; grid-row: 1; }
+.portal-news-page .news-editor > label:nth-of-type(2) { grid-column: 1; grid-row: 2; }
+.portal-news-page .news-editor > label:nth-of-type(3) { grid-column: 1; grid-row: 3; }
+.portal-news-page .news-editor > label:nth-of-type(4) { grid-column: 2; grid-row: 1; }
+.portal-news-page .news-editor > label:nth-of-type(5) { grid-column: 2; grid-row: 2; }
+.portal-news-page .news-editor > label:nth-of-type(6) { grid-column: 2; grid-row: 3; }
+.portal-news-page .news-editor > :not(label) { grid-column: 1 / -1; }
+.portal-news-page .news-editor textarea { resize: vertical; }
+.portal-news-page .news-editor-actions { justify-content: flex-end; border-top: 1px solid #dfe2e5; padding-top: 20px; }
+.news-delete-dialog { background: #fff; }
+.news-delete-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+.news-delete-actions .news-delete-button { background: #b04435; border-color: #b04435; color: #fff; }
+
+@media (max-width: 720px) {
+  .portal-fees-page .portal-course-body, .portal-news-body { padding: 16px; }
+  .portal-fees-page .fee-filters { grid-template-columns: 1fr; }
+  .enrollment-order-detail > header, .enrollment-order-detail > footer, .enrollment-order-detail .enrollment-order-summary { padding: 16px; }
+  .enrollment-order-detail .enrollment-order-metadata { grid-template-columns: 1fr; gap: 14px; padding: 16px; }
+  .enrollment-order-detail .enrollment-order-lessons { grid-template-columns: 1fr; }
+  .enrollment-order-detail .order-package-summary { grid-template-columns: minmax(100px, 1fr) minmax(0, 1.5fr); gap: 10px 12px; }
+  .portal-news-page .teacher-news-list article { grid-template-columns: 74px minmax(0, 1fr); gap: 12px; }
+  .portal-news-page .teacher-news-list article > img { width: 74px; height: 74px; }
+  .portal-news-page .news-item-actions { grid-column: 1 / -1; justify-content: flex-end; }
+  .portal-news-page .news-manager-editor { padding: 16px; }
+  .portal-news-page .news-editor { grid-template-columns: 1fr; }
+  .portal-news-page .news-editor > label:nth-of-type(n) { grid-column: 1; grid-row: auto; }
+}
+
+/* Timetable creation choices and mutually exclusive deferred arrangements. */
+.timetable-cell-menu{position:fixed;z-index:1200;width:min(224px,calc(100vw - 16px));padding:5px;background:#fff;border:1px solid #d9dfdf;border-radius:6px;box-shadow:0 4px 16px #203c3b26}
+.timetable-cell-menu>button{display:block;width:100%;min-height:44px;margin:0;padding:10px 12px;border:0;border-radius:3px;background:transparent;color:#253d3b;box-shadow:none;text-align:left;font-size:14px;line-height:1.5}
+.timetable-cell-menu>button:hover,.timetable-cell-menu>button:focus-visible{background:#edf3f3;outline:none;box-shadow:none}
+.availability-resource-options label:has(input:disabled){opacity:.42;cursor:not-allowed}
+.availability-resource-options input:disabled{cursor:not-allowed}
+
+.availability-checkbox input[type=radio]{flex:none;width:20px;height:20px;min-height:0;margin:2px 0 0;padding:0;accent-color:var(--teal)}
+
+/* While the pointer menu is open, retain its origin instead of tracking hover. */
+body:has(.timetable-cell-menu) .portal-content .tt-cell-add:not(.tt-cell-selected){background:transparent;box-shadow:none;outline:none}
+body:has(.timetable-cell-menu) .tt-cell-add:not(.tt-cell-selected) .tt-cell-add-hint{opacity:0}
+body:has(.timetable-cell-menu) .portal-content .tt-cell-add.tt-cell-selected{background:#dcece380;box-shadow:inset 0 0 0 1px #8bb5a580;outline:none}
+body:has(.timetable-cell-menu) .tt-cell-selected .tt-cell-add-hint{opacity:1}

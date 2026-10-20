@@ -39,3 +39,29 @@ test('shared news and its import receipts survive a database restart with dates 
  assert.equal(next.websiteNews.importLegacy({posts:[imported]},actor).imported,0);
  assert.equal(next.websiteNews.list({publicOnly:true}).posts.filter(row=>row.id===before.id).length,1);
 });
+
+test('deleting website news removes the same item publicly and privately without accepting stale or unauthorized requests',async t=>{
+ const a=await fixture(t),admin=a.client(),teacher=a.client(),visitor=a.client();await admin.login();await teacher.login(2);
+ const created=await admin.request('/api/news',{method:'POST',body:post});const item=created.body.post;
+ error(await teacher.request('/api/news/'+item.id,{method:'DELETE',body:{version:item.version}}),403);
+ error(await visitor.request('/api/news/'+item.id,{method:'DELETE',body:{version:item.version}}),401);
+ error(await admin.request('/api/news/'+item.id,{method:'DELETE',body:{version:item.version},csrf:false}),403);
+ const updated=await admin.request('/api/news/'+item.id,{method:'PATCH',body:{...post,title:'Current title',version:item.version}});
+ error(await admin.request('/api/news/'+item.id,{method:'DELETE',body:{version:item.version}}),409);
+ assert.ok((await visitor.request('/api/public/news')).body.posts.some(row=>row.id===item.id&&row.title==='Current title'));
+ const deletion={method:'DELETE',body:{version:updated.body.post.version},headers:{'Idempotency-Key':'news-delete-exact-operation'}};const removed=await admin.request('/api/news/'+item.id,deletion);assert.equal(removed.status,200,removed.text);assert.deepEqual((await admin.request('/api/news/'+item.id,deletion)).body,removed.body);
+ assert.ok(!(await visitor.request('/api/public/news')).body.posts.some(row=>row.id===item.id));assert.ok(!(await admin.request('/api/news')).body.posts.some(row=>row.id===item.id));
+ error(await admin.request('/api/news/'+item.id,{method:'PATCH',body:{...post,version:removed.body.post.version}}),404);
+});
+
+test('deleted built-in news stays deleted after restart and a legacy import cannot revive it',async t=>{
+ const {mkdtemp,rm}=await import('node:fs/promises'),{tmpdir}=await import('node:os'),{join}=await import('node:path'),{createStore}=await import('../store.mjs');
+ const directory=await mkdtemp(join(tmpdir(),'beamal-deleted-news-'));t.after(()=>rm(directory,{recursive:true,force:true}));const databasePath=join(directory,'news.sqlite');
+ const a=await fixture(t,{databasePath}),admin=a.client();await admin.login();const actor=(await admin.request('/api/auth/session')).body.user;
+ const item=(await admin.request('/api/news')).body.posts.find(row=>row.id==='sample-news-1');assert.ok(item);
+ const removed=await admin.request('/api/news/'+item.id,{method:'DELETE',body:{version:item.version}});assert.equal(removed.status,200,removed.text);await a.close();
+ const next=await createStore({databasePath,seedUsers:[],seedCourses:[]});t.after(()=>next.close());
+ assert.ok(!next.websiteNews.list({publicOnly:true}).posts.some(row=>row.id===item.id));
+ next.websiteNews.importLegacy({posts:[{...post,id:item.id,title:'Old local copy'}]},actor);
+ assert.ok(!next.websiteNews.list({user:actor}).posts.some(row=>row.title==='Old local copy'||row.id===item.id));
+});

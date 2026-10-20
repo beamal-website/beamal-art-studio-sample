@@ -8,7 +8,7 @@
 .staff-leave-button{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;max-width:100%;padding:10px 16px;border:1px solid var(--leave-teal);border-radius:6px;background:var(--leave-teal);color:white;font:inherit;font-size:14px;line-height:1.5;cursor:pointer;overflow-wrap:anywhere}
 .staff-leave-secondary{background:var(--leave-paper);color:var(--leave-teal);border-color:#bacdc3}
 .staff-leave-button:hover{filter:brightness(.95)}
-.staff-leave-button:disabled,.staff-leave-button:disabled:hover{background:#eef0e9;color:var(--leave-muted);border-color:var(--leave-line);filter:none;cursor:not-allowed}
+.staff-leave-button:disabled,.staff-leave-button:disabled:hover{background:var(--portal-muted,#eef0e9);color:var(--leave-muted);border-color:var(--leave-line);filter:none;cursor:not-allowed}
 .staff-leave-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:16px;margin:0 0 24px;align-items:end}
 .staff-leave-field{display:grid;gap:8px;min-width:0;font-size:13px;margin:0}
 .staff-leave-field>span{color:var(--leave-muted);line-height:1.6}
@@ -20,7 +20,7 @@
 .staff-leave-table-wrap{width:100%;max-width:100%;overflow-x:auto;border:1px solid var(--leave-line);border-radius:8px;background:var(--leave-paper);scrollbar-width:thin}
 .staff-leave-table{width:100%;min-width:960px;border-collapse:collapse;text-align:left}
 .staff-leave-table th,.staff-leave-table td{padding:14px 16px;vertical-align:top;border-bottom:1px solid var(--leave-line);font-size:13px;line-height:1.7}
-.staff-leave-table th{font-size:12px;font-weight:600;background:#eef2e8;color:var(--leave-muted);white-space:nowrap}
+.staff-leave-table th{font-size:12px;font-weight:600;background:var(--portal-muted,#eef2e8);color:var(--leave-muted);white-space:nowrap}
 .staff-leave-table td:not(:first-child){white-space:nowrap}
 .staff-leave-table tr:last-child td{border-bottom:0}
 .staff-leave-table td:first-child{min-width:180px}
@@ -38,7 +38,7 @@
 .staff-leave-affected{margin:28px 0;min-width:0}
 .staff-leave-affected h3{font-size:18px;margin:0 0 20px;line-height:1.5}
 .staff-leave-sessions{display:grid;gap:12px;margin:0;padding:0;list-style:none}
-.staff-leave-sessions>li{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:16px;border:1px solid var(--leave-line);border-radius:8px;background:#f5f7ef;min-width:0}
+.staff-leave-sessions>li{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:16px;border:1px solid var(--leave-line);border-radius:8px;background:var(--portal-muted,#f5f7ef);min-width:0}
 .staff-leave-sessions>li>div{min-width:0}
 .staff-leave-sessions h4{font-size:15px;margin:0 0 8px;line-height:1.6;overflow-wrap:anywhere}
 .staff-leave-sessions p{font-size:13px;color:var(--leave-muted);margin:6px 0;line-height:1.7;overflow-wrap:anywhere}

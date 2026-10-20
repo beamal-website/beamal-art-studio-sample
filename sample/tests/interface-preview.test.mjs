@@ -1131,6 +1131,13 @@ test('staff assigned lessons follow the selected month and exact profile and ope
  p.ui.action({action:'ui-staff',uiCommand:'open-roster-class',uiId:'actual-schedule:4'});assert.deepEqual(opened,[{scheduleId:'actual-schedule',sequence:4,date:'2026-11-16'}]);
 });
 
+test('settings category changes preserve the long navigation scroll and cancel preserves form reading position',()=>{
+ const nav={scrollTop:620},content={scrollTop:400},dom={activeElement:null,querySelector:selector=>selector==='.sr-category-nav'?nav:selector==='.sr-content'?content:null,querySelectorAll:()=>[]};
+ const ui=createInterfacePreview({context:()=>({t,role:'admin',settingsReference:true}),dom,repaint:()=>{nav.scrollTop=0;content.scrollTop=0;},showModal:()=>{}});
+ ui.action({action:'ui-operations',uiCommand:'settings-reference-tab',uiId:'current-branch'});assert.equal(nav.scrollTop,620);assert.equal(content.scrollTop,0);assert.match(ui.operations('settings'),/data-settings-page="current-branch"/);
+ content.scrollTop=450;ui.action({action:'ui-operations',uiCommand:'settings-reference-cancel'});assert.equal(nav.scrollTop,620);assert.equal(content.scrollTop,450);
+});
+
 test('workspace reference keeps one flat child page through refresh and its mobile picker uses the same navigation',()=>{
  const source=sharedStaffSnapshot();source.user.role='admin';
  const p=preview({context:()=>({t,role:'admin',workspacePending:{rescheduling:0,trial:1,payment:0,other:0}}),sharedSnapshot:()=>source});

@@ -74,3 +74,14 @@ test('student classes translate all saved attendance states and never show inter
   for(const [ctx,label]of[[{t:zh=>zh},zh],[en,english]]){const html=sharedStudentClassesMarkup({ready:true,lessons:[row]},ctx);assert.ok(html.includes(label));assert.doesNotMatch(html,/PRIVATE LESSON NOTE|Blue sticker|showRemark/);}
  }
 });
+
+test('read-only order details retain the receipt and lesson snapshot but disable administrative changes',()=>{
+ const html=enrollmentOrderDetailsMarkup({...order,orderStatus:'draft'},{role:'admin',readOnly:true},en);
+ assert.match(html,/data-action="ui-order-document"(?![^>]*disabled)/);assert.match(html,/data-action="orders-send"[^>]*disabled/);
+ assert.match(html,/enrollment-order-metadata/);assert.match(html,/enrollment-order-item/);assert.match(html,/2026-10-16.*13:00/);
+});
+
+test('account links in a read-only Orders page cannot change login access',()=>{
+ const html=studentAccountLinksMarkup({students:[{id:'student-a',displayName:'Child'}],accounts:[{id:'account-a',displayName:'Parent',email:'parent@example.test'}],links:[]},en,{readOnly:true});
+ assert.match(html,/<select name="userId" disabled/);assert.match(html,/<button type="submit" disabled/);
+});

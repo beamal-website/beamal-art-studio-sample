@@ -45,7 +45,7 @@ import {timetableGridMinimum,timetableCreateCells,timetableCreateCellMarkup} fro
 import {resolveSharedLessonContext} from '../client/shared-lesson-context.js';
 
 const createVmContext=vm.createContext.bind(vm);
-vm.createContext=(sandbox,options)=>createVmContext({workspacePendingCount,workspacePendingCounts,createStudentRecordsController,...studioCourses,...sidebarMotion,...studentManagementUI,trialApplicationMarkup,...sandbox},options);
+vm.createContext=(sandbox,options)=>createVmContext({installSearchClear:()=>{},workspacePendingCount,workspacePendingCounts,createStudentRecordsController,...studioCourses,...sidebarMotion,...studentManagementUI,trialApplicationMarkup,...sandbox},options);
 
 test('same-revision authenticated teacher mapping changes refresh the session and clear stale private identity state',async()=>{
  const user={...sharedTestUser,teacherResourceIds:['linked-before']},a=await sharedApp({session:async()=>({user})});
@@ -300,6 +300,7 @@ for(const accountRole of ['admin','teacher'])test(`shared ${accountRole} mobile 
  a.set('portalViewport.matches=true;syncPortalMenu()');
  await a.click({action:'portal-menu'});assert.equal(a.read('role'),'teacher');assert.equal(a.read('authUser.role'),accountRole);assert.equal(a.nodes['#portal-sidebar'].inert,false);
  await a.click({tab:'fees'});
+ if(accountRole==='teacher'){assert.equal(a.read('location.pathname'),'/account');assert.notEqual(a.read('tab'),'fees');assert.equal(a.read('portalMenu'),true);return;}
  assert.equal(a.read('location.pathname'),'/account/fees');assert.equal(a.read('tab'),'fees');
  assert.equal(a.read('portalMenu'),false,'Fees navigation must close the mobile sidebar');assert.equal(a.nodes['[data-action="portal-menu"]'].getAttribute('aria-expanded'),'false');assert.equal(a.nodes['#portal-sidebar'].inert,true);
  await a.click({action:'portal-menu'});await a.click({tab:'catalog'});
@@ -310,7 +311,7 @@ test('shared desktop Fees navigation preserves the manually selected sidebar sta
   const user={...sharedTestUser,role:accountRole},a=await sharedApp({session:async()=>({user})});
   for(const collapsed of [false,true]){
    a.set(`portalMenu=${collapsed};tab='catalog';location.pathname='/account';render()`);await a.click({tab:'fees'});
-   assert.equal(a.read('location.pathname'),'/account/fees');assert.equal(a.read('portalMenu'),collapsed);assert.equal(a.nodes['[data-action="portal-menu"]'].getAttribute('aria-expanded'),String(!collapsed));assert.equal(a.nodes['#portal-sidebar'].inert,false);
+   assert.equal(a.read('location.pathname'),accountRole==='teacher'?'/account':'/account/fees');if(accountRole==='teacher')assert.equal(a.read('tab'),'catalog');assert.equal(a.read('portalMenu'),collapsed);assert.equal(a.nodes['[data-action="portal-menu"]'].getAttribute('aria-expanded'),String(!collapsed));assert.equal(a.nodes['#portal-sidebar'].inert,false);
    await a.click({tab:'catalog'});assert.equal(a.read('location.pathname'),'/account');assert.equal(a.read('portalMenu'),collapsed);
   }
  }
@@ -468,14 +469,14 @@ test('timetable date columns keep the same baseline across empty and crowded wee
 
 test('an empty timetable quarter-hour opens the existing editor with its date time and weekday without saving on cancel',async()=>{
  const a=lessonApp(),before=a.read('db');assert.match(a.nodes['#app'].innerHTML,/data-action="tt-add-cell"[^>]*data-date="2026-10-05"[^>]*data-time="09:15"/);
- await a.click({action:'tt-add-cell',date:'2026-10-05',time:'09:15'});assert.equal(a.read('scheduleDraft.startDate'),'2026-10-05');assert.equal(a.read('scheduleDraft.time'),'09:15');assert.deepEqual(a.read('scheduleDraft.weekdays'),[1]);assert.match(a.nodes['#modal-root'].innerHTML,/<option value="09:15" selected>/);assert.match(a.nodes['#modal-root'].innerHTML,/id="schedule-duration"[^>]*required(?! disabled)/);
+ await a.click({action:'tt-add-cell',date:'2026-10-05',time:'09:15'});assert.equal(a.read('scheduleDraft'),null);assert.match(a.read('modal'),/tt-cell-schedule/);await a.click({action:'tt-cell-schedule'});assert.equal(a.read('scheduleDraft.startDate'),'2026-10-05');assert.equal(a.read('scheduleDraft.time'),'09:15');assert.deepEqual(a.read('scheduleDraft.weekdays'),[1]);assert.match(a.nodes['#modal-root'].innerHTML,/<option value="09:15" selected>/);assert.match(a.nodes['#modal-root'].innerHTML,/id="schedule-duration"[^>]*required(?! disabled)/);
  a.keydown('Escape');assert.equal(a.read('modal'),'');assert.deepEqual(a.read('db'),before);assert.equal(a.read('timetableDate'),'2026-10-08');
  for(const fields of [{date:'2026-10-05',time:'09:20'},{date:'2026-02-30',time:'09:15'},{date:'2030-01-01',time:'09:15'},{date:'2026-10-05',time:'24:00'}]){await a.click({action:'tt-add-cell',...fields});assert.equal(a.read('modal'),'');}
 });
 
 test('timetable create cells follow real quarter hours under twenty-minute display rows and stay absent for read-only roles',async()=>{
  const a=lessonApp();a.set("timetableViewSettings.intervalDuration=20;render()");const html=a.nodes['#app'].innerHTML;assert.match(html,/data-time="09:15"/);assert.doesNotMatch(html,/data-time="09:20"/);
- await a.click({action:'tt-add-cell',date:'2026-10-05',time:'09:15'});assert.equal(a.read('scheduleDraft.time'),'09:15');a.keydown('Escape');
+ await a.click({action:'tt-add-cell',date:'2026-10-05',time:'09:15'});assert.equal(a.read('scheduleDraft'),null);assert.match(a.read('modal'),/tt-cell-schedule/);await a.click({action:'tt-cell-schedule'});assert.equal(a.read('scheduleDraft.time'),'09:15');a.keydown('Escape');
  const user={...copy(sharedTestUser),id:'qa-cell-readonly-teacher',role:'teacher'},b=await sharedScheduleApp({rows:[sharedScheduleRecord()],revision:1},{session:async()=>({user}),schedules:async()=>teacherScheduleFixture(sharedScheduleRecord())});
  assert.doesNotMatch(b.nodes['#app'].innerHTML,/data-action="tt-add-cell"/);await b.click({action:'tt-add-cell',date:'2026-10-05',time:'09:15'});assert.equal(b.read('modal'),'');assert.equal(b.read('scheduleDraft'),null);
 });
@@ -1600,16 +1601,16 @@ test('each course row opens its stable course timetable and returns to its exact
 });
 
 test('course row timetable actions respect readable teacher courses and omit deleted and student rows',async()=>{
- const series=scopedScheduleRecord(),user={...copy(sharedTestUser),role:'teacher'},a=await sharedScheduleApp({rows:[],revision:1},{session:async()=>({user}),schedules:async()=>teacherScheduleFixture(series,{sequence:2,date:'2026-10-21'})});a.set("tab='catalog';location.pathname='/account';render()");const tag=a.nodes['#app'].innerHTML.match(/<button\b[^>]*data-course-timetable="qa-course"[^>]*>/)?.[0];assert.ok(tag);assert.doesNotMatch(a.nodes['#app'].innerHTML,/data-course-timetable="unreadable-course"/);await a.click({courseTimetable:'unreadable-course'});assert.equal(a.read('tab'),'catalog');assert.equal(a.read('courseTimetableOrigin'),null);
- await a.click(markupDataset(tag));assert.equal(a.read('tab'),'overview');await a.set('refreshSharedSchedules({paint:false})');assert.equal(a.read('sharedScheduleOccurrences.length'),1);assert.equal(a.read('db.schedules.length'),0);await a.click({action:'tt-clear-lesson'});assert.equal(a.read('timetableLessonFilter'),null);assert.equal(a.read('sharedScheduleOccurrences.length'),1);assert.doesNotMatch(a.nodes['#app'].innerHTML,/data-lesson-sequence="1"/);await a.click({action:'tt-back-course'});assert.equal(a.read('tab'),'catalog');
- a.set("db.courseSettings[0].deletedAt='2026-10-15T00:00:00Z';courseStatusFilter='deleted';render()");assert.doesNotMatch(a.nodes['#app'].innerHTML,/data-course-timetable=/);assert.match(a.nodes['#app'].innerHTML,/data-action="course-restore"/);await a.click({courseTimetable:'qa-course'});assert.equal(a.read('tab'),'catalog');assert.equal(a.read('courseTimetableOrigin'),null);
+ const series=scopedScheduleRecord(),user={...copy(sharedTestUser),role:'teacher'},a=await sharedScheduleApp({rows:[],revision:1},{session:async()=>({user}),schedules:async()=>teacherScheduleFixture(series,{sequence:2,date:'2026-10-21'})});a.set("tab='catalog';location.pathname='/account';render()");const tag=a.nodes['#app'].innerHTML.match(/<button\b[^>]*data-course-timetable="qa-course"[^>]*>/)?.[0];assert.equal(tag,undefined);assert.doesNotMatch(a.nodes['#app'].innerHTML,/data-course-timetable="unreadable-course"/);await a.click({courseTimetable:'unreadable-course'});assert.equal(a.read('tab'),'catalog');assert.equal(a.read('courseTimetableOrigin'),null);
+ await a.set("openCourseTimetable(null,'qa-course')");assert.equal(a.read('tab'),'overview');await a.set('refreshSharedSchedules({paint:false})');assert.equal(a.read('sharedScheduleOccurrences.length'),1);assert.equal(a.read('db.schedules.length'),0);await a.click({action:'tt-clear-lesson'});assert.equal(a.read('timetableLessonFilter'),null);assert.equal(a.read('sharedScheduleOccurrences.length'),1);assert.doesNotMatch(a.nodes['#app'].innerHTML,/data-lesson-sequence="1"/);await a.click({action:'tt-back-course'});assert.equal(a.read('tab'),'catalog');
+ a.set("db.courseSettings[0].deletedAt='2026-10-15T00:00:00Z';courseStatusFilter='deleted';render()");assert.doesNotMatch(a.nodes['#app'].innerHTML,/data-course-timetable=/);assert.doesNotMatch(a.nodes['#app'].innerHTML,/data-action="course-restore"/);await a.click({courseTimetable:'qa-course'});assert.equal(a.read('tab'),'catalog');assert.equal(a.read('courseTimetableOrigin'),null);
  a.set("role='student';authUser={id:'qa-student',role:'student'};db.courseSettings[0].deletedAt=null;courseStatusFilter='active';tab='courses';render()");assert.doesNotMatch(a.nodes['#app'].innerHTML,/data-course-timetable=|course-list-with-actions/);await a.click({courseTimetable:'qa-course'});assert.equal(a.read('tab'),'courses');assert.equal(a.read('courseTimetableOrigin'),null);
 });
 
 test('a pending course-row timetable read cannot replace a changed role, access scope or filtered source list',async()=>{
  for(const change of ['student','access','filter']){
-  const series=scopedScheduleRecord(),user={...copy(sharedTestUser),role:'teacher'},a=await sharedScheduleApp({rows:[],revision:1},{session:async()=>({user}),schedules:async()=>teacherScheduleFixture(series,{sequence:2,date:'2026-10-21'})});a.set("tab='catalog';location.pathname='/account';render()");await a.set('refreshSharedSchedules({paint:false})');const tag=a.nodes['#app'].innerHTML.match(/<button\b[^>]*data-course-timetable="qa-course"[^>]*>/)?.[0];assert.ok(tag);
-  const wait=deferred();let reads=0;a.client.schedules=()=>{reads++;return wait.promise};const pending=a.click(markupDataset(tag));await until(()=>reads===1,'The row action must wait for the current teacher-authorized schedule source');
+  const series=scopedScheduleRecord(),user={...copy(sharedTestUser),role:'teacher'},a=await sharedScheduleApp({rows:[],revision:1},{session:async()=>({user}),schedules:async()=>teacherScheduleFixture(series,{sequence:2,date:'2026-10-21'})});a.set("tab='catalog';location.pathname='/account';render()");await a.set('refreshSharedSchedules({paint:false})');const tag=a.nodes['#app'].innerHTML.match(/<button\b[^>]*data-course-timetable="qa-course"[^>]*>/)?.[0];assert.equal(tag,undefined);
+  const wait=deferred();let reads=0;a.client.schedules=()=>{reads++;return wait.promise};const pending=a.set("openCourseTimetable(null,'qa-course')");await until(()=>reads===1,'The row action must wait for the current teacher-authorized schedule source');
   if(change==='filter')a.set("courseSearch='Different search';render()");else {a.ctx.changedCourseUser={...user,...(change==='student'?{id:'qa-parent',role:'student'}:{accessRevision:'new-course-access'})};a.set("applySharedUser(changedCourseUser);tab=authUser.role==='student'?'payments':'catalog';render()");}
   const destination=a.read('({path:location.pathname,tab,role,identity:authUser.id})');wait.resolve(teacherScheduleFixture(series,{sequence:2,date:'2026-10-21'}));await pending;assert.deepEqual(a.read('({path:location.pathname,tab,role,identity:authUser.id})'),destination);assert.equal(a.read('courseTimetableOrigin'),null);assert.equal(a.read('timetableLessonFilter'),null);if(change==='filter')assert.equal(a.read('courseSearch'),'Different search');
  }
@@ -1966,7 +1967,7 @@ test('shared course catalogue lifecycle conflicts retain the opened draft, teach
 
  const deleted=catalogueCourse('deleted-course','CO-702','Deleted course',{deletedAt:'2026-10-14T00:00:00Z'}),teacher=await courseCatalogueApp([copy(sharedTestCourse),deleted]);teacher.state.user={...copy(sharedTestUser),role:'teacher'};teacher.ctx.readonlyUser=copy(teacher.state.user);teacher.ctx.readonlyCourses=copy(teacher.state.courses);
  teacher.set("applySharedUser(readonlyUser);applySharedCourses(readonlyCourses);tab='catalog';location.pathname='/account';render()");teacher.change('','deleted',{id:'portal-course-status'});
- const restore=teacher.nodes['#app'].innerHTML.match(/<button\b[^>]*data-action="course-restore"[^>]*>/)?.[0];assert.match(restore||'',/\bdisabled\b/);
+ const restore=teacher.nodes['#app'].innerHTML.match(/<button\b[^>]*data-action="course-restore"[^>]*>/)?.[0];assert.equal(restore,undefined);
  teacher.click({action:'course-delete',courseId:'qa-course'});teacher.click({action:'course-restore',courseId:'deleted-course'});assert.equal(teacher.read('modal'),'');
  const forged=sharedForm('course-lifecycle-editor',{recordId:'qa-course',version:'1'});forged.dataset.action='delete';forged.dataset.courseId='qa-course';await teacher.submit(forged.id,{},forged);assert.equal(teacher.lifecycleCalls.length,0);
 
@@ -2383,8 +2384,8 @@ test('a shared teacher cannot render unscoped legacy student, enrolment, managem
  a.set(`db.bookings=[{id:'PRIVATE-PAID',studentId:'other-student',student:'Unscoped paid student Zed',classId:'a',paid:true,status:'confirmed',paidAt:'2026-10-01'},{id:'PRIVATE-PENDING',studentId:'other-pending',student:'Unscoped pending student Zee',classId:'a',paid:false,status:'pending',submittedAt:'2026-10-01'}];db.studentProfiles={'Unscoped paid student Zed':{id:'private-legacy-student',name:'Unscoped paid student Zed',phone:'12345678',email:'fictional-private@example.test'}};db.requests=[{id:'PRIVATE-REQUEST',student:'Unscoped request student'}];db.leads=[${JSON.stringify({id:'private-legacy-lead',...leadInput({displayName:'Unscoped lead Zee'}),status:'active',archived:false,createdAt:'2026-10-01T00:00:00Z',updatedAt:'2026-10-01T00:00:00Z'})}];db.news=[{...db.news[0],title:'Unscoped future news draft',releaseDate:'2030-01-01'}];previewTeachers.push({id:'private-legacy-teacher',name:'Unscoped management teacher',level:'teacher',permissions:[]});render()`);
  const privateData=/Unscoped (?:paid|pending|request|lead|future|management)|fictional-private@example\.test/;
  a.ctx.document.querySelector('#modal-root');
- const nav=a.nodes['#app'].innerHTML.match(/<nav id="portal-sidebar"[\s\S]*?<\/nav>/)?.[0]||'';assert.deepEqual(a.read('portalItems().map(item=>item[0])'),['overview','catalog','fees','settings']);assert.doesNotMatch(nav,/data-tab="(?:student-list|new-enrolments|management|leads|news|students|payments)"/,'Unsupported legacy teacher modules must not appear as usable sidebar entries');
- await a.click({tab:'settings'});assert.match(a.nodes['#app'].innerHTML,/data-action="parent-template-manage"/);assert.doesNotMatch(a.nodes['#app'].innerHTML,/portal-settings-tools|data-tab="news"|Unscoped|data-action="(?:resource-manager|access-manager|class-type-manager)/,'Teacher Settings must expose only their personal template entry, not schoolwide tools');
+ const nav=a.nodes['#app'].innerHTML.match(/<nav id="portal-sidebar"[\s\S]*?<\/nav>/)?.[0]||'';assert.deepEqual(a.read('portalItems().map(item=>item[0])'),['teacher-home','overview','catalog','teacher-salary']);assert.doesNotMatch(nav,/data-tab="(?:student-list|new-enrolments|management|leads|news|students|payments)"/,'Unsupported legacy teacher modules must not appear as usable sidebar entries');
+ await a.click({tab:'settings'});assert.doesNotMatch(a.nodes['#app'].innerHTML,/data-action="parent-template-manage"|Unscoped/);
  for(const tab of ['student-list','new-enrolments','management','leads','news']){await a.click({tab});assert.doesNotMatch(a.nodes['#app'].innerHTML,privateData,'A shared teacher must not obtain unrelated local prototype data from '+tab);assert.doesNotMatch(a.nodes['#modal-root'].innerHTML,privateData);}
  for(const dataset of [{viewStudent:'private-legacy-student'},{editStudent:'private-legacy-student'}]){await a.click(dataset);assert.doesNotMatch(a.nodes['#modal-root'].innerHTML,privateData,'A forged legacy student action must not bypass the page restriction');assert.equal(a.read('modal'),'');}
  await a.click({go:'/account/classes/a'});assert.doesNotMatch(a.nodes['#app'].innerHTML,privateData,'An old class URL must not bypass the shared teacher scope');assert.doesNotMatch(a.nodes['#app'].innerHTML,/class-roster-table/);assert.equal(a.scheduleCalls.filter(call=>call.operation==='save').length,0);
@@ -2600,11 +2601,11 @@ test('admin-created public courses sync to home, classes and details before tria
  records=[{...created,courseName:'Renamed Art Lab'}];revision='catalog-3';await a.set('refreshPublicStudioCatalog()');assert.match(a.nodes['#app'].innerHTML,/Renamed Art Lab/);
 });
 
-test('public course trial popup submits the full application and shows only its reference',async()=>{
+test('legacy trial enquiry dialog retains its submission contract without a course-page enquiry button',async()=>{
  let submitted=null;
  const a=await sharedApp({publicTrialTimes:async courseId=>({revision:'trial-times-v1',slots:[{id:'qa-trial-slot',courseId,date:'2026-10-24',time:'14:00',duration:60,roomNames:['B11'],trialRemaining:2}]}),createTrialApplication:async application=>{submitted=copy(application);return {application:{id:'trial-application-reference',status:'new',createdAt:'2026-10-16T10:00:00.000Z'}}}});
  a.set(`publicStudioCatalogCache.courses=[${JSON.stringify(sharedTestCourse)}];location.pathname='/classes/qa-course';lang='en';render()`);
- assert.match(a.nodes['#app'].innerHTML,/data-action="availability-trial-application-open"/);
+ assert.doesNotMatch(a.nodes['#app'].innerHTML,/data-action="availability-trial-application-open"/);
  await a.click({action:'availability-trial-application-open',courseId:'qa-course',courseName:'Shared studio',trialTimeslot:'2026-10-24 14:00'});
  const form=a.nodes['#trial-application-form'];assert.ok(form?.onsubmit);assert.match(a.nodes['#modal-root'].innerHTML,/name="studentNameZh"/);assert.match(a.nodes['#modal-root'].innerHTML,/name="birthDate"/);assert.match(a.nodes['#modal-root'].innerHTML,/name="interestedTimeslot" required/);assert.match(a.nodes['#modal-root'].innerHTML,/2026-10-24 14:00 · B11/);
  form.values={studentNameZh:'陳小明',studentNameEn:'Ming Chan',birthDate:'2019-05-01',school:'Harbour School',referrerName:'Ms Lee',interestedTimeslot:'2026-10-24 14:00 · B11',whatsappNumber:'+852 1234 5678',email:'parent@example.test',parentName:'陳家長'};
@@ -3195,14 +3196,14 @@ test('a successful scoped order refresh closes a revoked student order even whil
 
 test('administrator can explicitly revoke an existing student login link using Not linked and its opened version',async()=>{const remote=orderUiClient({orders:[],students:[{id:'qa-child',displayName:'QA Child'}],links:[{studentId:'qa-child',userId:'qa-parent',version:4}]}),a=await sharedApp(remote.client),writes=[];a.client.saveStudentAccountLink=async(...args)=>{writes.push(args);remote.remote.links=[{studentId:'qa-child',userId:null,version:5}];return {link:copy(remote.remote.links[0]),revision:'unlinked'}};a.set("tab='new-enrolments';render()");await a.set('refreshEnrollmentOrders({paint:false,links:true})');const button={disabled:false},error={textContent:''},form={dataset:{studentId:'qa-child',version:'4'},values:{userId:''},isConnected:true,querySelector:selector=>selector==='button'?button:error};a.ctx.unlinkForm=form;await a.set('saveStudentAccountLink(unlinkForm)');assert.equal(writes.length,1);assert.deepEqual(writes[0].slice(0,3),['qa-child',null,4]);assert.ok(writes[0][3]);assert.equal(error.textContent,'');assert.equal(button.disabled,false);});
 
-test('open parent order details adopts a newer verified payment on polling while a service failure retains the last authorized details',async()=>{const remote=orderUiClient({orders:[orderUiRecord({orderStatus:'parent-confirmed',paymentStatus:'awaiting-payment',version:3})],students:[],links:[]}),a=await sharedApp(remote.client);a.set("applySharedUser({id:'qa-parent',role:'student',displayName:'QA Parent'});tab='payments';render()");await a.click({action:'orders-open',orderId:'qa-order'});remote.remote.orders[0]={...remote.remote.orders[0],paymentStatus:'paid',version:4};await a.set('refreshEnrollmentOrders()');assert.equal(a.read('enrollmentOverlay.order.paymentStatus'),'paid');assert.equal(a.read('enrollmentOverlay.order.version'),4);assert.match(a.nodes['#modal-root'].innerHTML,/Parent confirmed · Paid/);a.client.orders=async()=>{throw serviceError(503,'SERVICE_UNAVAILABLE')};await a.set('refreshEnrollmentOrders()');assert.equal(a.read('enrollmentOverlay.order.paymentStatus'),'paid');assert.match(a.nodes['#modal-root'].innerHTML,/QA Child/);});
+test('open parent order details adopts a newer verified payment on polling while a service failure retains the last authorized details',async()=>{const remote=orderUiClient({orders:[orderUiRecord({orderStatus:'parent-confirmed',paymentStatus:'awaiting-payment',version:3})],students:[],links:[]}),a=await sharedApp(remote.client);a.set("applySharedUser({id:'qa-parent',role:'student',displayName:'QA Parent'});tab='payments';render()");await a.click({action:'orders-open',orderId:'qa-order'});remote.remote.orders[0]={...remote.remote.orders[0],paymentStatus:'paid',version:4};await a.set('refreshEnrollmentOrders()');assert.equal(a.read('enrollmentOverlay.order.paymentStatus'),'paid');assert.equal(a.read('enrollmentOverlay.order.version'),4);assert.match(a.nodes['#modal-root'].innerHTML,/>Parent confirmed<\/dd>/);assert.match(a.nodes['#modal-root'].innerHTML,/>Paid<\/dd>/);a.client.orders=async()=>{throw serviceError(503,'SERVICE_UNAVAILABLE')};await a.set('refreshEnrollmentOrders()');assert.equal(a.read('enrollmentOverlay.order.paymentStatus'),'paid');assert.match(a.nodes['#modal-root'].innerHTML,/QA Child/);});
 
 
 test('interface-first pages replace blank product accounting and staff views with complete preview screens',async()=>{
  const a=app({},undefined,false,null,{preview:true,initialQuerySelectorAll:()=>[]});a.set("role='teacher';lang='en';location.pathname='/account';tab='products';render()");assert.match(a.nodes['#app'].innerHTML,/data-ui-command="create-product"/);assert.doesNotMatch(a.nodes['#app'].innerHTML,/ops-preview-note|Interface preview/);
- await a.click({action:'ui-operations',uiCommand:'create-product',uiSection:'products'});assert.match(a.nodes['#modal-root'].innerHTML,/ui-operations-form/);await a.click({action:'ui-operations',uiCommand:'close'});assert.equal(a.nodes['#modal-root'].innerHTML,'');
+ await a.click({action:'ui-operations',uiCommand:'create-product',uiSection:'products'});assert.equal(a.read('modal'),'');assert.match(a.nodes['#app'].innerHTML,/data-ui-command="create-product"[^>]*disabled/);
  a.set("tab='accounting';render()");assert.match(a.nodes['#app'].innerHTML,/Invoices/);a.set("tab='management';render()");assert.match(a.nodes['#app'].innerHTML,/Maya Lam/);assert.match(a.nodes['#app'].innerHTML,/View profile/);await a.click({action:'ui-staff',uiCommand:'open-detail',uiId:'leo'});assert.match(a.nodes['#modal-root'].innerHTML,/Permissions/);await a.click({action:'ui-staff',uiCommand:'close-dialog'});
- a.set("tab='settings';render()");assert.match(a.nodes['#app'].innerHTML,/News management/);a.set("tab='teacher-home';render()");assert.match(a.nodes['#app'].innerHTML,/My workspace/);assert.match(a.nodes['#app'].innerHTML,/To-do/);
+ a.set("tab='settings';render()");assert.match(a.nodes['#app'].innerHTML,/Payment methods/);a.set("tab='teacher-home';render()");assert.match(a.nodes['#app'].innerHTML,/My workspace/);assert.match(a.nodes['#app'].innerHTML,/To-do/);
 });
 test('interface-first family and course file tools open previews without creating business records',async()=>{
  const a=app({},undefined,false,null,{preview:true,initialQuerySelectorAll:()=>[]});a.set("role='student';lang='en';location.pathname='/account';tab='overview';render()");assert.doesNotMatch(a.nodes['#app'].innerHTML,/interface-preview-tools|Family members/);
@@ -3231,13 +3232,13 @@ test('staff use workspace badges while the student keeps the family notification
    a.set(`lang='${lang}';render()`);const html=a.nodes['#app'].innerHTML;
    const sidebar=html.match(/<nav id="portal-sidebar"[\s\S]*?<\/nav>/)[0],profile=html.match(/<details class="portal-profile"[\s\S]*?<\/details>/)[0];
    assert.doesNotMatch(sidebar,/data-tab="notifications"/);
-   if(accountRole==='student'){assert.match(profile,new RegExp(`data-tab="notifications"[^>]*>${lang==='en'?'Notifications':'通知中心'}<`));assert.ok(profile.indexOf('data-tab="notifications"')<profile.search(/data-action="logout(?:-request)?"/));}else assert.doesNotMatch(profile,/data-tab="notifications"/);
+   if(accountRole==='student'){assert.match(profile,new RegExp(`data-tab="notifications"[^>]*>${lang==='en'?'Notifications':'通知中心'}<`));assert.ok(profile.indexOf('data-tab="notifications"')<profile.search(/data-action="logout(?:-request)?"/));}else {assert.doesNotMatch(profile,/data-tab="notifications"/);assert.match(profile,/data-portal-notification="open"/);}
    assert.doesNotMatch(profile,/Demo workspace|示範環境/);
   }
  }
 });
 test('the account notification button opens the existing page from nested routes and closes the mobile menu without writes',async()=>{
- for(const accountRole of ['admin','teacher','student']){
+ for(const accountRole of ['admin','student']){
   const a=await sharedApp({session:async()=>({user:{...sharedTestUser,role:accountRole}})},{},{preview:true,initialQuerySelectorAll:()=>[]});
   a.set("location.pathname='/account/fees';portalMenu=true;portalViewport.matches=true;render()");
   await a.click({tab:'notifications'});
@@ -3290,9 +3291,9 @@ test('student sidebar clicks reach each new profile request notification and inf
 test('daily timetable excludes setup and demonstration shortcuts while Settings retains the real setup flows',async()=>{
  const a=await sharedApp({schedulingResources:async()=>({resources:[],revision:'rooms-v1'}),classTypes:async()=>({types:[],revision:'types-v1'}),createClassType:async()=>{},updateClassType:async()=>{}},{},{preview:true,initialQuerySelectorAll:()=>[]});
  for(const language of ['zh','en']){a.set(`lang='${language}';tab='overview';render()`);const html=a.nodes['#app'].innerHTML;assert.match(html,/data-action="tt-add-schedule"/);assert.doesNotMatch(html,/data-action="(?:resource-open|access-open|class-types-open)"|interface-preview-tools|Interface preview|介面預覽/);}
- a.set("tab='settings';render()");assert.match(a.nodes['#app'].innerHTML,/Scheduling settings/);assert.match(a.nodes['#app'].innerHTML,/data-action="resource-open"/);assert.match(a.nodes['#app'].innerHTML,/data-action="class-types-open"/);
+ a.set("tab='settings';render()");await a.click({action:'ui-operations',uiCommand:'settings-reference-tab',uiId:'rooms'});assert.match(a.nodes['#app'].innerHTML,/data-action="resource-open"/);
  await a.click({action:'resource-open'});assert.match(a.nodes['#modal-root'].innerHTML,/scheduling-resource-search/);await a.click({action:'resource-close'});
- await a.click({action:'class-types-open'});assert.match(a.nodes['#modal-root'].innerHTML,/id="class-types-manager"/);
+ await a.click({action:'ui-operations',uiCommand:'settings-reference-tab',uiId:'timetable'});assert.match(a.nodes['#app'].innerHTML,/data-action="class-types-open"/);await a.click({action:'class-types-open'});assert.match(a.nodes['#modal-root'].innerHTML,/id="class-types-manager"/);
 });
 
 
@@ -3765,7 +3766,7 @@ test('cancelling a new schedule after dirty repaint restores both range grids si
  const makeCell=()=>({dataset:{...dataset},isConnected:true,focus(){a.ctx.document.activeElement=this},closest:selector=>selector==='.tt-grid-scroll'?grids[1]:null});let cell=makeCell();
  a.ctx.document.activeElement=cell;a.nodes['.tt-sidebar']=sidebar;a.ctx.document.querySelectorAll=selector=>selector==='.tt-grid-scroll'?grids:selector==='button'?[cell]:[];
  let html=a.nodes['#app'].innerHTML;Object.defineProperty(a.nodes['#app'],'innerHTML',{get:()=>html,set:value=>{html=value;cell.isConnected=false;cell=makeCell();grids.forEach(grid=>{grid.scrollTop=0;grid.scrollLeft=0});sidebar.scrollTop=0}});
- await a.click(dataset,cell);assert.ok(a.read('scheduleDraft'));a.set('sharedViewDirty=true');await a.click({action:'close'});
+ await a.click(dataset,cell);await a.click({action:'tt-cell-schedule'});assert.ok(a.read('scheduleDraft'));a.set('sharedViewDirty=true');await a.click({action:'close'});
  assert.deepEqual(grids.map(grid=>[grid.scrollTop,grid.scrollLeft]),[[134,16],[711,263]]);assert.equal(sidebar.scrollTop,99);assert.equal(a.ctx.document.activeElement,cell);assert.equal(a.read('modal'),'');assert.equal(a.scheduleCalls.filter(call=>call.operation==='save').length,0);
 });
 
@@ -3883,11 +3884,11 @@ test('public visitor uses centre default and can change range without losing the
  const a=await availabilityUiApp({settings:{showFullTrialSlots:false,showReschedulingSlots:false,rangeDays:14,version:2}}),reads=[];let gate;
  a.client.publicCourseDetails=async(id,from,revision,days)=>{reads.push({id,from,days});if(gate&&days===30)return gate.promise;return publicRangeReply(a,id,from,days);};
  a.set("applySharedUser(null);lang='en'");await a.click({action:'availability-public-course',courseId:'qa-course'});await until(()=>a.read("publicAvailabilityDetails.get('qa-course')?.ready"),'Default public window must load');
- assert.equal((a.nodes['#app'].innerHTML.match(/data-availability-date=/g)||[]).length,14);assert.equal(reads[0].days,undefined);
+ assert.match(a.nodes['#app'].innerHTML,/<option value="14" selected>/);assert.match(a.nodes['#app'].innerHTML,/availability-trial-list/);assert.equal(reads[0].days,undefined);
  gate=deferred();a.change('days','30',{id:'availability-public-days'});await until(()=>reads.some(r=>r.days===30),'30-day selection must dispatch');
  a.change('days','8',{id:'availability-public-days'});await until(()=>a.read("publicAvailabilityDetails.get('qa-course')?.rangeDays")===8,'Eight-day result must be selected');
  gate.resolve(publicRangeReply(a,'qa-course',reads[0].from,30));await until(()=>!a.read('publicAvailabilityReads.size'),'Both requests settle');
- assert.equal((a.nodes['#app'].innerHTML.match(/data-availability-date=/g)||[]).length,8);assert.equal(a.read('publicAvailabilityDays'),8);assert.equal(a.availabilityWrites.length,0);
+ assert.match(a.nodes['#app'].innerHTML,/<option value="8" selected>/);assert.match(a.nodes['#app'].innerHTML,/availability-trial-list/);assert.equal(a.read('publicAvailabilityDays'),8);assert.equal(a.availabilityWrites.length,0);
 });
 
 test('management preview uses same public range default and keeps explicit range through exact detail cancellation',async()=>{
@@ -4157,7 +4158,7 @@ test('successful Course create preserves compatible category level search and so
  const a=await sharedApp();a.set("courseSearch='water';courseCategoryFilter='Art';courseLevelFilter='Beginner';courseSortKey='level';courseSortDirection='desc';render()");savedRecordFocusHarness(a,{action:'new-course'});await createCourseThroughForm(a);assert.equal(a.ctx.document.activeElement.dataset?.openCourse,'qa-created-course');assert.deepEqual(a.read('[courseSearch,courseCategoryFilter,courseLevelFilter,courseSortKey,courseSortDirection]'),['water','Art','Beginner','level','desc']);
 });
 test('successful Fee create releases only filters hiding its exact saved row and stays on Fees',async()=>{
- const a=await sharedApp();a.set("tab='fees';location.pathname='/account/fees';feeSearch='unmatched';feeFilter='multiple';render()");const focus=savedRecordFocusHarness(a,{action:'fee-create'});await a.click({action:'fee-create'});const form=sharedForm('fee-editor');form.values=sharedFeeInput();await a.submit(form.id,form.values,form);assert.equal(a.read('location.pathname'),'/account/fees');assert.equal(a.read('tab'),'fees');assert.deepEqual(a.read('[feeSearch,feeFilter]'),['','normal']);assert.match(a.nodes['#app'].innerHTML,/data-fee-id="qa-created-fee"/);assert.equal(a.ctx.document.activeElement.dataset?.feeId,'qa-created-fee');assert.equal(a.read('courseEditorReturnFocus'),null);assert.equal(focus.reveal.at(-1).dataset.feeId,'qa-created-fee');
+ const a=await sharedApp();a.set("tab='fees';location.pathname='/account/fees';feeSearch='unmatched';feeFilter='multiple';render()");const focus=savedRecordFocusHarness(a,{action:'fee-create'});await a.click({action:'fee-create'});const form=sharedForm('fee-editor');form.values=sharedFeeInput();await a.submit(form.id,form.values,form);assert.equal(a.read('location.pathname'),'/account/fees');assert.equal(a.read('tab'),'fees');assert.deepEqual(a.read('[feeSearch,feeFilter]'),['','normal']);assert.match(a.nodes['#app'].innerHTML,/data-fee-id="qa-created-fee"/);assert.match(a.nodes['#app'].innerHTML,/data-action="fee-overview"[^>]*data-fee-id="qa-created-fee"[^>]*disabled/);assert.equal(a.read('courseEditorReturnFocus'),null);assert.equal(focus.reveal.length,0,'A display-only fee name must not receive focus as an enabled action');
 });
 test('successful Fee create from Course Fees returns to that course without changing unrelated global filters',async()=>{
  const a=await sharedApp();await a.click({openCourse:'qa-course'});a.set("courseDetailTab='fees';feeSearch='keep global search';feeFilter='multiple';render()");savedRecordFocusHarness(a,{action:'fee-add-to-course'});await a.click({action:'fee-add-to-course'});const form=sharedForm('fee-editor');form.values=sharedFeeInput();await a.submit(form.id,form.values,form);assert.equal(a.read('location.pathname'),'/account/courses/qa-course');assert.equal(a.read('courseDetailTab'),'fees');assert.deepEqual(a.read('[feeSearch,feeFilter]'),['keep global search','multiple']);assert.equal(a.ctx.document.activeElement.dataset?.feeId,'qa-created-fee');assert.match(a.nodes['#app'].innerHTML,/data-fee-id="qa-created-fee"/);
@@ -4167,7 +4168,7 @@ test('Fee edit from the second course row restores that exact fee occurrence rat
 });
 
 test('successful Fee create retains matching search and course-count filter',async()=>{
- const a=await sharedApp();a.set("tab='fees';location.pathname='/account/fees';feeSearch='Shared';feeFilter='single';render()");savedRecordFocusHarness(a,{action:'fee-create'});await a.click({action:'fee-create'});const form=sharedForm('fee-editor');form.values=sharedFeeInput();await a.submit(form.id,form.values,form);assert.deepEqual(a.read('[feeSearch,feeFilter]'),['Shared','single']);assert.equal(a.ctx.document.activeElement.dataset?.feeId,'qa-created-fee');
+ const a=await sharedApp();a.set("tab='fees';location.pathname='/account/fees';feeSearch='Shared';feeFilter='single';render()");savedRecordFocusHarness(a,{action:'fee-create'});await a.click({action:'fee-create'});const form=sharedForm('fee-editor');form.values=sharedFeeInput();await a.submit(form.id,form.values,form);assert.deepEqual(a.read('[feeSearch,feeFilter]'),['Shared','single']);assert.match(a.nodes['#app'].innerHTML,/data-action="fee-overview"[^>]*data-fee-id="qa-created-fee"[^>]*disabled/);
 });
 test('failed Course and Fee saves preserve drafts filters focus tickets and operation keys for retry',async()=>{
  for(const kind of ['Course','Fee'])for(const status of [400,409,503]){
@@ -4186,7 +4187,7 @@ test('older Course acknowledgement reveals the current higher-version record wit
  const pending=deferred(),a=await sharedApp({saveCourse:()=>pending.promise});a.set("courseSearch='water';courseCategoryFilter='Art';courseLevelFilter='Beginner';render()");savedRecordFocusHarness(a,{action:'new-course'});const save=createCourseThroughForm(a);await until(()=>a.read('courseSaving'));const latest={...copy(sharedTestCourse),id:'qa-created-course',courseName:'Updated drawing',category:'Design',level:'Advanced',version:3};a.set('applySharedCourses([...db.courseSettings,'+JSON.stringify(latest)+'])');pending.resolve({course:{...latest,courseName:'New watercolour course',category:'Art',level:'Beginner',version:1}});await save;assert.equal(a.read("courseSettingsFor('qa-created-course').version"),3);assert.equal(a.ctx.document.activeElement.dataset?.openCourse,'qa-created-course');assert.deepEqual(a.read('[courseSearch,courseCategoryFilter,courseLevelFilter]'),['','','']);
 });
 test('older Fee acknowledgement reveals current higher-version fee and keeps its compatible filters',async()=>{
- const pending=deferred(),a=await sharedApp({saveFee:()=>pending.promise});a.set("tab='fees';location.pathname='/account/fees';feeSearch='new drawing';feeFilter='multiple';render()");savedRecordFocusHarness(a,{action:'fee-create'});await a.click({action:'fee-create'});const form=sharedForm('fee-editor');form.values=sharedFeeInput();const save=a.submit(form.id,form.values,form);await until(()=>a.read('courseSaving'));const latest={...copy(sharedTestFee),id:'qa-created-fee',feeName:'New drawing fee',courseIds:['qa-course','other-course'],version:3};a.set('sharedFees.push('+JSON.stringify(latest)+')');pending.resolve({fee:{...latest,feeName:'Old monthly',courseIds:['qa-course'],version:1},courses:[]});await save;assert.equal(a.read("sharedFees.find(f=>f.id==='qa-created-fee').version"),3);assert.deepEqual(a.read('[feeSearch,feeFilter]'),['new drawing','multiple']);assert.equal(a.ctx.document.activeElement.dataset?.feeId,'qa-created-fee');
+ const pending=deferred(),a=await sharedApp({saveFee:()=>pending.promise});a.set("tab='fees';location.pathname='/account/fees';feeSearch='new drawing';feeFilter='multiple';render()");savedRecordFocusHarness(a,{action:'fee-create'});await a.click({action:'fee-create'});const form=sharedForm('fee-editor');form.values=sharedFeeInput();const save=a.submit(form.id,form.values,form);await until(()=>a.read('courseSaving'));const latest={...copy(sharedTestFee),id:'qa-created-fee',feeName:'New drawing fee',courseIds:['qa-course','other-course'],version:3};a.set('sharedFees.push('+JSON.stringify(latest)+')');pending.resolve({fee:{...latest,feeName:'Old monthly',courseIds:['qa-course'],version:1},courses:[]});await save;assert.equal(a.read("sharedFees.find(f=>f.id==='qa-created-fee').version"),3);assert.deepEqual(a.read('[feeSearch,feeFilter]'),['new drawing','multiple']);assert.match(a.nodes['#app'].innerHTML,/data-action="fee-overview"[^>]*data-fee-id="qa-created-fee"[^>]*disabled/);
 });
 test('Course create acknowledgement after real navigation cannot pull the same user back or change list filters',async()=>{
  const pending=deferred(),a=await sharedApp({saveCourse:()=>pending.promise});a.set("courseSearch='keep';courseCategoryFilter='Design';render()");savedRecordFocusHarness(a,{action:'new-course'});const save=createCourseThroughForm(a);await until(()=>a.read('courseSaving'));a.set("go('/account/fees');tab='fees';render()");const markup=a.nodes['#app'].innerHTML;pending.resolve({course:{...copy(sharedTestCourse),id:'qa-created-course',courseName:'New course'}});await save;assert.equal(a.read('location.pathname'),'/account/fees');assert.equal(a.read('tab'),'fees');assert.deepEqual(a.read('[courseSearch,courseCategoryFilter]'),['keep','Design']);assert.equal(a.nodes['#app'].innerHTML,markup);assert.ok(!a.ctx.document.activeElement.dataset?.openCourse);
@@ -4202,8 +4203,8 @@ test('navigation dismisses a pending shared Course editor even when class-type s
 
 test('background shared repaint preserves the exact saved Course or Fee focus without replaying a consumed opener',async()=>{
  for(const kind of ['Course','Fee']){
-  const a=await sharedApp();if(kind==='Fee')a.set("tab='fees';location.pathname='/account/fees';render()");const focus=savedRecordFocusHarness(a,{action:kind==='Course'?'new-course':'fee-create'});
-  if(kind==='Course')await createCourseThroughForm(a);else{await a.click({action:'fee-create'});const form=sharedForm('fee-editor');form.values=sharedFeeInput();await a.submit(form.id,form.values,form);}
+  const a=await sharedApp();if(kind==='Fee'){await a.click({openCourse:'qa-course'});a.set("courseDetailTab='fees';render()");}const focus=savedRecordFocusHarness(a,{action:kind==='Course'?'new-course':'fee-add-to-course'});
+  if(kind==='Course')await createCourseThroughForm(a);else{await a.click({action:'fee-add-to-course'});const form=sharedForm('fee-editor');form.values=sharedFeeInput();await a.submit(form.id,form.values,form);}
   const exact={...a.ctx.document.activeElement.dataset},reveals=focus.reveal.length;assert.ok(exact.openCourse||exact.feeId);a.set('sharedViewDirty=true;paintSharedUpdates(true)');assert.deepEqual({...a.ctx.document.activeElement.dataset},exact,kind+' focus must survive a background update');assert.equal(focus.reveal.length,reveals,'Polling retains position rather than scrolling to an old opener');assert.equal(a.read('courseEditorReturnFocus'),null);
  }
 });
@@ -4292,6 +4293,7 @@ test('course catalogue fee names share the exact read-only entry for administrat
   let reads=0;const a=await sharedApp({feeHistory:async id=>{reads++;return {feeId:id,records:[]}}});
   a.set(`authUser={...authUser,role:'${accountRole}'};tab='catalog';location.pathname='/account';render()`);
   const button=[...a.read('portalCourses()').matchAll(/<button\b[^>]*>/g)].map(match=>match[0]).find(tag=>tag.includes('class="portal-course-name course-list-fee-link"')&&tag.includes('data-fee-id="qa-fee"')&&tag.includes('data-fee-course-id="qa-course"'));
+  if(accountRole==='teacher'){assert.equal(button,undefined);assert.doesNotMatch(a.read('portalCourses()'),/course-list-fee-link|Online Store|>Fees<|>Actions</);continue;}
   assert.ok(button);assert.match(button,/data-action="fee-overview"/);assert.doesNotMatch(button,/\sdisabled(?:\s|>)/);
   await a.click({action:'fee-overview',feeId:'qa-fee',feeCourseId:'qa-course'});await a.set('refreshFeeHistory()');
   assert.equal(a.read('feeOverview.feeId'),'qa-fee');assert.doesNotMatch(a.read('modal'),/id="fee-editor"/);
@@ -4380,7 +4382,7 @@ test('the calendar teacher list follows current staff teaching eligibility and n
 
 test('only administrators have Website Content between Channels and Settings and its news entry keeps the same active section',async()=>{
  const a=await sharedApp();a.set("lang='en';location.pathname='/account';render()");const items=a.read('portalItems().map(row=>row[0])'),index=items.indexOf('website-content');assert.ok(index>0);assert.equal(items[index-1],'channels');assert.equal(items[index+1],'settings');
- await a.click({tab:'website-content'});assert.match(a.nodes['#app'].innerHTML,/<h1>Website Content<\/h1>/);assert.match(a.nodes['#app'].innerHTML,/data-tab="news">News management/);assert.equal(a.read('portalActiveTab()'),'website-content');
+ await a.click({tab:'website-content'});assert.match(a.nodes['#app'].innerHTML,/<h1>News<\/h1>/);assert.doesNotMatch(a.nodes['#app'].innerHTML,/data-tab="news">News management/);assert.equal(a.read('portalActiveTab()'),'website-content');
  await a.click({tab:'news'});assert.equal(a.read('portalActiveTab()'),'website-content');assert.match(a.nodes['#app'].innerHTML,/News list/);
  for(const role of ['teacher','student']){a.set(`applySharedUser({id:'qa-${role}',role:'${role}',displayName:'Other role'});tab='catalog';render()`);assert.equal(a.read("portalItems().some(row=>row[0]==='website-content')"),false);assert.doesNotMatch(a.nodes['#app'].innerHTML,/Website Content/);}
 });
@@ -4393,7 +4395,7 @@ test('sales workspace preserves browsing and saved orders while blocking catalog
  a.change('','qa-child',{id:'sales-student'});assert.equal(a.read('salesSelection.studentId'),'');
  await a.click({action:'sales-back'});assert.equal(a.read('salesSelection.feeId'),'','Disabled catalogue actions must not select a fee');assert.equal(a.read('salesSelection.catalogueCourseId'),'');
  await a.click({tab:'sales-orders'});assert.match(a.nodes['#app'].innerHTML,/sales-orders-table/);assert.match(a.nodes['#app'].innerHTML,/data-order-id="qa-order"/);
- a.submit('sales-order-search',{search:'not a matching child'});assert.match(a.nodes['#app'].innerHTML,/No matching orders/);
+ a.submit('sales-order-search',{search:'not a matching child'});assert.match(a.nodes['#app'].innerHTML,/data-order-id="qa-order"/);assert.equal(a.read('salesOrderFilters.search'),'');assert.match(a.nodes['#app'].innerHTML,/id="sales-order-query"[^>]*disabled/);
  assert.deepEqual(remote.writes,[],'Browsing, filtering and choosing a fee must not create or pay an order');
  a.set("clearEnrollmentIdentity()");assert.equal(a.read('salesSelection.studentId'),'');assert.equal(a.read('salesSelection.feeId'),'');assert.equal(a.read('salesOrderFilters.search'),'');
 });
@@ -4718,6 +4720,26 @@ test('workspace red dot refreshes trial work away from the workspace and clears 
  a.set("applySharedUser({id:'new-admin',role:'admin',displayName:'Other admin'})");assert.equal(a.read('workspacePendingTotal()'),0);
 });
 
+test('account menu contains language switching and a plain logout request below the account name',()=>{
+ const a=app();a.set("role='teacher';lang='en'");const html=a.read('portalHeader()');
+ const menu=html.slice(html.indexOf('<div class="portal-profile-menu">'));
+ assert.match(menu,/data-action="language"/);assert.match(menu,/class="portal-logout" data-action="logout-request"/);
+ assert.doesNotMatch(html.slice(0,html.indexOf('<details class="portal-profile">')),/data-action="language"/);
+});
+
+test('requesting and cancelling logout leaves the shared account and API session intact',async()=>{
+ let calls=0;const a=await sharedApp({logout:async()=>{calls++;return {user:null}}});
+ await a.click({action:'logout-request'});assert.match(a.nodes['#modal-root'].innerHTML,/Confirm log out|確認登出/);
+ assert.match(a.nodes['#modal-root'].innerHTML,/data-action="logout-cancel"/);assert.equal(calls,0);assert.equal(a.read('authUser.id'),sharedTestUser.id);
+ await a.click({action:'logout-cancel'});assert.equal(a.read('modal'),'');assert.equal(calls,0);assert.equal(a.read('authUser.id'),sharedTestUser.id);
+});
+
+test('confirmed logout uses the existing shared logout and clears the account once',async()=>{
+ let calls=0;const a=await sharedApp({logout:async()=>{calls++;return {user:null}}});
+ await a.click({action:'logout-request'});assert.equal(calls,0);await a.click({action:'logout'});
+ assert.equal(calls,1);assert.equal(a.read('authUser'),null);assert.equal(a.read('location.pathname'),'/login');
+});
+
 test('Display heading toggles all display groups without changing visibility filters or lessons',async()=>{
  const a=await classTypeUiApp();a.set("lang='en';tab='overview';location.pathname='/account';render()");
  const filters=a.read('JSON.stringify(timetableNamedFilters)'),lessons=a.read('JSON.stringify(db.schedules)');
@@ -4733,4 +4755,84 @@ test('failed teacher record reads clear stale records and wait for a poll or sch
  a.set("sharedMode=true;authUser={id:'teacher-user',role:'teacher'};sharedSchedulesRevision='revision-one';tab='overview';teachingRecordsCache={identity:sessionIdentityKey(authUser),ready:false,loading:false,records:[{studentId:'old-student'}],error:''}");
  await a.set('refreshTeachingRecords()');await a.set('refreshTeachingRecords()');assert.equal(calls,1);assert.deepEqual(a.read('teachingRecordsCache.records'),[]);assert.equal(a.read('teachingRecordsCache.ready'),false);
  await a.set('refreshTeachingRecords({force:true})');assert.equal(calls,2);a.set("sharedSchedulesRevision='revision-two'");await a.set('refreshTeachingRecords()');assert.equal(calls,3);
+});
+
+test('Website Content opens shared News directly without an extra management landing page',async()=>{
+ const a=await sharedApp({publicNews:async()=>({posts:[]}),websiteNews:async()=>({posts:[]})});a.set("lang='en'");await a.click({tab:'website-content'});
+ assert.match(a.nodes['#app'].innerHTML,/<h1>News<\/h1>/);assert.match(a.nodes['#app'].innerHTML,/data-action="new-news"/);assert.doesNotMatch(a.nodes['#app'].innerHTML,/data-tab="news">News management/);assert.doesNotMatch(a.nodes['#app'].innerHTML,/id="teacher-news"/);
+ await a.click({action:'new-news'});assert.match(a.nodes['#app'].innerHTML,/id="teacher-news"/);assert.equal(a.read('websiteNewsVisible()'),true);
+});
+
+test('News deletion requires confirmation then refreshes the same public and admin source',async()=>{
+ let rows=[{id:'news-delete',version:3,title:'消息',titleEn:'Shared story',description:'簡介',content:'內文',releaseDate:'2026-01-01',image:''}],calls=0;
+ const a=await sharedApp({publicNews:async()=>({posts:copy(rows)}),websiteNews:async()=>({posts:copy(rows)}),deleteWebsiteNews:async post=>{calls++;assert.equal(post.version,3);rows=[];return {post:{...post,deletedAt:'2026-10-20'}}}});
+ a.set("lang='en';tab='website-content';location.pathname='/account';render()");await a.click({action:'news-delete-request',newsId:'news-delete'});assert.equal(calls,0);assert.match(a.nodes['#modal-root'].innerHTML,/news-delete-confirm/);
+ await a.click({action:'news-delete-cancel'});assert.equal(calls,0);assert.equal(a.read('modal'),'');
+ await a.click({action:'news-delete-request',newsId:'news-delete'});await a.click({action:'news-delete-confirm',newsId:'news-delete',newsVersion:'3'});assert.equal(calls,1);assert.deepEqual(a.read('websiteNewsCache.posts'),[]);
+ a.set("location.pathname='/news';render()");assert.doesNotMatch(a.nodes['#app'].innerHTML,/Shared story/);
+});
+
+test('a late News poll cannot restore content after an acknowledged edit or deletion',async()=>{
+ for(const operation of ['edit','delete']){
+  const original={id:'news-race',version:1,title:'舊消息',titleEn:'Old story',description:'簡介',content:'內文',releaseDate:'2026-01-01',image:''};let rows=[original];
+  const a=await sharedApp({publicNews:async()=>({posts:copy(rows)}),websiteNews:async()=>({posts:copy(rows)}),deleteWebsiteNews:async()=>{rows=[];return {post:{...original,version:2,deletedAt:'2026-10-20'}}},saveWebsiteNews:async post=>{rows=[{...post,id:original.id,version:2}];return {post:copy(rows[0])}}});
+  a.set("tab='website-content';location.pathname='/account';render()");const old=deferred();a.client.websiteNews=()=>old.promise;const pending=a.set('refreshWebsiteNews({paint:false})');a.client.websiteNews=async()=>({posts:copy(rows)});
+  if(operation==='delete'){await a.click({action:'news-delete-request',newsId:original.id});await a.click({action:'news-delete-confirm',newsId:original.id,newsVersion:'1'});}
+  else{await a.click({editNews:original.id});await a.submit('teacher-news',{title:'新消息',titleEn:'Updated story',description:'簡介',content:'內文',releaseDate:'2026-01-01'},{dataset:{newsId:original.id,newsVersion:'1'}});}
+  old.resolve({posts:[original]});await pending;
+  assert.equal(a.read('websiteNewsCache.posts.length'),operation==='delete'?0:1);if(operation==='edit')assert.equal(a.read('websiteNewsCache.posts[0].titleEn'),'Updated story');
+ }
+});
+
+test('Sales Orders details remain view-only even if an obsolete write action is dispatched',async()=>{
+ const remote=orderUiClient({orders:[orderUiRecord()],students:[],links:[]}),a=await sharedApp(remote.client);
+ a.set("tab='sales-orders';location.pathname='/account';render()");await a.click({action:'orders-open',orderId:'qa-order'});
+ assert.equal(a.read('enrollmentOverlay.readOnly'),true);assert.match(a.nodes['#modal-root'].innerHTML,/data-action="orders-send"[^>]*disabled/);
+ await a.click({action:'orders-send'});assert.deepEqual(remote.writes,[]);assert.match(a.nodes['#modal-root'].innerHTML,/data-action="ui-order-document"/);
+});
+
+
+test('grid creation chooses schedule or availability and only grid availability receives selected date/time',async()=>{
+ const a=await availabilityUiApp();a.set("tab='overview';timetableView='week';selectTimetableDate('2026-10-15');render()");
+ await a.click({action:'tt-add-cell',date:'2026-10-15',time:'11:15'});
+ assert.match(a.read('modal'),/tt-cell-available/);assert.equal(a.read('scheduleDraft'),null);
+ await a.click({action:'tt-cell-available'});await until(()=>a.read('availabilityOverlay?.kind||null')==='editor','The selected slot opens after resource checks');
+ assert.equal(a.read('availabilityOverlay.slot.date'),'2026-10-15');assert.equal(a.read('availabilityOverlay.slot.time'),'11:15');
+ await a.click({action:'availability-editor-cancel'});await a.click({action:'availability-add'});
+ assert.equal(a.read('availabilityOverlay.slot.date'),'');assert.equal(a.read('availabilityOverlay.slot.time'),'');
+});
+
+
+test('deferred arrangements lock resource inputs until explicitly unchecked',()=>{
+ const a=lessonApp(),teachers=[{checked:true,disabled:false},{checked:false,disabled:false}],rooms=[{checked:true,disabled:false},{checked:false,disabled:false}],flags={teacherDeferred:{checked:true},roomDeferred:{checked:true}};
+ a.ctx.arrangementForm={id:'availability-editor',elements:{namedItem:name=>flags[name]},querySelectorAll:selector=>selector.includes('teacherIds')?teachers:rooms};
+ a.ctx.arrangementTarget={name:'teacherDeferred',closest:()=>a.ctx.arrangementForm};a.set('syncAvailabilityDeferred(arrangementTarget)');
+ assert.ok([...teachers,...rooms].every(input=>input.disabled&&!input.checked));
+ flags.teacherDeferred.checked=false;a.set('syncAvailabilityDeferred(arrangementTarget)');
+ assert.ok(teachers.every(input=>!input.disabled));assert.ok(rooms.every(input=>input.disabled));
+});
+
+
+test('timetable creation is a small menu beside the click without a dialog or backdrop',async()=>{
+ const a=lessonApp();a.set("openTimetableCellSchedule({date:'2026-10-05',time:'09:15'},'choose',{x:240,y:180})");
+ const html=a.read('modal');assert.match(html,/role="menu"/);assert.match(html,/role="menuitem"/);assert.match(html,/left:248px;top:188px/);assert.doesNotMatch(html,/class="modal|role="dialog"|aria-modal|availability-header/);
+ await a.click({action:'tt-cell-cancel'});assert.equal(a.read('modal'),'');assert.equal(a.read('scheduleDraft'),null);
+});
+
+
+test('an open timetable menu keeps only the originally clicked cell highlighted until dismissed',async()=>{
+ const a=lessonApp(),rows=['09:15','09:30'].map(time=>({dataset:{date:'2026-10-05',time},selected:false,classList:{toggle(_name,selected){rows.find(row=>row.dataset.time===time).selected=selected;}}}));
+ const original=a.ctx.document.querySelectorAll;a.ctx.document.querySelectorAll=selector=>selector==='.tt-cell-add'?rows:original(selector);
+ await a.click({action:'tt-add-cell',date:'2026-10-05',time:'09:15'});assert.deepEqual(rows.map(row=>row.selected),[true,false]);
+ await a.click({action:'tt-cell-cancel'});assert.deepEqual(rows.map(row=>row.selected),[false,false]);
+});
+
+test('public saved course details form one aligned page with a single title and slot-based trial entry',async()=>{
+ const a=await availabilityUiApp();a.set("applySharedUser(null);publicStudioCatalogCache.courses=[{id:'qa-course',courseName:'Saved studio',category:'Art'}];location.pathname='/classes/qa-course';lang='en';render()");await until(()=>a.read("!!publicAvailabilityDetails.get('qa-course')?.ready"),'The published course and time source loads');const html=a.nodes['#app'].innerHTML;
+ assert.equal((html.match(/<h1[ >]/g)||[]).length,1);assert.equal((html.match(/class="studio-back-link"/g)||[]).length,1);assert.match(html,/availability-public-embedded/);assert.doesNotMatch(html,/Submit trial enquiry|After submitting|availability-public-back/);assert.match(html,/data-action="availability-trial-open"/);
+});
+
+
+test('a directly opened public course uses the same trial list before its directory has been visited',async()=>{
+ const a=await availabilityUiApp();a.set("applySharedUser(null);publicStudioCatalogCache.courses=[];location.pathname='/classes/qa-course';lang='en';render()");await until(()=>a.read("!!publicAvailabilityDetails.get('qa-course')?.ready"),'Direct course source loads');const html=a.nodes['#app'].innerHTML;assert.match(html,/Request to Trial/);assert.match(html,/availability-trial-list-row/);assert.doesNotMatch(html,/availability-public-legend|availability-public-day[" ]/);
 });

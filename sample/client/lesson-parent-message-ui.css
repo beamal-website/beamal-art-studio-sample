@@ -1,6 +1,6 @@
 .lpm-modal { box-sizing: border-box; padding: 16px; grid-template-columns: minmax(0, 1fr); }
 .lpm-modal .lpm-dialog {
-  --lpm-ink: #253d3b; --lpm-muted: #526a60; --lpm-line: #d9e0d4; --lpm-paper: #fffdf8;
+  --lpm-ink: #253d3b; --lpm-muted: #526a60; --lpm-line: #d9e0d4; --lpm-paper: var(--portal-paper,#fffdf8);
   display: flex; flex-direction: column; width: min(760px, 100%); max-width: 100%; min-width: 0;
   height: min(880px, calc(100dvh - 32px)); max-height: calc(100dvh - 32px); padding: 0;
   overflow: hidden; border: 1px solid var(--lpm-line); border-radius: 10px;
@@ -25,12 +25,12 @@
 .lpm-channel:has(input:disabled) { color: var(--lpm-muted); cursor: not-allowed; }
 .lpm-dialog .lpm-channel input { flex: 0 0 18px; width: 18px; min-height: 18px; height: 18px; margin: 0; padding: 0; accent-color: var(--teal, #27777b); }
 .lpm-field { display: grid; gap: 8px; min-width: 0; margin: 0 0 8px; font-size: 14px; line-height: 1.6; }
-.lpm-field textarea { width: 100%; max-width: 100%; min-width: 0; min-height: 180px; margin: 0; padding: 12px; border: 1px solid #bdcbc1; border-radius: 6px; background: #fffefa; color: var(--lpm-ink); font: inherit; font-size: 16px; line-height: 1.8; resize: vertical; scroll-margin-block: 8px; }
+.lpm-field textarea { width: 100%; max-width: 100%; min-width: 0; min-height: 180px; margin: 0; padding: 12px; border: 1px solid #bdcbc1; border-radius: 6px; background: var(--portal-paper,#fffefa); color: var(--lpm-ink); font: inherit; font-size: 16px; line-height: 1.8; resize: vertical; scroll-margin-block: 8px; }
 .lpm-field textarea[aria-invalid="true"] { border-color: #a75d42; }
-.lpm-field textarea:disabled { background: #ecefe7; color: #63776e; }
+.lpm-field textarea:disabled { background: var(--portal-muted,#ecefe7); color: #63776e; }
 .lpm-note { margin: 0 0 16px; color: var(--lpm-muted); font-size: 13px; line-height: 1.8; overflow-wrap: anywhere; }
 .lpm-preview { min-width: 0; margin: 0 0 24px; }
-.lpm-message-text { min-width: 0; padding: 16px; border: 1px solid var(--lpm-line); border-radius: 6px; background: #fffefa; font-size: 15px; line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; }
+.lpm-message-text { min-width: 0; padding: 16px; border: 1px solid var(--lpm-line); border-radius: 6px; background: var(--portal-paper,#fffefa); font-size: 15px; line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; }
 .lpm-whatsapp-actions { min-width: 0; }
 .lpm-whatsapp-actions > div { display: flex; flex-wrap: wrap; gap: 10px; }
 .lpm-retry { margin-top: 20px; }
@@ -40,23 +40,23 @@
 .lpm-footer { justify-content: flex-end; flex-wrap: wrap; border-top: 1px solid var(--lpm-line); background: var(--lpm-paper); }
 .lpm-dialog .lpm-button, .lpm-inbox .lpm-inbox-button {
   display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; max-width: 100%; margin: 0; padding: 10px 16px;
-  border: 1px solid #bdcbc1; border-radius: 6px; background: #fffefa; color: var(--teal, #27777b); box-shadow: none;
+  border: 1px solid #bdcbc1; border-radius: 6px; background: var(--portal-paper,#fffefa); color: var(--teal, #27777b); box-shadow: none;
   font: inherit; font-size: 14px; font-weight: 600; line-height: 1.5; text-align: center; text-decoration: none; white-space: normal; overflow-wrap: anywhere; cursor: pointer; touch-action: manipulation;
 }
 .lpm-dialog .lpm-primary { border-color: var(--teal, #27777b); background: var(--teal, #27777b); color: white; }
 .lpm-header .lpm-button { flex: 0 0 44px; width: 44px; padding: 0; border-color: transparent; background: transparent; color: var(--lpm-muted); font-size: 28px; font-weight: 400; }
-.lpm-dialog .lpm-button:disabled, .lpm-inbox .lpm-inbox-button:disabled { border-color: #d9e0d4; background: #ecefe7; color: #687770; cursor: not-allowed; }
+.lpm-dialog .lpm-button:disabled, .lpm-inbox .lpm-inbox-button:disabled { border-color: #d9e0d4; background: var(--portal-muted,#ecefe7); color: #687770; cursor: not-allowed; }
 .lpm-dialog :is(button, input, textarea, a):focus-visible, .lpm-inbox button:focus-visible { outline: 2px solid var(--teal, #27777b); outline-offset: 3px; }
 .lpm-body:focus-visible, .lpm-saved:focus, .lpm-error:focus { outline: 2px solid var(--teal, #27777b); outline-offset: -4px; }
 .lpm-saved { padding: 16px; border: 1px solid var(--lpm-line); border-radius: 7px; background: #eef3ee; }
 .lpm-saved > p { margin: 0 0 20px; color: var(--lpm-muted); font-size: 13px; line-height: 1.8; }
 .lpm-inbox { display: grid; gap: 24px; min-width: 0; color: #253d3b; }
-.lpm-inbox-section { min-width: 0; padding: 24px; border: 1px solid #d9e0d4; border-radius: 8px; background: #fffdf8; }
+.lpm-inbox-section { min-width: 0; padding: 24px; border: 1px solid #d9e0d4; border-radius: 8px; background: var(--portal-paper,#fffdf8); }
 .lpm-inbox-section h2 { margin: 0 0 20px; font-size: 20px; line-height: 1.5; overflow-wrap: anywhere; }
 .lpm-inbox-empty, .lpm-inbox-source { margin: 0; color: #526a60; font-size: 14px; line-height: 1.8; overflow-wrap: anywhere; }
 .lpm-inbox-source { margin-bottom: 16px; }
 .lpm-inbox-list { display: grid; gap: 16px; }
-.lpm-inbox-message { min-width: 0; padding: 20px; border: 1px solid #d9e0d4; border-radius: 7px; background: #fffefa; }
+.lpm-inbox-message { min-width: 0; padding: 20px; border: 1px solid #d9e0d4; border-radius: 7px; background: var(--portal-paper,#fffefa); }
 .lpm-inbox-message header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
 .lpm-inbox-message h3 { min-width: 0; margin: 0; font-size: 16px; line-height: 1.7; overflow-wrap: anywhere; }
 .lpm-inbox-message header time { flex: none; color: #526a60; font-size: 12px; line-height: 1.8; }

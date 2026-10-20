@@ -6,7 +6,7 @@ const source=await readFile(new URL('../src.js',import.meta.url),'utf8'),block=s
 const record={id:'request-2',personId:'person-2',reference:'TR-2',version:1,status:'pending',canReject:true,applicant:{displayName:'同名學生',email:'second@example.test'},slot:{id:'slot-2',courseId:'course-2',courseName:'Art',date:'2026-10-20',time:'13:00',duration:60},events:[]};
 function fixture(overrides={}){
  const calls=[],user={id:'teacher-2',role:'teacher'},list={records:[record],total:1,page:1,pageSize:25,revision:'one'};
- const context=vm.createContext({sharedMode:true,authUser:user,tab:'teacher-home',modal:'',trialRequestOverlay:null,trialWorkCache:{identity:'',ready:false,revision:''},trialWorkRead:null,path:()=>'/account',accountPersonId:()=>'',accountCourseId:()=>'',isAccountPage:()=>true,sessionIdentityKey:user=>user?.id,t:(_z,e)=>e,esc:String,newOperationKey:()=> 'fixed-reject-key',trialRequestsMarkup:()=>'',trialRequestDialogMarkup:()=>'',renderModal(){},render(){},updateWorkspaceBadge(){},document:{activeElement:null,querySelector:()=>null,querySelectorAll:()=>[]},window:{scrollY:72,scrollTo(){}},sharedClient:{trialApplications:async query=>{calls.push({list:query});return {...list,page:query.page};},trialApplication:async id=>{calls.push({get:id});return {application:structuredClone(record)};},trialWork:async()=>({requests:[],notifications:[],pendingTotal:0,revision:'w1'}),rejectTrialApplication:async(id,version,key)=>{calls.push({reject:{id,version,key}});return {application:{...record,id,version:version+1,status:'rejected',canReject:false}};},...overrides}});
+ const context=vm.createContext({sharedMode:true,sharedViewDirty:false,availabilityCache:{},refreshSharedAvailability:async()=>{},portalNotificationsController:null,authUser:user,tab:'teacher-home',modal:'',trialRequestOverlay:null,trialWorkCache:{identity:'',ready:false,revision:''},trialWorkRead:null,path:()=>'/account',accountPersonId:()=>'',accountCourseId:()=>'',isAccountPage:()=>true,sessionIdentityKey:user=>user?.id,t:(_z,e)=>e,esc:String,newOperationKey:()=> 'fixed-reject-key',trialRequestsMarkup:()=>'',trialRequestDialogMarkup:()=>'',renderModal(){},render(){},updateWorkspaceBadge(){},document:{activeElement:null,querySelector:()=>null,querySelectorAll:()=>[]},window:{scrollY:72,scrollTo(){}},sharedClient:{trialApplications:async query=>{calls.push({list:query});return {...list,page:query.page};},trialApplication:async id=>{calls.push({get:id});return {application:structuredClone(record)};},trialWork:async()=>({requests:[],notifications:[],pendingTotal:0,revision:'w1'}),rejectTrialApplication:async(id,version,key)=>{calls.push({reject:{id,version,key}});return {application:{...record,id,version:version+1,status:'rejected',canReject:false}};},...overrides}});
  vm.runInContext(block,context);
  return {context,calls,run:code=>vm.runInContext(code,context),record,open:requestId=>context.openTrialRequests(requestId?{requestId}:{}),action:(command,extra={})=>context.handleTrialRequestAction('trial-request-command',{command,...extra})};
 }
@@ -61,4 +61,18 @@ test('an unchanged work poll does not repaint the page or close an unrelated nat
 });
 test('work updates cannot repaint a course screen where only the independent request-list entry is shown',async()=>{
  let paints=0;const h=fixture();h.context.tab='catalog';h.context.render=()=>paints++;await h.context.refreshTrialWork();assert.equal(paints,0);
+});
+
+
+test('Admin Accept uses the exact request version, retries a lost receipt and cannot be invoked by a Teacher',async()=>{
+ let attempts=0;const writes=[];const h=fixture({trialApplication:async()=>({application:{...record,canAccept:true}}),acceptTrialApplication:async(id,version,key)=>{writes.push({id,version,key});if(++attempts===1)throw new Error('Lost receipt');return {application:{...record,id,version:version+1,status:'accepted',canAccept:false,canReject:false}};}});
+ await h.open('request-2');await h.action('accept');assert.equal(writes.length,0);
+ h.context.authUser.role='admin';await h.action('accept');assert.equal(h.context.trialRequestOverlay.uncertain,true);assert.equal(h.context.trialRequestOverlay.record.status,'pending');
+ await h.action('review-rejection');await h.action('reject');assert.equal(writes.length,1);
+ await h.action('accept');assert.equal(h.context.trialRequestOverlay.record.status,'accepted');assert.deepEqual(writes[0],writes[1]);
+});
+
+
+test('a changed pending queue is marked for repaint after the accepted-request dialog closes',async()=>{
+ const h=fixture();h.context.modal='Reading request';await h.context.refreshTrialWork();assert.equal(h.context.sharedViewDirty,true);
 });

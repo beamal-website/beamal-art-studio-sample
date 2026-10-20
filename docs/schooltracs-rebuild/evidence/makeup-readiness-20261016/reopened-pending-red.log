@@ -1,0 +1,336 @@
+TAP version 13
+# Subtest: attendance shows only its supplied student and exact session with six explicit states and no automatic present
+ok 1 - attendance shows only its supplied student and exact session with six explicit states and no automatic present
+  ---
+  duration_ms: 7.407458
+  type: 'test'
+  ...
+# Subtest: attendance review and Back retain the draft without changing canonical records or falsely saving
+ok 2 - attendance review and Back retain the draft without changing canonical records or falsely saving
+  ---
+  duration_ms: 1.262667
+  type: 'test'
+  ...
+# Subtest: unchanged unmarked attendance and bounded remarks validate locally while preserving raw drafts and checkbox clearing
+ok 3 - unchanged unmarked attendance and bounded remarks validate locally while preserving raw drafts and checkbox clearing
+  ---
+  duration_ms: 0.25675
+  type: 'test'
+  ...
+# Subtest: draft updates cannot overwrite the source student lesson view or capabilities
+ok 4 - draft updates cannot overwrite the source student lesson view or capabilities
+  ---
+  duration_ms: 0.302916
+  type: 'test'
+  ...
+# Subtest: forged final operations never produce completion or mutate business facts even when save capability is forged true
+ok 5 - forged final operations never produce completion or mutate business facts even when save capability is forged true
+  ---
+  duration_ms: 0.576167
+  type: 'test'
+  ...
+# Subtest: missing or malformed canonical session cannot render an unrelated default or accept a draft
+ok 6 - missing or malformed canonical session cannot render an unrelated default or accept a draft
+  ---
+  duration_ms: 0.145
+  type: 'test'
+  ...
+# Subtest: all private text is escaped in form review and slot context
+ok 7 - all private text is escaped in form review and slot context
+  ---
+  duration_ms: 0.345292
+  type: 'test'
+  ...
+# Subtest: unknown loading and failed availability never claim zero available slots or borrow fixtures
+ok 8 - unknown loading and failed availability never claim zero available slots or borrow fixtures
+  ---
+  duration_ms: 0.303958
+  type: 'test'
+  ...
+# Subtest: only unique explicitly verified eligible slots appear and full or unknown capacities cannot be selected
+ok 9 - only unique explicitly verified eligible slots appear and full or unknown capacities cannot be selected
+  ---
+  duration_ms: 13.2905
+  type: 'test'
+  ...
+# Subtest: arrangement date accordions sort dates and times and a date filter preserves the selected session
+ok 10 - arrangement date accordions sort dates and times and a date filter preserves the selected session
+  ---
+  duration_ms: 1.115917
+  type: 'test'
+  ...
+# Subtest: selected replacement Review and Back preserve the exact target and never reserve or write
+ok 11 - selected replacement Review and Back preserve the exact target and never reserve or write
+  ---
+  duration_ms: 0.428459
+  type: 'test'
+  ...
+# Subtest: Pending is only a same-student same-session review draft and is possible when availability is unavailable
+ok 12 - Pending is only a same-student same-session review draft and is possible when availability is unavailable
+  ---
+  duration_ms: 0.089333
+  type: 'test'
+  ...
+# Subtest: a removed or no-longer-eligible selected target cannot survive as a valid Review
+ok 13 - a removed or no-longer-eligible selected target cannot survive as a valid Review
+  ---
+  duration_ms: 0.162834
+  type: 'test'
+  ...
+# Subtest: bilingual native form buttons use one integration contract and final notices appear only in Review
+ok 14 - bilingual native form buttons use one integration contract and final notices appear only in Review
+  ---
+  duration_ms: 0.129875
+  type: 'test'
+  ...
+# Subtest: a same-session loading or source error keeps typed drafts editable but blocks native and forged Review
+ok 15 - a same-session loading or source error keeps typed drafts editable but blocks native and forged Review
+  ---
+  duration_ms: 0.158625
+  type: 'test'
+  ...
+# Subtest: source failure during an arrangement Review permits Back and recovery without losing the exact target
+ok 16 - source failure during an arrangement Review permits Back and recovery without losing the exact target
+  ---
+  duration_ms: 0.190875
+  type: 'test'
+  ...
+# Subtest: native form controls never resolve the host delegated action selector to the ancestor form
+ok 17 - native form controls never resolve the host delegated action selector to the ancestor form
+  ---
+  duration_ms: 0.599084
+  type: 'test'
+  ...
+# Subtest: known canonical sticker and display preference initialize the editor while missing or malformed settings remain unknown
+ok 18 - known canonical sticker and display preference initialize the editor while missing or malformed settings remain unknown
+  ---
+  duration_ms: 0.312792
+  type: 'test'
+  ...
+# Subtest: student lesson details show the exact canonical student and lesson read-only with only a return action
+ok 19 - student lesson details show the exact canonical student and lesson read-only with only a return action
+  ---
+  duration_ms: 0.353208
+  type: 'test'
+  ...
+# Subtest: student age is shown only from a complete explicit age snapshot including zero and its reference date
+ok 20 - student age is shown only from a complete explicit age snapshot including zero and its reference date
+  ---
+  duration_ms: 0.233833
+  type: 'test'
+  ...
+# Subtest: remaining balance preserves minutes or visits and known zero without deriving lessons or inventing an unknown zero
+ok 21 - remaining balance preserves minutes or visits and known zero without deriving lessons or inventing an unknown zero
+  ---
+  duration_ms: 0.296833
+  type: 'test'
+  ...
+# Subtest: student attendance distinguishes every source status, unmarked and unknown while sticker never borrows draft values
+ok 22 - student attendance distinguishes every source status, unmarked and unknown while sticker never borrows draft values
+  ---
+  duration_ms: 0.241625
+  type: 'test'
+  ...
+# Subtest: student remarks distinguish known blank from unknown and long private text is escaped and collapsible
+ok 23 - student remarks distinguish known blank from unknown and long private text is escaped and collapsible
+  ---
+  duration_ms: 0.156958
+  type: 'test'
+  ...
+# Subtest: read-only student detail retains source facts during loading or failure without editable drafts or raw errors
+ok 24 - read-only student detail retains source facts during loading or failure without editable drafts or raw errors
+  ---
+  duration_ms: 0.1045
+  type: 'test'
+  ...
+# Subtest: student detail rejects invalid canonical context and supports a clean Chinese read-only view
+ok 25 - student detail rejects invalid canonical context and supports a clean Chinese read-only view
+  ---
+  duration_ms: 0.113875
+  type: 'test'
+  ...
+# Subtest: long remark disclosures have stable semantic identities across source updates rather than positional identities
+ok 26 - long remark disclosures have stable semantic identities across source updates rather than positional identities
+  ---
+  duration_ms: 0.608167
+  type: 'test'
+  ...
+# Subtest: an explicit attendance save capability enables only a valid ready Review and keeps final writes in the host
+ok 27 - an explicit attendance save capability enables only a valid ready Review and keeps final writes in the host
+  ---
+  duration_ms: 0.182125
+  type: 'test'
+  ...
+# Subtest: attendance save rejects missing readiness malformed capability invalid draft stale source and busy state
+ok 28 - attendance save rejects missing readiness malformed capability invalid draft stale source and busy state
+  ---
+  duration_ms: 1.273125
+  type: 'test'
+  ...
+# Subtest: busy attendance shows a busy form and locks Close Back Review and Save without changing the draft
+ok 29 - busy attendance shows a busy form and locks Close Back Review and Save without changing the draft
+  ---
+  duration_ms: 0.257333
+  type: 'test'
+  ...
+# Subtest: attendance save errors are escaped focusable visible feedback outside the bounded reading body
+ok 30 - attendance save errors are escaped focusable visible feedback outside the bounded reading body
+  ---
+  duration_ms: 0.16275
+  type: 'test'
+  ...
+# Subtest: stale attendance explains changed information and blocks Review Save while preserving Back and Close
+ok 31 - stale attendance explains changed information and blocks Review Save while preserving Back and Close
+  ---
+  duration_ms: 0.47525
+  type: 'test'
+  ...
+# Subtest: an unmarked student can review changed annotations without inventing an attendance status
+ok 32 - an unmarked student can review changed annotations without inventing an attendance status
+  ---
+  duration_ms: 0.556583
+  type: 'test'
+  ...
+# Subtest: annotation-only review requires known unmarked attendance and a real change to an annotation
+ok 33 - annotation-only review requires known unmarked attendance and a real change to an annotation
+  ---
+  duration_ms: 0.083084
+  type: 'test'
+  ...
+# Subtest: annotation-only review still validates raw notes sticker and visibility without mutating the canonical source
+ok 34 - annotation-only review still validates raw notes sticker and visibility without mutating the canonical source
+  ---
+  duration_ms: 0.116792
+  type: 'test'
+  ...
+# Subtest: stale attendance with revoked save capability explains changed details instead of claiming saving is not available yet
+ok 35 - stale attendance with revoked save capability explains changed details instead of claiming saving is not available yet
+  ---
+  duration_ms: 0.6095
+  type: 'test'
+  ...
+# Subtest: Pending Confirmation has its own explicit Save command for exactly one student session even when replacement slots are unknown
+ok 36 - Pending Confirmation has its own explicit Save command for exactly one student session even when replacement slots are unknown
+  ---
+  duration_ms: 0.157792
+  type: 'test'
+  ...
+# Subtest: pending Save needs an explicit capability and ready current source while selecting a replacement never enables Confirm
+ok 37 - pending Save needs an explicit capability and ready current source while selecting a replacement never enables Confirm
+  ---
+  duration_ms: 0.997875
+  type: 'test'
+  ...
+# Subtest: only a host acknowledgement for the exact student session renders saved Pending Confirmation
+ok 38 - only a host acknowledgement for the exact student session renders saved Pending Confirmation
+  ---
+  duration_ms: 0.415166
+  type: 'test'
+  ...
+# Subtest: saved pending can continue viewing slots without duplicate saving or enabling target confirmation
+ok 39 - saved pending can continue viewing slots without duplicate saving or enabling target confirmation
+  ---
+  duration_ms: 0.439917
+  type: 'test'
+  ...
+# Subtest: busy pending locks every draft control and navigation without changing source or draft
+ok 40 - busy pending locks every draft control and navigation without changing source or draft
+  ---
+  duration_ms: 0.289916
+  type: 'test'
+  ...
+# Subtest: uncertain pending preserves the original retry command and locks changes while stale source requires reopening
+ok 41 - uncertain pending preserves the original retry command and locks changes while stale source requires reopening
+  ---
+  duration_ms: 0.999291
+  type: 'test'
+  ...
+# Subtest: pending failures use the focusable escaped error marker and preserve the exact context and raw draft
+ok 42 - pending failures use the focusable escaped error marker and preserve the exact context and raw draft
+  ---
+  duration_ms: 0.192417
+  type: 'test'
+  ...
+# Subtest: a newly capable Pending flow cannot borrow legacy implied readiness when no source status was supplied
+ok 43 - a newly capable Pending flow cannot borrow legacy implied readiness when no source status was supplied
+  ---
+  duration_ms: 0.209542
+  type: 'test'
+  ...
+# Subtest: replacement loading failure unknown and unconfirmed policy have distinct accurate states without claiming a known empty list
+ok 44 - replacement loading failure unknown and unconfirmed policy have distinct accurate states without claiming a known empty list
+  ---
+  duration_ms: 0.201375
+  type: 'test'
+  ...
+# Subtest: malformed or ambiguous ready replacement facts fail closed as a whole and never become a known empty source
+ok 45 - malformed or ambiguous ready replacement facts fail closed as a whole and never become a known empty source
+  ---
+  duration_ms: 0.258
+  type: 'test'
+  ...
+# Subtest: query and reload only appear for a real host loading capability and remain inert pure commands
+ok 46 - query and reload only appear for a real host loading capability and remain inert pure commands
+  ---
+  duration_ms: 0.977291
+  type: 'test'
+  ...
+# Subtest: selected replacement Review labels original lesson and new time without duplicating or changing their facts
+ok 47 - selected replacement Review labels original lesson and new time without duplicating or changing their facts
+  ---
+  duration_ms: 0.228291
+  type: 'test'
+  ...
+# Subtest: stale arrangement cannot change date selection or draft while Back and Close remain usable
+ok 48 - stale arrangement cannot change date selection or draft while Back and Close remain usable
+  ---
+  duration_ms: 0.2055
+  type: 'test'
+  ...
+# Subtest: replacement read failure or unconfirmed policy does not remove the independent real Pending save flow
+ok 49 - replacement read failure or unconfirmed policy does not remove the independent real Pending save flow
+  ---
+  duration_ms: 0.143459
+  type: 'test'
+  ...
+# Subtest: invalid raw date disables a real query without erasing selection and no capability can fabricate final replacement confirmation
+ok 50 - invalid raw date disables a real query without erasing selection and no capability can fabricate final replacement confirmation
+  ---
+  duration_ms: 0.294708
+  type: 'test'
+  ...
+# Subtest: reopened canonical Pending without a draft cannot offer a duplicate review but can review a chosen replacement
+not ok 51 - reopened canonical Pending without a draft cannot offer a duplicate review but can review a chosen replacement
+  ---
+  duration_ms: 3.605375
+  type: 'test'
+  location: '/Users/yausiuhei/Documents/ChatGPT/Beamal Art studio solution/sample/tests/shared-lesson-workflow-ui.test.mjs:299:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The expression evaluated to a falsy value:
+    
+      assert.ok(Object.hasOwn(commandNode(html,'review').attributes,'disabled'))
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (file:///Users/yausiuhei/Documents/ChatGPT/Beamal%20Art%20studio%20solution/sample/tests/shared-lesson-workflow-ui.test.mjs:302:9)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+1..51
+# tests 51
+# suites 0
+# pass 50
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 164.246333

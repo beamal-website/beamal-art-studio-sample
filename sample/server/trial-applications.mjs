@@ -30,16 +30,17 @@ function requestKey(value){
  if(typeof value!=='string'||!(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)||/^[A-Za-z0-9_-]{32,100}$/.test(value)))fail(400,'INVALID_IDEMPOTENCY_KEY','Use a newly generated random request key of at least 128 bits.');
  return value;
 }
-function required(applicant,policy){
- if(!applicant.localName.trim()&&!applicant.fullName.trim())invalid('Enter at least one applicant name.');
- if(policy==='name-birth-whatsapp'&&!applicant.dateOfBirth)invalid('Enter a date of birth.');
- if(['name-birth-whatsapp','name-whatsapp'].includes(policy)&&!applicant.whatsapp.trim())invalid('Enter a WhatsApp contact.');
- if(policy==='name-contact'&&!applicant.whatsapp.trim()&&!applicant.email.trim())invalid('Enter a WhatsApp contact or email address.');
+function required(applicant){
+ if(!applicant.localName.trim())invalid('Enter a Chinese name.');
+ if(!applicant.fullName.trim())invalid('Enter an English name.');
+ if(!applicant.dateOfBirth)invalid('Enter a date of birth.');
+ if(!applicant.gender)invalid('Choose a gender option.');
+ if(!applicant.whatsapp.trim())invalid('Enter a WhatsApp contact.');
 }
 function listQuery(input={}){
  if(!plain(input)||Object.keys(input).some(key=>!['personId','status','page','pageSize','since'].includes(key)))invalid('Choose supported trial request filters.');
  const status=input.status===undefined?'all':input.status,personId=input.personId===undefined?'':input.personId,since=input.since===undefined?'':input.since;
- if(!['all','pending','rejected'].includes(status)||personId!==''&&!id(personId)||typeof since!=='string'||since.length>200)invalid('Choose valid trial request filters.');
+ if(!['all','pending','accepted','rejected'].includes(status)||personId!==''&&!id(personId)||typeof since!=='string'||since.length>200)invalid('Choose valid trial request filters.');
  const integer=(value,fallback)=>{const raw=String(value??fallback);if(!/^[1-9]\d*$/.test(raw)||!Number.isSafeInteger(Number(raw)))invalid('Choose positive whole-number pages.');return Number(raw);};
  const page=integer(input.page,1),pageSize=integer(input.pageSize,25);
  if(pageSize>100||!Number.isSafeInteger((page-1)*pageSize))invalid('Use a page size of at most 100.');
@@ -55,6 +56,10 @@ export function createTrialApplicationStore({database,transaction,availableSlots
    source_identity TEXT NOT NULL,slot_snapshot TEXT NOT NULL,status TEXT NOT NULL CHECK(status IN ('pending','rejected')),
    version INTEGER NOT NULL CHECK(version>0),created_at TEXT NOT NULL,updated_at TEXT NOT NULL,rejected_at TEXT,rejected_by TEXT REFERENCES users(id)
   );
+  CREATE TABLE IF NOT EXISTS trial_application_acceptances(
+   application_id TEXT PRIMARY KEY REFERENCES trial_applications(id),actor_id TEXT NOT NULL REFERENCES users(id),
+   actor_name TEXT NOT NULL,created_at TEXT NOT NULL
+  );
   CREATE INDEX IF NOT EXISTS trial_applications_person ON trial_applications(person_id,created_at,id);
   CREATE INDEX IF NOT EXISTS trial_applications_status ON trial_applications(status,created_at,id);
   CREATE TABLE IF NOT EXISTS trial_application_events(
@@ -69,7 +74,9 @@ export function createTrialApplicationStore({database,transaction,availableSlots
    PRIMARY KEY(route,key_hash)
   );
  `));
- const policy=()=>({policy:trialFormPolicy});
+ // Compatibility metadata for existing clients; published slot rules decide eligibility.
+ // A missing legacy field policy must never disable otherwise eligible applications.
+ const policy=()=>({policy:trialFormPolicy??'name-whatsapp'});
  const record=applicationId=>database.prepare('SELECT * FROM trial_applications WHERE id=?').get(applicationId);
  const event=row=>({id:row.id,type:row.type,version:row.version,createdAt:row.created_at,actor:{id:row.actor_id,displayName:row.actor_name}});
  const events=applicationId=>database.prepare('SELECT * FROM trial_application_events WHERE application_id=? ORDER BY id').all(applicationId).map(event);
@@ -82,10 +89,13 @@ export function createTrialApplicationStore({database,transaction,availableSlots
   const actor=actorFor(user),own=new Set(actor.role==='teacher'?accessControl.ownTeacherResourceIds(actor):[]),slots=new Map(actor.role==='teacher'?availableSlots.scopeFacts().map(slot=>[slot.id,slot]):[]);
   return {actor,allowed:row=>{if(actor.role==='admin')return true;const slot=slots.get(row.slot_id);return !!slot&&(slot.sourceAvailable===true||slot.unavailableReason==='HELD_SOURCE_CHANGED')&&(slot.teacherIds||[]).some(teacherId=>own.has(teacherId));}};
  };
- const project=row=>{
+ const acceptance=id=>database.prepare('SELECT * FROM trial_application_acceptances WHERE application_id=?').get(id);
+ const effectiveStatus=row=>acceptance(row.id)?'accepted':row.status;
+ const project=(row,actor=null)=>{
   const person=people.profileForTrial(row.person_id);if(!person)fail(409,'TRIAL_PERSON_UNAVAILABLE','Applicant details are unavailable.');
   const applicant=Object.fromEntries(applicantFields.map(field=>[field,field==='whatsapp'?person.whatsApp:field==='dateOfBirth'?person.dateOfBirth??'':person[field]??'']));
-  return {id:row.id,reference:row.reference,personId:row.person_id,status:row.status,version:row.version,createdAt:row.created_at,updatedAt:row.updated_at,rejectedAt:row.rejected_at,applicant:{...applicant,displayName:person.displayName},slot:JSON.parse(row.slot_snapshot),canReject:row.status==='pending',events:events(row.id)};
+  const accepted=acceptance(row.id),status=accepted?'accepted':row.status;
+  return {id:row.id,reference:row.reference,personId:row.person_id,status,version:row.version,createdAt:row.created_at,updatedAt:row.updated_at,rejectedAt:row.rejected_at,applicant:{...applicant,displayName:person.displayName},slot:JSON.parse(row.slot_snapshot),canReject:status==='pending',canAccept:status==='pending'&&actor?.role==='admin',acceptedAt:accepted?.created_at||null,events:[...events(row.id),...(accepted?[{id:'accepted:'+row.id,type:'accepted',version:row.version,createdAt:accepted.created_at,actor:{id:accepted.actor_id,displayName:accepted.actor_name}}]:[])]};
  };
  const target=(applicationId,user)=>{
   const current=scope(user);if(!id(applicationId))invalid('Choose an exact trial request.');
@@ -97,8 +107,7 @@ export function createTrialApplicationStore({database,transaction,availableSlots
   const saved=database.prepare('SELECT * FROM public_trial_receipts WHERE route=? AND key_hash=?').get(route,keyHash);
   if(saved){if(saved.payload_hash!==payloadHash)fail(409,'IDEMPOTENCY_CONFLICT','This request key was already used for different trial details.');return JSON.parse(saved.response_body);}
   const parsed=submission(input);
-  if(trialFormPolicy===null)fail(503,'TRIAL_NOT_OPEN','Trial applications are not open yet.');
-  required(parsed.applicant,trialFormPolicy);
+  required(parsed.applicant);
   const held=availableSlots.reservePublicTrial(parsed),profile={...Object.fromEntries(applicantFields.filter(field=>field!=='whatsapp').map(field=>[field,parsed.applicant[field]])),whatsApp:parsed.applicant.whatsapp,displayName:parsed.applicant.localName.trim()||parsed.applicant.fullName.trim()};
   const person=people.createPublicApplicant(profile),applicationId=randomUUID(),reference='TR-'+randomUUID().replaceAll('-','').toUpperCase(),now=new Date().toISOString();
   database.prepare("INSERT INTO trial_applications(id,reference,person_id,slot_id,reservation_id,source_identity,slot_snapshot,status,version,created_at,updated_at) VALUES (?,?,?,?,?,?,?,'pending',1,?,?)").run(applicationId,reference,person.id,parsed.slotId,held.reservationId,held.sourceIdentity,JSON.stringify(held.slot),now,now);
@@ -107,10 +116,10 @@ export function createTrialApplicationStore({database,transaction,availableSlots
   database.prepare('INSERT INTO public_trial_receipts(route,key_hash,payload_hash,application_id,response_body,created_at) VALUES (?,?,?,?,?,?)').run(route,keyHash,payloadHash,applicationId,JSON.stringify(ack),now);
   return ack;
  });
- const get=(applicationId,user)=>transaction(()=>project(target(applicationId,user).row),'read');
+ const get=(applicationId,user)=>transaction(()=>{const {row,actor}=target(applicationId,user);return project(row,actor)},'read');
  const list=(query,user)=>transaction(()=>{
-  const normalized=listQuery(query),current=scope(user),all=database.prepare('SELECT * FROM trial_applications ORDER BY created_at DESC,id').all().filter(row=>current.allowed(row)&&(!normalized.personId||row.person_id===normalized.personId)&&(normalized.status==='all'||row.status===normalized.status));
-  const {page,pageSize}=normalized,total=all.length,applications=all.slice((page-1)*pageSize,page*pageSize).map(project),revision=hash({actor:current.actor.id,role:current.actor.role,query:normalized.status,personId:normalized.personId,page,pageSize,total,applications});
+  const normalized=listQuery(query),current=scope(user),all=database.prepare('SELECT * FROM trial_applications ORDER BY created_at DESC,id').all().filter(row=>current.allowed(row)&&(!normalized.personId||row.person_id===normalized.personId)&&(normalized.status==='all'||effectiveStatus(row)===normalized.status));
+  const {page,pageSize}=normalized,total=all.length,applications=all.slice((page-1)*pageSize,page*pageSize).map(row=>project(row,current.actor)),revision=hash({actor:current.actor.id,role:current.actor.role,query:normalized.status,personId:normalized.personId,page,pageSize,total,applications});
   return normalized.since===revision?{revision,unchanged:true,page,pageSize,total}:{revision,records:applications,page,pageSize,total};
  },'read');
  const authorizeReject=(applicationId,user)=>get(applicationId,user);
@@ -119,22 +128,44 @@ export function createTrialApplicationStore({database,transaction,availableSlots
   if(!plain(input)||Object.keys(input).some(field=>field!=='version'))invalid('Provide only the current trial request version.');
   if(!Number.isSafeInteger(input.version)||input.version<1)fail(409,'VERSION_REQUIRED','Reload the trial request before rejecting it.');
   if(row.version!==input.version)fail(409,'VERSION_CONFLICT','This trial request changed. Reload it.');
-  if(row.status!=='pending')fail(409,'TRIAL_ALREADY_REJECTED','This trial request was already rejected.');
+  if(effectiveStatus(row)!=='pending')fail(409,'TRIAL_ALREADY_REJECTED','This trial request was already rejected.');
   availableSlots.releaseTrialReservation({reservationId:row.reservation_id,slotId:row.slot_id,sourceIdentity:row.source_identity});
   const now=new Date().toISOString(),changed=database.prepare("UPDATE trial_applications SET status='rejected',version=version+1,updated_at=?,rejected_at=?,rejected_by=? WHERE id=? AND version=? AND status='pending'").run(now,now,actor.id,applicationId,input.version);
   if(changed.changes!==1)fail(409,'VERSION_CONFLICT','This trial request changed. Reload it.');
   database.prepare("INSERT INTO trial_application_events(application_id,type,version,actor_id,actor_name,created_at) VALUES (?,'rejected',?,?,?,?)").run(applicationId,row.version+1,actor.id,actor.display_name,now);
-  return project(record(applicationId));
+  return project(record(applicationId),actor);
  });
+ const authorizeAccept=(applicationId,user)=>{
+  const selected=target(applicationId,user);if(selected.actor.role!=='admin')fail(403,'ROLE_FORBIDDEN','Only an administrator can accept trial applications.');return selected;
+ };
+ const accept=(applicationId,input,user)=>transaction(()=>{
+  const {row,actor}=authorizeAccept(applicationId,user);
+  if(!plain(input)||Object.keys(input).some(key=>key!=='version')||!Number.isSafeInteger(input.version)||input.version<1)invalid('Provide the current request version.');
+  if(row.version!==input.version)fail(409,'VERSION_CONFLICT','This trial request changed. Reload it.');
+  if(effectiveStatus(row)!=='pending')fail(409,'TRIAL_ALREADY_RESOLVED','This trial request has already been resolved.');
+  availableSlots.confirmTrialReservation({reservationId:row.reservation_id,slotId:row.slot_id,sourceIdentity:row.source_identity});
+  const now=new Date().toISOString(),changed=database.prepare("UPDATE trial_applications SET version=version+1,updated_at=? WHERE id=? AND version=? AND status='pending'").run(now,applicationId,input.version);
+  if(changed.changes!==1)fail(409,'VERSION_CONFLICT','This request changed. Reload it.');
+  database.prepare('INSERT INTO trial_application_acceptances(application_id,actor_id,actor_name,created_at) VALUES (?,?,?,?)').run(applicationId,actor.id,actor.display_name,now);
+  return project(record(applicationId),actor);
+ });
+ const participants=(slotId,date)=>{
+  const person=(id,applicationId=null)=>{const profile=people.profileForTrial(id);if(!profile)return null;let age=null;if(profile.dateOfBirth&&profile.dateOfBirth<=date){const [by,bm,bd]=profile.dateOfBirth.split('-').map(Number),[y,m,d]=date.split('-').map(Number),months=(y-by)*12+m-bm-(d<bd?1:0);if(Number.isSafeInteger(months)&&months>=0)age={years:Math.floor(months/12),months:months%12,asOf:date};}return {id,displayName:profile.displayName,age,...(applicationId?{applicationId}:{})};};
+  const applications=database.prepare("SELECT applications.* FROM trial_applications applications JOIN availability_reservations reservations ON reservations.id=applications.reservation_id WHERE applications.slot_id=? AND applications.status='pending' AND reservations.state='held'").all(slotId);
+  const trials=applications.filter(row=>!!acceptance(row.id)).map(row=>person(row.person_id,row.id)).filter(Boolean);
+  const moved=database.prepare("SELECT people.id FROM availability_reservations reservations JOIN student_sessions sessions ON sessions.id=reservations.student_session_id JOIN people ON people.id=sessions.student_id JOIN enrollment_orders orders ON orders.id=sessions.order_id WHERE reservations.slot_id=? AND reservations.kind='rescheduling' AND reservations.state='held' AND sessions.schedule_id=reservations.target_schedule_id AND sessions.sequence=reservations.target_sequence AND orders.payment_status='paid'").all(slotId);
+  return {trials,rescheduling:[...new Set(moved.map(row=>row.id))].map(id=>person(id)).filter(Boolean)};
+ };
  const workSnapshot=(user,options={})=>transaction(()=>{
   if(!plain(options)||Object.keys(options).some(field=>field!=='since'))invalid('Choose supported work query parameters.');
   const since=options.since===undefined?'':options.since;
   if(typeof since!=='string'||since.length>200)invalid('Use a valid work revision.');
-  const current=scope(user),all=database.prepare('SELECT * FROM trial_applications ORDER BY created_at DESC,id').all().filter(current.allowed),pending=all.filter(row=>row.status==='pending'),allowed=new Map(all.map(row=>[row.id,row]));
-  const allEvents=database.prepare('SELECT * FROM trial_application_events ORDER BY id DESC').all().filter(row=>allowed.has(row.application_id));
-  const requests=pending.slice(0,50).map(project),notifications=allEvents.slice(0,50).map(row=>({...event(row),applicationId:row.application_id,reference:allowed.get(row.application_id).reference}));
+  const current=scope(user),all=database.prepare('SELECT * FROM trial_applications ORDER BY created_at DESC,id').all().filter(current.allowed),pending=all.filter(row=>effectiveStatus(row)==='pending'),allowed=new Map(all.map(row=>[row.id,row]));
+  const confirmedEvents=database.prepare('SELECT * FROM trial_application_acceptances').all().filter(row=>allowed.has(row.application_id)).map(row=>({...row,id:'accepted:'+row.application_id,type:'accepted',version:allowed.get(row.application_id).version}));
+  const allEvents=[...database.prepare('SELECT * FROM trial_application_events ORDER BY id DESC').all(),...confirmedEvents].filter(row=>allowed.has(row.application_id)).sort((a,b)=>b.created_at.localeCompare(a.created_at)||String(b.id).localeCompare(String(a.id)));
+  const requests=pending.slice(0,50).map(row=>project(row,current.actor)),notifications=allEvents.slice(0,50).map(row=>({...event(row),applicationId:row.application_id,reference:allowed.get(row.application_id).reference}));
   const pendingTotal=pending.length,revision=hash({actor:current.actor.id,role:current.actor.role,pendingTotal,requests,notifications,totalEvents:allEvents.length});
   return since===revision?{revision,unchanged:true,pendingTotal}:{revision,pendingTotal,requests,notifications,hasMoreRequests:pending.length>50,hasMoreNotifications:allEvents.length>50};
  },'read');
- return {policy,submit,list,get,authorizeReject,reject,workSnapshot};
+ return {policy,submit,list,get,authorizeReject,reject,authorizeAccept,accept,participants,workSnapshot};
 }

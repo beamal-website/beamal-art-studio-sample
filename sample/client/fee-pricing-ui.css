@@ -9,7 +9,7 @@
   --fee-ui-ink: #253d3b;
   --fee-ui-muted: #526a60;
   --fee-ui-line: #d9ddd2;
-  --fee-ui-paper: #fffdf8;
+  --fee-ui-paper: var(--portal-paper,#fffdf8);
   width: min(800px, 100%);
   min-width: 0;
   max-width: 100%;
@@ -156,7 +156,7 @@
   padding: 12px 16px;
   border: 1px solid var(--fee-ui-line);
   border-radius: 4px;
-  background: #eef3eb;
+  background: var(--portal-muted,#eef3eb);
   color: var(--fee-ui-muted);
   font-size: 14px;
   line-height: 1.7;
@@ -285,7 +285,7 @@
 .fee-pricing-dialog button:disabled,
 .fee-overview-dialog button:disabled {
   border-color: var(--fee-ui-line);
-  background: #e7eae3;
+  background: var(--portal-muted,#e7eae3);
   color: #687770;
   cursor: not-allowed;
 }

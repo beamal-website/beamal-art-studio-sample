@@ -3,7 +3,7 @@
   --course-content-ink: #253d3b;
   --course-content-muted: #526a60;
   --course-content-line: #d9ddd2;
-  --course-content-paper: #fffdf8;
+  --course-content-paper: var(--portal-paper,#fffdf8);
   min-width: 0;
   color: var(--course-content-ink);
 }
@@ -198,7 +198,7 @@
   padding: 12px 16px;
   border: 1px solid var(--course-content-line);
   border-radius: 4px;
-  background: #eef3eb;
+  background: var(--portal-muted,#eef3eb);
   color: var(--course-content-muted);
   font-size: 14px;
   line-height: 1.7;
@@ -292,7 +292,7 @@
 
 .course-content-dialog button:disabled {
   border-color: var(--course-content-line);
-  background: #e7eae3;
+  background: var(--portal-muted,#e7eae3);
   color: #687770;
   cursor: not-allowed;
 }

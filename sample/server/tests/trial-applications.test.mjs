@@ -27,11 +27,11 @@ function submission(app,applicant={}){
 }
 function counts(path){const db=new DatabaseSync(path);try{return Object.fromEntries(['people','person_audit_log','availability_reservations','trial_applications','trial_application_events','public_trial_receipts','enrollment_orders','student_sessions','student_account_links'].map(name=>[name,db.prepare(`SELECT COUNT(*) AS n FROM ${name}`).get().n]));}finally{db.close();}}
 
-test('public Trial production policy remains closed until explicitly chosen and never creates a profile or hold',async t=>{
- const app=await setup(t,{trialFormPolicy:null}),before=counts(app.databasePath);
- assert.deepEqual(app.store.trialApplications.policy(),{policy:null});
- fail(()=>app.store.trialApplications.submit(submission(app),{key:key()}),503,'TRIAL_NOT_OPEN');
- assert.deepEqual(counts(app.databasePath),before);
+test('public Trial uses published slot eligibility without an extra global activation setting',async t=>{
+ const app=await setup(t,{trialFormPolicy:null});
+ assert.deepEqual(app.store.trialApplications.policy(),{policy:'name-whatsapp'});
+ assert.equal(app.store.trialApplications.submit(submission(app),{key:key()}).outcome,'received');
+ assert.equal(app.store.trialApplications.list({},app.admin).total,1);
 });
 
 test('public Trial creates one canonical Applicant and existing Trial hold with truthful audit and real teacher work records',async t=>{
@@ -74,16 +74,14 @@ test('unrelated or read-grant-only teacher and Student cannot read contacts or r
 });
 function storeReadGrant(app,kind,id){app.store.accessControl.createGrant({userId:app.teacher.id,kind,...(kind==='course'?{courseId:id}:{resourceId:id})},app.admin.id);}
 
-test('the three explicitly configured form policies require only their chosen minimum and all public keys remain strict',async t=>{
+test('all configured policies require both names birthday gender and WhatsApp, keep other fields optional and reject unsupported public keys',async t=>{
  for(const policy of['name-birth-whatsapp','name-whatsapp','name-contact']){
   const app=await setup(t,{trialFormPolicy:policy});assert.deepEqual(app.store.trialApplications.policy(),{policy});
-  const valid=submission(app,{localName:'',fullName:'English-only name',dateOfBirth:policy==='name-birth-whatsapp'?'2020-01-01':'',whatsapp:policy==='name-contact'?'':'+852 5555 1111',email:policy==='name-contact'?'contact@example.test':'',gender:'',parentName:''});
+  const valid=submission(app,{localName:'陳小明',fullName:'Ming Chan',dateOfBirth:'2018-01-02',whatsapp:'+852 5555 1111',email:'',gender:'male',school:'',referrer:'',parentName:'',remark:''});
   const invalid=[{...valid,forgedPersonId:'existing'},{...valid,days:'7'},{...valid,days:31},{...valid,from:'2030-02-30'},{...valid,revision:'unknown'},
    {...valid,applicant:{...valid.applicant,kind:'student'}},{...valid,applicant:{...valid.applicant,localName:'',fullName:'  '}},{...valid,applicant:{...valid.applicant,email:'invalid'}},
    {...valid,applicant:{...valid.applicant,dateOfBirth:'9999-01-01'}},{...valid,applicant:{...valid.applicant,gender:'unverified'}},{...valid,applicant:{...valid.applicant,whatsapp:'x'.repeat(81)}},{...valid,applicant:{...valid.applicant,remark:null}}];
-  if(policy==='name-birth-whatsapp')invalid.push({...valid,applicant:{...valid.applicant,dateOfBirth:''}});
-  if(policy!=='name-contact')invalid.push({...valid,applicant:{...valid.applicant,whatsapp:''}});
-  else invalid.push({...valid,applicant:{...valid.applicant,email:'',whatsapp:''}});
+  for(const field of ['localName','fullName','dateOfBirth','gender','whatsapp'])invalid.push({...valid,applicant:{...valid.applicant,[field]:''}});
   const before=counts(app.databasePath);for(const input of invalid){fail(()=>app.store.trialApplications.submit(input,{key:key()}),400);assert.deepEqual(counts(app.databasePath),before);}
   for(const badKey of[undefined,'short','0'.repeat(31),'contains spaces'.repeat(4),true])fail(()=>app.store.trialApplications.submit(valid,{key:badKey}),400);
   assert.equal(app.store.trialApplications.submit(valid,{key:key()}).outcome,'received');
@@ -148,7 +146,7 @@ test('person audit upgrade preserves old IDs sequence custom index and trigger w
   assert.equal(rows.length,1);const audit=reopened.people.history(rows[0].personId,app.admin.id);assert.equal(audit[0].id,1000);assert.equal(audit[0].actor.id,null);
   const inspect=new DatabaseSync(app.databasePath);try{assert.equal(inspect.prepare('PRAGMA table_info(person_audit_log)').all().find(row=>row.name==='actor_id').notnull,0);assert.equal(inspect.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE name IN ('isolated_preserved_index','isolated_preserved_trigger','person_audit_person')").get().n,3);assert.equal(inspect.prepare('SELECT id FROM isolated_audit_probe').get().id,1000);assert.deepEqual(inspect.prepare('PRAGMA foreign_key_check').all(),[]);}finally{inspect.close();}
   const saved=reopened.trialApplications.get(rows[0].id,app.admin);await reopened.close();const again=await createStore({databasePath:app.databasePath,trialFormPolicy:null});
-  try{assert.deepEqual(again.trialApplications.get(rows[0].id,app.admin),saved);assert.deepEqual(again.trialApplications.submit(input,{key:requestKey}),ack);fail(()=>again.trialApplications.submit({...input,applicant:{...input.applicant,remark:'different'}},{key:requestKey}),409);fail(()=>again.trialApplications.submit(input,{key:key()}),503);assert.deepEqual(again.people.history(person.id,app.admin.id),history);}finally{await again.close();}
+  try{assert.deepEqual(again.trialApplications.get(rows[0].id,app.admin),saved);assert.deepEqual(again.trialApplications.submit(input,{key:requestKey}),ack);fail(()=>again.trialApplications.submit({...input,applicant:{...input.applicant,remark:'different'}},{key:requestKey}),409);fail(()=>again.trialApplications.submit(input,{key:key()}),409,'TRIAL_FULL');assert.deepEqual(again.people.history(person.id,app.admin.id),history);}finally{await again.close();}
  }finally{await reopened.close();}
 });
 
@@ -207,4 +205,15 @@ test('a newly responsible Teacher can reject a moved linked Trial hold while the
  const rejected=app.store.trialApplications.reject(row.id,{version:1},newTeacher);assert.equal(rejected.status,'rejected');
  assert.equal(app.store.availableSlots.get(app.slot.id,app.admin).trialReserved,0);
  assert.deepEqual(app.store.trialApplications.submit(originalInput,{key:requestKey}),ack);
+});
+
+
+test('accepted trial and read notification survive restart while an acceptance write failure rolls back every confirmation fact',async t=>{
+ const app=await setup(t),input=submission(app);app.store.trialApplications.submit(input,{key:key()});const pending=app.store.trialApplications.list({},app.admin).records[0];
+ const inspect=new DatabaseSync(app.databasePath);inspect.exec("CREATE TRIGGER fail_trial_acceptance BEFORE INSERT ON trial_application_acceptances BEGIN SELECT RAISE(ABORT,'acceptance audit failure'); END;");
+ assert.throws(()=>app.store.trialApplications.accept(pending.id,{version:1},app.admin),/acceptance audit failure/);
+ assert.equal(app.store.trialApplications.get(pending.id,app.admin).version,1);assert.equal(app.store.availableSlots.get(app.slot.id,app.admin).participants.trials.length,0);assert.equal(app.store.portalNotifications.list(app.admin).notifications.length,0);
+ inspect.exec('DROP TRIGGER fail_trial_acceptance');inspect.close();
+ const confirmed=app.store.trialApplications.accept(pending.id,{version:1},app.admin),notification=app.store.portalNotifications.list(app.admin).notifications[0];app.store.portalNotifications.markRead(notification.id,app.admin);await app.store.close();
+ const reopened=await createStore({databasePath:app.databasePath});try{assert.deepEqual(reopened.trialApplications.get(pending.id,app.admin),confirmed);assert.equal(reopened.portalNotifications.list(app.admin).unread,0);assert.equal(reopened.availableSlots.get(app.slot.id,app.admin).trialConfirmed,1);}finally{await reopened.close();}
 });

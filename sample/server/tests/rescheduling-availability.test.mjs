@@ -9,6 +9,7 @@ const send=(client,path,body)=>client.request(path,{method:'POST',body});
 async function setup(t){
  const directory=await mkdtemp(join(tmpdir(),'beamal-resched-'));t.after(()=>rm(directory,{recursive:true,force:true}));const databasePath=join(directory,'data.sqlite'),a=await fixture(t,{databasePath}),admin=a.client(),student=a.client();await admin.login();await student.login(3);
  const teacher=(await send(admin,'/api/scheduling-resources',{kind:'teacher',displayName:'Maya'})).body.resource;
+ const teacherClient=a.client(),teacherUser=(await teacherClient.login(2)).body.user;a.store.accessControl.setTeacherLink(teacher.id,{version:0,userId:teacherUser.id},a.store.listUsers().find(row=>row.email===users[0].email).id);
  const source=(await send(admin,'/api/schedules',{course:'public-course',startDate:'2090-01-02',time:'10:00',duration:60,weekdays:[1],endMode:'count',count:2,teacherIds:[teacher.id],capacity:5})).body.schedule;
  const db=new DatabaseSync(databasePath),now=new Date().toISOString(),userId=a.store.listUsers().find(row=>row.email===users[3].email).id;
  db.prepare("INSERT INTO people(id,kind,display_name,profile,search_text,version,created_at,updated_at) VALUES ('child','student','Chloe','{}','Chloe',1,?,?)").run(now,now);db.close();
@@ -19,7 +20,7 @@ async function setup(t){
  response=await send(admin,`/api/orders/${order.id}/confirm-payment`,{version:order.version});assert.equal(response.status,200,response.text);
  const timetable=await student.request('/api/student/timetable?from=2090-01-01&to=2090-03-01');assert.equal(timetable.status,200,timetable.text);const lesson=timetable.body.lessons[0];
  const slot={courseId:'public-course',date:'2090-02-01',time:'12:30',duration:60,teacherIds:[teacher.id],roomIds:[],trialEnabled:false,reschedulingEnabled:true,active:true,totalCapacity:5,trialCapacity:0,reschedulingCapacity:1,publicVisibility:'show',reschedulingSourceMode:'all',studentAccessMode:'all',studentIds:[]};
- return {...a,admin,student,source,lesson,slot};
+ return {...a,admin,student,teacherClient,source,lesson,slot};
 }
 test('internal times enforce source and student rules and never leak onto the public timetable',async t=>{
  const a=await setup(t),created=await send(a.admin,'/api/available-slots',a.slot);assert.equal(created.status,201,created.text);const slot=created.body.slot;
@@ -36,7 +37,13 @@ test('final placement rechecks updated rules and atomically moves a paid lesson 
  let update=await a.admin.request('/api/available-slots/'+slot.id,{method:'PATCH',body:{version:1,reschedulingEnabled:false}});assert.equal(update.status,200,update.text);
  const path='/api/lesson-requests/'+request.body.request.id+'/assign';error(await send(a.admin,path,{version:1,slotId:slot.id}),409);
  update=await a.admin.request('/api/available-slots/'+slot.id,{method:'PATCH',body:{version:2,reschedulingEnabled:true}});assert.equal(update.status,200,update.text);
+ assert.equal((await a.student.request('/api/notifications')).body.notifications.length,0);
  const assigned=await send(a.admin,path,{version:1,slotId:slot.id});assert.equal(assigned.status,200,assigned.text);assert.equal(assigned.body.request.status,'approved');
+ for(const client of [a.admin,a.student,a.teacherClient]){const notifications=await client.request('/api/notifications');assert.equal(notifications.status,200,notifications.text);assert.equal(notifications.body.notifications.length,1);const notification=notifications.body.notifications[0];assert.equal(notification.type,'rescheduling-confirmed');assert.match(notification.bodyEn,/Chloe/);assert.ok(notification.bodyEn.includes(a.lesson.date));assert.match(notification.bodyEn,/2090-02-01 12:30/);}
+ const other=a.client();await other.login(4);assert.equal((await other.request('/api/notifications')).body.notifications.length,0);
+ const roster=await a.teacherClient.request('/api/courses/public-course/students');assert.equal(roster.status,200,roster.text);assert.equal(roster.body.students.length,1);assert.equal(roster.body.students[0].displayName,'Chloe');
+ const participantSlot=(await a.admin.request('/api/available-slots/'+slot.id)).body.slot;assert.equal(participantSlot.participants.rescheduling[0].displayName,'Chloe');
+
  const timetable=(await a.student.request('/api/student/timetable?from=2090-02-01&to=2090-02-28')).body;assert.equal(timetable.lessons.length,1);assert.equal(timetable.lessons[0].id,a.lesson.id);
  const saved=(await a.admin.request('/api/available-slots/'+slot.id)).body.slot;assert.equal(saved.reschedulingReserved,1);assert.equal(saved.reschedulingRemaining,0);assert.equal(saved.trialReserved,0);
 });

@@ -15,16 +15,20 @@ async function setup(t,options={}){
 }
 const submit=(app,key=randomUUID(),options={})=>app.anonymous.request('/api/public/trial-applications',{method:'POST',body:app.input,headers:{'Idempotency-Key':key},csrf:false,...options});
 
-test('public trial HTTP is closed without an explicit field policy; policy endpoint does not expose private data',async t=>{
- const app=await setup(t,{trialFormPolicy:null});const policy=await app.anonymous.request('/api/public/trial-form-policy');assert.equal(policy.status,200,policy.text);assert.deepEqual(policy.body,{policy:null});
- error(await submit(app),503);assert.equal(app.store.people.list({},app.actor.id).total,0);
+test('public trial HTTP accepts an eligible published time without a separate application activation setting',async t=>{
+ for(const options of [{trialFormPolicy:undefined},{trialFormPolicy:null}]){
+  const app=await setup(t,options),policy=await app.anonymous.request('/api/public/trial-form-policy');
+  assert.equal(policy.status,200,policy.text);assert.deepEqual(policy.body,{policy:'name-whatsapp'});
+  const sent=await submit(app);assert.equal(sent.status,201,sent.text);assert.equal(sent.body.outcome,'received');
+  const work=await app.admin.request('/api/trial-applications/work');assert.equal(work.body.pendingTotal,1);
+ }
 });
 
 test('anonymous real submit holds one Trial seat and returns only a historical receipt; current Teacher and Admin see the same request',async t=>{
  const app=await setup(t),key=randomUUID(),sent=await submit(app,key);assert.equal(sent.status,201,sent.text);assert.deepEqual(Object.keys(sent.body).sort(),['outcome','reference']);assert.equal(sent.body.outcome,'received');
  const list=await app.teacher.request('/api/trial-applications');assert.equal(list.status,200,list.text);assert.equal(list.body.total,1);assert.equal(list.body.records[0].reference,sent.body.reference);
  const record=list.body.records[0];assert.equal(record.applicant.whatsapp,applicant.whatsapp);assert.equal(record.slot.id,app.slot.id);assert.equal(record.status,'pending');
- assert.deepEqual((await app.admin.request('/api/trial-applications/'+record.id)).body,{application:record});
+ assert.deepEqual((await app.admin.request('/api/trial-applications/'+record.id)).body,{application:{...record,canAccept:true}});
  const work=await app.teacher.request('/api/trial-applications/work');assert.equal(work.status,200,work.text);assert.equal(work.body.pendingTotal,1);assert.equal(work.body.requests[0].id,record.id);assert.equal(work.body.notifications[0].applicationId,record.id);
  const retry=await submit(app,key);assert.equal(retry.status,201,retry.text);assert.deepEqual(retry.body,sent.body);assert.equal(app.store.people.list({},app.actor.id).total,1);
  error(await submit(app,randomUUID()),409);
@@ -49,9 +53,9 @@ test('trial endpoints reject origin method query body and authority violations w
 });
 test('anonymous submission has bounded abuse protection separate from login and never bypasses origin checks',async t=>{
  const app=await setup(t,{trialFormPolicy:null});
- for(let n=0;n<30;n++)error(await submit(app),503);
+ for(let n=0;n<30;n++)error(await submit(app,randomUUID(),{body:{...app.input,applicant:{...applicant,whatsapp:''}}}),400);
  const limited=await submit(app);error(limited,429);assert.equal(limited.body.error.code,'TRIAL_RATE_LIMIT');assert.equal(limited.headers.get('retry-after'),'900');
  error(await submit(app,randomUUID(),{requestOrigin:'https://hostile.example.test'}),403);
- const policy=await app.anonymous.request('/api/public/trial-form-policy');assert.equal(policy.status,200);assert.deepEqual(policy.body,{policy:null});
+ const policy=await app.anonymous.request('/api/public/trial-form-policy');assert.equal(policy.status,200);assert.deepEqual(policy.body,{policy:'name-whatsapp'});
  assert.equal(app.store.people.list({},app.actor.id).total,0);
 });

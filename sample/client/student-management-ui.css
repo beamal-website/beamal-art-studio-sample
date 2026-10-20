@@ -7,7 +7,7 @@
 .student-management-body{padding:20px 24px}
 .student-management-controls{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:12px}
 .student-management-controls select{min-width:130px;width:auto;margin:0}
-.student-management-controls select,.student-management-controls input{min-height:46px;border:1px solid #bdcbc1;border-radius:3px;background:#fffdf8;color:var(--ink,#253d3b);font-size:16px}
+.student-management-controls select,.student-management-controls input{min-height:46px;border:1px solid #bdcbc1;border-radius:3px;background:var(--portal-paper,#fffdf8);color:var(--ink,#253d3b);font-size:16px}
 .student-management-search{position:relative;display:flex;align-items:center;width:330px;max-width:100%;margin:0}
 .student-management-search svg{position:absolute;left:14px;width:22px;height:22px;color:#75867e;pointer-events:none}
 .student-management-search input{width:100%;margin:0;padding:10px 12px 10px 46px}
@@ -19,14 +19,63 @@
 .student-management-table{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain}
 .student-management-table table{width:100%;min-width:850px;margin:0;border-collapse:collapse;text-align:left}
 .student-management-table th,.student-management-table td{padding:20px 16px;border:0;border-bottom:1px solid #d9ddd2;line-height:1.5}
-.student-management-table th{background:#e9eee5;white-space:nowrap;font-size:15px;font-weight:600}
+.student-management-table th{background:var(--portal-muted,#e9eee5);white-space:nowrap;font-size:15px;font-weight:600}
 .student-management-empty{padding:52px 20px;text-align:center;color:#687770;border:0}
+/* These page controls must outrank the generic portal button rules. Keep
+   selectors local so record editors, Journals and public pages are unchanged. */
+.portal-content .student-management-page[data-student-reference]{background:#fafafa;min-height:100%}
+.portal-content [data-student-reference] .student-management-heading{min-height:72px;box-sizing:border-box;padding:16px 24px;background:#fff;border-color:#dedfe1}
+.portal-content [data-student-reference]:has(.student-management-tabs) .student-management-heading{border-bottom:0}
+.portal-content [data-student-reference] .student-management-heading h1{font-size:24px;font-weight:500;line-height:1.4}
+.portal-content [data-student-reference] .student-management-heading .sr-icon{display:grid;place-items:center;width:44px;min-height:44px;padding:0;background:transparent;color:#65736e;box-shadow:none;font-size:22px}
+.portal-content [data-student-reference] .student-management-tabs{gap:0;background:#fff;border-color:#dedfe1}
+.portal-content [data-student-reference] .student-management-tabs button{min-height:48px;margin:0 0 -1px;padding:12px 20px;background:transparent;border:0;border-bottom:3px solid transparent;border-radius:0;box-shadow:none;color:#737d79;font-size:15px;line-height:1.4}
+.portal-content [data-student-reference] .student-management-tabs button[aria-pressed=true]{background:transparent;border-bottom-color:var(--teal);color:var(--teal)}
+.portal-content [data-student-reference] .student-management-body{padding:16px 24px}
+.portal-content [data-student-reference] .student-management-controls{gap:10px;margin:0 0 10px;align-items:center}
+.portal-content [data-student-reference] .student-management-controls>select{width:auto;min-width:112px;min-height:46px;margin:0;background:#eef0f2;border-color:transparent;padding:10px 36px 10px 16px;font-size:15px}
+.portal-content [data-student-reference] .student-management-search{width:330px;max-width:100%;min-height:46px;box-sizing:border-box;background:#fff;border:1px solid #d5dadd;border-radius:3px}
+.portal-content [data-student-reference] .student-management-search input{min-width:0;min-height:44px;border:0;background:transparent;font-size:15px;padding:10px 12px 10px 44px;box-sizing:border-box}
+.portal-content [data-student-reference] .student-management-search-submit{position:absolute;left:0;top:0;display:grid;place-items:center;width:44px;min-height:44px;margin:0;padding:0;border:0;background:transparent;color:#85908b;box-shadow:none}
+.portal-content [data-student-reference] .student-management-search-submit svg{position:static;width:21px;height:21px;pointer-events:none}
+.portal-content [data-student-reference] .student-management-toolbar-actions{margin-left:auto;display:flex;gap:10px}
+.portal-content [data-student-reference] .student-management-table table{min-width:680px;table-layout:fixed;background:transparent}
+.portal-content [data-student-reference] .student-management-table th,.portal-content [data-student-reference] .student-management-table td{padding:18px 16px;border-bottom:1px solid #d7dadd;vertical-align:top;line-height:1.5;overflow-wrap:anywhere}
+.portal-content [data-student-reference] .student-management-table th{background:#eef0f2;color:#354540;font-size:15px;font-weight:600;white-space:normal}
+.portal-content [data-student-reference] .student-management-table .sr-link{display:inline;min-height:0;margin:0;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;color:var(--teal);text-align:left;line-height:inherit;font-size:inherit;white-space:normal;overflow-wrap:anywhere}
+.portal-content [data-student-reference] .student-management-table .sr-link:hover{text-decoration:underline}
+.portal-content [data-student-reference] .student-management-empty{padding:28px 20px;margin:0;text-align:center;color:#7c8580;font-size:15px;line-height:1.6}
+.portal-content [data-student-section=student-assessments] .student-management-empty{font-size:18px;font-weight:600;color:#354540}
+.student-management-empty-description{display:block;font-size:15px;font-weight:400;color:#7c8580}
+.portal-content [data-student-section=student-assessments] th:nth-child(1){width:25%}
+.portal-content [data-student-section=student-assessments] th:nth-child(2){width:30%}
+.portal-content [data-student-section=student-assessments][data-record-panel=templates] th:nth-child(1){width:22%}
+.portal-content [data-student-section=student-assessments][data-record-panel=templates] th:nth-child(2){width:16%}
+.portal-content [data-student-section=student-assessments][data-record-panel=templates] th:nth-child(3){width:30%}
+.portal-content [data-student-section=student-cases] .student-management-table table{min-width:780px}
+.portal-content [data-student-section=student-cases] th:nth-child(4){width:24%}
+.portal-content [data-student-section=student-cases][data-record-panel=enrollment] th:nth-child(3){width:28%}
+.portal-content [data-student-section=student-notices] .student-management-table table{min-width:900px}
+.portal-content [data-student-section=student-notices] th:nth-child(1){width:16%}
+.portal-content [data-student-section=student-notices] th:nth-child(2){width:22%}
+.portal-content [data-student-section=student-notices] th:nth-child(5){width:9%}
+@media(max-width:780px){
+ .portal-content [data-student-reference] .student-management-heading{padding:16px;min-height:68px}
+ .portal-content [data-student-reference] .student-management-heading h1{font-size:22px}
+ .portal-content [data-student-reference] .student-management-body{padding:16px}
+ .portal-content [data-student-reference] .student-management-tabs{padding-inline:16px;overflow-x:auto}
+ .portal-content [data-student-reference] .student-management-tabs button{white-space:nowrap;padding-inline:16px;flex:none}
+ .portal-content [data-student-reference] .student-management-controls>select{flex:0 1 auto;min-width:104px}
+ .portal-content [data-student-reference] .student-management-search{flex:1 1 200px;min-width:160px}
+ .portal-content [data-student-reference] .student-management-toolbar-actions{flex:1 1 100%;justify-content:flex-end}
+ .portal-content [data-student-reference] .student-management-table th,.portal-content [data-student-reference] .student-management-table td{padding:16px 12px}
+}
 .portal-content>.people-directory{padding:0}
 .people-directory .people-page-header{align-items:center;margin:0;padding:20px 24px;border-bottom:1px solid #d9ddd2}
 .people-directory .people-page-header h1{font-size:26px;margin:0}
 .people-directory .people-controls{display:flex;align-items:flex-start;gap:12px;margin:20px 24px 12px;position:relative}
 .people-directory .people-classification{margin:0;flex:0 0 132px}
-.people-directory .people-classification select{min-height:48px;width:100%;margin:0;background:#e9eee5}
+.people-directory .people-classification select{min-height:48px;width:100%;margin:0;background:var(--portal-muted,#e9eee5)}
 .people-directory .people-search{flex:1}
 .people-directory .people-search>div{gap:8px}
 .people-advanced{flex:0 0 180px}
@@ -34,7 +83,7 @@
 .people-advanced summary::-webkit-details-marker{display:none}
 .people-advanced summary:after{content:'⌄';flex:none}
 .people-advanced[open] summary:after{content:'⌃'}
-.people-advanced>div{position:absolute;right:0;top:56px;z-index:5;width:300px;max-width:100%;display:grid;gap:14px;padding:18px;background:#fffdf8;border:1px solid #d9ddd2;border-radius:3px;box-shadow:0 5px 18px #253d3b16;box-sizing:border-box}
+.people-advanced>div{position:absolute;right:0;top:56px;z-index:5;width:300px;max-width:100%;display:grid;gap:14px;padding:18px;background:var(--portal-paper,#fffdf8);border:1px solid #d9ddd2;border-radius:3px;box-shadow:0 5px 18px #253d3b16;box-sizing:border-box}
 .people-directory .people-table-scroll{margin:0 24px;border:0;border-radius:0;max-width:calc(100% - 48px);background:transparent}
 .people-directory .people-table-scroll table{min-width:1350px}
 .people-directory .people-table-scroll th,.people-directory .people-table-scroll td{width:auto;padding:20px 16px;white-space:normal}

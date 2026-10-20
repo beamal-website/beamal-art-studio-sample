@@ -184,7 +184,7 @@ test('shared leave uses explicit teacher resource identity and administrators ca
 });
 
 test('shared unknown payroll differs from an explicitly loaded empty payroll and does not render an invented payslip status',()=>{
-  const state={...sharedLeaveState(),portalTab:'payroll'};
+  const state={...sharedLeaveState(),viewer:{...sharedLeaveState().viewer,role:'admin'},portalTab:'payroll'};
   for(const locale of [en,zh]){
     const unavailable=staffPortalMarkup(state,locale);
     assert.match(unavailable,locale===en?/Payroll records are not available yet/:/薪金紀錄暫未提供/);
@@ -283,4 +283,20 @@ test('To-do opens its first child and switches between four independent pages wi
  assert.equal((html.match(/data-todo-category=/g)||[]).length,1);assert.match(html,/data-todo-category="trial"/);assert.doesNotMatch(html,/data-todo-category="rescheduling"/);
  state=advanceStaffPreview(state,'tab',{tab:'todo'});assert.equal(state.todoCategory,'rescheduling');
  assert.match(staffPortalMarkup(state,en),/data-todo-category="rescheduling"/);
+});
+
+test('all four workspace lists expose their own Status property and use Request Time',async()=>{
+ const {workspaceStatusHeader,workspaceStatusCell}=await import('../client/workspace-status-ui.js'),workspaceStatus={header:workspaceStatusHeader,cell:workspaceStatusCell};
+ for(const todoCategory of ['rescheduling','trial','payment','other']){const html=staffPortalMarkup({...staffInterfacePreviewState(),todoCategory},{...en,workspaceStatus});assert.match(html,new RegExp('data-ws-header="'+todoCategory+'"'));assert.match(html,/Request Time/);assert.doesNotMatch(html,/Requested at/);}
+});
+
+test('shared teacher workspace starts with today and has attendance and leave without administrative queues',()=>{
+ const base={...staffInterfacePreviewState(),shared:true,sharedReady:true,viewer:{id:'leo',role:'teacher'},portalTab:'todo'};
+ const html=staffPortalMarkup(base,en);
+ assert.match(html,/id="workspace-page-title">Today’s classes/);
+ assert.doesNotMatch(html,/To-do|Rescheduling required|Payment required|value="todo:/);
+ assert.match(html,/>Attendance<\/button>/);assert.match(html,/>Leave<\/button>/);
+ const attendance=staffPortalMarkup({...base,portalTab:'clock'},en);
+ assert.match(attendance,/id="workspace-page-title">Attendance/);assert.match(attendance,/ui-staff-clock-placeholder/);
+ const admin=staffPortalMarkup({...base,viewer:{id:'admin',role:'admin'}},en);assert.match(admin,/To-do/);
 });

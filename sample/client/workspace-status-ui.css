@@ -1,0 +1,52 @@
+.workspace-status-column{width:150px;min-width:140px}
+.workspace-status-cell>button{max-width:145px;min-height:0;padding:0;background:transparent;color:#263d3b;border:0;box-shadow:none;text-align:left;font:inherit}
+.workspace-status-cell{width:150px;max-width:150px}
+.workspace-status-tag{display:inline-block;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;padding:3px 8px;border-radius:4px;font-size:13px;line-height:1.5}
+.workspace-status-popup{position:fixed;z-index:1400;box-sizing:border-box;width:min(480px,calc(100vw - 16px));max-height:calc(100dvh - 24px);overflow:auto;padding:16px;background:#fff;color:#263d3b;border:1px solid #d9dfdf;border-radius:7px;box-shadow:0 6px 24px #203c3b33;font-size:14px}
+.workspace-status-popup header,.workspace-status-popup footer{display:flex;align-items:center;gap:8px;justify-content:space-between}
+.workspace-status-popup p{font-size:12px;line-height:1.6}
+.workspace-status-popup button{min-height:34px;padding:6px 9px;border:0;border-radius:4px;background:#eef1f2;color:#263d3b;box-shadow:none;font:inherit}
+.workspace-status-popup button:hover{background:#dfe8e9}
+.workspace-status-popup button:disabled{opacity:.45;cursor:not-allowed}
+.workspace-status-popup footer{margin-top:12px;justify-content:flex-end}
+.workspace-status-popup button[type=submit]{background:#27777b;color:#fff}
+.workspace-status-edit-row{display:grid;grid-template-columns:minmax(0,1fr) 169px 32px;gap:8px;margin-bottom:12px;align-items:center}
+.workspace-status-edit-row input,.workspace-status-edit-row select{width:100%;min-width:0;height:36px;padding:5px;border:1px solid #ccd5d5;border-radius:3px;font:inherit;background:#fff;color:#263d3b}
+.workspace-status-options{display:grid;gap:4px;max-height:300px;overflow:auto;margin-top:8px}
+.workspace-status-options>button{text-align:left;background:#fff}
+.workspace-status-error{color:#ab3d31;min-height:0}
+
+/* Match the existing Products / Fees table headers and align every row. */
+.workspace-reference .ui-staff-task-table:has(.workspace-status-column){min-width:800px}
+.workspace-reference .ui-staff-rescheduling-table:has(.workspace-status-column){min-width:1000px}
+.workspace-reference .ui-staff-task-table:has(.workspace-status-column) th,
+.workspace-reference .ui-staff-task-table:has(.workspace-status-column) td{vertical-align:middle;padding:16px;text-align:left;line-height:1.6}
+.workspace-reference .ui-staff-task-table:has(.workspace-status-column) th{height:56px;background:#eef0f2;font-size:14px;font-weight:600}
+.workspace-reference .ui-staff-task-table:has(.workspace-status-column) th:first-child{width:180px;min-width:160px}
+.workspace-reference .ui-staff-task-table:has(.workspace-status-column) th:last-child{width:100px}
+.workspace-reference .ui-staff-task-table:has(.workspace-status-column) .ui-staff-transfer-cell{text-align:center;padding-inline:4px}
+.workspace-reference .ui-staff-task-table:has(.workspace-status-column) .workspace-status-column{width:150px;padding:16px;cursor:context-menu}
+.workspace-reference .ui-staff-task-table .workspace-status-cell>button{display:inline-flex;align-items:center;vertical-align:middle;min-height:0;padding:0;margin:0;border:0;border-radius:0;background:transparent;box-shadow:none;line-height:1.6;font:inherit;text-decoration:none}
+
+/* Keep this body-mounted popover independent from site-wide form/header/footer rules. */
+.workspace-status-popup *{box-sizing:border-box}
+.workspace-status-popup #workspace-status-form{display:block;width:100%;max-width:none;margin:0;padding:0;border:0;background:transparent}
+.workspace-status-popup header,.workspace-status-popup footer{width:100%;max-width:none;min-height:0;margin:0;padding:0;border:0;background:transparent;box-shadow:none}
+.workspace-status-popup header{gap:12px;margin-bottom:12px}
+.workspace-status-popup header strong{flex:1;min-width:0;font-size:16px;line-height:1.4}
+.workspace-status-popup header>button,.workspace-status-edit-row>button{display:grid;place-items:center;flex:none;width:32px;height:32px;min-width:32px;min-height:32px;margin:0;padding:0;font-size:22px;line-height:1}
+.workspace-status-popup footer{margin-top:16px;gap:8px;flex-wrap:wrap}
+.workspace-status-popup p{margin:12px 0;overflow-wrap:anywhere}
+.workspace-status-popup .workspace-status-error:empty{display:none}
+.workspace-status-edit-row input{height:40px;margin:0;padding:8px 10px}
+.workspace-status-colours{display:grid;grid-template-columns:repeat(6,24px);align-items:center;gap:5px}
+.workspace-status-popup .workspace-status-swatch{display:grid;place-items:center;width:24px;height:24px;min-width:24px;min-height:24px;max-width:24px;margin:0;padding:0;border:1px solid #b9c5c8;border-radius:50%;background:var(--ws-swatch);color:var(--ws-check);font-size:14px;font-weight:700;line-height:1;cursor:pointer}
+.workspace-status-popup .workspace-status-swatch:hover{background:var(--ws-swatch);border-color:#27777b}
+.workspace-status-popup .workspace-status-swatch[aria-pressed=true]{outline:2px solid #27777b;outline-offset:2px}
+.workspace-status-popup button:focus-visible{outline:2px solid #27777b;outline-offset:3px}
+@media(max-width:440px){
+ .workspace-status-edit-row{grid-template-columns:minmax(0,1fr) 32px;gap:10px 8px;margin-bottom:20px}
+ .workspace-status-edit-row input{grid-column:1/-1}
+ .workspace-status-colours{grid-column:1;gap:8px;grid-template-columns:repeat(6,26px)}
+ .workspace-status-popup .workspace-status-swatch{width:26px;height:26px;min-width:26px;min-height:26px;max-width:26px}
+}

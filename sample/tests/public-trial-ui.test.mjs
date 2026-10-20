@@ -9,6 +9,7 @@ const course = { id: 'course-second', courseName: 'Watercolour studio', category
 const slot = { id: 'slot-second', courseId: course.id, date: '2026-11-04', time: '15:30', duration: 45, teacherNames: ['Teacher Two'], roomNames: ['Studio Two'], remark: 'PRIVATE_SLOT', excludedStudentIds: ['private-excluded'] };
 const create = () => createPublicTrialDraft({ course, slot, today: '2026-10-15' });
 const fields = { localName: '  何悅晴 ', fullName: ' Chloe Fictional ', dateOfBirth: '2017-04-18', gender: 'female', school: ' School Two ', referrer: ' A friend ', parentName: ' Parent Two ', whatsapp: ' +852 0000 1234 ', email: ' parent@example.test ', remark: '  First line\nSecond line  ' };
+const minimum = {localName: '陳小明', fullName: 'Ming Chan', dateOfBirth:'2018-01-02', gender: 'male', whatsapp: '+852 5555 1234'};
 const button = (html, command) => html.match(new RegExp(`<button[^>]*data-command="${command}"[^>]*>`))?.[0] || '';
 
 test('email and birthday corrections are next to the invalid input rather than below the whole form',()=>{
@@ -36,7 +37,7 @@ test('details show the selected public lesson and optional enrolment fields with
   for (const name of Object.keys(fields)) assert.match(html, new RegExp(`name="${name}"`));
   for (const fact of ['Watercolour studio', '2026-11-04', '15:30', '45 minutes', 'Teacher Two']) assert.ok(html.includes(fact), fact);
   assert.match(button(html, 'review'), /data-action="public-trial-command"/); assert.doesNotMatch(button(html, 'review'), /disabled/);
-  assert.match(html, /Trial applications are not yet open/); assert.doesNotMatch(html, /\brequired\b|Chloe|PRIVATE_|type="hidden"|Application submitted|Demo|QA/);
+  assert.match(html, /Trial applications are not yet open/); assert.doesNotMatch(html, /Chloe|PRIVATE_|type="hidden"|Application submitted|Demo|QA/);
 });
 
 test('draft merges preserve original strings and cannot replace canonical identities or source readiness', () => {
@@ -46,8 +47,8 @@ test('draft merges preserve original strings and cannot replace canonical identi
 });
 
 test('review accepts optional blank fields and all ages but validates email and real nonfuture birth dates', () => {
-  assert.equal(advancePublicTrial(create(), 'review', {}).step, 'review');
-  for (const value of ['2025-10-14', '1940-02-29', '2000-02-29']) assert.equal(advancePublicTrial(create(), 'review', { dateOfBirth: value }).step, 'review', value);
+  assert.equal(advancePublicTrial(create(), 'review', minimum).step, 'review');
+  for (const value of ['2025-10-14', '1940-02-29', '2000-02-29']) assert.equal(advancePublicTrial(create(), 'review', { ...minimum, dateOfBirth: value }).step, 'review', value);
   for (const invalid of [{ email: 'wrong' }, { dateOfBirth: '2026-02-30' }, { dateOfBirth: '2026-10-16' }]) {
     const state = advancePublicTrial(create(), 'review', invalid); assert.equal(state.step, 'details'); assert.ok(state.error); assert.deepEqual(Object.fromEntries(Object.keys(invalid).map(key => [key, state.draft[key]])), invalid);
     assert.match(publicTrialMarkup(state, ui('en')), /role="alert"/);
@@ -97,7 +98,7 @@ test('unrecognised source error and gender strings remain inert even when they m
 
 test('technical size limits reject overlong inputs without inventing mandatory registration fields', () => {
   const long = '字'.repeat(2001), state = advancePublicTrial(create(), 'review', { remark: long }); assert.equal(state.step, 'details'); assert.equal(state.draft.remark, long); assert.equal(state.error, 'length');
-  assert.match(publicTrialMarkup(state, ui('zh')), /role="alert"/); assert.equal(advancePublicTrial(create(), 'review', { gender: 'unspecified', whatsapp: 'x', parentName: '' }).step, 'review');
+  assert.match(publicTrialMarkup(state, ui('zh')), /role="alert"/); assert.equal(advancePublicTrial(create(), 'review', { ...minimum, gender: 'unspecified', whatsapp: 'x', parentName: '' }).step, 'review');
 });
 
 test('public and typed names and notes are escaped in both languages without exposing internal source fields', () => {
@@ -114,12 +115,14 @@ test('real submission requires a named explicit policy capability valid Review a
  assert.equal(create().policy,null);for(const policy of ['name-birth-whatsapp','name-whatsapp','name-contact']){const state=submitting(policy),html=publicTrialMarkup(state,ui('en'));assert.equal(state.step,'review');assert.equal(publicTrialCanSubmit(state),true);assert.doesNotMatch(button(html,'submit'),/disabled/);assert.doesNotMatch(html,/applications are not yet open/);assert.match(html,/not been submitted/);}
  for(const patch of [{policy:null},{policy:'constructor'},{capabilities:{submit:'true'}},{capabilities:{submit:false}},{step:'details'},{sourceStatus:'loading'},{sourceStatus:'error'},{sourceStatus:'unavailable'},{busy:true},{stale:true},{draft:{...fields,email:'invalid'}}])assert.equal(publicTrialCanSubmit({...submitting(),...patch}),false,JSON.stringify(patch));
 });
-test('each explicit required-field policy validates only its agreed name birth and contact requirements and keeps raw strings',()=>{
- const ready=policy=>({...createPublicTrialDraft({course,slot,today:'2026-10-15',policy}),capabilities:{submit:true}});
- for(const policy of ['name-birth-whatsapp','name-whatsapp','name-contact']){const rejected=advancePublicTrial(ready(policy),'review',{});assert.equal(rejected.step,'details');assert.equal(rejected.error,'name-required');assert.match(publicTrialMarkup(rejected,ui('zh')),/姓名/);}
- assert.equal(advancePublicTrial(ready('name-birth-whatsapp'),'review',{localName:'甲',whatsapp:' 123 '}).error,'birth-required');assert.equal(advancePublicTrial(ready('name-whatsapp'),'review',{fullName:' Name '}).error,'whatsapp-required');assert.equal(advancePublicTrial(ready('name-contact'),'review',{fullName:' Name '}).error,'contact-required');
- for(const contact of [{email:' parent@example.test '},{whatsapp:' +852 1234 '}]){const state=advancePublicTrial(ready('name-contact'),'review',{localName:' 甲 ',...contact});assert.equal(state.step,'review');assert.equal(state.draft.localName,' 甲 ');}
- assert.equal(advancePublicTrial({...ready('name-birth-whatsapp'),capabilities:{submit:false}},'review',{}).step,'review');assert.equal(advancePublicTrial(ready('name-whatsapp'),'review',{...fields,whatsapp:'x'.repeat(81)}).error,'length');assert.equal(advancePublicTrial(ready('name-whatsapp'),'review',{...fields,whatsapp:'x'.repeat(80)}).step,'review');
+test('all configured submission policies use the same five required fields and preserve optional blanks',()=>{
+ for(const policy of ['name-birth-whatsapp','name-whatsapp','name-contact']) {
+  const ready={...createPublicTrialDraft({course,slot,today:'2026-10-15',policy}),capabilities:{submit:true}};
+  assert.equal(advancePublicTrial(ready,'review',{}).error,'local-name-required');
+  const review=advancePublicTrial(ready,'review',minimum);assert.equal(review.step,'review');assert.equal(publicTrialCanSubmit(review),true);
+  assert.equal(advancePublicTrial(ready,'review',{...minimum,whatsapp:'',email:'parent@example.test'}).error,'whatsapp-required');
+  assert.equal(advancePublicTrial(ready,'review',{...minimum,whatsapp:'x'.repeat(81)}).error,'length');
+ }
 });
 test('busy public submission locks native fields all exits and reducer commands without changing its payload',()=>{
  for(const step of ['details','review']){const state={...submitting(),step,busy:true},before=JSON.stringify(state),html=publicTrialMarkup(state,ui('en'));assert.match(html,/aria-busy="true"/);for(const node of html.match(/<button\b[^>]*>/g)||[])assert.match(node,/\sdisabled(?:\s|>)/);if(step==='details')for(const node of html.match(/<(?:input|select|textarea)\b[^>]*>/g)||[])assert.match(node,/\sdisabled(?:\s|>)/);else assert.match(html,/Submitting/);for(const command of ['draft','review','back','submit','complete'])assert.equal(advancePublicTrial(state,command,{fullName:'Overwritten'}),state);assert.equal(JSON.stringify(state),before);}
@@ -134,7 +137,33 @@ test('only the host acknowledgement renders a received application with a safe r
 test('submission errors are escaped focusable feedback outside the reading body and preserve every raw value',()=>{
  const state={...submitting(),submitError:'Could not submit <script>private</script> & retry.'},before=JSON.stringify(state),html=publicTrialMarkup(state,ui('en'));assert.match(html,/id="public-trial-submit-error"[^>]*role="alert"[^>]*tabindex="-1"/);assert.match(html,/Could not submit &lt;script&gt;private&lt;\/script&gt; &amp; retry/);assert.doesNotMatch(html,/<script>/);assert.ok(html.indexOf('id="public-trial-submit-error"')<html.indexOf('id="public-trial-body"'));assert.equal(JSON.stringify(state),before);assert.match(publicTrialMarkup(submitting(),ui('en')),/id="public-trial-submit-error"[^>]*hidden/);
 });
-test('explicit required policies explain either-name and either-contact choices while default optional fields remain unchanged',()=>{
- const details=policy=>publicTrialMarkup({...submitting(policy),step:'details'},ui('en')),birth=details('name-birth-whatsapp');assert.match(birth,/<input[^>]*name="dateOfBirth"[^>]*aria-required="true"/);assert.match(birth,/<input[^>]*name="whatsapp"[^>]*aria-required="true"/);assert.match(birth,/Chinese or English name/);assert.match(details('name-contact'),/WhatsApp number or email/);assert.doesNotMatch(details('name-whatsapp'),/<input[^>]*name="dateOfBirth"[^>]*aria-required="true"/);assert.doesNotMatch(publicTrialMarkup(create(),ui('en')),/aria-required="true"|public-trial-name-hint/);
+test('required fields are marked consistently while birthdays are mandatory and acknowledgement stays accessible',()=>{
+ for(const policy of [null,'name-birth-whatsapp','name-whatsapp','name-contact']) {
+  const html=publicTrialMarkup({...create(),policy},ui('en'));
+  for(const key of Object.keys(minimum))assert.match(html,new RegExp(`name="${key}"[^>]*aria-required="true"`));
+  assert.match(html,/<input[^>]*name="dateOfBirth"[^>]*aria-required="true"/);
+  assert.doesNotMatch(html,/Chinese or English name|WhatsApp number or email|Choose \(optional\)/);
+ }
  const success=publicTrialMarkup({...submitting(),submission:{reference:'TR-123',outcome:'received'}},ui('en'));assert.match(success,/id="public-trial-success"[^>]*tabindex="-1"/);assert.match(success,/<button[^>]*data-command="close"[^>]*aria-label="Close"/);
+});
+
+test('teacher follow-up guidance appears only after Review details and before Submit application',()=>{
+ const draft=create(),review=advancePublicTrial(draft,'review',fields);
+ for(const language of ['en','zh']){const details=publicTrialMarkup(draft,ui(language)),html=publicTrialMarkup(review,ui(language));assert.doesNotMatch(details,/public-trial-contact-note/);assert.match(html,/public-trial-contact-note/);assert.ok(html.indexOf('public-trial-contact-note')<html.indexOf('data-command="submit"'));}
+});
+
+test('Trial details requires both names birthday gender and WhatsApp even in preview, with optional fields below',()=>{
+ const required={localName:'陳小明',fullName:'Ming Chan',dateOfBirth:'2018-01-02',gender:'male',whatsapp:'+852 5555 1234'};
+ for(const [key,error] of [['localName','local-name-required'],['fullName','full-name-required'],['dateOfBirth','birth-required'],['gender','gender-required'],['whatsapp','whatsapp-required']]){
+  const state=advancePublicTrial(create(),'review',{...required,[key]:'  '.trim()});
+  assert.equal(state.step,'details');assert.equal(state.error,error);
+  assert.match(publicTrialMarkup(state,ui('en')),new RegExp(`name="${key}"[^>]*aria-invalid="true"`));
+ }
+ assert.equal(advancePublicTrial(create(),'review',required).step,'review');
+ const html=publicTrialMarkup(create(),ui('en'));
+ const groups=[...html.matchAll(/<section class="public-trial-field-group"[\s\S]*?<\/section>/g)].map(match=>match[0]);
+ assert.equal(groups.length,2);assert.match(groups[0],/Required information/);assert.match(groups[1],/Optional information/);
+ for(const key of Object.keys(required)){assert.match(groups[0],new RegExp(`name="${key}"[^>]*aria-required="true"`));assert.doesNotMatch(groups[1],new RegExp(`name="${key}"`));}
+ for(const key of ['school','referrer','parentName','email','remark'])assert.match(groups[1],new RegExp(`name="${key}"`));
+ assert.doesNotMatch(groups[1],/aria-required="true"/);
 });

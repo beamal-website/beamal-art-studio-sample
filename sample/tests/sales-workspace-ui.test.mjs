@@ -54,3 +54,10 @@ test('catalogue displays current products but never exposes an order action',()=
  const updated=salesWorkspaceMarkup({products:[{...products[0],price:65}],selection:{section:'products'}},en);
  assert.match(updated,/65.00/);
 });
+
+test('sales and orders search fields remain visible but disabled and stale searches cannot hide records',()=>{
+ const sales=salesWorkspaceMarkup({courses,selection:{search:'missing'},ready:true},en);
+ assert.match(sales,/<input[^>]*id="sales-catalogue-search"[^>]*disabled/);assert.match(sales,/Watercolour/);
+ const list=salesOrdersMarkup({orders,ready:true},{search:'missing'},en);
+ assert.match(list,/<input[^>]*id="sales-order-query"[^>]*disabled/);assert.match(list,/Chloe/);assert.match(list,/Maya/);assert.match(list,/data-action="orders-open"/);
+});

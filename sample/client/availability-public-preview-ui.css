@@ -1,5 +1,5 @@
 .availability-preview-dialog {
-  --availability-surface: #fffdf8;
+  --availability-surface: var(--portal-paper,#fffdf8);
   --availability-ink: #253d3b;
   --availability-border: #d9ddd2;
   --availability-note: #687770;
@@ -73,7 +73,7 @@
 .availability-preview-settings input[type="number"]{box-sizing:border-box;width:100%;min-height:44px;border:1px solid var(--availability-border);border-radius:4px;background:var(--availability-surface);padding:10px 12px;font:inherit;color:inherit}
 
 /* The parent-facing area uses the website renderer, with inert controls. */
-.availability-parent-preview{min-width:0;padding:24px;background:#faf7ef;border:1px solid var(--availability-border);border-radius:6px;overflow:hidden}
+.availability-parent-preview{min-width:0;padding:24px;background:var(--portal-canvas,#faf7ef);border:1px solid var(--availability-border);border-radius:6px;overflow:hidden}
 .availability-parent-preview .availability-public-weekly > .availability-public-header{position:static;width:auto;height:auto;margin:0 0 24px;padding:0 56px 0 0;overflow:visible;clip-path:none;white-space:normal}
 .availability-parent-preview .availability-public-header h1{font-size:clamp(30px,4vw,44px)}
 .availability-parent-preview .availability-public-notice{margin-bottom:24px;padding:14px 18px}
@@ -84,8 +84,15 @@
 .availability-preview-refresh-control{position:relative;display:inline-flex;flex:none}
 .availability-parent-preview>.availability-preview-refresh-control{position:absolute;top:24px;right:24px;z-index:1}
 .availability-preview-dialog .availability-preview-refresh-icon{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;min-height:44px;padding:0;margin:0;border:0;border-radius:6px;background:transparent;color:var(--teal);box-shadow:none;cursor:pointer}
-.availability-preview-dialog .availability-preview-refresh-icon:hover,.availability-preview-dialog .availability-preview-refresh-icon:focus-visible{background:#e9eee5}
+.availability-preview-dialog .availability-preview-refresh-icon:hover,.availability-preview-dialog .availability-preview-refresh-icon:focus-visible{background:var(--portal-muted,#e9eee5)}
 .availability-preview-refresh-icon:disabled{cursor:wait}
 .availability-preview-refresh-tooltip{position:absolute;top:calc(100% + 6px);right:0;z-index:2;padding:6px 10px;border-radius:4px;background:#253d3b;color:#fffdf8;font-size:13px;line-height:1.4;white-space:nowrap;opacity:0;visibility:hidden;pointer-events:none}
 .availability-preview-refresh-control:hover .availability-preview-refresh-tooltip,.availability-preview-refresh-control:focus-within .availability-preview-refresh-tooltip{opacity:1;visibility:visible}
 @media(max-width:600px){.availability-parent-preview>.availability-preview-refresh-control{top:16px;right:12px}}
+
+.availability-participants{margin-top:24px;padding-top:20px;border-top:1px solid #dfe2e5}
+.availability-participants h3{margin:0 0 12px;font-size:17px}
+.availability-participants table{width:100%;border-collapse:collapse;font-size:14px}
+.availability-participants :is(th,td){text-align:left;vertical-align:middle;padding:12px;border-bottom:1px solid #e4e8e8;overflow-wrap:anywhere}
+.availability-participants th{background:#f3f4f5}
+.availability-participants p{font-size:14px;color:#687770}

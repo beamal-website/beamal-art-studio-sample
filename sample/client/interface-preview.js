@@ -1,4 +1,5 @@
 import {sharedAccountingData} from './shared-accounting.js';
+import {settingsReferenceInput} from './settings-reference-ui.js';
 import {staffReferenceMarkup} from './staff-reference-ui.js';
 import {accountingReferenceMarkup} from './accounting-reference-ui.js';
 import {operationsPageMarkup,operationsDialogMarkup,getOperationsPreviewData,advanceOperationsPreview,accountingEntrySummaryMarkup,accountingEntryStudentMarkup} from './operations-ui.js';
@@ -256,6 +257,8 @@ export function createInterfacePreview({context,showModal,cacheModal=()=>{},repa
     if(identityChanged||hrChanged){if(identityChanged)staffReferenceUi={};calendarCopyEpoch++;for(const hr of Object.values(hrModules))staff[hr.key]={};staffManagementSection='directory';staffHrReturn=null;staffHrContext='';staffHrPositions=[];staffReturn=null;}
     if((identityChanged&&['staff',...hrKinds].includes(overlay))||(hrChanged&&hrKinds.includes(overlay))){overlay=null;showModal('');}
   };
+  const settingsReferencePosition=()=>({nav:dom.querySelector('.sr-category-nav')?.scrollTop||0,content:dom.querySelector('.sr-content')?.scrollTop||0});
+  const paintSettingsReference=(position,resetContent=false)=>{repaint();const nav=dom.querySelector('.sr-category-nav'),body=dom.querySelector('.sr-content');if(nav)nav.scrollTop=position.nav;if(body)body.scrollTop=resetContent?0:position.content;};
   const advanceOperations=(command,fields)=>advanceOperationsPreview({...operations,lang:ctx().t('zh','en')},command,fields);
   const advanceStudent=(command,fields)=>advanceStudentPortal({...student,role:ctx().role,lang:ctx().t('zh','en')},command,fields,ctx());
   const redrawOverlay=()=>{
@@ -795,6 +798,7 @@ export function createInterfacePreview({context,showModal,cacheModal=()=>{},repa
       return advanceHr(kind,d.uiCommand,{...hrDraft(kind),...fields,...extra});
     }
     if(d.action==='ui-operations'){
+      if(ctx().readOnlyProducts&&['view-product','create-product','edit-product','stock-product'].includes(d.uiCommand))return true;
       if(d.uiSection==='accounting'||ctx().accountingReference)syncSharedAccounting();
       if(overlay==='order-document'){
         if(['close','cancel-accounting'].includes(d.uiCommand)&&cancelAccountingDialog())return true;
@@ -802,6 +806,7 @@ export function createInterfacePreview({context,showModal,cacheModal=()=>{},repa
         documentPreview=advanceOperationsPreview({...documentPreview,lang:ctx().t('zh','en')},d.uiCommand,fields);
         drawAccountingTransition(previous,position,null,{orderDocument:true});return true;
       }
+      if(String(d.uiCommand||'').startsWith('settings-reference-')){const position=settingsReferencePosition();operations=advanceOperations(d.uiCommand,fields);paintSettingsReference(position,d.uiCommand!=='settings-reference-cancel');return true;}
       if(d.uiCommand==='cancel-product'&&cancelProductForm())return true;
       if(['close','cancel-accounting'].includes(d.uiCommand)&&cancelAccountingDialog())return true;
       if(d.uiSection==='accounting'&&['apply-filters','clear-filters','accounting-tab'].includes(d.uiCommand)){
@@ -904,6 +909,7 @@ export function createInterfacePreview({context,showModal,cacheModal=()=>{},repa
       const kind=hrKinds.find(key=>form.id===hrModules[key].formId);
       return advanceHr(kind,form.dataset?.uiCommand||`${kind}-review-${kind==='payroll'?'salary':kind==='leave'?'new':'settings'}`,fields);
     }
+    if(form.id==='ui-operations-settings'&&fields.formKind==='settings-reference'){const position=settingsReferencePosition();operations=advanceOperations('submit',fields);paintSettingsReference(position);return true;}
     if(['ui-operations-form','ui-operations-settings'].includes(form.id)){
       if(overlay==='order-document'){
         const previous=documentPreview.dialog,position=accountingDialogPosition(previous);
@@ -971,6 +977,7 @@ export function createInterfacePreview({context,showModal,cacheModal=()=>{},repa
     return true;
   };
   const input=target=>{
+    if(settingsReferenceInput(target))return true;
     if(captureProductControl(target))return true;
     if(overlay==='shared-lesson'&&target.closest?.('#shared-lesson-workflow-form')){if(syncSharedLesson({capture:false})!=='invalid')captureSharedLessonDraft(target.closest('form'));return true;}
     if(guardStudentRequest()!=='ready')return true;
@@ -987,6 +994,8 @@ export function createInterfacePreview({context,showModal,cacheModal=()=>{},repa
   };
   const change=target=>{
     if(target.dataset?.uiCommand==='workspace-select'){const [kind,id]=String(target.value||'').split(':');if(kind==='todo')staff=advanceStaffPreview(staff,'todo-category',{id});else if(kind==='tab'&&['class-schedule','classes','clock','leave'].includes(id))staff=advanceStaffPreview(staff,'tab',{tab:id});repaint();return true;}
+    if(target.dataset?.uiCommand==='settings-reference-select'){const position=settingsReferencePosition();operations=advanceOperations('settings-reference-tab',{id:target.value});paintSettingsReference(position,true);return true;}
+    if(settingsReferenceInput(target))return true;
     if(target.dataset?.uiCommand==='staff-reference-filter'){syncStaff();if(staff.viewer?.role==='admin'&&['active','inactive','all'].includes(target.value)){staff=advanceStaffPreview(staff,'filter',{value:target.value});repaint();}return true;}
     if(captureProductControl(target))return true;
     if(overlay==='shared-lesson'&&target.closest?.('#shared-lesson-workflow-form')){if(syncSharedLesson({capture:false})==='invalid')return true;captureSharedLessonDraft(target.closest('form'));if(target.dataset?.uiCommand==='filter-date'){const position=sharedLessonPosition();sharedLesson=advanceSharedLessonWorkflow(sharedLesson,'filter-date',{date:target.value});redrawOverlay();restoreSharedLessonPosition(position);}return true;}

@@ -11,18 +11,18 @@ test('teacher editor opens the stored representative colour with a separate enab
   for (const language of ['zh', 'en']) {
     const html = schedulingResourceEditorMarkup({ kind: 'teacher', record: teacher, canEdit: true }, ui(language));
     assert.match(tagById(html, 'resource-color-enabled'), /name="useRepresentativeColor" checked/);
-    assert.match(tagById(html, 'resource-representative-color'), /type="color" name="representativeColor" value="#abcdef"/);
+    assert.match(tagById(html, 'resource-representative-color'), /type="hidden" name="representativeColor" value="#abcdef"/);
     assert.doesNotMatch(tagById(html, 'resource-representative-color'), /disabled/);
     assert.match(html, /data-resource-id="teacher-a" data-resource-kind="teacher" data-version="4"/);
     assert.match(html, language === 'en' ? /Representative colour/ : /老師代表色/);
   }
 });
 
-test('unset and invalid representative colours remain unchecked with a disabled neutral picker', () => {
+test('unset and invalid representative colours remain unchecked with a disabled first-palette choice', () => {
   for (const record of [null, { ...teacher, representativeColor: null }, { ...teacher, representativeColor: '#abc;display:none' }]) {
     const html = schedulingResourceEditorMarkup({ kind: 'teacher', record, canEdit: true }, ui('en'));
     assert.doesNotMatch(tagById(html, 'resource-color-enabled'), /checked/);
-    assert.match(tagById(html, 'resource-representative-color'), /value="#27777b"[^>]* disabled/);
+    assert.match(tagById(html, 'resource-representative-color'), /value="#426ea8"[^>]* disabled/);
     assert.doesNotMatch(html, /display:none/);
   }
 });

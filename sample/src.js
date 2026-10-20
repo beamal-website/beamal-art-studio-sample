@@ -1,3 +1,5 @@
+import {createTeacherColourSaver} from './client/teacher-colour-save.js';
+import './client/teacher-colour-picker.css';
 import './client/search-clear.js';
 import './client/search-clear.css';
 import {enrollmentReportSummary} from './client/shared-accounting.js';
@@ -3231,3 +3233,21 @@ document.addEventListener('change',event=>{const field=event.target.dataset?.stu
 
 function ensureStudentRecordsView(){if(canManagePeople()){const id=accountPersonId();if(id)studentRecordController?.loadWorkspace(id);else if(studentManagementPages.some(([page])=>page===tab)&&tab!=='student-list')studentRecordController?.loadPage(tab,studentRecordsViews[tab]||{});}else if(sharedMode&&authUser?.role==='student'&&isAccountPage()&&tab==='student-profile')studentRecordController?.loadFamily();}
 document.addEventListener('change',event=>{studentRecordController?.change(event.target);});
+
+if(typeof createTeacherColourSaver==='function'){
+ const saveTeacherColour=createTeacherColourSaver({
+  context:()=>({role:sharedMode?authUser?.role:null,identity:sharedMode&&authUser?sessionIdentityKey(authUser):null,generation:resourceGeneration,resources:sharedSchedulingResources}),
+  save:(patch,current)=>sharedClient.saveSchedulingResource(patch,current),
+  errorText:error=>resourceErrorText(error),
+  accept:resource=>{
+   resourceGeneration++;resourceRevision='';resourceReadPromise=null;
+   const index=sharedSchedulingResources.findIndex(row=>row.id===resource.id);
+   if(index<0)return;sharedSchedulingResources[index]=resource;resourceReady=true;sharedViewDirty=true;
+   reconcileTimetableTeachers();refreshReadonlyTeacherColours();
+   if(!interfacePreview?.refreshSharedStaff())render();
+   toast(t('老師代表色已儲存','Teacher colour saved'));
+   refreshSharedResources({paint:false}).catch(()=>{});
+  }
+ });
+ document.addEventListener('beamal-teacher-colour',event=>saveTeacherColour(event.detail));
+}

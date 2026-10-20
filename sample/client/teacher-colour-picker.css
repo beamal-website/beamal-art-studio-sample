@@ -1,0 +1,19 @@
+.teacher-palette{position:relative;display:inline-block;max-width:100%;font-size:14px}
+.teacher-palette>summary{display:inline-flex;align-items:center;gap:10px;min-height:40px;padding:5px 8px;list-style:none;cursor:pointer;border-radius:5px;color:inherit}
+.teacher-palette>summary::-webkit-details-marker{display:none}
+.teacher-palette>summary:hover{background:rgba(39,119,123,.08)}
+.teacher-palette>summary[aria-disabled="true"]{cursor:default;opacity:.65}
+.teacher-palette-current{display:inline-block;width:26px;height:26px;flex:none;border-radius:5px;background:var(--teacher-choice,#e6e9e7);box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
+.teacher-palette-panel{position:absolute;top:calc(100% + 6px);left:0;transform:translateX(var(--palette-shift,0px));z-index:15;width:232px;max-width:calc(100vw - 32px);padding:12px;border:1px solid #d8dfdb;border-radius:8px;background:#fff;box-shadow:0 5px 20px #18373524;color:#253d3b}
+.teacher-palette-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.teacher-palette .teacher-palette-choice{display:flex;align-items:center;justify-content:center;width:34px;height:34px;min-height:34px;padding:0;border:0;border-radius:5px;background:var(--teacher-choice);color:white;box-shadow:none;font:700 20px/1 sans-serif;transform:none}
+.teacher-palette .teacher-palette-choice:hover{background:var(--teacher-choice);transform:none;outline:2px solid #253d3b;outline-offset:2px;box-shadow:none}
+.teacher-palette-choice:focus-visible,.teacher-palette>summary:focus-visible{outline:2px solid #253d3b;outline-offset:3px}
+.teacher-palette .teacher-palette-error{margin:10px 0 0;font-size:13px;color:#a43d2b}
+.staff-profile-facts>div:has(.teacher-palette){overflow:visible}
+.resource-colour-picker .teacher-palette{margin-top:6px}
+.portal-content .tt-lesson.availability-timetable-slot{--tt-lesson-color:#27777b!important;background:#27777b;color:#fff;border:0;box-shadow:none}
+.portal-content .tt-lesson.availability-timetable-slot:hover{background:#27777b;color:#fff;border:0;box-shadow:0 2px 8px #18373520}
+.portal-content .availability-timetable-slot>.tt-lesson-time,.portal-content .availability-timetable-slot .teacher-colour-name{color:#fff}
+.portal-content .availability-timetable-slot .teacher-colour-swatch{box-shadow:0 0 0 1px #ffffff80}
+.portal-content .availability-timetable-row{--lesson-color:#27777b!important}

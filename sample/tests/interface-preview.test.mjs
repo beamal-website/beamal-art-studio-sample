@@ -1119,3 +1119,14 @@ test('reference employee dialog is titled with the selected name and has three t
  p.ui.action({action:'ui-staff',uiCommand:'detail-tab',uiId:'resource-actual',uiTab:'roster'});assert.match(p.html,/Belongs to Roster Group/);assert.match(p.html,/Monthly roster calendar/);assert.doesNotMatch(p.html,/09:00|20:00|Other employee/);p.ui.action({action:'ui-roster',uiCommand:'roster-next-month'});assert.match(p.html,/value="2026-11"/);
  p.ui.action({action:'ui-staff',uiCommand:'detail-tab',uiId:'resource-actual',uiTab:'calendar-sharing'});assert.match(p.html,/Actual teacher/);assert.match(p.html,/calendar-sharing/);assert.equal(snapshot.staffProfileRecords[0].fullName,'Selected employee full name');
 });
+
+test('staff assigned lessons follow the selected month and exact profile and open the canonical lesson',()=>{
+ const source=sharedStaffSnapshot();source.user.role='admin';source.resources.push({id:'other-staff',kind:'teacher',displayName:'Other teacher'});
+ const months=[],opened=[];
+ const p=preview({context:()=>({t,role:'admin',staffReference:true,staffViewKey:'management'}),sharedSnapshot:({rosterMonth}={})=>{months.push(rosterMonth);return {...source,teachingOccurrences:[{...source.occurrences[0],date:(rosterMonth||'2026-10')+'-16'},{date:'2026-10-19',sequence:1,item:{id:'other-schedule',teacherIds:['other-staff'],course:'actual-course',time:'17:00',duration:60}}]};},onOpenStaffLesson:value=>opened.push(value)});
+ assert.match(p.ui.directory('','roster'),/13:00–14:00/);
+ p.ui.action({action:'ui-staff',uiCommand:'open-detail',uiId:'resource-actual'});p.ui.action({action:'ui-staff',uiCommand:'detail-tab',uiId:'resource-actual',uiTab:'roster'});
+ assert.match(p.html,/13:00–14:00/);assert.doesNotMatch(p.html,/17:00–18:00/);
+ p.ui.action({action:'ui-roster',uiCommand:'roster-next-month'});assert.match(p.html,/datetime="2026-11-16"/);assert.equal(months.at(-1),'2026-11');
+ p.ui.action({action:'ui-staff',uiCommand:'open-roster-class',uiId:'actual-schedule:4'});assert.deepEqual(opened,[{scheduleId:'actual-schedule',sequence:4,date:'2026-11-16'}]);
+});

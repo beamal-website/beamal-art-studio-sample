@@ -376,3 +376,15 @@ test('teaching badges and directory filter follow staff eligibility independentl
 test('staff directory number and detail come only from the authorized personal profile source',()=>{
  const current=snapshot();current.resources[1].staffNumber='UNTRUSTED NUMBER';current.resources[1].detail='UNTRUSTED DETAIL';current.staffProfileReady=true;current.staffProfileRecords=[{staffId:'resource-leo',staffNumber:'ST-002',detail:'Saved teaching details',remarks:'Saved remarks'}];const state=staffSharedState({},current),leo=state.staff.find(row=>row.id==='resource-leo');assert.equal(leo.staffNumber,'ST-002');assert.equal(leo.detail,'Saved teaching details');assert.equal(leo.remarks,'Saved remarks');const absent=staffSharedState({}, {...current,staffProfileReady:false});assert.equal(absent.staff.find(row=>row.id==='resource-leo').staffNumber,'');assert.equal(absent.staff.find(row=>row.id==='resource-leo').detail,'');
 });
+
+test('staff teaching calendar uses assigned resource IDs for every teacher and follows reassignment and cancellation',()=>{
+ const source=snapshot();source.teachingOccurrences=source.occurrences;
+ let state=staffSharedState({},source);
+ assert.equal(state.teachingLessons.length,2);
+ assert.deepEqual(state.teachingLessons.find(row=>row.scheduleId==='schedule-leo').teacherIds,['resource-leo']);
+ assert.equal(state.teachingLessons.find(row=>row.scheduleId==='schedule-leo').endTime,'15:30');
+ source.teachingOccurrences=source.occurrences.map(row=>row.item.id==='schedule-leo'?{...row,date:'2026-11-03',item:{...row.item,time:'16:00',teacherIds:['resource-ava']}}:{...row,cancelled:true});
+ state=staffSharedState(state,source);
+ assert.equal(state.teachingLessons.length,1);assert.equal(state.teachingLessons[0].date,'2026-11-03');assert.equal(state.teachingLessons[0].time,'16:00');assert.deepEqual(state.teachingLessons[0].teacherIds,['resource-ava']);
+ const failed=staffSharedState(state,{...source,ready:false,error:'offline'});assert.equal(failed.teachingLessonsReady,false);
+});

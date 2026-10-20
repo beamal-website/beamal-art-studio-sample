@@ -54,6 +54,7 @@ export function staffSharedState(previous={},snapshot={}){
     const courseIds=[...new Set(occurrences.filter(row=>ids(row.item.teacherIds).includes(resource.id)).map(row=>row.item.course))];
     return {...resource,...personalFor(resource.id),id:resource.id,userId:linkedUserId||null,accountId:linkedUserId||null,accountName:account?.displayName||'',accountRole:account?.role||null,accountLinkKnown:user.role==='admin'||!!link||ownResources.has(resource.id),displayName:resource.displayName,email:account?.email??'',role:account?.role==='admin'?'admin':'teacher',teaching:resource.teachingAllowed!==false,courses:courseIds.map(id=>nameOf(courses.get(id))),shared:true};
   }):saved?rows(previous.staff):[];
+  const teachingLessons=sourceReady?rows(snapshot.teachingOccurrences??snapshot.occurrences).filter(row=>row.item&&typeof row.item.id==='string'&&Number.isSafeInteger(row.sequence)&&row.sequence>0&&!row.cancelled&&!row.item.activityDeleted).map(({item,sequence,date})=>({id:`${item.id}:${sequence}`,scheduleId:item.id,sequence,date,time:item.time,endTime:endTime(item.time,item.duration),courseName:nameOf(courses.get(item.course)),teacherIds:ids(item.teacherIds),room:ids(item.roomIds).map(id=>resourceMap.get(id)?.displayName).filter(Boolean).join(' · ')||item.room||''})):[];
   const authorizedOccurrences=occurrences.filter(row=>user.role==='teacher'||ids(row.item.teacherIds).some(id=>ownResources.has(id)));
   const classes=sourceReady?authorizedOccurrences.map(row=>{
     const {item,sequence,date}=row,key=`${item.id}:${sequence}`,roster=rosterFor(snapshot.rosters,key),rosterReady=!!roster&&roster.ready!==false&&!roster.error;
@@ -63,7 +64,7 @@ export function staffSharedState(previous={},snapshot={}){
   return {
     ...ui,shared:true,sharedIdentity:identity,sharedReady:ready,sharedSourceReady:sourceReady,sharedLoading:loading,sharedError,sharedStale:ready&&!!sharedError&&!loading,
     today:snapshot.today||'',currentTime:snapshot.currentTime||'',viewerId:user.id||'',viewer:{...user,id:user.id||'',displayName:user.displayName||'',teacherResourceIds:saved&&!sourceReady?ids(previous.viewer?.teacherResourceIds):[...ownResources]},
-    staff,classes,portalTab:ui.portalTab==='home'?'todo':ui.portalTab||'todo',query:ui.query||'',filter:ui.filter||'active',page:ui.page||1,pageSize:ui.pageSize||20,
+    staff,classes,teachingLessons,teachingLessonsReady:sourceReady&&!sharedError,portalTab:ui.portalTab==='home'?'todo':ui.portalTab||'todo',query:ui.query||'',filter:ui.filter||'active',page:ui.page||1,pageSize:ui.pageSize||20,
     dialog:ready?ui.dialog||null:null,notice:ui.notice||'',error:ui.error||'',staffDrafts:{},
     todos:user.role==='admin'&&snapshot.studentRequestsReady===true?[studentRequestsTodo]:[],todosReady:sourceReady&&(user.role!=='admin'||snapshot.studentRequestsReady===true),todosError:sourceReady&&user.role==='admin'?String(snapshot.studentRequestsError||''):'',paymentRequests:[],payrollRows:[],payrollReady:false,clockEntries:ui.clockEntries||[],clockReady:false,leaveRequests:ui.leaveRequests||[],clockedIn:ui.clockedIn||false,
     leaveRecords:sourceReady&&snapshot.leaveReady===true?rows(snapshot.leaveRecords):[],leaveReady:sourceReady&&snapshot.leaveReady===true,leaveLoading:authorized&&snapshot.leaveLoading===true,leaveError:authorized&&snapshot.leaveError?String(snapshot.leaveError):'',

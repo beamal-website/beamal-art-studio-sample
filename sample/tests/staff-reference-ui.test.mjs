@@ -11,3 +11,11 @@ test('not-ready snapshots cannot show previously supplied private staff and erro
 test('reference roster has the right leap-day calendar without claiming default hours, groups or shifts',()=>{const html=render('roster',{roster:{month:'2028-02',ready:false}});assert.match(html,/datetime="2028-02-29"/);assert.doesNotMatch(html,/2028-02-30|09:00|20:00|Roster A|Off duty/);assert.match(html,/No roster groups available/);assert.match(html,/data-ui-command="roster-next-month"/);assert.match(html,/Blank days do not indicate/);});
 test('payroll separates policy and payslip, cannot generate unconnected financial records and never shows unset salary as zero',()=>{const slip=render('payroll');assert.match(slip,/Salary Policy/);assert.match(slip,/Payslip/);assert.match(slip,/<button[^>]* disabled[^>]*>Generate/);const policy=render('payroll',{ui:{payrollTab:'policy'}});assert.match(policy,/Actual &lt;Teacher>/);assert.match(policy,/<td>—<\/td><td>—<\/td>/);assert.doesNotMatch(policy,/HK\$0|320|380/);});
 test('student or teacher viewers cannot render the management reference area',()=>{for(const role of ['student','teacher'])assert.equal(render('directory',{staff:{...state,viewer:{id:'other',role}}}), '');});
+
+test('teaching roster calendar filters by actual teacher IDs and profile and makes assigned lessons viewable',()=>{
+ const lessons=[{id:'schedule-1:1',date:'2026-10-20',time:'09:30',endTime:'10:30',courseName:'Course <One>',room:'B11',teacherIds:['teacher-a']},{id:'schedule-2:2',date:'2026-10-20',time:'13:00',endTime:'14:00',courseName:'Course Two',room:'B12',teacherIds:['teacher-b']}];
+ const roster={viewer:{id:'admin',role:'admin'},staff:[{id:'teacher-a',displayName:'Alice'},{id:'teacher-b',displayName:'Bob'}],month:'2026-10',teachingLessons:lessons,teachingLessonsReady:true};
+ const all=render('roster',{roster});assert.match(all,/09:30–10:30/);assert.match(all,/Course &lt;One>/);assert.match(all,/B11/);assert.match(all,/Alice/);assert.match(all,/Course Two/);assert.match(all,/data-ui-command="open-roster-class"/);
+ const one=render('roster',{roster:{...roster,teacherId:'teacher-a'}});assert.match(one,/Course &lt;One>/);assert.doesNotMatch(one,/Course Two/);
+ const next=render('roster',{roster:{...roster,month:'2026-11'}});assert.doesNotMatch(next,/Course &lt;One>/);assert.match(next,/No assigned lessons/);
+});

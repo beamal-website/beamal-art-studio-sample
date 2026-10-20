@@ -238,7 +238,7 @@ export function createInterfacePreview({context,showModal,cacheModal=()=>{},repa
   const hrKinds=Object.keys(hrModules);
   const syncStaff=({captureHr=true}={})=>{
     if(typeof sharedSnapshot!=='function')return;
-    const snapshot=sharedSnapshot();
+    const snapshot=sharedSnapshot({rosterMonth:staff.rosterUi?.month});
     if(snapshot==null){if(staff.shared){calendarCopyEpoch++;staff=staffInterfacePreviewState();staffReturn=null;staffHrReturn=null;staffHrContext='';staffHrPositions=[];staffManagementSection='directory';if(['staff',...hrKinds].includes(overlay)){overlay=null;showModal('');}}return;}
     const form=overlay==='staff'&&staff.dialog&&dom.querySelector('#ui-staff-form');
     if(form&&form.dataset?.uiForm===staff.dialog.kind)staff.dialog={...staff.dialog,draft:{...staff.dialog.draft,...Object.fromEntries(new Form(form))}};
@@ -309,7 +309,7 @@ export function createInterfacePreview({context,showModal,cacheModal=()=>{},repa
   const hrModel=kind=>hrModules[kind].model();
   const hrDraft=kind=>{const form=dom.querySelector(`#${hrModules[kind].formId}`);return form?Object.fromEntries(new Form(form)):{};};
   const storeHrUi=(kind,model)=>{
-    const {viewer,staff:members,rows,records,events,settings,ready,loading,error,today,settingsReady,sessions,sessionsReady,balances,profileStaffId,staffGroups,groupsReady,...ui}=model;
+    const {viewer,staff:members,rows,records,events,settings,ready,loading,error,today,settingsReady,sessions,sessionsReady,balances,profileStaffId,staffGroups,groupsReady,teachingLessons,teachingLessonsReady,teachingLessonsError,...ui}=model;
     staff={...staff,[hrModules[kind].key]:ui};
   };
   const advanceHr=(kind,command,fields={},{draw=true}={})=>{
@@ -848,8 +848,8 @@ export function createInterfacePreview({context,showModal,cacheModal=()=>{},repa
         if(!resourceId||staff.staff.some(member=>member.id===resourceId)){const ticket=suspendStaffReturn(resourceId);onEditStaff({resourceId},ticket);}
         return true;
       }
-      if(staff.shared&&d.uiCommand==='open-class'&&typeof onOpenStaffLesson==='function'){
-        const selected=staff.classes.find(row=>row.id===d.uiId);
+      if(staff.shared&&['open-class','open-roster-class'].includes(d.uiCommand)&&typeof onOpenStaffLesson==='function'){
+        const selected=(d.uiCommand==='open-roster-class'?staff.teachingLessons:staff.classes)?.find(row=>row.id===d.uiId);
         if(selected){close();onOpenStaffLesson({scheduleId:selected.scheduleId,sequence:selected.sequence,date:selected.date});}
         return true;
       }

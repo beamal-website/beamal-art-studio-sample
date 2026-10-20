@@ -4681,3 +4681,13 @@ test('administrator staff sidebar exposes exactly three reference pages, retains
  await a.click({tab:'staff-roster'});html=a.nodes['#app'].innerHTML;assert.match(html,/Monthly roster calendar/);assert.match(html,/data-staff-toggle="true" aria-expanded="true"/);await a.click({tab:'staff-payroll'});html=a.nodes['#app'].innerHTML;assert.match(html,/Salary Policy/);assert.match(html,/Payslip/);assert.match(html,/Payslips cannot be generated/);
  a.set("applySharedUser({id:'restricted-student',role:'student'});tab='overview';render()");await a.click({tab:'staff-payroll'});assert.equal(a.read('tab'),'overview');assert.doesNotMatch(a.nodes['#app'].innerHTML,/portal-staff-subnav|staff-ref-page/);
 });
+
+test('an open employee roster refreshes assigned lesson times when the schedule revision changes',async()=>{
+ const a=await resourceUiApp({resources:[schedulingResource('roster-teacher','teacher','Roster teacher')],revision:1},{accessControl:async()=>({accounts:[],teacherLinks:[],grants:[],revision:'links'})},{preview:true});
+ a.set("tab='management';lang='en';sharedCatalogRevision='catalog';teacherAccessReady=true;db.schedules=[{id:'roster-live',course:'qa-course',startDate:localToday(),weekdays:[timetableDateObject(localToday()).getDay()],endMode:'count',count:1,time:'13:00',duration:60,teacherIds:['roster-teacher'],roomIds:[],version:1}];sharedSchedulesRevision='roster-v1';render()");
+ await a.click({action:'ui-staff',uiCommand:'open-detail',uiId:'roster-teacher'});await a.click({action:'ui-staff',uiCommand:'detail-tab',uiId:'roster-teacher',uiTab:'roster'});a.set('paintSharedStaffReadState(true)');
+ assert.match(a.nodes['#modal-root'].innerHTML,/13:00–14:00/);
+ a.set("db.schedules[0].time='16:00';sharedSchedulesRevision='roster-v2';paintSharedStaffReadState(true)");
+ assert.match(a.nodes['#modal-root'].innerHTML,/16:00–17:00/);assert.doesNotMatch(a.nodes['#modal-root'].innerHTML,/13:00–14:00/);
+ a.set("db.schedules[0].exceptions=[{sequence:1,cancelled:true}];sharedSchedulesRevision='roster-v3';paintSharedStaffReadState(true)");assert.doesNotMatch(a.nodes['#modal-root'].innerHTML,/16:00–17:00/);assert.match(a.nodes['#modal-root'].innerHTML,/No assigned lessons/);
+});

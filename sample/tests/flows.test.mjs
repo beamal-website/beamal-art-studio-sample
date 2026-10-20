@@ -1018,7 +1018,7 @@ test('a failed startup health check recovers on login and registers exactly one 
  await a.submit('login',loginForm.values,loginForm);
  assert.equal(a.read('authUser.id'),sharedTestUser.id);assert.equal(a.read('sharedMode'),true);
  assert.equal(a.read('location.pathname'),'/account');
- assert.equal(intervals.length,1);assert.equal(intervals[0].ms,5000);
+ assert.equal(intervals.length,1);assert.equal(intervals[0].ms,30000);
  assert.equal(events.filter(event=>event.type==='focus').length,1);
  const before=courseReads;await intervals[0].handler();await events.find(event=>event.type==='focus').handler();
  assert.equal(courseReads,before+2,'Both registered callbacks must actually refresh shared data');
@@ -1750,10 +1750,12 @@ test('shared timetable lets an authenticated teacher read lessons but blocks cre
 
 test('shared background polling skips login and does not overlap an unfinished refresh',async()=>{
  const polls=[],a=await sharedApp({}, {}, {onInterval:(handler,ms)=>{polls.push({handler,ms});return polls.length;}});
- assert.equal(polls.length,1);assert.equal(polls[0].ms,5000);
+ assert.equal(polls.length,1);assert.equal(polls[0].ms,30000);
  const session=deferred();let sessions=0;a.client.session=()=>{sessions++;return session.promise;};
  a.set('loginPending=true');await polls[0].handler();assert.equal(sessions,0,'Background polling must not compete with the login request.');
  a.set('loginPending=false');
+ a.set('scheduleSaving=true');await polls[0].handler();assert.equal(sessions,0,'Background polling must not compete with a schedule save.');
+ a.set('scheduleSaving=false');
  const pending=polls[0].handler();await until(()=>sessions===1,'The scheduled refresh must check the current session.');
  await polls[0].handler();assert.equal(sessions,1,'A slow refresh must not start a second concurrent polling cycle.');
  session.resolve({user:copy(sharedTestUser)});await pending;

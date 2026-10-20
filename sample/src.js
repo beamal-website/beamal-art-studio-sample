@@ -1801,7 +1801,7 @@ function ensureSharedPolling(){
  sharedPollingStarted=true;
  let refreshing=false;
  const refresh=async()=>{
-  if(loginPending||refreshing)return;
+  if(loginPending||refreshing||scheduleSaving)return;
   refreshing=true;
   try{
    if(websiteNewsVisible())await refreshWebsiteNews();
@@ -1812,7 +1812,7 @@ function ensureSharedPolling(){
    ]);
   }finally{refreshing=false;}
  };
- window.setInterval(refresh,5000);
+ window.setInterval(refresh,30000);
  window.addEventListener('focus',refresh);
 }
 async function initialiseSharedService(){

@@ -15,3 +15,6 @@
 .portal-content .tt-display>.tt-named-status{justify-content:center;margin:0 0 14px;padding:0;border:0;border-radius:0;background:transparent;text-align:center}
 .portal-content .tt-display>.tt-named-status>button[data-action="tt-named-clear"]{padding:6px 10px;border:0;border-radius:4px;background:transparent;color:#b33a36;box-shadow:none;text-align:center}
 .portal-content .tt-display>.tt-named-status>button[data-action="tt-named-clear"]:hover{background:#b33a360c;filter:none}
+
+/* Give the selected timetable date breathing room inside its highlight. */
+.tt-day-heading.selected-day>span{padding-inline:8px}

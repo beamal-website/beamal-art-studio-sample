@@ -18,3 +18,9 @@
 
 /* Give the selected timetable date breathing room inside its highlight. */
 .tt-day-heading.selected-day>span{padding-inline:8px}
+
+/* Keep switch thumbs stable during hover repaints; only checked state
+   changes their position, without replaying a transform transition. */
+.tt-switch-track::after{transition:none;transform:none;left:-1px}
+.tt-settings-switch input:checked+.tt-switch-track::after{transform:none;left:19px}
+@media(max-width:600px){.tt-settings-switch input:checked+.tt-switch-track::after{left:15px}}

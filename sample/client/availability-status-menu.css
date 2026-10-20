@@ -1,0 +1,6 @@
+.availability-status-menu{position:fixed;z-index:10020;min-width:148px;padding:6px;background:#fffefa;color:#243e3c;border-radius:6px;box-shadow:0 3px 16px #18373530}
+.availability-status-menu>button{display:block;width:100%;padding:10px 16px;border:0;background:transparent;color:inherit;text-align:start;box-shadow:none;transform:none}
+.availability-status-menu>button:hover,.availability-status-menu>button:focus-visible{background:#e5eeea;transform:none;box-shadow:none}
+.portal-content .tt-lesson.availability-timetable-slot.is-inactive,.portal-content .tt-lesson.availability-timetable-slot.is-inactive:hover{background:#d9e9e9;color:#245e61;border:0}
+.portal-content .availability-timetable-slot.is-inactive>.tt-lesson-time,.portal-content .availability-timetable-slot.is-inactive .teacher-colour-name{color:#245e61}
+.portal-content .availability-timetable-row.is-inactive{--lesson-color:#d9e9e9!important}

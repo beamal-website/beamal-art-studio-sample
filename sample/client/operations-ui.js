@@ -3,15 +3,10 @@ const context = ctx => ({ t:ctx?.t || ((_zh,en)=>en),esc:ctx?.esc || escape });
 const currency = amount => new Intl.NumberFormat('en-HK',{style:'currency',currency:'HKD'}).format(Number(amount)||0);
 const copy = value => JSON.parse(JSON.stringify(value));
 const PREVIEW = {
- products:[
-  {id:'product-1',sku:'ART-001',nameZh:'A4 素描畫簿',nameEn:'Sketchbook A4',category:'materials',price:48,cost:26,stock:32,threshold:8,status:'active',description:'180 gsm 紙張，適合鉛筆與炭筆練習。',descriptionEn:'180 gsm paper for pencil and charcoal studies.'},
-  {id:'product-2',sku:'ART-002',nameZh:'學生水彩套裝',nameEn:'Watercolour set',category:'materials',price:128,cost:72,stock:4,threshold:6,status:'active',description:'12 色水彩、畫筆及調色盤。',descriptionEn:'12 colours, a brush and a mixing palette.'},
-  {id:'product-3',sku:'KIT-001',nameZh:'創作工具袋',nameEn:'Creative toolkit',category:'kits',price:168,cost:94,stock:0,threshold:4,status:'active',description:'課堂基本繪畫及手作工具。',descriptionEn:'a set of drawing and craft essentials.'},
-  {id:'product-4',sku:'ART-003',nameZh:'陶藝圍裙',nameEn:'Studio apron',category:'accessories',price:88,cost:42,stock:16,threshold:4,status:'draft',description:'可調節肩帶的棉質圍裙。',descriptionEn:'cotton apron with adjustable straps.'}
- ],
+ products:[],
  students:[{id:'student-1',nameZh:'何詠晴 Chloe Ho',nameEn:'Chloe Ho'},{id:'student-2',nameZh:'陳悅琳 Isla Chan',nameEn:'Isla Chan'},{id:'student-3',nameZh:'林卓軒 Ethan Lam',nameEn:'Ethan Lam'}],
  invoices:[
-  {id:'invoice-1',number:'INV-202610-001',studentId:'student-1',date:'2026-10-15',dueDate:'2026-10-22',status:'awaiting-payment',items:[{nameZh:'繪畫課程 · 4 堂',nameEn:'Drawing course · 4 lessons',quantity:4,unitPrice:300},{nameZh:'A4 素描畫簿',nameEn:'Sketchbook A4',quantity:1,unitPrice:48}],discount:48,notesZh:'付款時請註明單據編號，方便畫室核對。',notesEn:'Include the invoice number with your payment reference.'},
+  {id:'invoice-1',number:'INV-202610-001',studentId:'student-1',date:'2026-10-15',dueDate:'2026-10-22',status:'awaiting-payment',items:[{nameZh:'繪畫課程 · 4 堂',nameEn:'Drawing course · 4 lessons',quantity:4,unitPrice:300}],discount:0,notesZh:'付款時請註明單據編號，方便畫室核對。',notesEn:'Include the invoice number with your payment reference.'},
   {id:'invoice-2',number:'INV-202610-002',studentId:'student-2',date:'2026-10-12',dueDate:'2026-10-19',status:'paid',items:[{nameZh:'綜合藝術課程 · 4 堂',nameEn:'Mixed media course · 4 lessons',quantity:4,unitPrice:280}],discount:0,notesZh:'多謝支持 Beamal Art Studio。',notesEn:'Thank you for supporting Beamal Art Studio.'},
   {id:'invoice-3',number:'INV-202610-003',studentId:'student-3',date:'2026-10-15',dueDate:'2026-10-22',status:'draft',items:[{nameZh:'陶藝工作坊',nameEn:'Ceramics workshop',quantity:1,unitPrice:480}],discount:0,notesZh:'工作坊費用尚待確認。',notesEn:'Workshop charges are awaiting confirmation.'}
  ],

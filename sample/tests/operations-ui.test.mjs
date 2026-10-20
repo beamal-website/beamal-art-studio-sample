@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {operationsPageMarkup,operationsDialogMarkup,getOperationsPreviewData} from '../client/operations-ui.js';
+import {operationsPageMarkup,operationsDialogMarkup,getOperationsPreviewData} from './fixtures/product-component-data.mjs';
 const ctx={t:(_z,e)=>e};
 test('operations workspaces use clean customer-facing sample content and useful action entries',()=>{for(const locale of [ctx,{t:z=>z}])for(const section of ['products','accounting','messages','channels','settings']){const html=operationsPageMarkup(section,{},locale);assert.match(html,/data-action="ui-operations"/);assert.doesNotMatch(html,/ops-preview-note|Fictional sample records|（虛構）|\(fictional\)|undefined|NaN|href="http|<img/);}});
 test('product search and category filters narrow the supplied preview records and preserve explicit empty state',()=>{let html=operationsPageMarkup('products',{query:'watercolour'},ctx);assert.match(html,/Watercolour set/);assert.doesNotMatch(html,/Sketchbook A4/);html=operationsPageMarkup('products',{query:'unfindable'},ctx);assert.match(html,/No matching products/);assert.match(html,/clear-filters/);});

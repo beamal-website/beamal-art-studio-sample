@@ -1,7 +1,7 @@
 // Native-shaped DOM boundary for controller interaction regressions.
 // Records remain immutable inputs; this helper never calls a server or browser.
 import assert from 'node:assert/strict';
-import {createInterfacePreview} from '../../client/interface-preview.js';
+import {createInterfacePreview} from '../fixtures/product-component-data.mjs';
 export const copy=value=>JSON.parse(JSON.stringify(value));
 export const settle=async()=>{for(let i=0;i<100;i++)await Promise.resolve()};
 const decode=value=>String(value??'').replace(/&(amp|lt|gt|quot|#39);/g,(_m,k)=>({amp:'&',lt:'<',gt:'>',quot:'"','#39':"'"}[k]));

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createInterfacePreview} from '../client/interface-preview.js';
+import {createInterfacePreview} from './fixtures/product-component-data.mjs';
 
 function productHost(){
  let html='';

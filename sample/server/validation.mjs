@@ -1,3 +1,4 @@
+import {formalAvailabilityPolicy} from '../shared/formal-availability.js';
 export class ApplicationError extends Error {
   constructor(status, code, message) {
     super(message);
@@ -9,7 +10,7 @@ export class ApplicationError extends Error {
 const invalid = message => { throw new ApplicationError(400, 'INVALID_COURSE', message); };
 const pricingFields = ['pricingModel', 'price', 'months', 'duration', 'packageType', 'packageTotal', 'bookingExpiry', 'onlineStore'];
 const typeFields = ['classTypeId', 'classTypeVersion'];
-const fields = new Set(['courseName', 'courseNameEn', 'feeName', 'feeNameEn', 'category', 'level', 'publicColor', 'content', ...typeFields, ...pricingFields]);
+const fields = new Set(['courseName', 'courseNameEn', 'feeName', 'feeNameEn', 'category', 'level', 'publicColor', 'content', 'availabilityDefaults', ...typeFields, ...pricingFields]);
 const plainObject = value => value !== null && typeof value === 'object' && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype;
 export const normalizePublicCourseColor = value => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value) ? value.toLowerCase() : null;
 const contentFields = ['descriptionZh', 'descriptionEn', 'minAgeYears', 'maxAgeYears'];
@@ -119,9 +120,9 @@ function classTypeSelection(input) {
 
 export function validateCourseMetadata(input, current = null) {
   if (!plainObject(input)) invalid('Course must be a JSON object.');
-  for (const key of Object.keys(input)) if (!['courseName', 'courseNameEn', 'category', 'level', 'publicColor', 'content', 'version', ...typeFields].includes(key)) invalid(`Unsupported course field: ${key}.`);
+  for (const key of Object.keys(input)) if (!['courseName', 'courseNameEn', 'category', 'level', 'publicColor', 'content', 'availabilityDefaults', 'version', ...typeFields].includes(key)) invalid(`Unsupported course field: ${key}.`);
   const source = current ? { ...current, ...input } : input;
-  return { courseName: text(source.courseName, 'Course name', true), ...englishName(source, 'courseNameEn'), category: text(source.category, 'Category'), level: text(source.level, 'Level'), publicColor: coursePublicColor(source.publicColor), ...classTypeSelection(input), ...courseContentSelection(input) };
+  return { courseName: text(source.courseName, 'Course name', true), ...englishName(source, 'courseNameEn'), category: text(source.category, 'Category'), level: text(source.level, 'Level'), publicColor: coursePublicColor(source.publicColor), ...classTypeSelection(input), ...courseContentSelection(input), ...(source.availabilityDefaults?{availabilityDefaults:(()=>{try{return formalAvailabilityPolicy(source.availabilityDefaults,{regular:true})}catch(error){invalid(error.message)}})()}: {}) };
 }
 
 export function validateCourse(input, current = null) {
@@ -130,6 +131,7 @@ export function validateCourse(input, current = null) {
   const source = current ? { ...current, ...input } : input;
   return {
     courseName: text(source.courseName, 'Course name', true), ...englishName(source, 'courseNameEn'), category: text(source.category, 'Category'), level: text(source.level, 'Level'), publicColor: coursePublicColor(source.publicColor),
+    ...(source.availabilityDefaults?{availabilityDefaults:(()=>{try{return formalAvailabilityPolicy(source.availabilityDefaults,{regular:true})}catch(error){invalid(error.message)}})()}:{}),
     feeName: text(source.feeName, 'Fee name', true), ...englishName(source, 'feeNameEn'), ...validatePricing(source), ...classTypeSelection(input), ...courseContentSelection(input),
   };
 }

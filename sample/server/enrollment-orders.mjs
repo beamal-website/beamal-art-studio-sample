@@ -31,7 +31,7 @@ function requireVersion(input,fields=['version']){
  return input.version;
 }
 
-export function createEnrollmentOrderStore({database,transaction,schedules,resources,accessControl,getCourse,getFee}){
+export function createEnrollmentOrderStore({database,transaction,schedules,resources,accessControl,getCourse,getFee,postgres=false}){
  database.exec(`
   CREATE TABLE IF NOT EXISTS student_account_links(
    student_id TEXT PRIMARY KEY REFERENCES people(id),user_id TEXT REFERENCES users(id),
@@ -137,7 +137,7 @@ export function createEnrollmentOrderStore({database,transaction,schedules,resou
   id:row.id,studentId:row.student_id,displayName:row.display_name,scheduleId:row.schedule_id,sequence:row.sequence,courseId:occurrence.item.course,orderId:row.order_id,paymentStatus:'paid',
   attendance:[...attendanceValues,'unmarked'].includes(row.attendance)?row.attendance:null,version:row.session_version,sourceVersion:occurrence.item.version,
   remark:typeof row.remark==='string'?row.remark:null,stickerColor:stickerValues.includes(row.sticker_color)?row.sticker_color:null,showRemark:row.show_remark===1?true:row.show_remark===0?false:null,updatedAt:row.updated_at??null,canRecordAttendance:canRecord,
-  arrangement:arrangementState(row.id),canSetPending:canRecord,
+  arrangement:arrangementState(row.id),canSetPending:canRecord,lessonKind:database.prepare("SELECT id FROM availability_reservations WHERE student_session_id=? AND target_schedule_id=? AND target_sequence=? AND kind='rescheduling' AND state='held'").get(row.id,occurrence.item.id,occurrence.sequence)?'rescheduling':'regular',
  });
  const pendingSession=id=>validId(id)?database.prepare('SELECT sessions.*,people.display_name,people.kind AS person_kind,orders.student_id AS order_student_id,orders.payment_status FROM student_sessions AS sessions LEFT JOIN enrollment_orders AS orders ON orders.id=sessions.order_id LEFT JOIN people ON people.id=sessions.student_id WHERE sessions.id=?').get(id):null;
  const pendingSource=(row,saved)=>{
@@ -312,17 +312,19 @@ export function createEnrollmentOrderStore({database,transaction,schedules,resou
   return saveState(order,actor,'order.respond',statuses[input.action],input.action==='confirm'?'awaiting-payment':'awaiting-confirmation',{responseReason:(input.reason??'').trim(),respondedAt:new Date().toISOString()});
  });
  const occupied=(scheduleId,sequence)=>database.prepare("SELECT COUNT(*) AS count FROM student_sessions AS sessions JOIN enrollment_orders AS orders ON orders.id=sessions.order_id WHERE sessions.schedule_id=? AND sessions.sequence=? AND orders.payment_status='paid'").get(scheduleId,sequence).count;
+ const formalLesson=(id,sequence)=>database.prepare('SELECT data FROM available_slots WHERE archived_at IS NULL').all().some(row=>{const slot=JSON.parse(row.data);return slot.formalManaged&&slot.scheduleId===id&&slot.sequence===sequence});
  const confirmPayment=(id,input,user)=>transaction(()=>{
   const actor=administrator(user),order=currentVersion(id,input,actor);
   if(order.orderStatus!=='parent-confirmed'||order.paymentStatus!=='awaiting-payment')fail(409,'ORDER_STATE_CONFLICT','Confirm Payment requires a parent-confirmed order that is awaiting payment.');
   formalStudent(order.studentId);
   const lessons=order.items.flatMap(item=>item.lessons.map(lesson=>({...lesson,courseId:item.courseId})));
+  if(postgres)for(const scheduleId of [...new Set(lessons.map(lesson=>lesson.scheduleId))].sort())database.prepare('SELECT id FROM schedules WHERE id=? FOR UPDATE').get(scheduleId);
   for(const lesson of lessons){
    const occurrence=currentOccurrence(lesson.scheduleId,lesson.sequence);
    if(occurrence.item.course!==lesson.courseId||occurrence.item.version!==lesson.sourceVersion)fail(409,'SOURCE_VERSION_CONFLICT','This lesson changed after the order was created. Create a new order from current lessons before confirming payment.');
    if(database.prepare('SELECT id FROM student_sessions WHERE student_id=? AND schedule_id=? AND sequence=?').get(order.studentId,lesson.scheduleId,lesson.sequence))fail(409,'STUDENT_ALREADY_ENROLLED','This student already has an enrollment for a selected lesson. No payment was recorded.');
    const manual=database.prepare('SELECT manual_status FROM class_capacity_statuses WHERE schedule_id=? AND sequence=?').get(lesson.scheduleId,lesson.sequence)?.manual_status;
-   if(manual==='full'||occurrence.item.capacity!==null&&occurrence.item.capacity!==undefined&&occupied(lesson.scheduleId,lesson.sequence)>=occurrence.item.capacity)fail(409,'CLASS_CAPACITY_FULL','A selected class is full. No payment or enrollment was recorded.');
+   if(manual==='full'||occurrence.item.capacity!==null&&occurrence.item.capacity!==undefined&&(occurrence.item.availabilityPolicy||formalLesson(lesson.scheduleId,lesson.sequence)?Number(database.prepare("SELECT COUNT(*) AS count FROM student_sessions sessions JOIN enrollment_orders orders ON orders.id=sessions.order_id WHERE orders.payment_status='paid' AND sessions.schedule_id=? AND sessions.sequence=? AND NOT EXISTS (SELECT 1 FROM availability_reservations r WHERE r.student_session_id=sessions.id AND r.kind='rescheduling' AND r.state='held' AND r.target_schedule_id=sessions.schedule_id AND r.target_sequence=sessions.sequence)").get(lesson.scheduleId,lesson.sequence).count):occupied(lesson.scheduleId,lesson.sequence))>=occurrence.item.capacity)fail(409,'CLASS_CAPACITY_FULL','A selected class is full. No payment or enrollment was recorded.');
   }
   const now=new Date().toISOString();
   for(const lesson of lessons)database.prepare("INSERT INTO student_sessions(id,student_id,schedule_id,sequence,order_id,attendance,created_at) VALUES (?,?,?,?,?,'unmarked',?)").run(randomUUID(),order.studentId,lesson.scheduleId,lesson.sequence,id,now);
@@ -349,7 +351,10 @@ export function createEnrollmentOrderStore({database,transaction,schedules,resou
   if(actor.role==='teacher'&&!accessControl.scopeFor(actor).permits(occurrence))fail(404,'LESSON_NOT_FOUND','The authorized lesson was not found.');
   const canRecord=canRecordAttendance(actor,occurrence);
   const students=database.prepare("SELECT sessions.*,people.display_name FROM student_sessions AS sessions JOIN enrollment_orders AS orders ON orders.id=sessions.order_id AND orders.student_id=sessions.student_id JOIN people ON people.id=sessions.student_id AND people.kind='student' WHERE sessions.schedule_id=? AND sessions.sequence=? AND orders.payment_status='paid' ORDER BY people.display_name,sessions.id").all(scheduleId,sequence).map(row=>sessionDTO(row,occurrence,canRecord));
-  return {students,occupied:students.length,capacity:occurrence.item.capacity??null};
+  const acceptedTrials=new Set(database.prepare('PRAGMA table_info(trial_application_acceptances)').all().length?database.prepare('SELECT application_id FROM trial_application_acceptances').all().map(row=>row.application_id):[]);
+  const trialRows=database.prepare("SELECT applications.id,applications.status,applications.slot_snapshot,people.id AS person_id,people.display_name,slots.data AS slot_data FROM trial_applications applications JOIN people ON people.id=applications.person_id JOIN available_slots slots ON slots.id=applications.slot_id WHERE applications.status='pending' ORDER BY people.display_name,applications.id").all().filter(row=>{const data=JSON.parse(row.slot_data);return data.scheduleId===scheduleId&&data.sequence===sequence}).map(row=>({id:row.id,studentId:row.person_id,displayName:row.display_name,lessonKind:'trial',status:acceptedTrials.has(row.id)?'accepted':row.status}));
+  const trialApplicants=trialRows.filter(row=>row.status==='accepted'),pendingTrialApplicants=trialRows.filter(row=>row.status!=='accepted');
+  return {students,trialApplicants,pendingTrialApplicants,occupied:students.length,capacity:occurrence.item.capacity??null};
  },'read');
  const filterFacts=(user,input)=>transaction(()=>{
   const actor=requireRole(user,['admin','teacher']),{from,to,since}=validateTimetableFilterFactsQuery(input),scope=actor.role==='teacher'?accessControl.scopeFor(actor):null,entries=new Map();

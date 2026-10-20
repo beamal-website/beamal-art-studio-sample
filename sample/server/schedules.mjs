@@ -1,3 +1,4 @@
+import {formalAvailabilityPolicy,formalTotalCapacity} from '../shared/formal-availability.js';
 import {randomUUID,createHash} from 'node:crypto';
 import {ApplicationError} from './validation.mjs';
 import {scheduleOccurrence,scheduleFollowingRule,scheduleLastSequence} from '../shared/schedule-occurrences.js';
@@ -5,7 +6,7 @@ import {validateClassTypeSelection} from './class-types.mjs';
 
 const plain = value => value !== null && typeof value === 'object' && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype;
 const invalid = message => {throw new ApplicationError(400,'INVALID_SCHEDULE',message);};
-const fields = ['course','startDate','time','duration','weekdays','endMode','endDate','count','mustAttendAll','color','teacher','room','teacherIds','roomIds','capacity','session','remark','detail','moreInfo'];
+const fields = ['course','startDate','time','duration','weekdays','endMode','endDate','count','mustAttendAll','color','teacher','room','teacherIds','roomIds','capacity','availabilityPolicy','session','remark','detail','moreInfo'];
 const selectionFields=['classTypeId','classTypeVersion','classTypeCourseVersion'];
 const ruleFields=[...fields,'classType'];
 const assignments=[['teacherIds','teacher','teacher'],['roomIds','room','room']];
@@ -52,6 +53,7 @@ export function validateSchedule(input,current=null,{stored=false,exactTime=fals
   if (!Number.isSafeInteger(count) || count < 1 || count > 999) invalid('Occurrences must be a whole number from 1 to 999.');
   const capacity = source.capacity === undefined ? null : source.capacity, session = source.session ?? 1;
   if (capacity !== null && (!Number.isSafeInteger(capacity) || capacity < 1) || !Number.isSafeInteger(session) || session < 1) invalid('Capacity and session must be positive whole numbers.');
+  if(Object.hasOwn(source,'availabilityPolicy')){try{formalAvailabilityPolicy(source.availabilityPolicy)}catch(error){invalid(error.message)}if(capacity===null)invalid('Set regular capacity before configuring trial or rescheduling places.');}
   if (source.mustAttendAll !== undefined && typeof source.mustAttendAll !== 'boolean') invalid('Must attend all must be true or false.');
   const color = source.color ?? '#27777b';
   if (typeof color !== 'string' || !/^#[0-9a-f]{6}$/i.test(color)) invalid('Choose a valid colour.');
@@ -66,7 +68,7 @@ export function validateSchedule(input,current=null,{stored=false,exactTime=fals
     course:source.course,startDate:source.startDate,time:source.time,duration:source.duration,
     weekdays:[...source.weekdays].sort((a,b)=>(a+6)%7-(b+6)%7),endMode:source.endMode,
     endDate:source.endMode === 'date' ? source.endDate : '',count,mustAttendAll:source.mustAttendAll ?? true,color,
-    teacher:text(source.teacher,'Teacher',Math.max(200,(ids.teacherIds?.length||0)*202)),room:text(source.room,'Room',Math.max(200,(ids.roomIds?.length||0)*202)),...ids,capacity,session,
+    teacher:text(source.teacher,'Teacher',Math.max(200,(ids.teacherIds?.length||0)*202)),room:text(source.room,'Room',Math.max(200,(ids.roomIds?.length||0)*202)),...ids,capacity,...(source.availabilityPolicy?{availabilityPolicy:(()=>{try{return formalAvailabilityPolicy(source.availabilityPolicy)}catch(error){invalid(error.message)}})()}:{}),session,
     remark:text(source.remark,'Remark',2000),detail:text(source.detail,'Detail',2000),moreInfo:text(source.moreInfo,'More info',2000),
     ...selection,...(stored||current?{classType:source.classType??null}:{}),
   };
@@ -178,8 +180,16 @@ export function createScheduleStore({database,transaction,resources,classTypes})
     if (since === revision) return {revision,unchanged:true};
     return {revision,schedules:database.prepare('SELECT * FROM schedules WHERE deleted_at IS NULL ORDER BY created_at,id').all().map(dto)};
   },'read');
-  const create = (input,actorId,{exactTime=false}={}) => transaction(()=>{
-    administrator(actorId);const data=resolveClassType(resolveAssignments(validateSchedule(input,null,{exactTime})));
+  const checkFormalCapacity=next=>{
+    for(const row of database.prepare('SELECT data FROM available_slots WHERE archived_at IS NULL').all()){
+      const slot=JSON.parse(row.data);if(!slot.formalManaged||slot.scheduleId!==next.id)continue;const occurrence=scheduleOccurrence(next,slot.sequence);if(!occurrence)continue;
+      const sessions=database.prepare("SELECT sessions.id FROM student_sessions sessions JOIN enrollment_orders orders ON orders.id=sessions.order_id WHERE orders.payment_status='paid' AND sessions.schedule_id=? AND sessions.sequence=?").all(next.id,slot.sequence),moved=new Set(database.prepare("SELECT student_session_id FROM availability_reservations WHERE kind='rescheduling' AND state='held' AND target_schedule_id=? AND target_sequence=?").all(next.id,slot.sequence).map(row=>row.student_session_id));
+      const regular=sessions.filter(row=>!moved.has(row.id)).length,trial=database.prepare("SELECT r.id,s.data FROM availability_reservations r JOIN available_slots s ON s.id=r.slot_id WHERE r.state='held' AND r.kind='trial'").all().filter(row=>{const data=JSON.parse(row.data);return data.scheduleId===next.id&&data.sequence===slot.sequence}).length;
+      if(occurrence.item.capacity<regular||formalTotalCapacity(occurrence.item.capacity,slot)<sessions.length+trial)throw new ApplicationError(409,'SLOT_HAS_RESERVATIONS','This change would remove occupied lesson places.');
+    }
+  };
+  const create = (input,actorId,{exactTime=false,inheritAvailability=true}={}) => transaction(()=>{
+    administrator(actorId);const courseRecord=database.prepare('SELECT data FROM courses WHERE id=? AND deleted_at IS NULL').get(input.course),defaults=courseRecord&&JSON.parse(courseRecord.data).availabilityDefaults;const source=inheritAvailability&&!Object.hasOwn(input,'availabilityPolicy')&&defaults?{...input,capacity:input.capacity??defaults.regularCapacity,availabilityPolicy:Object.fromEntries(Object.entries(defaults).filter(([key])=>key!=='regularCapacity'))}:input;const data=resolveClassType(resolveAssignments(validateSchedule(source,null,{exactTime})));
     const id=randomUUID(),now=new Date().toISOString(),{course,...stored}=data;
     database.prepare('INSERT INTO schedules(id,course_id,data,version,created_at,updated_at) VALUES (?,?,?,1,?,?)').run(id,course,JSON.stringify(stored),now,now);
     const schedule=get(id);audit(actorId,'schedule.create',schedule);return schedule;
@@ -194,7 +204,7 @@ export function createScheduleStore({database,transaction,resources,classTypes})
     administrator(actorId);const version=requireScheduleVersion(input),current=currentVersion(id,version);
     if (current.activityDeleted) throw new ApplicationError(404,'SCHEDULE_NOT_FOUND','Schedule was not found.');
     if (current.segments?.length || current.exceptions?.length) throw new ApplicationError(409,'SCHEDULE_HAS_SCOPED_CHANGES','This schedule has individual or following-lesson changes. Edit the selected lesson instead.');
-    const data=resolveClassType(resolveAssignments(validateSchedule(input,current),current),current);checkAffectedAssignments({...current,...data},current);
+    const data=resolveClassType(resolveAssignments(validateSchedule(input,current),current),current);checkAffectedAssignments({...current,...data},current);checkFormalCapacity({...current,...data});
     const now=new Date().toISOString(),{course,...stored}=data;
     const result=database.prepare('UPDATE schedules SET course_id=?,data=?,version=version+1,updated_at=? WHERE id=? AND version=? AND deleted_at IS NULL').run(course,JSON.stringify(stored),now,id,version);
     if (result.changes !== 1) throw new ApplicationError(409,'VERSION_CONFLICT','This schedule was changed by someone else. Reload it before saving.');
@@ -224,6 +234,7 @@ export function createScheduleStore({database,transaction,resources,classTypes})
     return rows.sort((a,b)=>a.sequence-b.sequence);
   };
   const writeScoped = (current,next,actorId,action) => {
+    checkFormalCapacity(next);
     const {id,course,version,createdAt,updatedAt,activityDeleted,...data}=next;
     if (!data.segments?.length) delete data.segments;
     if (!data.exceptions?.length) delete data.exceptions;
@@ -248,7 +259,7 @@ export function createScheduleStore({database,transaction,resources,classTypes})
   };
   const recurrenceChanged = (data,opened) => data.startDate!==opened.startDate || JSON.stringify(data.weekdays)!==JSON.stringify(opened.weekdays) || data.endMode!==opened.endMode || data.endMode==='date' && data.endDate!==opened.endDate || data.endMode==='count' && data.count!==opened.count;
   const applyFollowingFields = (current,sequence,data,opened) => {
-    const changed=['time','duration','mustAttendAll','teacher','room','teacherIds','roomIds','capacity','session','color','remark','detail','moreInfo','classType'].filter(key=>!equal(key==='classType'?data[key]??null:data[key],key==='classType'?opened[key]??null:opened[key]));
+    const changed=['time','duration','mustAttendAll','teacher','room','teacherIds','roomIds','capacity','availabilityPolicy','session','color','remark','detail','moreInfo','classType'].filter(key=>!equal(key==='classType'?data[key]??null:data[key],key==='classType'?opened[key]??null:opened[key]));
     const segments=splitAt(current,sequence).map(segment=> {
       if (segment.fromSequence<sequence) return segment;
       const rule={...segment.rule};
@@ -293,7 +304,7 @@ export function createScheduleStore({database,transaction,resources,classTypes})
     let next={...current};
     if (scope==='single') {
       const base=scheduleOccurrence({...current,exceptions:[]},sequence,{includeCancelled:true}),overrides={};
-      for (const key of ['time','duration','teacher','room','teacherIds','roomIds','capacity','session','color','remark','detail','moreInfo','classType']) if (!equal(data[key],base.item[key])) overrides[key]=data[key];
+      for (const key of ['time','duration','teacher','room','teacherIds','roomIds','capacity','availabilityPolicy','session','color','remark','detail','moreInfo','classType']) if (!equal(data[key],base.item[key])) overrides[key]=data[key];
       if (data.startDate!==base.date) overrides.date=data.startDate;
       const previous=(current.exceptions||[]).find(item=>item.sequence===sequence);
       next.exceptions=exception(current,sequence,overrides,previous?.cancelled);
@@ -349,6 +360,6 @@ export function createScheduleStore({database,transaction,resources,classTypes})
     if(restore)checkAffectedAssignments(next,current,sequence);
     return writeScoped(current,next,actorId,restore?'schedule.occurrence.restore':'schedule.occurrence.delete');
   });
-  const createAvailableTime=(slot,actorId)=>create({course:slot.courseId,startDate:slot.date,time:slot.time,duration:slot.duration,weekdays:[new Date(slot.date+'T00:00:00Z').getUTCDay()],endMode:'count',count:1,teacherIds:slot.teacherIds,roomIds:slot.roomIds,capacity:slot.totalCapacity>0?slot.totalCapacity:null},actorId,{exactTime:true});
+  const createAvailableTime=(slot,actorId)=>create({course:slot.courseId,startDate:slot.date,time:slot.time,duration:slot.duration,weekdays:[new Date(slot.date+'T00:00:00Z').getUTCDay()],endMode:'count',count:1,teacherIds:slot.teacherIds,roomIds:slot.roomIds,capacity:slot.totalCapacity>0?slot.totalCapacity:null},actorId,{exactTime:true,inheritAvailability:false});
   return {list,get,create,createAvailableTime,update,editOccurrence,deleteOccurrence:(id,sequence,input,actorId)=>changeOccurrenceDeletion(id,sequence,input,actorId),restoreOccurrence:(id,sequence,input,actorId)=>changeOccurrenceDeletion(id,sequence,input,actorId,true),delete:(id,input,actorId)=>changeDeletion(id,input,actorId),restore:(id,input,actorId)=>changeDeletion(id,input,actorId,true),audit:()=>database.prepare('SELECT * FROM schedule_audit_log ORDER BY id').all().map(row=>({...row,snapshot:JSON.parse(row.snapshot)}))};
 }

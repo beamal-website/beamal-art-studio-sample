@@ -20,13 +20,13 @@ export function createReschedulingAvailability({database,transaction,availableSl
    if(database.prepare('SELECT id FROM student_sessions WHERE student_id=? AND schedule_id=? AND sequence=?').get(source.studentId,destination.scheduleId,destination.sequence))return 0;
    if(database.prepare('SELECT manual_status FROM class_capacity_statuses WHERE schedule_id=? AND sequence=?').get(destination.scheduleId,destination.sequence)?.manual_status==='full')return 0;
    const occupied=Number(database.prepare("SELECT COUNT(*) AS count FROM student_sessions sessions JOIN enrollment_orders orders ON orders.id=sessions.order_id WHERE orders.payment_status='paid' AND sessions.schedule_id=? AND sessions.sequence=?").get(destination.scheduleId,destination.sequence).count);
-   if(Number.isSafeInteger(occurrence.item.capacity))places=Math.min(places,occurrence.item.capacity-occupied-(slot.classTrialReserved??slot.trialReserved));
+   if(Number.isSafeInteger(occurrence.item.capacity))places=Math.min(places,(slot.formalManaged?slot.totalCapacity:occurrence.item.capacity)-occupied-(slot.classTrialReserved??slot.trialReserved));
   }
   return Math.max(0,places);
  };
  const options=source=>availableSlots.scopeFacts().filter(slot=>remaining(slot,source)>0).map(slot=>({id:slot.id,slotId:slot.id,courseId:slot.courseId,courseName:getCourse(slot.courseId)?.courseName||slot.courseName,courseNameEn:getCourse(slot.courseId)?.courseNameEn||'',date:slot.date,time:slot.time,duration:slot.duration,teacherNames:slot.teacherNames,roomNames:slot.roomNames,availableSeats:remaining(slot,source),...(target(slot)||{})})).sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time)||a.id.localeCompare(b.id));
  const reserve=(slotId,source,sessionId,actorId)=>transaction(()=>{
-  if(postgres)database.prepare('SELECT id FROM available_slots WHERE id=? FOR UPDATE').get(slotId);
+  if(!availableSlots.scopeFacts().some(row=>row.id===slotId))unavailable();availableSlots.ensureSlot(slotId);if(postgres)database.prepare('SELECT id FROM available_slots WHERE id=? FOR UPDATE').get(slotId);
   let slot=availableSlots.scopeFacts().find(row=>row.id===slotId);if(!slot||remaining(slot,source)<1)unavailable();
   let destination=target(slot);
   if(!destination){

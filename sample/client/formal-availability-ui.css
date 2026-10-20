@@ -1,0 +1,12 @@
+.formal-availability-fields{min-width:0;margin:20px 0;padding:18px 0;border:0;border-top:1px solid #d9e1dc;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 24px;grid-column:1/-1}
+.formal-availability-fields legend{font-size:18px;font-weight:600;padding:0 0 8px}
+.formal-availability-fields label{display:flex;gap:10px;align-items:center;font-size:16px;min-width:0}
+.formal-availability-fields .formal-regular{grid-column:1/-1}
+.formal-availability-fields input[type=number]{width:100px;min-width:80px;padding:10px;border:1px solid #bdcbc1;border-radius:4px;background:var(--portal-paper,#fff);color:inherit}
+.formal-availability-fields input[type=checkbox]{width:21px;height:21px;padding:0;flex:none;accent-color:#27777b}
+.formal-purpose{display:grid;align-content:start;gap:12px}.formal-availability-fields [hidden]{display:none!important}
+.formal-total{grid-column:1/-1;margin:0;font-size:18px}.formal-total output{margin-left:14px;font-weight:700;color:#27777b}
+.formal-note{grid-column:1/-1;margin:0;color:#687770;font-size:14px;line-height:1.7}.formal-error{color:#a43d2b;font-size:15px}.formal-error:empty{display:none}
+.formal-lesson-controls{padding:22px 28px;border-bottom:1px solid #d9e1dc}.formal-lesson-controls h3{margin:0;font-size:20px}.formal-actions{display:flex;gap:12px;justify-content:flex-end;margin-top:18px}.formal-actions button{border-radius:4px}
+.formal-applicants{margin:18px 0;padding:16px 0;border-top:1px solid #d9e1dc}.formal-applicants ul{padding:0;list-style:none}.formal-applicants li{padding:8px 0;display:flex;gap:18px;justify-content:space-between}
+@media(max-width:640px){.formal-availability-fields{grid-template-columns:minmax(0,1fr)}.formal-lesson-controls{padding:18px 16px}}

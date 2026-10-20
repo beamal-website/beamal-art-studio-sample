@@ -30,7 +30,7 @@ import { createTrialInquiryStore } from './trial-inquiries.mjs';
 
 const publicUser = row => row ? { id: row.id, email: row.email, displayName: row.display_name, role: row.role } : null;
 const pricingKeys = ['feeName', 'feeNameEn', 'pricingModel', 'price', 'months', 'duration', 'packageType', 'packageTotal', 'bookingExpiry', 'onlineStore'];
-const metadata = (record, includePrivate = false) => ({ courseName: record.courseName, ...(Object.hasOwn(record, 'courseNameEn') ? {courseNameEn:record.courseNameEn} : {}), category: record.category || '', level: record.level || '', publicColor: normalizePublicCourseColor(record.publicColor), ...(includePrivate ? { classTypeId: record.classTypeId ?? null, content: normalizeCourseContent(record.content) } : {}) });
+const metadata = (record, includePrivate = false) => ({ courseName: record.courseName, ...(Object.hasOwn(record, 'courseNameEn') ? {courseNameEn:record.courseNameEn} : {}), category: record.category || '', level: record.level || '', publicColor: normalizePublicCourseColor(record.publicColor), ...(includePrivate ? { ...(record.availabilityDefaults?{availabilityDefaults:record.availabilityDefaults}:{}), classTypeId: record.classTypeId ?? null, content: normalizeCourseContent(record.content) } : {}) });
 const pricing = record => Object.fromEntries(pricingKeys.filter(key => Object.hasOwn(record, key)).map(key => [key, record[key]]));
 const nameKey = name => name.trim().toLowerCase();
 const compareText = (left, right) => left < right ? -1 : left > right ? 1 : 0;
@@ -475,7 +475,7 @@ async function initializeStore({ databasePath, seedUsers, seedCourses, attachmen
     for (const seed of seedCourses) {
       if (!seed.id || typeof seed.id !== 'string' || seed.id.length > 200) throw new Error('Seed course requires a valid id.');
       if (getCourse(seed.id)) continue;
-      const fields = ['courseName', 'courseNameEn', 'feeName', 'feeNameEn', 'category', 'level', 'publicColor', 'content', 'classTypeId', 'classTypeVersion', ...pricingKeys.slice(1)];
+      const fields = ['courseName', 'courseNameEn', 'feeName', 'feeNameEn', 'category', 'level', 'publicColor', 'content', 'availabilityDefaults', 'classTypeId', 'classTypeVersion', ...pricingKeys.slice(1)];
       const input = Object.fromEntries(fields.filter(field => Object.hasOwn(seed, field)).map(field => [field, seed[field]]));
       createCourse(validateCourse(input), null, seed.id);
     }
@@ -499,7 +499,7 @@ async function initializeStore({ databasePath, seedUsers, seedCourses, attachmen
     availableSlots = createAvailableSlotStore({ database, transaction, accessControl, classCapacityStatuses, postgres });
     trialApplications = createTrialApplicationStore({ database, transaction, availableSlots, people, accessControl, trialFormPolicy });
     accessControl.setSlotSource(() => availableSlots.scopeFacts());
-    enrollmentOrders = createEnrollmentOrderStore({ database, transaction, schedules, resources: schedulingResources, accessControl, getCourse, getFee });
+    enrollmentOrders = createEnrollmentOrderStore({ database, transaction, schedules, resources: schedulingResources, accessControl, getCourse, getFee, postgres });
     lessonParentMessages = createLessonParentMessageStore({ database, transaction, enrollmentOrders });
     parentMessageTemplates = createParentMessageTemplateStore({ database, transaction });
     studentLessonRequests = createStudentLessonRequestStore({ database, transaction, schedules, getCourse, getStudentLesson: enrollmentOrders.studentLesson, postgres, rescheduling:createReschedulingAvailability({database,transaction,availableSlots,schedules,getCourse,postgres}) });

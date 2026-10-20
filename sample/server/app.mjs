@@ -479,6 +479,13 @@ export async function createApplication({ databasePath = ':memory:', databaseUrl
         for (const [key,value] of requestUrl.searchParams) if (!keys.includes(key) || value.length > 200 || requestUrl.searchParams.getAll(key).length !== 1) throw new ApplicationError(400, 'INVALID_QUERY', 'Choose supported availability query parameters.');
         return Object.fromEntries(keys.filter(key => requestUrl.searchParams.has(key)).map(key => [key, requestUrl.searchParams.get(key)]));
       };
+      const lessonAvailabilityMatch=/^\/api\/schedules\/([^/]+)\/occurrences\/([1-9]\d*)\/availability$/.exec(pathname);
+      if(lessonAvailabilityMatch&&['GET','PATCH'].includes(request.method)){
+        const session=request.method==='PATCH'?requireMutation(request):requireSession(request),id=decodeId(lessonAvailabilityMatch[1]),sequence=Number(lessonAvailabilityMatch[2]);
+        slotQuery([]);if(request.method==='GET'){json(response,200,store.availableSlots.lessonSettings(id,sequence,session.user));return;}
+        const input=await body(request),key=idempotencyKey(request),route='PATCH '+pathname;
+        const result=store.mutateOnce({userId:session.user.id,route,key,payloadHash:payloadHash(input),status:200},()=>store.availableSlots.saveLessonSettings(id,sequence,input,session.user));json(response,result.status,result.body);return;
+      }
       const capacityStatusMatch = /^\/api\/schedules\/([^/]+)\/occurrences\/([^/]+)\/capacity-status$/.exec(pathname);
       if (pathname === '/api/class-capacity-statuses' && request.method === 'GET') {
         const session = requireSession(request);

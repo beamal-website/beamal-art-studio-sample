@@ -88,6 +88,8 @@ export function createApiClient({ baseUrl = import.meta.env?.VITE_BEAMAL_API_BAS
       return request(`/available-slots?${query}`);
     },
     availableSlot: id => request(`/available-slots/${encodeURIComponent(id)}`),
+    lessonAvailability:(id,sequence)=>request(`/schedules/${encodeURIComponent(id)}/occurrences/${sequence}/availability`),
+    saveLessonAvailability:(id,sequence,policy,current,key)=>request(`/schedules/${encodeURIComponent(id)}/occurrences/${sequence}/availability`,{method:'PATCH',body:{...policy,version:current.slot.version,sourceVersion:current.sourceVersion},idempotencyKey:key}),
     saveAvailableSlot(profile, current, operationKey) {
       return request(current ? `/available-slots/${encodeURIComponent(current.id)}` : '/available-slots', {
         method: current ? 'PATCH' : 'POST',
@@ -275,7 +277,7 @@ export function createApiClient({ baseUrl = import.meta.env?.VITE_BEAMAL_API_BAS
     saveLessonNote: (scheduleId, sequence, fields, operationKey) => request(`/schedules/${encodeURIComponent(scheduleId)}/occurrences/${encodeURIComponent(sequence)}/note`, { method: 'PATCH', body: fields, idempotencyKey: operationKey }),
     updateCourseMetadata: (id, fields, operationKey) => request(`/courses/${encodeURIComponent(id)}`, { method: 'PATCH', body: fields, idempotencyKey: operationKey }),
     saveCourse(course, current, operationKey) {
-      const fields = ['courseName', 'courseNameEn', 'feeName', 'feeNameEn', 'category', 'level', 'publicColor', 'classTypeId', 'classTypeVersion', 'pricingModel', 'price', 'months', 'duration', 'packageType', 'packageTotal', 'bookingExpiry', 'onlineStore'];
+      const fields = ['courseName', 'courseNameEn', 'feeName', 'feeNameEn', 'category', 'level', 'publicColor', 'availabilityDefaults', 'classTypeId', 'classTypeVersion', 'pricingModel', 'price', 'months', 'duration', 'packageType', 'packageTotal', 'bookingExpiry', 'onlineStore'];
       const body = Object.fromEntries(fields.filter(key => course[key] !== undefined).map(key => [key, course[key]]));
       if (current) body.version = current.version;
       return request(current ? `/courses/${encodeURIComponent(current.id)}` : '/courses', { method: current ? 'PATCH' : 'POST', body, ...(!current ? { idempotencyKey: operationKey } : {}) });

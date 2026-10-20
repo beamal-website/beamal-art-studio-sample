@@ -1,7 +1,7 @@
 const DAY = 86400000;
 const MAX_DAY = Date.parse('9999-12-31T00:00:00Z') / DAY;
-const RULE_FIELDS = ['course', 'startDate', 'time', 'duration', 'weekdays', 'endMode', 'endDate', 'count', 'mustAttendAll', 'color', 'teacher', 'room', 'teacherIds', 'roomIds', 'capacity', 'session', 'remark', 'detail', 'moreInfo', 'classType'];
-const OVERRIDE_FIELDS = ['time', 'duration', 'teacher', 'room', 'teacherIds', 'roomIds', 'capacity', 'session', 'color', 'remark', 'detail', 'moreInfo', 'classType'];
+const RULE_FIELDS = ['course', 'startDate', 'time', 'duration', 'weekdays', 'endMode', 'endDate', 'count', 'mustAttendAll', 'color', 'teacher', 'room', 'teacherIds', 'roomIds', 'capacity', 'availabilityPolicy', 'session', 'remark', 'detail', 'moreInfo', 'classType'];
+const OVERRIDE_FIELDS = ['time', 'duration', 'teacher', 'room', 'teacherIds', 'roomIds', 'capacity', 'availabilityPolicy', 'session', 'color', 'remark', 'detail', 'moreInfo', 'classType'];
 const METADATA_FIELDS = ['id', 'course', 'version', 'createdAt', 'updatedAt'];
 
 function dayNumber(value) {

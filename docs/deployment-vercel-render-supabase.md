@@ -6,8 +6,8 @@ This repository includes a Render Blueprint at [`render.yaml`](../render.yaml). 
 
 1. Create a Supabase PostgreSQL project. Copy its PostgreSQL connection string from the Supabase database connection settings. Use the PostgreSQL URL, not the Supabase REST project URL.
 2. Create a Render Blueprint from the `test` branch and review its Starter web service and 1 GB persistent disk. Render service and disk charges may apply when deployed.
-3. In Render, set `DATABASE_URL` to the Supabase PostgreSQL connection string and `BEAMAL_ALLOWED_ORIGINS` to the exact Vercel production origin, such as `https://your-site.vercel.app` (no path or trailing slash). Keep `DATABASE_URL` secret; never commit it or send it in chat.
-4. Set the Vercel project root directory to `sample`. The `sample/vercel.json` rewrite proxies `/api/*` to the Render service, so leave `VITE_BEAMAL_API_BASE_URL` unset for production; browser requests and session cookies stay on the Vercel origin. Redeploy Vercel after changing this configuration.
+3. In Render, set `DATABASE_URL` to the Supabase PostgreSQL connection string and `BEAMAL_ALLOWED_ORIGINS` to the exact Vercel production origin, such as `https://your-site.vercel.app` (no path or trailing slash). Keep `DATABASE_URL` secret; never commit it or send it in chat. Confirm the startup log says PostgreSQL is ready; a log saying the service is initializing with SQLite means it is not using the Supabase database.
+4. Set the Vercel project root directory to `sample`. The `sample/vercel.json` rewrite proxies `/api/*` to the Render service's current primary URL, so update its destination if Render gives the service a different URL. Leave `VITE_BEAMAL_API_BASE_URL` unset for production; browser requests and session cookies stay on the Vercel origin. Redeploy Vercel after changing this configuration.
 
 The Render service enables HTTPS-only session cookies and listens on Render's port. The persistent disk is mounted at `/var/data`; private material attachments use `/var/data/beamal.sqlite.attachments`.
 

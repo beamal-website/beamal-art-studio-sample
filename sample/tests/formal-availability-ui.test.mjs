@@ -18,7 +18,7 @@ test('single lesson always shows two quota inputs and starts disabled purposes a
 });
 test('single lesson equation includes only enabled purposes',()=>{
  const p={trialEnabled:false,trialCapacity:2,reschedulingEnabled:false,reschedulingCapacity:1};
- assert.equal(formalCapacityEquation(8,p),'8 = 8');
+ assert.equal(formalCapacityEquation(8,p),'');
  assert.equal(formalCapacityEquation(8,{...p,trialEnabled:true}),'8 + 2 = 10');
  assert.equal(formalCapacityEquation(8,{...p,reschedulingEnabled:true}),'8 + 1 = 9');
  assert.equal(formalCapacityEquation(8,{...p,trialEnabled:true,reschedulingEnabled:true}),'8 + 2 + 1 = 11');
@@ -33,6 +33,12 @@ test('single lesson toggle keeps zero quota visible, disables it and excludes it
   const name=selector.match(/name="(\w+)"/);return name?controls[name[1]]:null;
  }};
  syncFormalFields(root);assert.equal(output.textContent,'8 + 2 = 10');assert.equal(reschedulingInput.disabled,true);assert.equal(reschedulingInput.value,'0');assert.equal(groups.rescheduling.hidden,false);
- trial.checked=false;syncFormalFields(root);assert.equal(trialInput.disabled,true);assert.equal(trialInput.required,false);assert.equal(trialInput.value,'0');assert.equal(output.textContent,'8 = 8');
+ trial.checked=false;syncFormalFields(root);assert.equal(trialInput.disabled,true);assert.equal(trialInput.required,false);assert.equal(trialInput.value,'0');assert.equal(output.textContent,'');
  trial.checked=true;syncFormalFields(root);assert.equal(trialInput.disabled,false);assert.equal(trialInput.required,true);assert.equal(trialInput.value,'0');
+});
+
+test('single lesson hides the equation initially when neither purpose is enabled',()=>{
+ const html=formalLessonFields({regularCapacity:8,trialEnabled:false,reschedulingEnabled:false},ui);
+ assert.match(html,/<output[^>]*><\/output>/);
+ assert.doesNotMatch(html,/8 = 8/);
 });

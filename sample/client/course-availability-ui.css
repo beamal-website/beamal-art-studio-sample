@@ -1,0 +1,17 @@
+.course-availability-range{margin:0 0 22px;color:#687770;font-size:14px}
+.course-availability-lists{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:32px;min-width:0}
+.course-availability-column{min-width:0}
+.course-availability-column>h3{margin:0 0 18px;font-size:20px;font-weight:600}
+.course-availability-row{padding:20px 0;border-top:1px solid #d9e1dc;min-width:0}
+.course-availability-row>header{display:flex;justify-content:space-between;gap:16px;align-items:start}
+.course-availability-row time{font-size:14px;color:#687770}
+.course-availability-row h4{margin:5px 0 0;font-size:22px;font-weight:600;line-height:1.4}
+.course-availability-status{padding:5px 10px;border-radius:4px;background:#e5efeb;color:#27777b;font-size:14px;white-space:nowrap}
+.course-availability-status[data-availability-status=full]{background:#f7ece3;color:#8c552c}
+.course-availability-status[data-availability-status=inactive],.course-availability-status[data-availability-status=unavailable],.course-availability-status[data-availability-status=unknown]{background:#ecefeb;color:#637169}
+.course-availability-row>dl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px 14px;margin:18px 0 0}
+.course-availability-row dt{font-size:13px;color:#687770;margin-bottom:5px}
+.course-availability-row dd{margin:0;font-size:15px;overflow-wrap:anywhere;line-height:1.6}
+.course-availability-empty{padding:20px 0;margin:0;border-top:1px solid #d9e1dc;color:#687770}
+@media(max-width:1000px){.course-availability-lists{grid-template-columns:minmax(0,1fr);gap:30px}}
+@media(max-width:480px){.course-availability-row>dl{grid-template-columns:repeat(2,minmax(0,1fr))}}

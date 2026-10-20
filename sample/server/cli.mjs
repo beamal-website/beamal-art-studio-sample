@@ -1,78 +1,88 @@
-import { mkdir, readFile, writeFile, stat } from 'node:fs/promises';
-import { DatabaseSync } from 'node:sqlite';
-import { randomBytes } from 'node:crypto';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { createApplication } from './app.mjs';
+import { Worker } from 'node:worker_threads';
 import { resolveListenerConfig } from './listener-config.mjs';
+import { createApiGateway } from './api-gateway.mjs';
 
-const sampleDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const dataDir = resolve(process.env.BEAMAL_DATA_DIR || resolve(sampleDir, '.data'));
-const databasePath = resolve(process.env.BEAMAL_DATABASE_PATH || resolve(dataDir, 'beamal.sqlite'));
-const accountPath = resolve(dataDir, 'bootstrap-accounts.json');
 const { host, port } = resolveListenerConfig();
-const postgresMode = Boolean(process.env.DATABASE_URL);
 if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error('PORT or BEAMAL_PORT must be a valid port number.');
-await mkdir(dataDir, { recursive: true, mode: 0o700 });
 
-let accounts = [], bootstrapNewAccounts = false;
-const accountExists = await stat(accountPath).then(() => true).catch(() => false);
-if (postgresMode) {
-  accounts = [];
-} else if (accountExists) {
-  const saved = JSON.parse(await readFile(accountPath, 'utf8'));
-  if (!Array.isArray(saved.accounts)) throw new Error('Bootstrap account file is invalid.');
-  accounts = saved.accounts;
-} else {
-  let existingUsers = 0;
-  if (await stat(databasePath).then(() => true).catch(() => false)) {
-    const probe = new DatabaseSync(databasePath, { readOnly: true });
-    try {
-      if (probe.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='users'").get()) existingUsers = probe.prepare('SELECT COUNT(*) AS count FROM users').get().count;
-    } finally { probe.close(); }
-  }
-  if (!existingUsers) {
-    accounts = [
-      { email: 'admin@beamal.test', displayName: 'Test administrator (fictional)', role: 'admin' },
-      { email: 'teacher@beamal.test', displayName: 'Test teacher (fictional)', role: 'teacher' },
-      { email: 'student@beamal.test', displayName: 'Test student (fictional)', role: 'student' },
-    ].map(user => ({ ...user, password: randomBytes(24).toString('base64url') }));
-    bootstrapNewAccounts = true;
-  }
-}
-const seedCourses = [
-  { id: 'art', courseName: 'Course 1', feeName: 'Course 1 package', price: 1000 },
-  { id: 'story', courseName: 'Course 2', feeName: 'Course 2 package', price: 1200 },
-  { id: 'sewing', courseName: 'Course 3', feeName: 'Course 3 package', price: 1500 },
-].map(course => ({ ...course, category: 'Fictional test course', level: '', pricingModel: 'package', packageType: 'visits', packageTotal: 4, bookingExpiry: null, onlineStore: true }));
-const staticDir = resolve(process.env.BEAMAL_STATIC_DIR || resolve(sampleDir, 'dist'));
-const options = {
-  databasePath, databaseUrl:process.env.DATABASE_URL||'', seedUsers: accounts, seedCourses:postgresMode?[]:seedCourses, staticDir,
-  secureCookies: process.env.BEAMAL_SECURE_COOKIES === 'true',
-};
-if (process.env.BEAMAL_ALLOWED_ORIGINS) options.allowedOrigins = process.env.BEAMAL_ALLOWED_ORIGINS.split(',').map(value => value.trim()).filter(Boolean);
-console.log(`Initializing Beamal shared test service with ${postgresMode ? 'PostgreSQL' : 'SQLite'}; listener target ${host}:${port}.`);
-const application = await createApplication(options);
-console.log('Application initialized; opening HTTP listener.');
-if (bootstrapNewAccounts) {
-  try {
-    await writeFile(accountPath, JSON.stringify({ notice: 'Fictional accounts for shared-system testing only. Keep this file private.', createdAt: new Date().toISOString(), accounts }, null, 2) + '\n', { mode: 0o600, flag: 'wx' });
-  } catch (error) { await application.close(); throw error; }
-}
-try {
-  await new Promise((accept, reject) => {
-    application.server.once('error', reject);
-    application.server.listen(port, host, accept);
-  });
-} catch (error) { await application.close(); throw error; }
-const address = application.server.address();
-console.log(`Beamal shared test service listening on http://${host}:${address.port}`);
-console.log(`Fictional test account credentials ${accounts.length ? `are kept locally in ${accountPath}` : 'were not regenerated for the existing database'}.`);
+const gateway = createApiGateway({ storage: process.env.DATABASE_URL ? 'postgres' : 'sqlite' });
+const server = gateway.server;
+let applicationWorker = null;
+let restartTimer = null;
+let restartDelayMs = 1000;
 let stopping = false;
+
+function startApplicationWorker() {
+  if (stopping) return;
+  const worker = new Worker(new URL('./application-worker.mjs', import.meta.url));
+  applicationWorker = worker;
+  worker.on('message', message => {
+    if (applicationWorker !== worker) return;
+    if (message?.type === 'ready') {
+      gateway.setBackendPort(message.port);
+      restartDelayMs = 1000;
+      console.log('Application worker is ready; API requests are being forwarded.');
+    } else if (message?.type === 'startup-error') {
+      console.error('Application worker could not initialize.', message.error);
+    }
+  });
+  worker.on('error', error => {
+    if (applicationWorker !== worker) return;
+    gateway.clearBackendPort();
+    console.error('Application worker encountered an error.', error);
+  });
+  worker.on('exit', code => {
+    if (applicationWorker !== worker) return;
+    applicationWorker = null;
+    gateway.clearBackendPort();
+    if (stopping) return;
+    const delay = restartDelayMs;
+    restartDelayMs = Math.min(restartDelayMs * 2, 30000);
+    console.error(`Application worker exited with code ${code}; restarting in ${delay} ms.`);
+    restartTimer = setTimeout(startApplicationWorker, delay);
+    restartTimer.unref();
+  });
+}
+
+await new Promise((resolve, reject) => {
+  const failed = error => reject(error);
+  server.once('error', failed);
+  server.listen(port, host, () => {
+    server.off('error', failed);
+    resolve();
+  });
+});
+const address = server.address();
+console.log(`Initializing Beamal shared test service gateway with ${process.env.DATABASE_URL ? 'PostgreSQL' : 'SQLite'}; listener target ${host}:${address.port}.`);
+console.log(`Beamal API gateway listening on http://${host}:${address.port}`);
+startApplicationWorker();
+
 async function stop() {
   if (stopping) return;
   stopping = true;
-  await application.close();
+  clearTimeout(restartTimer);
+  gateway.clearBackendPort();
+  const worker = applicationWorker;
+  applicationWorker = null;
+  if (worker) {
+    await new Promise(resolve => {
+      const timeout = setTimeout(() => {
+        worker.terminate().then(resolve, error => {
+          console.error('Could not terminate the Beamal application worker.', error);
+          resolve();
+        });
+      }, 5000);
+      worker.once('exit', () => {
+        clearTimeout(timeout);
+        resolve();
+      });
+      worker.postMessage({ type: 'stop' });
+    });
+  }
+  if (server.listening) {
+    await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+  }
 }
-process.once('SIGINT', stop);
-process.once('SIGTERM', stop);
+
+process.once('SIGINT', () => { stop().catch(error => { console.error('Could not stop the Beamal API gateway.', error); process.exitCode = 1; }); });
+process.once('SIGTERM', () => { stop().catch(error => { console.error('Could not stop the Beamal API gateway.', error); process.exitCode = 1; }); });

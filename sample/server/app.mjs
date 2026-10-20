@@ -77,7 +77,7 @@ async function physicalPath(path) {
   return resolve(await physicalPath(parent), target.slice(parent.length + (parent.endsWith(sep) ? 0 : 1)));
 }
 
-export async function createApplication({ databasePath = ':memory:', databaseUrl = process.env.DATABASE_URL || '', seedUsers = [], seedCourses = [], seedMaterialAccess = [], allowedOrigins = defaultOrigins, staticDir = null, secureCookies = false, attachmentsDir, trialFormPolicy = null } = {}) {
+export async function createApplication({ databasePath = ':memory:', databaseUrl = process.env.DATABASE_URL || '', seedUsers = [], seedCourses = [], seedMaterialAccess = [], allowedOrigins = defaultOrigins, staticDir = null, secureCookies = false, attachmentsDir, trialFormPolicy = null, trustGatewayClientAddress = false } = {}) {
   const origins = new Set(allowedOrigins.map(value => {
     const parsed = new URL(value);
     if (!['http:', 'https:'].includes(parsed.protocol) || parsed.origin !== value) throw new Error('Allowed origins must be complete http or https origins without paths.');
@@ -105,6 +105,9 @@ export async function createApplication({ databasePath = ':memory:', databaseUrl
   const dummyHash = await hashPassword(randomToken());
   const attempts = new Map();
   const trialAttempts = new Map();
+  const clientAddress = request => trustGatewayClientAddress && typeof request.headers['x-beamal-client-address'] === 'string'
+    ? request.headers['x-beamal-client-address']
+    : request.socket.remoteAddress || 'unknown';
   const cookie = (value, seconds) => `${COOKIE}=${value}; Path=/; HttpOnly; SameSite=${secureCookies?'None':'Lax'}; Max-Age=${seconds}${secureCookies ? '; Secure' : ''}`;
   const allowedOrigin = (request, origin) => {
     if (typeof origin !== 'string') return false;
@@ -133,7 +136,7 @@ export async function createApplication({ databasePath = ':memory:', databaseUrl
   function throttle(request, email) {
     const now = Date.now();
     for (const [key, attempt] of attempts) if (attempt.until <= now) attempts.delete(key);
-    const ip = request.socket.remoteAddress || 'unknown';
+    const ip = clientAddress(request);
     for (const [key, max] of [[`ip:${ip}`, 50], [`login:${ip}:${email}`, 10]]) {
       const attempt = attempts.get(key) || { count: 0, until: now + 15 * 60 * 1000 };
       if (attempt.count >= max) throw new ApplicationError(429, 'LOGIN_RATE_LIMIT', 'Too many sign-in attempts. Please try again later.');
@@ -144,12 +147,12 @@ export async function createApplication({ databasePath = ':memory:', databaseUrl
   function throttlePublicTrial(request) {
     const now = Date.now();
     for (const [key, attempt] of trialAttempts) if (attempt.until <= now) trialAttempts.delete(key);
-    const ip = request.socket.remoteAddress || 'unknown', attempt = trialAttempts.get(ip);
+    const ip = clientAddress(request), attempt = trialAttempts.get(ip);
     if (attempt?.count >= 30 || !attempt && trialAttempts.size >= 10000) throw new ApplicationError(429, 'TRIAL_RATE_LIMIT', 'Too many trial submission attempts. Please try again later.');
     trialAttempts.set(ip, { count: (attempt?.count || 0) + 1, until: attempt?.until || now + 15 * 60 * 1000 });
   }
   function throttleTrialApplication(request){
-    const now=Date.now(),ip=request.socket.remoteAddress||'unknown';
+    const now=Date.now(),ip=clientAddress(request);
     for(const[key,entry]of trialAttempts)if(entry.until<=now)trialAttempts.delete(key);
     const entry=trialAttempts.get(ip)||{count:0,until:now+15*60*1000};
     if(entry.count>=8)throw new ApplicationError(429,'TRIAL_APPLICATION_RATE_LIMIT','Too many trial applications. Please try again later.');

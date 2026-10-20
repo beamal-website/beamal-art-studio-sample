@@ -93,6 +93,14 @@ export function createPeopleStore({database,transaction}) {
   };
   const select='SELECT people.*,converter.display_name AS converter_name FROM people LEFT JOIN users AS converter ON converter.id=people.converted_by';
   const record=id=>database.prepare(`${select} WHERE people.id=? AND people.archived_at IS NULL`).get(id);
+  const profilesForTrial=ids=>{
+    const profiles=new Map(),unique=[...new Set(ids)];
+    for(let index=0;index<unique.length;index+=400){
+      const batch=unique.slice(index,index+400),placeholders=batch.map(()=>'?').join(',');
+      for(const row of database.prepare(`${select} WHERE people.id IN (${placeholders}) AND people.archived_at IS NULL`).all(...batch))profiles.set(row.id,dto(row));
+    }
+    return profiles;
+  };
   const get=(id,actorId)=>transaction(()=>{administrator(actorId);const person=dto(record(id));if(!person)throw new ApplicationError(404,'PERSON_NOT_FOUND','Profile was not found.');return person;},'read');
   const searchText=profile=>Object.values(profile).filter(value=>typeof value==='string').join('\n').toLowerCase();
   const audit=(actor,action,person)=>database.prepare('INSERT INTO person_audit_log(person_id,actor_id,actor_name,action,version,snapshot,created_at) VALUES (?,?,?,?,?,?,?)').run(person.id,actor.id,actor.display_name,action,person.version,JSON.stringify(person),person.updatedAt);
@@ -114,6 +122,7 @@ export function createPeopleStore({database,transaction}) {
   // Internal orchestration helpers, never general anonymous profile endpoints.
   const createPublicApplicant=input=>transaction(()=>insertApplicant(input,{id:null,display_name:'Public trial form'},'person.public-create'));
   const profileForTrial=id=>dto(record(id));
+  const profileForTrials=ids=>profilesForTrial(ids);
   const update=(id,input,actorId)=>transaction(()=>{
     const actor=administrator(actorId),patch=validatePerson(input,{update:true}),current=dto(record(id));
     if(!current)throw new ApplicationError(404,'PERSON_NOT_FOUND','Profile was not found.');
@@ -127,5 +136,5 @@ export function createPeopleStore({database,transaction}) {
     administrator(actorId);if(!record(id))throw new ApplicationError(404,'PERSON_NOT_FOUND','Profile was not found.');
     return database.prepare('SELECT * FROM person_audit_log WHERE person_id=? ORDER BY id').all(id).map(row=>({id:row.id,action:row.action,version:row.version,actor:{id:row.actor_id,displayName:row.actor_name},createdAt:row.created_at,snapshot:JSON.parse(row.snapshot)}));
   },'read');
-  return {list,get,create,update,history,createPublicApplicant,profileForTrial};
+  return {list,get,create,update,history,createPublicApplicant,profileForTrial,profileForTrials};
 }

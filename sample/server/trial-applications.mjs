@@ -62,6 +62,7 @@ export function createTrialApplicationStore({database,transaction,availableSlots
   );
   CREATE INDEX IF NOT EXISTS trial_applications_person ON trial_applications(person_id,created_at,id);
   CREATE INDEX IF NOT EXISTS trial_applications_status ON trial_applications(status,created_at,id);
+  CREATE INDEX IF NOT EXISTS trial_applications_slot_status ON trial_applications(slot_id,status,created_at,id);
   CREATE TABLE IF NOT EXISTS trial_application_events(
    id INTEGER PRIMARY KEY AUTOINCREMENT,application_id TEXT NOT NULL REFERENCES trial_applications(id),
    type TEXT NOT NULL CHECK(type IN ('submitted','rejected')),version INTEGER NOT NULL,
@@ -149,12 +150,28 @@ export function createTrialApplicationStore({database,transaction,availableSlots
   database.prepare('INSERT INTO trial_application_acceptances(application_id,actor_id,actor_name,created_at) VALUES (?,?,?,?)').run(applicationId,actor.id,actor.display_name,now);
   return project(record(applicationId),actor);
  });
+ const participant=(id,date,applicationId=null,profile=people.profileForTrial(id))=>{if(!profile)return null;let age=null;if(profile.dateOfBirth&&profile.dateOfBirth<=date){const [by,bm,bd]=profile.dateOfBirth.split('-').map(Number),[y,m,d]=date.split('-').map(Number),months=(y-by)*12+m-bm-(d<bd?1:0);if(Number.isSafeInteger(months)&&months>=0)age={years:Math.floor(months/12),months:months%12,asOf:date};}return {id,displayName:profile.displayName,age,...(applicationId?{applicationId}:{})};};
  const participants=(slotId,date)=>{
-  const person=(id,applicationId=null)=>{const profile=people.profileForTrial(id);if(!profile)return null;let age=null;if(profile.dateOfBirth&&profile.dateOfBirth<=date){const [by,bm,bd]=profile.dateOfBirth.split('-').map(Number),[y,m,d]=date.split('-').map(Number),months=(y-by)*12+m-bm-(d<bd?1:0);if(Number.isSafeInteger(months)&&months>=0)age={years:Math.floor(months/12),months:months%12,asOf:date};}return {id,displayName:profile.displayName,age,...(applicationId?{applicationId}:{})};};
   const applications=database.prepare("SELECT applications.* FROM trial_applications applications JOIN availability_reservations reservations ON reservations.id=applications.reservation_id WHERE applications.slot_id=? AND applications.status='pending' AND reservations.state='held'").all(slotId);
-  const trials=applications.filter(row=>!!acceptance(row.id)).map(row=>person(row.person_id,row.id)).filter(Boolean);
+  const trials=applications.filter(row=>!!acceptance(row.id)).map(row=>participant(row.person_id,date,row.id)).filter(Boolean);
   const moved=database.prepare("SELECT people.id FROM availability_reservations reservations JOIN student_sessions sessions ON sessions.id=reservations.student_session_id JOIN people ON people.id=sessions.student_id JOIN enrollment_orders orders ON orders.id=sessions.order_id WHERE reservations.slot_id=? AND reservations.kind='rescheduling' AND reservations.state='held' AND sessions.schedule_id=reservations.target_schedule_id AND sessions.sequence=reservations.target_sequence AND orders.payment_status='paid'").all(slotId);
-  return {trials,rescheduling:[...new Set(moved.map(row=>row.id))].map(id=>person(id)).filter(Boolean)};
+  return {trials,rescheduling:[...new Set(moved.map(row=>row.id))].map(id=>participant(id,date)).filter(Boolean)};
+ };
+ const participantsForSlots=slots=>{
+  if(!Array.isArray(slots)||slots.some(slot=>!slot||typeof slot.id!=='string'||typeof slot.date!=='string'))throw new TypeError('Slot participant batches require slot IDs and dates.');
+  const dates=new Map(slots.map(slot=>[slot.id,slot.date])),result=new Map([...dates.keys()].map(slotId=>[slotId,{trials:[],rescheduling:[]}]));
+  if(!dates.size)return result;
+  const slotIds=[...dates.keys()],applications=[],moved=[];
+  for(let index=0;index<slotIds.length;index+=400){
+   const batch=slotIds.slice(index,index+400),placeholders=batch.map(()=>'?').join(',');
+   applications.push(...database.prepare(`SELECT applications.slot_id,applications.id AS application_id,applications.person_id FROM trial_applications applications JOIN availability_reservations reservations ON reservations.id=applications.reservation_id JOIN trial_application_acceptances acceptances ON acceptances.application_id=applications.id WHERE applications.slot_id IN (${placeholders}) AND applications.status='pending' AND reservations.state='held' ORDER BY applications.created_at,applications.id`).all(...batch));
+   moved.push(...database.prepare(`SELECT reservations.slot_id,people.id AS person_id FROM availability_reservations reservations JOIN student_sessions sessions ON sessions.id=reservations.student_session_id JOIN people ON people.id=sessions.student_id JOIN enrollment_orders orders ON orders.id=sessions.order_id WHERE reservations.slot_id IN (${placeholders}) AND reservations.kind='rescheduling' AND reservations.state='held' AND sessions.schedule_id=reservations.target_schedule_id AND sessions.sequence=reservations.target_sequence AND orders.payment_status='paid' ORDER BY reservations.slot_id,people.id`).all(...batch));
+  }
+  const profileIds=[...new Set([...applications.map(row=>row.person_id),...moved.map(row=>row.person_id)])],profiles=people.profileForTrials(profileIds);
+  for(const row of applications){const details=result.get(row.slot_id),profile=profiles.get(row.person_id),person=participant(row.person_id,dates.get(row.slot_id),row.application_id,profile);if(details&&person)details.trials.push(person);}
+  const seen=new Set();
+  for(const row of moved){const key=JSON.stringify([row.slot_id,row.person_id]);if(seen.has(key))continue;seen.add(key);const details=result.get(row.slot_id),profile=profiles.get(row.person_id),person=participant(row.person_id,dates.get(row.slot_id),null,profile);if(details&&person)details.rescheduling.push(person);}
+  return result;
  };
  const workSnapshot=(user,options={})=>transaction(()=>{
   if(!plain(options)||Object.keys(options).some(field=>field!=='since'))invalid('Choose supported work query parameters.');
@@ -167,5 +184,5 @@ export function createTrialApplicationStore({database,transaction,availableSlots
   const pendingTotal=pending.length,revision=hash({actor:current.actor.id,role:current.actor.role,pendingTotal,requests,notifications,totalEvents:allEvents.length});
   return since===revision?{revision,unchanged:true,pendingTotal}:{revision,pendingTotal,requests,notifications,hasMoreRequests:pending.length>50,hasMoreNotifications:allEvents.length>50};
  },'read');
- return {policy,submit,list,get,authorizeReject,reject,authorizeAccept,accept,participants,workSnapshot};
+ return {policy,submit,list,get,authorizeReject,reject,authorizeAccept,accept,participants,participantsForSlots,workSnapshot};
 }

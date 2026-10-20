@@ -498,7 +498,7 @@ async function initializeStore({ databasePath, seedUsers, seedCourses, attachmen
     people = createPeopleStore({ database, transaction });
     trialInquiries = createTrialInquiryStore({ database, transaction });
     classCapacityStatuses = createClassCapacityStatusStore({ database, transaction, accessControl });
-    availableSlots = createAvailableSlotStore({ database, transaction, accessControl, classCapacityStatuses, postgres, getParticipants:(id,date)=>enrollmentOrders&&trialApplications?.participants(id,date)||{trials:[],rescheduling:[]} });
+    availableSlots = createAvailableSlotStore({ database, transaction, accessControl, classCapacityStatuses, postgres, getParticipants:(id,date)=>enrollmentOrders&&trialApplications?.participants(id,date)||{trials:[],rescheduling:[]}, getParticipantsBatch:slots=>trialApplications?.participantsForSlots(slots)||new Map(slots.map(slot=>[slot.id,{trials:[],rescheduling:[]}])) });
     trialApplications = createTrialApplicationStore({ database, transaction, availableSlots, people, accessControl, trialFormPolicy });
     accessControl.setSlotSource(() => availableSlots.scopeFacts());
     enrollmentOrders = createEnrollmentOrderStore({ database, transaction, schedules, resources: schedulingResources, accessControl, getCourse, getFee, postgres });

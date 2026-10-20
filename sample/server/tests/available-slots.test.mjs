@@ -20,9 +20,12 @@ async function series(app,extra={}){const reply=await send(app.admin,'/api/sched
 const linked=(schedule,extra={})=>({scheduleId:schedule.id,sequence:1,...config(),...extra});
 function hold(database,id,kind='trial',state='held'){database.prepare('INSERT INTO availability_reservations(id,slot_id,kind,state) VALUES (?,?,?,?)').run(randomUUID(),id,kind,state);}
 
-test('scope and public course facts skip participant and capacity lookups while normal availability responses retain participants',async t=>{
- const app=await setup(t),schedule=await series(app),created=await add(app,linked(schedule));let capacityLookups=0;
+test('scope and public course facts skip participant and capacity lookups while normal availability batches participants',async t=>{
+ const app=await setup(t),schedule=await series(app),created=await add(app,linked(schedule));let capacityLookups=0,participantReads=0,participantBatchReads=0;
  app.store.classCapacityStatuses.setOccupancySource(()=>{capacityLookups++;return 0;});
+ const readParticipants=app.store.trialApplications.participants,readParticipantBatch=app.store.trialApplications.participantsForSlots;
+ app.store.trialApplications.participants=(...args)=>{participantReads++;return readParticipants(...args);};
+ app.store.trialApplications.participantsForSlots=slots=>{participantBatchReads++;return readParticipantBatch(slots);};
  const scopeFact=app.store.availableSlots.scopeFacts().find(slot=>slot.id===created.body.slot.id);
  assert.ok(scopeFact);
  assert.equal(Object.hasOwn(scopeFact,'participants'),false);
@@ -34,6 +37,8 @@ test('scope and public course facts skip participant and capacity lookups while 
  const listed=(await list(app.admin)).slots.find(slot=>slot.id===created.body.slot.id);
  assert.ok(listed);
  assert.equal(capacityLookups,1);
+ assert.equal(participantReads,0);
+ assert.equal(participantBatchReads,1);
  assert.deepEqual(listed.participants,{trials:[],rescheduling:[]});
  assert.equal(listed.trialConfirmed,0);
 });

@@ -21,6 +21,21 @@ function routeLabel(pathname) {
 export function createApiGateway({ storage = 'sqlite' } = {}) {
   if (!['sqlite', 'postgres'].includes(storage)) throw new TypeError('API gateway storage must be sqlite or postgres.');
   let backendPorts = [], nextReadBackend = 0;
+  const inFlightByPort = new Map();
+  const selectBackendPort = method => {
+    if (method !== 'GET') return backendPorts[0];
+    let selectedIndex = nextReadBackend % backendPorts.length, leastInFlight = Infinity;
+    for (let offset = 0; offset < backendPorts.length; offset++) {
+      const index = (nextReadBackend + offset) % backendPorts.length;
+      const inFlight = inFlightByPort.get(backendPorts[index]) || 0;
+      if (inFlight < leastInFlight) {
+        selectedIndex = index;
+        leastInFlight = inFlight;
+      }
+    }
+    nextReadBackend = (selectedIndex + 1) % backendPorts.length;
+    return backendPorts[selectedIndex];
+  };
   const server = createServer((request, response) => {
     const pathname = (request.url || '/').split('?', 1)[0];
     if (pathname === '/api/health' && request.method === 'GET') {
@@ -44,9 +59,17 @@ export function createApiGateway({ storage = 'sqlite' } = {}) {
       return;
     }
 
-    const backendPort = method === 'GET'
-      ? backendPorts[nextReadBackend++ % backendPorts.length]
-      : backendPorts[0];
+    const backendPort = selectBackendPort(method);
+    inFlightByPort.set(backendPort, (inFlightByPort.get(backendPort) || 0) + 1);
+    let backendReleased = false;
+    const releaseBackend = () => {
+      if (backendReleased) return;
+      backendReleased = true;
+      const inFlight = inFlightByPort.get(backendPort) || 0;
+      if (inFlight <= 1) inFlightByPort.delete(backendPort);
+      else inFlightByPort.set(backendPort, inFlight - 1);
+    };
+    response.once('finish', releaseBackend);
     const startedAt = Date.now(), route = routeLabel(pathname);
     let clientDisconnected = false;
     const headers = {
@@ -90,6 +113,7 @@ export function createApiGateway({ storage = 'sqlite' } = {}) {
       upstream.destroy();
     });
     response.on('close', () => {
+      releaseBackend();
       if (!response.writableEnded) {
         clientDisconnected = true;
         upstream.destroy();

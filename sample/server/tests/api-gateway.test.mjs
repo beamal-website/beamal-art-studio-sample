@@ -135,6 +135,33 @@ test('gateway balances read requests across PostgreSQL workers and pins mutation
   assert.throws(() => gateway.setBackendPorts([0]), /valid TCP ports/);
 });
 
+test('gateway routes reads to the least busy worker and rotates ties', async t => {
+  const gateway = createApiGateway({ storage: 'postgres' });
+  const url = await listen(gateway.server);
+  let primaryStartedResolve;
+  const primaryStarted = new Promise(resolve => { primaryStartedResolve = resolve; });
+  const primary = createServer((_request, response) => {
+    primaryStartedResolve?.();
+    primaryStartedResolve = null;
+    setTimeout(() => response.end('primary'), 300);
+  });
+  const secondary = createServer((_request, response) => response.end('secondary'));
+  const backendUrls = await Promise.all([primary, secondary].map(backend => listen(backend)));
+  gateway.setBackendPorts(backendUrls.map(backendUrl => Number(new URL(backendUrl).port)));
+  t.after(async () => {
+    gateway.server.closeAllConnections();
+    primary.closeAllConnections();
+    secondary.closeAllConnections();
+    await Promise.all([closeServer(gateway.server), closeServer(primary), closeServer(secondary)]);
+  });
+
+  const slowRead = fetch(`${url}/slow`);
+  await primaryStarted;
+  assert.equal(await (await fetch(`${url}/fast`)).text(), 'secondary');
+  assert.equal(await (await fetch(`${url}/after-fast`)).text(), 'secondary');
+  assert.equal(await (await slowRead).text(), 'primary');
+});
+
 test('application worker starts the existing API behind the gateway', async t => {
   const dataDir = await mkdtemp(join(tmpdir(), 'beamal-api-worker-'));
   const staticDir = join(dataDir, 'public');

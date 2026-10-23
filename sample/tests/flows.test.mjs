@@ -54,6 +54,33 @@ test('same-revision authenticated teacher mapping changes refresh the session an
  assert.deepEqual(a.read('authUser.teacherResourceIds'),[]);assert.equal(a.read('materialCaches.size'),0);assert.equal(a.read('modal'),'');assert.equal(a.read('sharedStaffSavedIdentity'),'');
 });
 
+test('shared service bootstrap starts independent reads concurrently',async()=>{
+ const news=deferred(),catalog=deferred(),resources=deferred(),schedules=deferred(),requests=[];
+ const client={
+  health:async()=>({mode:'shared-test'}),
+  session:async()=>({user:copy(sharedTestUser)}),
+  publicNews:async()=>({posts:[]}),
+  websiteNews:()=>{requests.push('news');return news.promise;},
+  catalog:()=>{requests.push('catalog');return catalog.promise;},
+  schedulingResources:()=>{requests.push('resources');return resources.promise;},
+  schedules:()=>{requests.push('schedules');return schedules.promise;},
+ };
+ const a=app({},'2026-10-14T12:00:00',false,client);
+ for(let turn=0;turn<100&&requests.length<3;turn++)await Promise.resolve();
+ assert.deepEqual(requests,['news','catalog','resources']);
+
+ news.resolve({posts:[]});
+ catalog.resolve({courses:[],fees:[],revision:'catalog-revision'});
+ resources.resolve({resources:[],revision:'resource-revision'});
+ for(let turn=0;turn<100&&!requests.includes('schedules');turn++)await Promise.resolve();
+ assert.deepEqual(requests,['news','catalog','resources','schedules']);
+
+ schedules.resolve({schedules:[],revision:'schedule-revision'});
+ for(let turn=0;turn<100&&!a.read('sharedReady');turn++)await Promise.resolve();
+ assert.equal(a.read('sharedReady'),true);
+ assert.equal(a.read('authUser.role'),'admin');
+});
+
 test('equivalent reordered authenticated teacher IDs do not clear an unchanged session or its private draft',async()=>{
  const user={...sharedTestUser,teacherResourceIds:['resource-a','resource-b']},a=await sharedApp({session:async()=>({user})});
  a.set("materialCaches.set('private',{items:[{name:'Retained authorized material'}]});modal='Retained authorized draft'");

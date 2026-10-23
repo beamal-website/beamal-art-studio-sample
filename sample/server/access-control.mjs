@@ -95,8 +95,8 @@ export function createAccessControlStore({database,transaction}) {
     database.prepare('UPDATE scoped_read_grants SET active=?,version=version+1,updated_at=? WHERE id=? AND version=?').run(Number(input.active),new Date().toISOString(),id,input.version);
     const grant=getGrant(id);audit(actorId,'access.grant.update',id,grant);return {grant,revision:managementSnapshot(actorId).revision};
   });
-  const scopeFor=user=>transaction(()=>{
-    const person=identity(user);if(!person)return {courseIds:new Set(),resourceIds:new Set(),revision:hash(null),permits:()=>false,permitsSlot:()=>false,schedules:[]};
+  const scopeForPerson=person=>{
+    if(!person)return {courseIds:new Set(),resourceIds:new Set(),revision:hash(null),permits:()=>false,permitsSlot:()=>false,schedules:[]};
     if(person.role!=='teacher')return {revision:hash({policy:1,id:person.id,role:person.role}),courseIds:null,resourceIds:null};
     const links=database.prepare('SELECT * FROM teacher_account_links WHERE user_id=? ORDER BY teacher_resource_id').all(person.id),grants=database.prepare('SELECT * FROM scoped_read_grants WHERE user_id=? ORDER BY id').all(person.id);
     const own=new Set(links.map(row=>row.teacher_resource_id)),active=grants.filter(row=>row.active),courses=new Set(active.filter(row=>row.kind==='course').map(row=>row.course_id)),resources=new Set(active.filter(row=>row.kind==='resource').map(row=>row.resource_id)),occurrences=new Set(active.filter(row=>row.kind==='occurrence').map(row=>JSON.stringify([row.schedule_id,row.sequence])));
@@ -118,10 +118,11 @@ export function createAccessControlStore({database,transaction}) {
     const available=slotSource().filter(permitsSlot).map(slot=>{courseIds.add(slot.courseId);for(const id of[...slot.teacherIds,...slot.roomIds])resourceIds.add(id);return {id:slot.id,courseId:slot.courseId,scheduleId:slot.scheduleId,sequence:slot.sequence,teacherIds:[...slot.teacherIds].sort(),roomIds:[...slot.roomIds].sort(),active:slot.active,sourceAvailable:slot.sourceAvailable};});
     const courseStates=database.prepare('SELECT id,deleted_at FROM courses ORDER BY id').all().filter(row=>courseIds.has(row.id));
     return {courseIds,resourceIds,permits,permitsSlot,schedules,revision:hash({policy:2,id:person.id,role:person.role,links:links.map(linkDTO),grants:grants.map(grantDTO),effective,available,courseStates})};
-  },'read');
+  };
+  const scopeFor=user=>transaction(()=>scopeForPerson(identity(user)),'read');
   const revisionFor=user=>transaction(()=>{
     const person=identity(user);
-    if(person?.role!=='student')return scopeFor(user).revision;
+    if(person?.role!=='student')return scopeForPerson(person).revision;
     // Each family refreshes only when its explicit profile links change. This
     // invalidates an already open private view after access is reassigned.
     const links=database.prepare('SELECT links.student_id,links.version,people.version AS profile_version FROM student_account_links AS links JOIN people ON people.id=links.student_id WHERE links.user_id=? ORDER BY links.student_id').all(person.id);
@@ -129,11 +130,7 @@ export function createAccessControlStore({database,transaction}) {
   },'read');
   // A resource granted for lesson access is not the viewer's own staff profile.
   // Read only explicit self links, independently of schedules or visible grants.
-  const ownTeacherResourceIds=user=>transaction(()=>{
-    const person=identity(user);
-    if(!person||!['admin','teacher'].includes(person.role))return [];
-    return database.prepare('SELECT teacher_resource_id FROM teacher_account_links WHERE user_id=? ORDER BY teacher_resource_id').all(person.id).map(row=>row.teacher_resource_id);
-  },'read');
+  const ownTeacherResourceIds=user=>!user||typeof user.id!=='string'?[]:database.prepare("SELECT links.teacher_resource_id FROM teacher_account_links AS links JOIN users ON users.id=links.user_id WHERE links.user_id=? AND users.role IN ('admin','teacher') ORDER BY links.teacher_resource_id").all(user.id).map(row=>row.teacher_resource_id);
   const canReadCourse=(courseId,user)=>{const scope=scopeFor(user);return scope.courseIds===null||scope.courseIds.has(courseId);};
   const teacherSchedules=(user,{from,to,since=''}={})=>transaction(()=>{
     const scope=scopeFor(user);let occurrences=[];

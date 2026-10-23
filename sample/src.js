@@ -1818,7 +1818,7 @@ function ensureSharedPolling(){
 async function initialiseSharedService(){
  if(!sharedClient)return;
  let generation=sharedGeneration,discarded=false;
- try{let health=await sharedClient.health();if(generation!==sharedGeneration){discarded=true;return}if(health.mode!=='shared-test')throw new Error('Unexpected service');sharedMode=true;let session=await sharedClient.session();if(generation!==sharedGeneration){discarded=true;return}applySharedUser(session.user);if(authUser&&interfacePreview&&authUser.role!=='student')tab='teacher-home';generation=sharedGeneration;await refreshWebsiteNews({paint:false});if(authUser){await refreshSharedCourses({paint:false});await refreshSharedSchedules({paint:false});}}
+ try{let health=await sharedClient.health();if(generation!==sharedGeneration){discarded=true;return}if(health.mode!=='shared-test')throw new Error('Unexpected service');sharedMode=true;let session=await sharedClient.session();if(generation!==sharedGeneration){discarded=true;return}applySharedUser(session.user);if(authUser&&interfacePreview&&authUser.role!=='student')tab='teacher-home';generation=sharedGeneration;const startupReads=[refreshWebsiteNews({paint:false})];if(authUser)startupReads.push(refreshSharedCourses({paint:false}),refreshSharedSchedules({paint:false}));await Promise.all(startupReads);}
  catch(error){if(error.code==='AUTH_SUPERSEDED'||generation!==sharedGeneration)discarded=true;else{applySharedUser(null);generation=sharedGeneration;}}
  finally{sharedReady=true;if(!discarded&&generation===sharedGeneration){if(authUser&&path()==='/login')go('/account');else render();}ensureSharedPolling();}
 }

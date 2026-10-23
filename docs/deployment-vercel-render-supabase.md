@@ -15,6 +15,8 @@ In PostgreSQL mode, expired temporary uploads are cleaned when the API starts ra
 
 The Render listener now runs as a lightweight gateway separate from the database-backed application worker. `/api/health` stays responsive while the worker is busy with a PostgreSQL query, and reports `503` during worker startup instead of timing out. A worker restart is logged and retried with a short backoff; check the worker startup lines for PostgreSQL initialization errors if the health endpoint remains unavailable.
 
+GET requests are routed to the application worker with the fewest outstanding requests, with ties rotated; writes remain pinned to the primary worker. This reduces queueing when one worker is already busy, but does not shorten individual database round-trips. If login-stage timings or API responses remain high, check that Render and Supabase use nearby regions, since every PostgreSQL query pays the network latency. Keep `DATABASE_URL` private while checking its host and region.
+
 Slow API responses log only the HTTP method, a privacy-safe route label and duration. Slow login and session requests also report gateway-to-worker queue delay and timings for body reading, password verification and authentication database operations; these logs never include credentials or SQL parameters. PostgreSQL slow-query logs include the operation and duration. If clients disconnect while waiting, the gateway logs that separately from worker-forwarding errors.
 
 ## Integrated trial and lesson workflows
